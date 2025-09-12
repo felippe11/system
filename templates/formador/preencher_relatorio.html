@@ -1,0 +1,395 @@
+{% extends "base.html" %}
+
+{% block title %}{{ relatorio.configuracao.nome }} - Formador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3">{{ relatorio.configuracao.nome }}</h1>
+                    <p class="text-muted mb-0">
+                        {{ relatorio.configuracao.descricao or 'Preencha os campos abaixo conforme solicitado.' }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('formador_relatorio_routes.meus_relatorios') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações do Relatório -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Tipo:</strong>
+                            <span class="badge badge-secondary ml-1">{{ relatorio.configuracao.tipo.title() }}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Status:</strong>
+                            {% if relatorio.status == 'pendente' %}
+                            <span class="badge badge-warning ml-1">Pendente</span>
+                            {% elif relatorio.status == 'rascunho' %}
+                            <span class="badge badge-info ml-1">Rascunho</span>
+                            {% elif relatorio.status == 'rejeitado' %}
+                            <span class="badge badge-danger ml-1">Rejeitado</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            {% if relatorio.atividade %}
+                            <strong>Atividade:</strong> {{ relatorio.atividade.nome }}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            {% if relatorio.prazo %}
+                            <strong>Prazo:</strong>
+                            <span class="{% if relatorio.prazo < now() %}text-danger{% elif (relatorio.prazo - now()).days <= 3 %}text-warning{% endif %}">
+                                {{ relatorio.prazo.strftime('%d/%m/%Y') }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if relatorio.configuracao.obrigatorio %}
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <div class="alert alert-warning mb-0">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Relatório Obrigatório:</strong> Este relatório deve ser preenchido e enviado.
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if relatorio.status == 'rejeitado' and relatorio.observacoes %}
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <div class="alert alert-danger">
+                                <strong>Motivo da Rejeição:</strong><br>
+                                {{ relatorio.observacoes }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário do Relatório -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Campos do Relatório</h5>
+                </div>
+                <div class="card-body">
+                    <form id="relatorioForm">
+                        {% for campo in relatorio.configuracao.campos|sort(attribute='ordem') %}
+                        <div class="form-group">
+                            <label for="campo_{{ campo.id }}">
+                                {{ campo.label }}
+                                {% if campo.obrigatorio %}
+                                <span class="text-danger">*</span>
+                                {% endif %}
+                            </label>
+                            
+                            {% set resposta = relatorio.respostas|selectattr('campo_id', 'equalto', campo.id)|first %}
+                            {% set valor = resposta.valor if resposta else '' %}
+                            
+                            {% if campo.tipo == 'texto' %}
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="campo_{{ campo.id }}" 
+                                   name="campo_{{ campo.id }}"
+                                   value="{{ valor }}"
+                                   placeholder="{{ campo.placeholder or '' }}"
+                                   {% if campo.obrigatorio %}required{% endif %}>
+                            
+                            {% elif campo.tipo == 'texto_longo' %}
+                            <textarea class="form-control" 
+                                      id="campo_{{ campo.id }}" 
+                                      name="campo_{{ campo.id }}"
+                                      rows="4"
+                                      placeholder="{{ campo.placeholder or '' }}"
+                                      {% if campo.obrigatorio %}required{% endif %}>{{ valor }}</textarea>
+                            
+                            {% elif campo.tipo == 'numero' %}
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="campo_{{ campo.id }}" 
+                                   name="campo_{{ campo.id }}"
+                                   value="{{ valor }}"
+                                   placeholder="{{ campo.placeholder or '' }}"
+                                   {% if campo.obrigatorio %}required{% endif %}>
+                            
+                            {% elif campo.tipo == 'data' %}
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="campo_{{ campo.id }}" 
+                                   name="campo_{{ campo.id }}"
+                                   value="{{ valor }}"
+                                   {% if campo.obrigatorio %}required{% endif %}>
+                            
+                            {% elif campo.tipo == 'selecao' %}
+                            <select class="form-control" 
+                                    id="campo_{{ campo.id }}" 
+                                    name="campo_{{ campo.id }}"
+                                    {% if campo.obrigatorio %}required{% endif %}>
+                                <option value="">Selecione uma opção</option>
+                                {% for opcao in campo.opcoes %}
+                                <option value="{{ opcao }}" {% if opcao == valor %}selected{% endif %}>{{ opcao }}</option>
+                                {% endfor %}
+                            </select>
+                            
+                            {% elif campo.tipo == 'multipla_escolha' %}
+                            {% set valores_selecionados = valor.split(',') if valor else [] %}
+                            {% for opcao in campo.opcoes %}
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="campo_{{ campo.id }}_{{ loop.index }}" 
+                                       name="campo_{{ campo.id }}"
+                                       value="{{ opcao }}"
+                                       {% if opcao in valores_selecionados %}checked{% endif %}>
+                                <label class="form-check-label" for="campo_{{ campo.id }}_{{ loop.index }}">
+                                    {{ opcao }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                            
+                            {% elif campo.tipo == 'arquivo' %}
+                            <div class="custom-file">
+                                <input type="file" 
+                                       class="custom-file-input" 
+                                       id="campo_{{ campo.id }}" 
+                                       name="campo_{{ campo.id }}"
+                                       {% if campo.obrigatorio and not valor %}required{% endif %}>
+                                <label class="custom-file-label" for="campo_{{ campo.id }}">
+                                    {% if valor %}
+                                    {{ valor.split('/')[-1] }}
+                                    {% else %}
+                                    {{ campo.placeholder or 'Escolher arquivo...' }}
+                                    {% endif %}
+                                </label>
+                            </div>
+                            {% if valor %}
+                            <small class="form-text text-muted">
+                                Arquivo atual: <a href="{{ valor }}" target="_blank">{{ valor.split('/')[-1] }}</a>
+                            </small>
+                            {% endif %}
+                            {% endif %}
+                            
+                            {% if campo.placeholder and campo.tipo not in ['arquivo', 'selecao', 'multipla_escolha'] %}
+                            <small class="form-text text-muted">{{ campo.placeholder }}</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </form>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="mt-4">
+                <button type="button" class="btn btn-primary" onclick="salvarRascunho()">
+                    <i class="fas fa-save"></i> Salvar Rascunho
+                </button>
+                <button type="button" class="btn btn-success ml-2" onclick="enviarRelatorio()">
+                    <i class="fas fa-paper-plane"></i> Enviar Relatório
+                </button>
+                <a href="{{ url_for('formador_relatorio_routes.meus_relatorios') }}" class="btn btn-secondary ml-2">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+
+        <!-- Painel de Ajuda -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Instruções</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-info-circle text-info"></i>
+                            <small>Preencha todos os campos obrigatórios (marcados com *)</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-save text-primary"></i>
+                            <small>Use "Salvar Rascunho" para salvar sem enviar</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-paper-plane text-success"></i>
+                            <small>"Enviar Relatório" finaliza e envia para aprovação</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            <small>Após enviar, não será possível editar</small>
+                        </li>
+                        <li>
+                            <i class="fas fa-file-upload text-secondary"></i>
+                            <small>Arquivos devem ter no máximo 10MB</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            {% if relatorio.historico %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Histórico</h6>
+                </div>
+                <div class="card-body">
+                    {% for item in relatorio.historico|sort(attribute='data_criacao', reverse=true) %}
+                    <div class="mb-2">
+                        <small class="text-muted">{{ item.data_criacao.strftime('%d/%m/%Y %H:%M') }}</small><br>
+                        <strong>{{ item.acao.title() }}</strong>
+                        {% if item.observacoes %}
+                        <br><small>{{ item.observacoes }}</small>
+                        {% endif %}
+                    </div>
+                    {% if not loop.last %}<hr class="my-2">{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Envio</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja enviar este relatório?</p>
+                <p class="text-warning"><small><i class="fas fa-exclamation-triangle"></i> Após o envio, não será possível editar o relatório.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmarEnvio">Enviar Relatório</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Atualizar labels de arquivo
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInputs = document.querySelectorAll('.custom-file-input');
+    fileInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            const fileName = this.files[0] ? this.files[0].name : 'Escolher arquivo...';
+            const label = this.nextElementSibling;
+            label.textContent = fileName;
+        });
+    });
+});
+
+function coletarDados() {
+    const form = document.getElementById('relatorioForm');
+    const formData = new FormData();
+    
+    // Coletar dados dos campos
+    const campos = form.querySelectorAll('input, textarea, select');
+    campos.forEach(campo => {
+        if (campo.type === 'checkbox') {
+            // Para múltipla escolha, coletar todos os valores selecionados
+            const nome = campo.name;
+            if (!formData.has(nome)) {
+                const checkboxes = form.querySelectorAll(`input[name="${nome}"]:checked`);
+                const valores = Array.from(checkboxes).map(cb => cb.value);
+                formData.append(nome, valores.join(','));
+            }
+        } else if (campo.type === 'file') {
+            if (campo.files[0]) {
+                formData.append(campo.name, campo.files[0]);
+            }
+        } else {
+            formData.append(campo.name, campo.value);
+        }
+    });
+    
+    return formData;
+}
+
+function salvarRascunho() {
+    const formData = coletarDados();
+    formData.append('acao', 'rascunho');
+    
+    fetch('{{ url_for("formador_relatorio_routes.salvar_relatorio", relatorio_id=relatorio.id) }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Rascunho salvo com sucesso!');
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar rascunho.');
+    });
+}
+
+function enviarRelatorio() {
+    const form = document.getElementById('relatorioForm');
+    
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    $('#confirmModal').modal('show');
+}
+
+document.getElementById('confirmarEnvio').addEventListener('click', function() {
+    const formData = coletarDados();
+    formData.append('acao', 'enviar');
+    
+    fetch('{{ url_for("formador_relatorio_routes.salvar_relatorio", relatorio_id=relatorio.id) }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Relatório enviado com sucesso!');
+            window.location.href = '{{ url_for("formador_relatorio_routes.meus_relatorios") }}';
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao enviar relatório.');
+    });
+    
+    $('#confirmModal').modal('hide');
+});
+
+// Auto-salvar rascunho a cada 2 minutos
+setInterval(function() {
+    salvarRascunho();
+}, 120000); // 2 minutos
+</script>
+{% endblock %}

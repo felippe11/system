@@ -280,6 +280,17 @@ class Ministrante(db.Model, UserMixin):
     senha = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=True)
+    
+    # Novos campos para Formador
+    telefone = db.Column(db.String(20), nullable=True)
+    endereco = db.Column(db.String(500), nullable=True)
+    banco = db.Column(db.String(100), nullable=True)
+    agencia = db.Column(db.String(20), nullable=True)
+    conta = db.Column(db.String(30), nullable=True)
+    tipo_conta = db.Column(db.String(20), nullable=True)  # corrente, poupança
+    chave_pix = db.Column(db.String(255), nullable=True)  # diferente do campo pix existente
+    ativo = db.Column(db.Boolean, default=True)
+    
     cliente = db.relationship("Cliente", backref="ministrantes")
 
     @property
@@ -288,3 +299,30 @@ class Ministrante(db.Model, UserMixin):
 
     def __repr__(self):
         return f"<Ministrante {self.nome}>"
+
+
+class FormadorCadastroLink(db.Model):
+    """Link para autoinscrição de formadores."""
+
+    __tablename__ = "formador_cadastro_link"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    token = db.Column(
+        db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4())
+    )
+    descricao = db.Column(db.String(255), nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    cliente = db.relationship(
+        "Cliente", backref=db.backref("formador_cadastro_links", lazy=True)
+    )
+
+    def is_valid(self):
+        """Retorna True se o link não foi usado e ainda não expirou."""
+        return (not self.used) and datetime.utcnow() < self.expires_at
+
+    def __repr__(self):
+        return f"<FormadorCadastroLink {self.token}>"

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Links de Inscrição - Formadores{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-link"></i> Links de Inscrição para Formadores
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novoLinkModal">
+                            <i class="fas fa-plus"></i> Gerar Novo Link
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Token</th>
+                                    <th>Data de Criação</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if links %}
+                                    {% for link in links %}
+                                    <tr>
+                                        <td>{{ link.id }}</td>
+                                        <td>
+                                            <code>{{ link.token[:8] }}...</code>
+                                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('{{ request.host_url.rstrip('/') }}/formador/inscricao/{{ link.token }}')"
+                                                    title="Copiar link completo">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </td>
+                                        <td>{{ link.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td>
+                                            {% if link.is_valid() %}
+                                                <span class="badge bg-success">Ativo</span>
+                                                <small class="text-muted d-block">Expira em {{ link.expires_at.strftime('%d/%m/%Y') }}</small>
+                                            {% elif link.used %}
+                                                <span class="badge bg-warning">Usado</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Expirado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard('{{ request.host_url.rstrip('/') }}/formador/inscricao/{{ link.token }}')"
+                                                        title="Copiar link">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                                <a href="{{ request.host_url.rstrip('/') }}/formador/inscricao/{{ link.token }}" 
+                                                   class="btn btn-sm btn-outline-success" target="_blank" title="Abrir link">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">
+                                            <i class="fas fa-info-circle"></i> Nenhum link de inscrição encontrado.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para gerar novo link -->
+<div class="modal fade" id="novoLinkModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus"></i> Gerar Novo Link de Inscrição
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('cliente_formador_routes.gerar_link_inscricao_formador') }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="descricao">Descrição do Link:</label>
+                        <input type="text" class="form-control" id="descricao" name="descricao" placeholder="Ex: Link para formadores - Turma 2024">
+                    </div>
+                    <div class="form-group">
+                        <label for="validade">Validade (dias):</label>
+                        <input type="number" class="form-control" id="validade" name="validade" value="30" min="1" max="365">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-link"></i> Gerar Link
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Criar notificação de sucesso
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            <i class="fas fa-check-circle"></i> Link copiado para a área de transferência!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        // Remover após 3 segundos
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }).catch(function(err) {
+        console.error('Erro ao copiar: ', err);
+        alert('Erro ao copiar link. Tente novamente.');
+    });
+}
+</script>
+{% endblock %}

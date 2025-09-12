@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Relatórios - Formador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Meus Relatórios</h1>
+                <div>
+                    <button class="btn btn-outline-secondary" onclick="atualizarLista()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="filtro_tipo">Tipo</label>
+                                <select class="form-control" id="filtro_tipo">
+                                    <option value="">Todos os tipos</option>
+                                    <option value="atividade">Por Atividade</option>
+                                    <option value="mensal">Mensal</option>
+                                    <option value="trimestral">Trimestral</option>
+                                    <option value="anual">Anual</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="filtro_status">Status</label>
+                                <select class="form-control" id="filtro_status">
+                                    <option value="">Todos os status</option>
+                                    <option value="pendente">Pendente</option>
+                                    <option value="rascunho">Rascunho</option>
+                                    <option value="enviado">Enviado</option>
+                                    <option value="aprovado">Aprovado</option>
+                                    <option value="rejeitado">Rejeitado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="filtro_atividade">Atividade</label>
+                                <select class="form-control" id="filtro_atividade">
+                                    <option value="">Todas as atividades</option>
+                                    {% for atividade in atividades %}
+                                    <option value="{{ atividade.id }}">{{ atividade.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="filtro_periodo">Período</label>
+                                <select class="form-control" id="filtro_periodo">
+                                    <option value="">Todos os períodos</option>
+                                    <option value="30">Últimos 30 dias</option>
+                                    <option value="90">Últimos 90 dias</option>
+                                    <option value="365">Último ano</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Total de Relatórios</h6>
+                            <h3 class="mb-0" id="total_relatorios">{{ estatisticas.total }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-file-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Pendentes</h6>
+                            <h3 class="mb-0" id="pendentes">{{ estatisticas.pendentes }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Rascunhos</h6>
+                            <h3 class="mb-0" id="rascunhos">{{ estatisticas.rascunhos }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-edit fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Enviados</h6>
+                            <h3 class="mb-0" id="enviados">{{ estatisticas.enviados }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Relatórios -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Lista de Relatórios</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tabelaRelatorios">
+                            <thead>
+                                <tr>
+                                    <th>Relatório</th>
+                                    <th>Tipo</th>
+                                    <th>Atividade</th>
+                                    <th>Status</th>
+                                    <th>Prazo</th>
+                                    <th>Última Atualização</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for relatorio in relatorios %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ relatorio.configuracao.nome }}</strong>
+                                        {% if relatorio.configuracao.obrigatorio %}
+                                        <span class="badge badge-danger ml-1">Obrigatório</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-secondary">
+                                            {{ relatorio.configuracao.tipo.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if relatorio.atividade %}
+                                        {{ relatorio.atividade.nome }}
+                                        {% else %}
+                                        <span class="text-muted">Geral</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if relatorio.status == 'pendente' %}
+                                        <span class="badge badge-warning">Pendente</span>
+                                        {% elif relatorio.status == 'rascunho' %}
+                                        <span class="badge badge-info">Rascunho</span>
+                                        {% elif relatorio.status == 'enviado' %}
+                                        <span class="badge badge-success">Enviado</span>
+                                        {% elif relatorio.status == 'aprovado' %}
+                                        <span class="badge badge-success">Aprovado</span>
+                                        {% elif relatorio.status == 'rejeitado' %}
+                                        <span class="badge badge-danger">Rejeitado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if relatorio.prazo %}
+                                        <span class="{% if relatorio.prazo < now() %}text-danger{% elif (relatorio.prazo - now()).days <= 3 %}text-warning{% endif %}">
+                                            {{ relatorio.prazo.strftime('%d/%m/%Y') }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">Sem prazo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if relatorio.data_atualizacao %}
+                                        {{ relatorio.data_atualizacao.strftime('%d/%m/%Y %H:%M') }}
+                                        {% else %}
+                                        <span class="text-muted">Nunca</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            {% if relatorio.status in ['pendente', 'rascunho', 'rejeitado'] %}
+                                            <a href="{{ url_for('formador_relatorio_routes.preencher_relatorio', relatorio_id=relatorio.id) }}" 
+                                               class="btn btn-primary" title="Preencher">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% endif %}
+                                            
+                                            {% if relatorio.status != 'pendente' %}
+                                            <a href="{{ url_for('formador_relatorio_routes.visualizar_relatorio', relatorio_id=relatorio.id) }}" 
+                                               class="btn btn-info" title="Visualizar">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% endif %}
+                                            
+                                            {% if relatorio.status == 'rascunho' %}
+                                            <button class="btn btn-success" 
+                                                    onclick="enviarRelatorio({{ relatorio.id }})" 
+                                                    title="Enviar">
+                                                <i class="fas fa-paper-plane"></i>
+                                            </button>
+                                            {% endif %}
+                                            
+                                            {% if relatorio.status in ['enviado', 'aprovado'] %}
+                                            <a href="{{ url_for('formador_relatorio_routes.download_relatorio', relatorio_id=relatorio.id) }}" 
+                                               class="btn btn-secondary" title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if not relatorios %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum relatório encontrado</h5>
+                        <p class="text-muted">Aguarde a criação de configurações de relatórios pelo cliente.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Envio</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja enviar este relatório?</p>
+                <p class="text-warning"><small><i class="fas fa-exclamation-triangle"></i> Após o envio, não será possível editar o relatório.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmarEnvio">Enviar Relatório</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let relatorioParaEnviar = null;
+
+// Aplicar filtros
+document.addEventListener('DOMContentLoaded', function() {
+    const filtros = ['filtro_tipo', 'filtro_status', 'filtro_atividade', 'filtro_periodo'];
+    
+    filtros.forEach(filtroId => {
+        document.getElementById(filtroId).addEventListener('change', aplicarFiltros);
+    });
+});
+
+function aplicarFiltros() {
+    const tipo = document.getElementById('filtro_tipo').value;
+    const status = document.getElementById('filtro_status').value;
+    const atividade = document.getElementById('filtro_atividade').value;
+    const periodo = document.getElementById('filtro_periodo').value;
+    
+    const tabela = document.getElementById('tabelaRelatorios');
+    const linhas = tabela.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let linha of linhas) {
+        let mostrar = true;
+        
+        // Filtro por tipo
+        if (tipo && !linha.cells[1].textContent.toLowerCase().includes(tipo)) {
+            mostrar = false;
+        }
+        
+        // Filtro por status
+        if (status && !linha.cells[3].textContent.toLowerCase().includes(status)) {
+            mostrar = false;
+        }
+        
+        // Filtro por atividade
+        if (atividade) {
+            const atividadeTexto = linha.cells[2].textContent.trim();
+            const atividadeSelect = document.getElementById('filtro_atividade');
+            const opcaoSelecionada = atividadeSelect.options[atividadeSelect.selectedIndex].text;
+            
+            if (atividadeTexto !== opcaoSelecionada) {
+                mostrar = false;
+            }
+        }
+        
+        linha.style.display = mostrar ? '' : 'none';
+    }
+}
+
+function enviarRelatorio(relatorioId) {
+    relatorioParaEnviar = relatorioId;
+    $('#confirmModal').modal('show');
+}
+
+document.getElementById('confirmarEnvio').addEventListener('click', function() {
+    if (relatorioParaEnviar) {
+        fetch(`{{ url_for('formador_relatorio_routes.enviar_relatorio', relatorio_id=0) }}`.replace('0', relatorioParaEnviar), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Relatório enviado com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao enviar relatório.');
+        });
+        
+        $('#confirmModal').modal('hide');
+        relatorioParaEnviar = null;
+    }
+});
+
+function atualizarLista() {
+    location.reload();
+}
+
+// Auto-atualização a cada 5 minutos
+setInterval(function() {
+    // Atualizar apenas as estatísticas sem recarregar a página
+    fetch('{{ url_for("formador_relatorio_routes.estatisticas_relatorios") }}')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('total_relatorios').textContent = data.estatisticas.total;
+            document.getElementById('pendentes').textContent = data.estatisticas.pendentes;
+            document.getElementById('rascunhos').textContent = data.estatisticas.rascunhos;
+            document.getElementById('enviados').textContent = data.estatisticas.enviados;
+        }
+    })
+    .catch(error => console.error('Erro ao atualizar estatísticas:', error));
+}, 300000); // 5 minutos
+</script>
+{% endblock %}

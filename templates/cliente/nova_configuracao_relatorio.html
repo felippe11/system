@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Configuração de Relatório - Cliente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Nova Configuração de Relatório</h1>
+                <a href="{{ url_for('formador_relatorio_routes.configuracoes') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Configuração do Relatório</h5>
+                </div>
+                <div class="card-body">
+                    <form id="configForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nome">Nome do Relatório *</label>
+                                    <input type="text" class="form-control" id="nome" name="nome" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="tipo">Tipo de Relatório *</label>
+                                    <select class="form-control" id="tipo" name="tipo" required>
+                                        <option value="">Selecione o tipo</option>
+                                        <option value="atividade">Por Atividade</option>
+                                        <option value="mensal">Mensal</option>
+                                        <option value="trimestral">Trimestral</option>
+                                        <option value="anual">Anual</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="descricao">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3" placeholder="Descreva o objetivo e conteúdo deste relatório"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="obrigatorio" name="obrigatorio">
+                                        <label class="form-check-label" for="obrigatorio">
+                                            Relatório Obrigatório
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="frequenciaGroup" style="display: none;">
+                                <div class="form-group">
+                                    <label for="frequencia_dias">Frequência (dias)</label>
+                                    <input type="number" class="form-control" id="frequencia_dias" name="frequencia_dias" min="1" placeholder="Ex: 30 para mensal">
+                                    <small class="form-text text-muted">Intervalo em dias para relatórios periódicos</small>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Campos do Relatório -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Campos do Relatório</h5>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="adicionarCampo()">
+                        <i class="fas fa-plus"></i> Adicionar Campo
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="camposContainer">
+                        <p class="text-muted">Nenhum campo adicionado. Clique em "Adicionar Campo" para começar.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="mt-4">
+                <button type="button" class="btn btn-success" onclick="salvarConfiguracao()">
+                    <i class="fas fa-save"></i> Salvar Configuração
+                </button>
+                <a href="{{ url_for('formador_relatorio_routes.configuracoes') }}" class="btn btn-secondary ml-2">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+
+        <!-- Painel de Ajuda -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Tipos de Campo Disponíveis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Texto:</strong> Campo de texto simples
+                    </div>
+                    <div class="mb-3">
+                        <strong>Texto Longo:</strong> Área de texto para respostas extensas
+                    </div>
+                    <div class="mb-3">
+                        <strong>Número:</strong> Campo numérico
+                    </div>
+                    <div class="mb-3">
+                        <strong>Data:</strong> Seletor de data
+                    </div>
+                    <div class="mb-3">
+                        <strong>Seleção:</strong> Lista suspensa com opções
+                    </div>
+                    <div class="mb-3">
+                        <strong>Múltipla Escolha:</strong> Checkboxes para múltiplas seleções
+                    </div>
+                    <div class="mb-3">
+                        <strong>Arquivo:</strong> Upload de arquivo
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Dicas</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Use nomes descritivos para os campos</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Marque como obrigatório apenas campos essenciais</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Ordene os campos logicamente</small>
+                        </li>
+                        <li>
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Use placeholders para orientar o preenchimento</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Adicionar Campo -->
+<div class="modal fade" id="campoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Campo</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="campoForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="campo_nome">Nome do Campo *</label>
+                                <input type="text" class="form-control" id="campo_nome" required>
+                                <small class="form-text text-muted">Nome técnico (sem espaços ou caracteres especiais)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="campo_label">Rótulo *</label>
+                                <input type="text" class="form-control" id="campo_label" required>
+                                <small class="form-text text-muted">Texto que aparecerá para o usuário</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="campo_tipo">Tipo *</label>
+                                <select class="form-control" id="campo_tipo" required>
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="texto">Texto</option>
+                                    <option value="texto_longo">Texto Longo</option>
+                                    <option value="numero">Número</option>
+                                    <option value="data">Data</option>
+                                    <option value="selecao">Seleção</option>
+                                    <option value="multipla_escolha">Múltipla Escolha</option>
+                                    <option value="arquivo">Arquivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="campo_ordem">Ordem</label>
+                                <input type="number" class="form-control" id="campo_ordem" min="0" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="campo_placeholder">Placeholder</label>
+                        <input type="text" class="form-control" id="campo_placeholder" placeholder="Texto de ajuda para o usuário">
+                    </div>
+
+                    <div class="form-group" id="opcoesGroup" style="display: none;">
+                        <label for="campo_opcoes">Opções</label>
+                        <textarea class="form-control" id="campo_opcoes" rows="3" placeholder="Uma opção por linha"></textarea>
+                        <small class="form-text text-muted">Para campos de seleção, digite uma opção por linha</small>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="campo_obrigatorio">
+                        <label class="form-check-label" for="campo_obrigatorio">
+                            Campo Obrigatório
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarCampo()">Adicionar Campo</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let campos = [];
+let campoEditandoIndex = -1;
+
+// Mostrar/ocultar frequência baseado no tipo
+document.getElementById('tipo').addEventListener('change', function() {
+    const frequenciaGroup = document.getElementById('frequenciaGroup');
+    const valor = this.value;
+    
+    if (valor === 'mensal' || valor === 'trimestral' || valor === 'anual') {
+        frequenciaGroup.style.display = 'block';
+        
+        // Definir valores padrão
+        const frequenciaInput = document.getElementById('frequencia_dias');
+        if (valor === 'mensal') frequenciaInput.value = 30;
+        else if (valor === 'trimestral') frequenciaInput.value = 90;
+        else if (valor === 'anual') frequenciaInput.value = 365;
+    } else {
+        frequenciaGroup.style.display = 'none';
+    }
+});
+
+// Mostrar/ocultar opções baseado no tipo de campo
+document.getElementById('campo_tipo').addEventListener('change', function() {
+    const opcoesGroup = document.getElementById('opcoesGroup');
+    const valor = this.value;
+    
+    if (valor === 'selecao' || valor === 'multipla_escolha') {
+        opcoesGroup.style.display = 'block';
+    } else {
+        opcoesGroup.style.display = 'none';
+    }
+});
+
+function adicionarCampo() {
+    // Limpar formulário
+    document.getElementById('campoForm').reset();
+    campoEditandoIndex = -1;
+    
+    // Mostrar modal
+    $('#campoModal').modal('show');
+}
+
+function confirmarCampo() {
+    const form = document.getElementById('campoForm');
+    
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const campo = {
+        nome: document.getElementById('campo_nome').value,
+        label: document.getElementById('campo_label').value,
+        tipo: document.getElementById('campo_tipo').value,
+        ordem: parseInt(document.getElementById('campo_ordem').value) || 0,
+        placeholder: document.getElementById('campo_placeholder').value,
+        obrigatorio: document.getElementById('campo_obrigatorio').checked,
+        opcoes: []
+    };
+    
+    // Processar opções se necessário
+    const tipoComOpcoes = ['selecao', 'multipla_escolha'];
+    if (tipoComOpcoes.includes(campo.tipo)) {
+        const opcoesText = document.getElementById('campo_opcoes').value;
+        campo.opcoes = opcoesText.split('\n').filter(op => op.trim()).map(op => op.trim());
+        
+        if (campo.opcoes.length === 0) {
+            alert('Por favor, adicione pelo menos uma opção.');
+            return;
+        }
+    }
+    
+    if (campoEditandoIndex >= 0) {
+        campos[campoEditandoIndex] = campo;
+    } else {
+        campos.push(campo);
+    }
+    
+    atualizarListaCampos();
+    $('#campoModal').modal('hide');
+}
+
+function atualizarListaCampos() {
+    const container = document.getElementById('camposContainer');
+    
+    if (campos.length === 0) {
+        container.innerHTML = '<p class="text-muted">Nenhum campo adicionado. Clique em "Adicionar Campo" para começar.</p>';
+        return;
+    }
+    
+    // Ordenar campos
+    campos.sort((a, b) => a.ordem - b.ordem);
+    
+    let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Ordem</th><th>Rótulo</th><th>Tipo</th><th>Obrigatório</th><th>Ações</th></tr></thead><tbody>';
+    
+    campos.forEach((campo, index) => {
+        html += `
+            <tr>
+                <td>${campo.ordem}</td>
+                <td>${campo.label}</td>
+                <td>${campo.tipo.replace('_', ' ').toUpperCase()}</td>
+                <td>${campo.obrigatorio ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-muted"></i>'}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="editarCampo(${index})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger ml-1" onclick="removerCampo(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+function editarCampo(index) {
+    const campo = campos[index];
+    campoEditandoIndex = index;
+    
+    // Preencher formulário
+    document.getElementById('campo_nome').value = campo.nome;
+    document.getElementById('campo_label').value = campo.label;
+    document.getElementById('campo_tipo').value = campo.tipo;
+    document.getElementById('campo_ordem').value = campo.ordem;
+    document.getElementById('campo_placeholder').value = campo.placeholder || '';
+    document.getElementById('campo_obrigatorio').checked = campo.obrigatorio;
+    
+    // Mostrar opções se necessário
+    const tipoComOpcoes = ['selecao', 'multipla_escolha'];
+    if (tipoComOpcoes.includes(campo.tipo)) {
+        document.getElementById('opcoesGroup').style.display = 'block';
+        document.getElementById('campo_opcoes').value = campo.opcoes.join('\n');
+    }
+    
+    $('#campoModal').modal('show');
+}
+
+function removerCampo(index) {
+    if (confirm('Tem certeza que deseja remover este campo?')) {
+        campos.splice(index, 1);
+        atualizarListaCampos();
+    }
+}
+
+function salvarConfiguracao() {
+    const form = document.getElementById('configForm');
+    
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    if (campos.length === 0) {
+        alert('Adicione pelo menos um campo ao relatório.');
+        return;
+    }
+    
+    const dados = {
+        nome: document.getElementById('nome').value,
+        descricao: document.getElementById('descricao').value,
+        tipo: document.getElementById('tipo').value,
+        obrigatorio: document.getElementById('obrigatorio').checked,
+        frequencia_dias: document.getElementById('frequencia_dias').value || null,
+        campos: campos
+    };
+    
+    fetch('{{ url_for("formador_relatorio_routes.nova_configuracao") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração criada com sucesso!');
+            window.location.href = '{{ url_for("formador_relatorio_routes.configuracoes") }}';
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar configuração.');
+    });
+}
+</script>
+{% endblock %}

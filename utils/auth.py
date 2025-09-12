@@ -146,6 +146,28 @@ def participante_required(f):
     return wrapper
 
 
+def monitor_required(f):
+    """Decorator que exige que o usuário seja um monitor."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated:
+            if request.is_json:
+                return jsonify({'error': 'Autenticação necessária'}), 401
+            return redirect(url_for('auth_routes.login'))
+        
+        user_type = getattr(current_user, 'tipo', None)
+        session_type = session.get('user_type')
+        
+        if user_type != 'monitor' and session_type != 'monitor':
+            if request.is_json:
+                return jsonify({'error': 'Acesso negado - acesso restrito a monitores'}), 403
+            flash('Acesso negado - acesso restrito a monitores!', 'danger')
+            return redirect(url_for(endpoints.DASHBOARD))
+        
+        return f(*args, **kwargs)
+    return wrapper
+
+
 def role_required(*allowed_roles):
     """Decorator que permite acesso apenas para roles específicos."""
     def decorator(f):
@@ -395,6 +417,12 @@ def is_participante():
     """Verifica se o usuário atual é participante."""
     role = get_current_user_role()
     return role == 'participante'
+
+
+def is_monitor():
+    """Verifica se o usuário atual é monitor."""
+    role = get_current_user_role()
+    return role == 'monitor'
 
 
 def log_access_attempt(action, resource_type=None, resource_id=None, success=True):

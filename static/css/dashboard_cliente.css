@@ -223,3 +223,31 @@
       .btn-table {
         padding: 0.25rem 0.5rem;
       }
+      
+      /* Cores personalizadas para formadores */
+      .text-purple {
+        color: #8e44ad !important;
+      }
+      
+      .btn-purple {
+        background-color: #8e44ad;
+        border-color: #8e44ad;
+        color: white;
+      }
+      
+      .btn-purple:hover {
+        background-color: #7d3c98;
+        border-color: #7d3c98;
+        color: white;
+      }
+      
+      .btn-outline-purple {
+        color: #8e44ad;
+        border-color: #8e44ad;
+      }
+      
+      .btn-outline-purple:hover {
+        background-color: #8e44ad;
+        border-color: #8e44ad;
+        color: white;
+      }

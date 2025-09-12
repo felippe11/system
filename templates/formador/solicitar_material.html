@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitar Material - Formador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Solicitar Material</h1>
+                <a href="{{ url_for('formador_routes.dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Nova Solicitação de Material</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="form-group">
+                            {{ form.atividade_id.label(class="form-label") }}
+                            {{ form.atividade_id(class="form-control") }}
+                            <small class="form-text text-muted">Selecione a atividade relacionada ou deixe em branco para pedido geral</small>
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.tipo_material.label(class="form-label") }}
+                            {{ form.tipo_material(class="form-control", required=True) }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {{ form.unidade_medida.label(class="form-label") }}
+                                    {{ form.unidade_medida(class="form-control", required=True) }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {{ form.quantidade.label(class="form-label") }}
+                                    {{ form.quantidade(class="form-control", required=True, min="1", step="0.01") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.justificativa.label(class="form-label") }}
+                            {{ form.justificativa(class="form-control", rows="4", required=True) }}
+                            <small class="form-text text-muted">Explique detalhadamente a necessidade do material</small>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Enviar Solicitação
+                            </button>
+                            <a href="{{ url_for('formador_routes.dashboard') }}" class="btn btn-secondary ml-2">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Minhas Solicitações</h5>
+                </div>
+                <div class="card-body">
+                    {% if solicitacoes %}
+                        <div class="list-group">
+                            {% for solicitacao in solicitacoes %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ solicitacao.tipo_material }}</h6>
+                                    <small>{{ solicitacao.created_at.strftime('%d/%m/%Y') }}</small>
+                                </div>
+                                <p class="mb-1">
+                                    <strong>Qtd:</strong> {{ solicitacao.quantidade }} {{ solicitacao.unidade_medida }}
+                                </p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge badge-{{ 'success' if solicitacao.status == 'aprovado' else 'warning' if solicitacao.status == 'pendente' else 'danger' }}">
+                                        {{ solicitacao.status.title() }}
+                                    </span>
+                                    {% if solicitacao.atividade %}
+                                        <small class="text-muted">{{ solicitacao.atividade.nome }}</small>
+                                    {% else %}
+                                        <small class="text-muted">Pedido Geral</small>
+                                    {% endif %}
+                                </div>
+                                {% if solicitacao.observacoes_cliente %}
+                                    <small class="text-info mt-2 d-block">
+                                        <strong>Obs. Cliente:</strong> {{ solicitacao.observacoes_cliente }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Nenhuma solicitação encontrada.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Dicas -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Dicas para Solicitação</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Seja específico no tipo de material</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Justifique claramente a necessidade</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Informe a quantidade exata necessária</small>
+                        </li>
+                        <li>
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <small>Vincule à atividade quando possível</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Validação do formulário
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const tipoMaterial = document.getElementById('tipo_material').value;
+        const quantidade = document.getElementById('quantidade').value;
+        const justificativa = document.getElementById('justificativa').value;
+        
+        if (!tipoMaterial.trim() || !quantidade || !justificativa.trim()) {
+            e.preventDefault();
+            alert('Por favor, preencha todos os campos obrigatórios.');
+            return false;
+        }
+        
+        if (parseFloat(quantidade) <= 0) {
+            e.preventDefault();
+            alert('A quantidade deve ser maior que zero.');
+            return false;
+        }
+        
+        if (justificativa.trim().length < 10) {
+            e.preventDefault();
+            alert('A justificativa deve ter pelo menos 10 caracteres.');
+            return false;
+        }
+    });
+</script>
+{% endblock %}

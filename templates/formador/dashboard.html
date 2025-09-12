@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Formador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">Dashboard do Formador</h1>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Atividades</h5>
+                            <h2>{{ atividades_count }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tasks fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Trilhas Pendentes</h5>
+                            <h2>{{ trilhas_pendentes }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-route fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Materiais Pendentes</h5>
+                            <h2>{{ materiais_pendentes }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-box fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Feedbacks</h5>
+                            <h2>{{ feedbacks_count }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-comments fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Ações Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('formador_routes.solicitar_material') }}" class="btn btn-primary btn-block">
+                                <i class="fas fa-plus"></i> Solicitar Material
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('formador_routes.trilhas_formativas') }}" class="btn btn-success btn-block">
+                                <i class="fas fa-route"></i> Trilhas Formativas
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('formador_routes.upload_arquivo') }}" class="btn btn-info btn-block">
+                                <i class="fas fa-upload"></i> Upload de Arquivo
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('formador_routes.feedbacks') }}" class="btn btn-warning btn-block">
+                                <i class="fas fa-comments"></i> Ver Feedbacks
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimas Atividades -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Últimas Solicitações de Material</h5>
+                </div>
+                <div class="card-body">
+                    {% if ultimas_solicitacoes %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Status</th>
+                                        <th>Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for solicitacao in ultimas_solicitacoes %}
+                                    <tr>
+                                        <td>{{ solicitacao.tipo_material }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if solicitacao.status == 'aprovado' else 'warning' if solicitacao.status == 'pendente' else 'danger' }}">
+                                                {{ solicitacao.status.title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ solicitacao.created_at.strftime('%d/%m/%Y') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Nenhuma solicitação encontrada.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Trilhas Formativas Pendentes</h5>
+                </div>
+                <div class="card-body">
+                    {% if trilhas_pendentes_lista %}
+                        <div class="list-group">
+                            {% for trilha in trilhas_pendentes_lista %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ trilha.nome }}</h6>
+                                    <small>{{ trilha.created_at.strftime('%d/%m/%Y') }}</small>
+                                </div>
+                                <p class="mb-1">{{ trilha.descricao[:100] }}...</p>
+                                <a href="{{ url_for('formador_routes.preencher_trilha', trilha_id=trilha.id) }}" class="btn btn-sm btn-primary">Preencher</a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Nenhuma trilha pendente.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Atualizar dados do dashboard a cada 5 minutos
+    setInterval(function() {
+        location.reload();
+    }, 300000);
+</script>
+{% endblock %}

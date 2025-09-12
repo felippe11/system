@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Formadores - Cliente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Gerenciar Formadores</h1>
+                <div>
+                    <a href="{{ url_for('cliente_formador_routes.gerar_link_inscricao_formador') }}" class="btn btn-success mr-2">
+                        <i class="fas fa-link"></i> Gerar Link de Inscrição
+                    </a>
+                    <a href="{{ url_for('cliente_formador_routes.listar_links_inscricao_formador') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Cadastrar Formador
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros e Busca -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row">
+                        <div class="col-md-3">
+                            <input type="text" name="busca" class="form-control" placeholder="Buscar por nome ou email" value="{{ request.args.get('busca', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <select name="status" class="form-control">
+                                <option value="">Todos os Status</option>
+                                <option value="ativo" {{ 'selected' if request.args.get('status') == 'ativo' }}>Ativo</option>
+                                <option value="inativo" {{ 'selected' if request.args.get('status') == 'inativo' }}>Inativo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select name="monitor" class="form-control">
+                                <option value="">Todos os Monitores</option>
+                                {% for monitor in monitores %}
+                                    <option value="{{ monitor.id }}" {{ 'selected' if request.args.get('monitor') == monitor.id|string }}>{{ monitor.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5>Total de Formadores</h5>
+                            <h2>{{ formadores|length }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5>Ativos</h5>
+                            <h2>{{ formadores|selectattr('ativo', 'equalto', true)|list|length }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5>Trilhas Pendentes</h5>
+                            <h2>{{ trilhas_pendentes_count }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-route fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5>Materiais Pendentes</h5>
+                            <h2>{{ materiais_pendentes_count }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-box fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Formadores -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Lista de Formadores</h5>
+                </div>
+                <div class="card-body">
+                    {% if formadores %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Email</th>
+                                        <th>Telefone</th>
+                                        <th>Monitor</th>
+                                        <th>Status</th>
+                                        <th>Trilhas</th>
+                                        <th>Materiais</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for formador in formadores %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if formador.foto %}
+                                                    <img src="{{ formador.foto }}" class="rounded-circle mr-2" width="32" height="32">
+                                                {% else %}
+                                                    <div class="bg-secondary rounded-circle mr-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                        <i class="fas fa-user text-white"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ formador.nome }}</strong><br>
+                                                    <small class="text-muted">{{ formador.cidade }}, {{ formador.estado }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ formador.email }}</td>
+                                        <td>{{ formador.telefone or '-' }}</td>
+                                        <td>
+                                            {% if formador.monitor %}
+                                                <span class="badge badge-info">{{ formador.monitor.nome }}</span>
+                                            {% else %}
+                                                <span class="text-muted">Não atribuído</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if formador.ativo else 'danger' }}">
+                                                {{ 'Ativo' if formador.ativo else 'Inativo' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-warning">{{ formador.trilhas_pendentes or 0 }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info">{{ formador.materiais_pendentes or 0 }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    Ações
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><span class="dropdown-item-text text-muted">
+                                                        <i class="fas fa-info-circle"></i> Ações em desenvolvimento
+                                                    </span></li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhum formador encontrado</h5>
+                            <p class="text-muted">Cadastre o primeiro formador ou gere um link de inscrição.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-submit dos filtros
+    document.querySelectorAll('select[name="status"], select[name="monitor"]').forEach(function(select) {
+        select.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+    
+    // Busca com delay
+    let searchTimeout;
+    document.querySelector('input[name="busca"]').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            this.form.submit();
+        }, 500);
+    });
+</script>
+{% endblock %}
