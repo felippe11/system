@@ -36,8 +36,10 @@ from models.certificado import (
 )
 from models.event import ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
+
 from services.declaracao_service import liberar_declaracoes_evento
 from utils.auth import login_required, require_permission, require_resource_access, role_required, cliente_required
+
 
 
 import os
@@ -63,6 +65,23 @@ ALLOWED_MIME_TYPES = {
     '.jpeg': 'image/jpeg',
     '.pdf': 'application/pdf',
 }
+
+
+@certificado_routes.route(
+    '/admin/processar_certificados_pendentes',
+    methods=['POST'],
+)
+@login_required
+@admin_required
+def processar_certificados_pendentes():
+    """Processa solicitações de certificados com status pendente."""
+    processadas = certificado_service.processar_solicitacoes_pendentes()
+    logger.info(
+        "Usuário %s processou %d solicitações de certificados",
+        current_user.id,
+        processadas,
+    )
+    return jsonify({'processadas': processadas})
 
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
@@ -988,7 +1007,9 @@ def gerar_certificado_geral_evento(evento_id):
         
         if ok:
             # Calcular atividades participadas
-            atividades_participadas = calcular_atividades_participadas(usuario_id, evento_id, config)
+            atividades_participadas = certificado_service.calcular_atividades_participadas(
+                usuario_id, evento_id, config
+            )
             
             if atividades_participadas['total_horas'] >= (config.carga_horaria_minima or 0):
                 # Gerar certificado
@@ -1134,63 +1155,6 @@ def historico_emissoes():
         'success': True,
         'html': historico_html
     }
-
-
-def calcular_atividades_participadas(usuario_id, evento_id, config=None):
-    """Calcula todas as atividades que o usuário participou no evento."""
-    from models import Checkin
-    
-    # Oficinas com inscrição
-    oficinas_participadas = db.session.query(
-        Oficina.id, Oficina.titulo, Oficina.carga_horaria
-    ).join(
-        Checkin, Checkin.oficina_id == Oficina.id
-    ).filter(
-        Checkin.usuario_id == usuario_id,
-        Oficina.evento_id == evento_id
-    ).all()
-    
-    atividades = {
-        'oficinas': [],
-        'atividades_sem_inscricao': [],
-        'total_horas': 0,
-        'total_atividades': 0
-    }
-    
-    # Processar oficinas com inscrição
-    for oficina in oficinas_participadas:
-        atividades['oficinas'].append({
-            'id': oficina.id,
-            'titulo': oficina.titulo,
-            'carga_horaria': int(oficina.carga_horaria),
-            'tipo': 'oficina'
-        })
-        atividades['total_horas'] += int(oficina.carga_horaria)
-    
-    # Se configurado, incluir atividades sem inscrição
-    if config and config.incluir_atividades_sem_inscricao:
-        # Buscar check-ins em atividades sem inscrição formal
-        checkins_extras = db.session.query(
-            Checkin
-        ).filter(
-            Checkin.usuario_id == usuario_id,
-            Checkin.evento_id == evento_id,
-            Checkin.oficina_id.is_(None)  # Check-ins gerais do evento
-        ).all()
-        
-        for checkin in checkins_extras:
-            if checkin.palavra_chave and 'ATIVIDADE' in checkin.palavra_chave:
-                # Extrair informações da atividade do check-in
-                atividades['atividades_sem_inscricao'].append({
-                    'titulo': checkin.palavra_chave.replace('ATIVIDADE-', ''),
-                    'carga_horaria': 2,  # Valor padrão
-                    'tipo': 'atividade_extra'
-                })
-                atividades['total_horas'] += 2
-    
-    atividades['total_atividades'] = len(atividades['oficinas']) + len(atividades['atividades_sem_inscricao'])
-    
-    return atividades
 
 
 def gerar_certificado_geral_personalizado(usuario, evento, atividades, template, cliente):
@@ -1726,7 +1690,7 @@ def solicitar_declaracao():
                 )
             )
 
-        dados_participacao = calcular_atividades_participadas(
+        dados_participacao = certificado_service.calcular_atividades_participadas(
             current_user.id, data['evento_id']
         )
 
@@ -1792,7 +1756,7 @@ def solicitar_certificado():
             }
         
         # Coletar dados de participação
-        dados_participacao = calcular_atividades_participadas(
+        dados_participacao = certificado_service.calcular_atividades_participadas(
             current_user.id, data['evento_id']
         )
         
@@ -1953,7 +1917,9 @@ def avaliar_regras_certificado(usuario_id, evento_id, tipo_certificado='geral'):
         evento_id=evento_id, ativo=True
     ).order_by(RegraCertificado.prioridade.asc()).all()
     
-    dados_participacao = calcular_atividades_participadas(usuario_id, evento_id)
+    dados_participacao = certificado_service.calcular_atividades_participadas(
+        usuario_id, evento_id
+    )
     
     for regra in regras:
         if avaliar_condicoes_regra(regra, dados_participacao):
@@ -2056,7 +2022,7 @@ def gerar_certificado_aprovado(solicitacao):
     try:
         if solicitacao.tipo_certificado == 'geral':
             # Gerar certificado geral
-            atividades = calcular_atividades_participadas(
+            atividades = certificado_service.calcular_atividades_participadas(
                 solicitacao.usuario_id, solicitacao.evento_id
             )
             
