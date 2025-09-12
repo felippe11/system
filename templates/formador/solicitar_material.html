@@ -8,7 +8,7 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3">Solicitar Material</h1>
-                <a href="{{ url_for('formador_routes.dashboard') }}" class="btn btn-secondary">
+                <a href="{{ url_for('formador_routes.dashboard_formador') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
                 </a>
             </div>
@@ -23,37 +23,41 @@
                 </div>
                 <div class="card-body">
                     <form method="POST">
-                        {{ form.hidden_tag() }}
                         
                         <div class="form-group">
-                            {{ form.atividade_id.label(class="form-label") }}
-                            {{ form.atividade_id(class="form-control") }}
+                            <label for="atividade_id" class="form-label">Atividade</label>
+                            <select name="atividade_id" id="atividade_id" class="form-control">
+                                <option value="">Selecione uma atividade (opcional)</option>
+                                {% for oficina in oficinas %}
+                                    <option value="{{ oficina.id }}">{{ oficina.nome }}</option>
+                                {% endfor %}
+                            </select>
                             <small class="form-text text-muted">Selecione a atividade relacionada ou deixe em branco para pedido geral</small>
                         </div>
 
                         <div class="form-group">
-                            {{ form.tipo_material.label(class="form-label") }}
-                            {{ form.tipo_material(class="form-control", required=True) }}
+                            <label for="tipo_material" class="form-label">Tipo de Material</label>
+                            <input type="text" name="tipo_material" id="tipo_material" class="form-control" required>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    {{ form.unidade_medida.label(class="form-label") }}
-                                    {{ form.unidade_medida(class="form-control", required=True) }}
+                                    <label for="unidade_medida" class="form-label">Unidade de Medida</label>
+                                    <input type="text" name="unidade_medida" id="unidade_medida" class="form-control" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    {{ form.quantidade.label(class="form-label") }}
-                                    {{ form.quantidade(class="form-control", required=True, min="1", step="0.01") }}
+                                    <label for="quantidade" class="form-label">Quantidade</label>
+                                    <input type="number" name="quantidade" id="quantidade" class="form-control" required min="1" step="0.01">
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            {{ form.justificativa.label(class="form-label") }}
-                            {{ form.justificativa(class="form-control", rows="4", required=True) }}
+                            <label for="justificativa" class="form-label">Justificativa</label>
+                            <textarea name="justificativa" id="justificativa" class="form-control" rows="4" required></textarea>
                             <small class="form-text text-muted">Explique detalhadamente a necessidade do material</small>
                         </div>
 
@@ -61,7 +65,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-paper-plane"></i> Enviar Solicitação
                             </button>
-                            <a href="{{ url_for('formador_routes.dashboard') }}" class="btn btn-secondary ml-2">
+                            <a href="{{ url_for('formador_routes.dashboard_formador') }}" class="btn btn-secondary ml-2">
                                 Cancelar
                             </a>
                         </div>
