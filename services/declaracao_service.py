@@ -110,54 +110,98 @@ def gerar_declaracao_coletiva(evento_id, usuarios_ids=None):
         return None
 
 
-def liberar_declaracoes_evento(evento_id, template_id=None):
-    """Libera declarações de comparecimento para todos os participantes."""
-    evento = Evento.query.get(evento_id)
-    if not evento:
-        raise ValueError("Evento não encontrado")
 
-    template = None
-    if template_id:
-        template = DeclaracaoTemplate.query.filter_by(
-            id=template_id, cliente_id=evento.cliente_id
-        ).first()
-    if not template:
-        template = DeclaracaoTemplate.query.filter_by(
-            cliente_id=evento.cliente_id, ativo=True
-        ).first()
-    if not template:
-        raise ValueError("Template não encontrado")
+def gerar_declaracao_personalizada(
+    usuario, evento, participacao, template, cliente
+):
+    """Gera declaração personalizada de comparecimento."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.enums import TA_JUSTIFY
 
-    participantes = (
-        db.session.query(Checkin.usuario_id)
-        .filter_by(evento_id=evento_id)
-        .distinct()
-        .all()
+    pdf_filename = f"declaracao_{usuario.id}_{evento.id}.pdf"
+    pdf_path = os.path.join("static/declaracoes", pdf_filename)
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    width, height = A4
+
+    conteudo_final = template.conteudo
+    lista_atividades = ", ".join(
+        [ativ["nome"] for ativ in participacao["atividades"]]
     )
 
-    for (usuario_id,) in participantes:
-        declaracao = DeclaracaoComparecimento.query.filter_by(
-            evento_id=evento_id, usuario_id=usuario_id
-        ).first()
-        if not declaracao:
-            declaracao = DeclaracaoComparecimento(
-                cliente_id=evento.cliente_id,
-                evento_id=evento_id,
-                usuario_id=usuario_id,
-                titulo=template.nome,
-                conteudo=template.conteudo,
-                template_id=template.id,
+    conteudo_final = (
+        conteudo_final.replace("{NOME_PARTICIPANTE}", usuario.nome)
+        .replace("{NOME_EVENTO}", evento.nome)
+        .replace("{TOTAL_CHECKINS}", str(participacao["total_checkins"]))
+        .replace(
+            "{CARGA_HORARIA_TOTAL}", str(participacao["carga_horaria_total"])
+        )
+        .replace("{LISTA_ATIVIDADES}", lista_atividades)
+        .replace(
+            "{DATA_EVENTO}",
+            evento.data_inicio.strftime("%d/%m/%Y") if evento.data_inicio else "",
+        )
+        .replace("{EMAIL_PARTICIPANTE}", getattr(usuario, "email", ""))
+    )
+
+    c.setFont("Helvetica-Bold", 20)
+    titulo = "DECLARAÇÃO DE COMPARECIMENTO"
+    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 20)
+    c.drawString((width - titulo_largura) / 2, height * 0.85, titulo)
+
+    styles = getSampleStyleSheet()
+    style = ParagraphStyle(
+        "DeclaracaoStyle",
+        parent=styles["Normal"],
+        fontSize=12,
+        leading=18,
+        alignment=TA_JUSTIFY,
+        spaceAfter=12,
+    )
+
+    frame = Frame(
+        width * 0.1,
+        height * 0.3,
+        width * 0.8,
+        height * 0.4,
+        leftPadding=0,
+        bottomPadding=0,
+        rightPadding=0,
+        topPadding=0,
+    )
+
+    para = Paragraph(conteudo_final, style)
+    frame.addFromList([para], c)
+
+    if hasattr(cliente, "logo_certificado") and cliente.logo_certificado:
+        logo_path = os.path.join("static", cliente.logo_certificado)
+        if os.path.exists(logo_path):
+            logo = ImageReader(logo_path)
+            c.drawImage(
+                logo,
+                width * 0.05,
+                height * 0.05,
+                width=80,
+                height=80,
+                preserveAspectRatio=True,
             )
-            db.session.add(declaracao)
 
-        declaracao.status = "liberada"
-        declaracao.data_liberacao = datetime.utcnow()
-        declaracao.template_id = template.id
-        declaracao.titulo = template.nome
-        declaracao.conteudo = template.conteudo
+    c.setFont("Helvetica", 10)
+    data_emissao = f"Emitido em: {datetime.now().strftime('%d/%m/%Y')}"
+    c.drawString(width * 0.7, height * 0.1, data_emissao)
 
-    db.session.commit()
-    return len(participantes)
+    c.setFont("Helvetica", 12)
+    c.drawString(width * 0.6, height * 0.2, "_" * 30)
+    c.drawString(width * 0.65, height * 0.17, "Assinatura")
+
+    c.save()
+    return pdf_path
+
 
 
 # ------------------------------- #
