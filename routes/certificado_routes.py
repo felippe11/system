@@ -39,7 +39,14 @@ from services.pdf_service import gerar_certificado_personalizado  # ajuste confo
 
 from services.declaracao_service import gerar_declaracao_personalizada
 
-from utils.auth import login_required, require_permission, require_resource_access, role_required, cliente_required
+from utils.auth import (
+    login_required,
+    require_permission,
+    require_resource_access,
+    role_required,
+    cliente_required,
+    admin_required,
+)
 
 
 
