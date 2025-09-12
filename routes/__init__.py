@@ -69,6 +69,12 @@ def register_routes(app):
     from .declaracao_routes import declaracao_bp
 
     from .importar_trabalhos_routes import importar_trabalhos_routes
+    
+    # Novas rotas do sistema de formador
+    from .formador_routes import formador_routes
+    from .monitor_formador_routes import monitor_formador_routes
+    from .cliente_formador_routes import cliente_formador_routes
+    from .formador_relatorio_routes import formador_relatorio_routes
 
     from .secure_file_routes import secure_file_routes
     from .submission_distribution_routes import submission_distribution_routes
@@ -128,6 +134,12 @@ def register_routes(app):
 
     app.register_blueprint(secure_file_routes)
     app.register_blueprint(submission_distribution_routes)
+    
+    # Registro das novas rotas do sistema de formador
+    app.register_blueprint(formador_routes)
+    app.register_blueprint(monitor_formador_routes)
+    app.register_blueprint(cliente_formador_routes)
+    app.register_blueprint(formador_relatorio_routes)
 
 
 

@@ -424,6 +424,24 @@
         </div>
       </div>
 
+      <!-- Gerenciar Formadores -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-purple mb-3">
+              <i class="bi bi-person-workspace fs-1"></i>
+            </div>
+            <h5 class="card-title fw-bold">Formadores</h5>
+            <p class="card-text text-muted">Gerencie formadores e suas informações</p>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <a href="{{ url_for('formador_routes.gerenciar_formadores') }}" class="btn btn-purple w-100">
+              <i class="bi bi-person-workspace me-2"></i> Gerenciar Formadores
+            </a>
+          </div>
+        </div>
+      </div>
+
 
 <!-- Relatório de Mensagem -->
 <div class="col-lg-6 col-xl-3">
@@ -755,6 +773,21 @@
           <p class="card-text text-muted">Cadastre palestrantes e facilitadores</p>
           <a href="{{ url_for('ministrante_routes.cadastro_ministrante') }}" class="btn btn-info mt-2 w-100 text-white">
             <i class="bi bi-person-plus me-2"></i> Novo Ministrante
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-purple mb-3">
+            <i class="bi bi-person-workspace fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Criar Formador</h5>
+          <p class="card-text text-muted">Cadastre novos formadores no sistema</p>
+          <a href="{{ url_for('formador_routes.gerenciar_formadores') }}" class="btn btn-purple w-100">
+            <i class="bi bi-person-workspace me-2"></i> Novo Formador
           </a>
         </div>
       </div>

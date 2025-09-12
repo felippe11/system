@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Trilhas Formativas - Formador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Trilhas Formativas</h1>
+                <a href="{{ url_for('formador_routes.dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="status" class="mr-2">Status:</label>
+                            <select name="status" id="status" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="pendente" {{ 'selected' if request.args.get('status') == 'pendente' }}>Pendente</option>
+                                <option value="preenchido" {{ 'selected' if request.args.get('status') == 'preenchido' }}>Preenchido</option>
+                                <option value="enviado" {{ 'selected' if request.args.get('status') == 'enviado' }}>Enviado</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Trilhas -->
+    <div class="row">
+        {% if trilhas %}
+            {% for trilha in trilhas %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">{{ trilha.nome }}</h6>
+                        <span class="badge badge-{{ 'success' if trilha.status == 'enviado' else 'warning' if trilha.status == 'preenchido' else 'secondary' }}">
+                            {{ trilha.status.title() }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ trilha.descricao }}</p>
+                        
+                        {% if trilha.campos_configurados %}
+                            <div class="mb-3">
+                                <small class="text-muted">Campos configurados:</small>
+                                <ul class="list-unstyled mt-1">
+                                    {% for campo in trilha.campos_configurados[:3] %}
+                                        <li><small><i class="fas fa-check-circle text-success"></i> {{ campo.nome }}</small></li>
+                                    {% endfor %}
+                                    {% if trilha.campos_configurados|length > 3 %}
+                                        <li><small class="text-muted">... e mais {{ trilha.campos_configurados|length - 3 }} campos</small></li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="text-muted mb-3">
+                            <small>
+                                <i class="fas fa-calendar"></i> Criado em: {{ trilha.created_at.strftime('%d/%m/%Y') }}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        {% if trilha.status == 'pendente' %}
+                            <a href="{{ url_for('formador_routes.preencher_trilha', trilha_id=trilha.id) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit"></i> Preencher
+                            </a>
+                        {% elif trilha.status == 'preenchido' %}
+                            <a href="{{ url_for('formador_routes.preencher_trilha', trilha_id=trilha.id) }}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <a href="{{ url_for('formador_routes.enviar_trilha', trilha_id=trilha.id) }}" class="btn btn-success btn-sm ml-2">
+                                <i class="fas fa-paper-plane"></i> Enviar
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('formador_routes.visualizar_trilha', trilha_id=trilha.id) }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye"></i> Visualizar
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-route fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhuma trilha formativa encontrada</h5>
+                        <p class="text-muted">Aguarde o cliente configurar trilhas formativas para você.</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Estatísticas -->
+    {% if trilhas %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Estatísticas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-secondary">{{ trilhas|selectattr('status', 'equalto', 'pendente')|list|length }}</h4>
+                                <small class="text-muted">Pendentes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-warning">{{ trilhas|selectattr('status', 'equalto', 'preenchido')|list|length }}</h4>
+                                <small class="text-muted">Preenchidas</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">{{ trilhas|selectattr('status', 'equalto', 'enviado')|list|length }}</h4>
+                                <small class="text-muted">Enviadas</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ trilhas|length }}</h4>
+                                <small class="text-muted">Total</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Confirmação antes de enviar trilha
+    document.querySelectorAll('a[href*="enviar_trilha"]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            if (!confirm('Tem certeza que deseja enviar esta trilha? Após o envio não será possível editar.')) {
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // Auto-submit do filtro
+    document.getElementById('status').addEventListener('change', function() {
+        this.form.submit();
+    });
+</script>
+{% endblock %}
