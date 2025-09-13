@@ -837,7 +837,7 @@ def listar_respostas_ministrante(formulario_id):
     # 1) Verifica se o current_user é ministrante
     if not isinstance(current_user, Ministrante):
         flash("Apenas ministrantes têm acesso a esta tela.", "danger")
-        return redirect(url_for("dashboard_ministrante_routes.dashboard_ministrante"))
+        return redirect(url_for("formador_routes.dashboard_formador"))
 
     formulario = safe_get_formulario(formulario_id)
     if not formulario:
@@ -887,7 +887,7 @@ def dar_feedback_resposta(resposta_id):
         if not autorizado:
             flash("Acesso negado", "danger")
             return redirect(
-                url_for("dashboard_ministrante_routes.dashboard_ministrante")
+                url_for("formador_routes.dashboard_formador")
             )
 
     lista_campos = resposta.formulario.campos

@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Minhas Solicitações - Formador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Minhas Solicitações de Material</h1>
+                <div>
+                    <a href="{{ url_for('formador_routes.solicitar_material') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nova Solicitação
+                    </a>
+                    <a href="{{ url_for('formador_routes.dashboard_formador') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select name="status" id="status" class="form-control">
+                                <option value="">Todos os status</option>
+                                <option value="pendente" {{ 'selected' if request.args.get('status') == 'pendente' }}>Pendente</option>
+                                <option value="aprovado" {{ 'selected' if request.args.get('status') == 'aprovado' }}>Aprovado</option>
+                                <option value="rejeitado" {{ 'selected' if request.args.get('status') == 'rejeitado' }}>Rejeitado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="tipo" class="form-label">Tipo</label>
+                            <select name="tipo" id="tipo" class="form-control">
+                                <option value="">Todos os tipos</option>
+                                <option value="existente" {{ 'selected' if request.args.get('tipo') == 'existente' }}>Material Existente</option>
+                                <option value="adicional" {{ 'selected' if request.args.get('tipo') == 'adicional' }}>Material Adicional</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="busca" class="form-label">Buscar</label>
+                            <input type="text" name="busca" id="busca" class="form-control" 
+                                   value="{{ request.args.get('busca', '') }}" 
+                                   placeholder="Nome do material, justificativa...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-search"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">{{ total_pendentes }}</h5>
+                    <p class="card-text">Pendentes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">{{ total_aprovadas }}</h5>
+                    <p class="card-text">Aprovadas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">{{ total_rejeitadas }}</h5>
+                    <p class="card-text">Rejeitadas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">{{ total_solicitacoes }}</h5>
+                    <p class="card-text">Total</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Solicitações -->
+    <div class="row">
+        <div class="col-12">
+            {% if solicitacoes %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Solicitações ({{ solicitacoes|length }} de {{ total_solicitacoes }})</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Material</th>
+                                        <th>Tipo</th>
+                                        <th>Quantidade</th>
+                                        <th>Status</th>
+                                        <th>Atividade</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for solicitacao in solicitacoes %}
+                                    <tr>
+                                        <td>
+                                            <small>{{ solicitacao.data_solicitacao.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            {% if solicitacao.tipo == 'existente' %}
+                                                <strong>{{ solicitacao.material.nome }}</strong>
+                                                {% if solicitacao.material.categoria %}
+                                                    <br><small class="text-muted">{{ solicitacao.material.categoria }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <strong>{{ solicitacao.nome_material_adicional }}</strong>
+                                                <br><small class="text-muted">Material Adicional</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if solicitacao.tipo == 'existente' %}badge-primary{% else %}badge-info{% endif %}">
+                                                {{ 'Existente' if solicitacao.tipo == 'existente' else 'Adicional' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong>{{ solicitacao.quantidade }}</strong>
+                                            {% if solicitacao.tipo == 'existente' %}
+                                                {{ solicitacao.material.unidade }}
+                                            {% else %}
+                                                {{ solicitacao.unidade_material_adicional }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if solicitacao.status == 'aprovado' %}badge-success{% elif solicitacao.status == 'rejeitado' %}badge-danger{% else %}badge-warning{% endif %}">
+                                                {{ solicitacao.status.title() }}
+                                            </span>
+                                            {% if solicitacao.status != 'pendente' %}
+                                                <br><small class="text-muted">{{ solicitacao.data_resposta.strftime('%d/%m/%Y') if solicitacao.data_resposta }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if solicitacao.atividade %}
+                                                <small>{{ solicitacao.atividade.nome }}</small>
+                                            {% else %}
+                                                <small class="text-muted">Pedido Geral</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-info" 
+                                                    data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ solicitacao.id }}">
+                                                <i class="fas fa-eye"></i> Ver
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhuma solicitação encontrada</h5>
+                        <p class="text-muted">Você ainda não fez nenhuma solicitação de material ou não há resultados para os filtros aplicados.</p>
+                        <a href="{{ url_for('formador_routes.solicitar_material') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Fazer primeira solicitação
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modais de Detalhes -->
+{% for solicitacao in solicitacoes %}
+<div class="modal fade" id="modalDetalhes{{ solicitacao.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes da Solicitação #{{ solicitacao.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Informações Gerais</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Data da Solicitação:</strong></td>
+                                <td>{{ solicitacao.data_solicitacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    <span class="badge {% if solicitacao.status == 'aprovado' %}badge-success{% elif solicitacao.status == 'rejeitado' %}badge-danger{% else %}badge-warning{% endif %}">
+                                        {{ solicitacao.status.title() }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tipo:</strong></td>
+                                <td>
+                                    <span class="badge {% if solicitacao.tipo == 'existente' %}badge-primary{% else %}badge-info{% endif %}">
+                                        {{ 'Material Existente' if solicitacao.tipo == 'existente' else 'Material Adicional' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if solicitacao.atividade %}
+                            <tr>
+                                <td><strong>Atividade:</strong></td>
+                                <td>{{ solicitacao.atividade.nome }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Material Solicitado</h6>
+                        <table class="table table-sm">
+                            {% if solicitacao.tipo == 'existente' %}
+                            <tr>
+                                <td><strong>Nome:</strong></td>
+                                <td>{{ solicitacao.material.nome }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Categoria:</strong></td>
+                                <td>{{ solicitacao.material.categoria or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Unidade:</strong></td>
+                                <td>{{ solicitacao.material.unidade }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td><strong>Nome:</strong></td>
+                                <td>{{ solicitacao.nome_material_adicional }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Unidade:</strong></td>
+                                <td>{{ solicitacao.unidade_material_adicional }}</td>
+                            </tr>
+                            {% if solicitacao.descricao_material_adicional %}
+                            <tr>
+                                <td><strong>Descrição:</strong></td>
+                                <td>{{ solicitacao.descricao_material_adicional }}</td>
+                            </tr>
+                            {% endif %}
+                            {% endif %}
+                            <tr>
+                                <td><strong>Quantidade:</strong></td>
+                                <td>{{ solicitacao.quantidade }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                {% if solicitacao.justificativa %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Justificativa</h6>
+                        <div class="border rounded p-3 bg-light">
+                            {{ solicitacao.justificativa }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if solicitacao.observacoes_resposta %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Observações da Resposta</h6>
+                        <div class="border rounded p-3 {% if solicitacao.status == 'aprovado' %}bg-success-light{% else %}bg-danger-light{% endif %}">
+                            {{ solicitacao.observacoes_resposta }}
+                        </div>
+                        {% if solicitacao.data_resposta %}
+                            <small class="text-muted">Respondido em: {{ solicitacao.data_resposta.strftime('%d/%m/%Y %H:%M') }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Limpar filtros
+function limparFiltros() {
+    document.getElementById('status').value = '';
+    document.getElementById('tipo').value = '';
+    document.getElementById('busca').value = '';
+    document.querySelector('form').submit();
+}
+
+// Auto-submit no change dos selects
+document.getElementById('status').addEventListener('change', function() {
+    this.form.submit();
+});
+
+document.getElementById('tipo').addEventListener('change', function() {
+    this.form.submit();
+});
+</script>
+{% endblock %}

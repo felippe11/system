@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Material para Formadores{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Editar Material para Formadores</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-4">
+                            <h5 class="text-muted">Informações do Material</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Nome:</strong> {{ material_disponivel.material.nome }}</p>
+                                    <p><strong>Categoria:</strong> {{ material_disponivel.material.categoria or 'Não informada' }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Unidade:</strong> {{ material_disponivel.material.unidade }}</p>
+                                    <p><strong>Estoque Atual:</strong> 
+                                        <span class="badge {% if material_disponivel.material.quantidade_estoque <= material_disponivel.material.quantidade_minima %}bg-danger{% elif material_disponivel.material.quantidade_estoque <= (material_disponivel.material.quantidade_minima * 2) %}bg-warning{% else %}bg-success{% endif %}">
+                                            {{ material_disponivel.material.quantidade_estoque }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            {% if material_disponivel.material.descricao %}
+                                <p><strong>Descrição:</strong> {{ material_disponivel.material.descricao }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-4">
+                            <h5 class="text-muted">Configurações para Formadores</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="quantidade_minima" class="form-label">Quantidade Mínima *</label>
+                                        <input type="number" class="form-control" id="quantidade_minima" name="quantidade_minima" 
+                                               value="{{ material_disponivel.quantidade_minima }}" min="1" required>
+                                        <div class="form-text">Quantidade mínima que o formador pode solicitar por vez</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="quantidade_maxima" class="form-label">Quantidade Máxima *</label>
+                                        <input type="number" class="form-control" id="quantidade_maxima" name="quantidade_maxima" 
+                                               value="{{ material_disponivel.quantidade_maxima }}" min="1" required>
+                                        <div class="form-text">Quantidade máxima que o formador pode solicitar por vez</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Dica:</strong> Configure as quantidades mínima e máxima de acordo com a disponibilidade do material e as necessidades dos formadores.
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('material_routes.gerenciar_materiais_formadores') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação do formulário
+document.addEventListener('DOMContentLoaded', function() {
+    const quantidadeMinima = document.getElementById('quantidade_minima');
+    const quantidadeMaxima = document.getElementById('quantidade_maxima');
+    const estoqueAtual = {{ material_disponivel.material.quantidade_estoque }};
+    
+    function validarQuantidades() {
+        const min = parseInt(quantidadeMinima.value) || 0;
+        const max = parseInt(quantidadeMaxima.value) || 0;
+        
+        // Validar se mínima é menor ou igual à máxima
+        if (min > max) {
+            quantidadeMaxima.setCustomValidity('A quantidade máxima deve ser maior ou igual à mínima');
+            return false;
+        }
+        
+        // Validar se máxima não excede o estoque
+        if (max > estoqueAtual) {
+            quantidadeMaxima.setCustomValidity(`A quantidade máxima não pode exceder o estoque atual (${estoqueAtual})`);
+            return false;
+        }
+        
+        quantidadeMaxima.setCustomValidity('');
+        return true;
+    }
+    
+    quantidadeMinima.addEventListener('input', validarQuantidades);
+    quantidadeMaxima.addEventListener('input', validarQuantidades);
+    
+    // Validar no envio do formulário
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (!validarQuantidades()) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -139,7 +139,7 @@ def login():
             'admin':        endpoints.DASHBOARD,
             'cliente':      endpoints.DASHBOARD,
             'participante': endpoints.DASHBOARD_PARTICIPANTE,
-            'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
+            'ministrante':  'formador_routes.dashboard_formador',
             'professor':    'dashboard_professor.dashboard_professor',
             'superadmin':   endpoints.DASHBOARD_SUPERADMIN
         }.get(session.get('user_type'), endpoints.DASHBOARD)
@@ -177,7 +177,7 @@ def mfa():
                 'admin':        endpoints.DASHBOARD,
                 'cliente':      endpoints.DASHBOARD,
                 'participante': endpoints.DASHBOARD_PARTICIPANTE,
-                'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
+                'ministrante':  'formador_routes.dashboard_formador',
                 'professor':    'dashboard_professor.dashboard_professor',
                 'superadmin':   endpoints.DASHBOARD_SUPERADMIN
             }.get(session.get('user_type'), endpoints.DASHBOARD)

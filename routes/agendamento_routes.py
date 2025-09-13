@@ -912,6 +912,22 @@ def relatorio_geral_agendamentos():
 
         return send_file(pdf_path, as_attachment=True)
     
+    # Gerar XLSX com detalhes
+    if request.args.get('gerar_xlsx'):
+        xlsx_filename = (
+            f"relatorio_geral_{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}.xlsx"
+        )
+        xlsx_path = os.path.join("static", "relatorios", xlsx_filename)
+        os.makedirs(os.path.dirname(xlsx_path), exist_ok=True)
+
+        # Gerar XLSX completo com todas as informações
+        gerar_xlsx_relatorio_geral_completo(
+            eventos_periodo, estatisticas, totais, dados_agregados, 
+            professores_confirmados, agendamentos, data_inicio, data_fim, xlsx_path
+        )
+
+        return send_file(xlsx_path, as_attachment=True)
+    
     return render_template(
         'relatorio_geral_agendamentos.html',
         eventos=eventos,
@@ -3965,6 +3981,345 @@ def editar_agendamento(agendamento_id):
     ):
         flash('Você não tem permissão para editar este agendamento.', 'danger')
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
+
+
+def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agregados, professores_confirmados, agendamentos, data_inicio, data_fim, caminho_xlsx):
+    """
+    Gera um relatório geral completo em XLSX com múltiplas abas contendo todas as informações de agendamentos.
+    
+    Args:
+        eventos: Lista de objetos Evento
+        estatisticas: Dicionário com estatísticas por evento
+        totais: Dicionário com totais gerais
+        dados_agregados: Dicionário com dados agregados (escolas, professores, etc.)
+        professores_confirmados: Lista de professores com agendamentos confirmados
+        agendamentos: Lista de objetos AgendamentoVisita
+        data_inicio: Data inicial do período do relatório
+        data_fim: Data final do período do relatório
+        caminho_xlsx: Caminho onde o XLSX será salvo
+    """
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils.dataframe import dataframe_to_rows
+        import pandas as pd
+        
+        # Criar workbook
+        wb = openpyxl.Workbook()
+        
+        # Remover a planilha padrão
+        wb.remove(wb.active)
+        
+        # Estilos
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4B5563", end_color="4B5563", fill_type="solid")
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        center_alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Aba 1: Resumo Geral
+        ws_resumo = wb.create_sheet("Resumo Geral")
+        
+        # Título e período
+        ws_resumo['A1'] = 'Relatório Geral de Agendamentos'
+        ws_resumo['A1'].font = Font(bold=True, size=16)
+        ws_resumo['A2'] = f'Período: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}'
+        ws_resumo['A3'] = f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}'
+        
+        # Totais gerais
+        row = 5
+        ws_resumo[f'A{row}'] = 'TOTAIS GERAIS'
+        ws_resumo[f'A{row}'].font = header_font
+        ws_resumo[f'A{row}'].fill = header_fill
+        
+        row += 1
+        total_agendamentos = totais.get('total_agendamentos', 0)
+        total_visitantes = totais.get('total_visitantes', 0)
+        confirmados = totais.get('confirmados', 0)
+        realizados = totais.get('realizados', 0)
+        cancelados = totais.get('cancelados', 0)
+        
+        ws_resumo[f'A{row}'] = 'Total de Agendamentos:'
+        ws_resumo[f'B{row}'] = total_agendamentos
+        row += 1
+        ws_resumo[f'A{row}'] = 'Total de Visitantes:'
+        ws_resumo[f'B{row}'] = total_visitantes
+        row += 1
+        ws_resumo[f'A{row}'] = 'Agendamentos Confirmados:'
+        ws_resumo[f'B{row}'] = confirmados
+        row += 1
+        ws_resumo[f'A{row}'] = 'Agendamentos Realizados:'
+        ws_resumo[f'B{row}'] = realizados
+        row += 1
+        ws_resumo[f'A{row}'] = 'Agendamentos Cancelados:'
+        ws_resumo[f'B{row}'] = cancelados
+        
+        # Taxas
+        if total_agendamentos > 0:
+            taxa_cancelamento = (cancelados / total_agendamentos) * 100
+            row += 1
+            ws_resumo[f'A{row}'] = 'Taxa de Cancelamento:'
+            ws_resumo[f'B{row}'] = f'{taxa_cancelamento:.1f}%'
+        
+        if confirmados + realizados > 0:
+            taxa_conclusao = (realizados / (confirmados + realizados)) * 100
+            row += 1
+            ws_resumo[f'A{row}'] = 'Taxa de Conclusão:'
+            ws_resumo[f'B{row}'] = f'{taxa_conclusao:.1f}%'
+        
+        # Aba 2: Agendamentos Detalhados
+        ws_agendamentos = wb.create_sheet("Agendamentos")
+        
+        # Cabeçalhos
+        headers = [
+            'ID', 'Data da Visita', 'Horário', 'Evento', 'Escola/Instituição',
+            'Professor/Responsável', 'E-mail', 'Telefone', 'Turma', 
+            'Quantidade de Alunos', 'Status', 'Data do Agendamento',
+            'Nível de Ensino', 'Tem Necessidades Especiais', 'Observações'
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            cell = ws_agendamentos.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_alignment
+            cell.border = border
+        
+        # Dados dos agendamentos
+        for row_idx, agendamento in enumerate(agendamentos, 2):
+            try:
+                # Buscar informações do horário e evento
+                horario = agendamento.horario
+                evento = horario.evento if horario else None
+                professor = agendamento.professor
+                
+                # Mapear nível de ensino
+                niveis_ensino = {
+                    1: 'Fundamental I',
+                    2: 'Fundamental II', 
+                    3: 'Ensino Médio',
+                    4: 'EJA',
+                    5: 'Superior'
+                }
+                nivel_ensino = niveis_ensino.get(agendamento.nivel_ensino, 'Não informado')
+                
+                # Verificar necessidades especiais
+                tem_necessidades = 'Não'
+                if hasattr(agendamento, 'alunos'):
+                    for aluno in agendamento.alunos:
+                        if hasattr(aluno, 'necessidades_especiais') and aluno.necessidades_especiais:
+                            tem_necessidades = 'Sim'
+                            break
+                
+                data = [
+                    agendamento.id,
+                    horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
+                    f"{horario.hora_inicio.strftime('%H:%M')} - {horario.hora_fim.strftime('%H:%M')}" if horario and horario.hora_inicio and horario.hora_fim else 'N/A',
+                    evento.nome if evento else 'N/A',
+                    agendamento.escola_nome or 'N/A',
+                    professor.nome if professor else agendamento.professor_nome or 'N/A',
+                    professor.email if professor else agendamento.professor_email or 'N/A',
+                    agendamento.professor_telefone or 'N/A',
+                    agendamento.turma or 'N/A',
+                    agendamento.quantidade_alunos or 0,
+                    agendamento.status.title() if agendamento.status else 'N/A',
+                    agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_agendamento else 'N/A',
+                    nivel_ensino,
+                    tem_necessidades,
+                    agendamento.observacoes or ''
+                ]
+                
+                for col_idx, value in enumerate(data, 1):
+                    cell = ws_agendamentos.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = border
+                    if col_idx in [1, 10, 11]:  # ID, Status, Data do Agendamento
+                        cell.alignment = center_alignment
+                        
+            except Exception as e:
+                logger.error(f"Erro ao processar agendamento {agendamento.id}: {e}")
+                continue
+        
+        # Aba 3: Estatísticas por Evento
+        if eventos and estatisticas:
+            ws_eventos = wb.create_sheet("Estatísticas por Evento")
+            
+            # Cabeçalhos
+            headers_eventos = ['Evento', 'Confirmados', 'Realizados', 'Cancelados', 'Total Visitantes', 'Taxa de Conclusão']
+            for col, header in enumerate(headers_eventos, 1):
+                cell = ws_eventos.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = center_alignment
+                cell.border = border
+            
+            # Dados por evento
+            for row_idx, evento in enumerate(eventos, 2):
+                stats = estatisticas.get(evento.id, {})
+                confirmados_evento = stats.get('confirmados', 0)
+                realizados_evento = stats.get('realizados', 0)
+                cancelados_evento = stats.get('cancelados', 0)
+                visitantes_evento = stats.get('visitantes', 0)
+                
+                taxa_conclusao_evento = 0
+                if confirmados_evento + realizados_evento > 0:
+                    taxa_conclusao_evento = (realizados_evento / (confirmados_evento + realizados_evento)) * 100
+                
+                data_evento = [
+                    evento.nome,
+                    confirmados_evento,
+                    realizados_evento,
+                    cancelados_evento,
+                    visitantes_evento,
+                    f'{taxa_conclusao_evento:.1f}%'
+                ]
+                
+                for col_idx, value in enumerate(data_evento, 1):
+                    cell = ws_eventos.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = border
+                    if col_idx > 1:  # Números e percentuais
+                        cell.alignment = center_alignment
+        
+        # Aba 4: Estatísticas por Escola
+        if dados_agregados and 'escolas' in dados_agregados:
+            ws_escolas = wb.create_sheet("Estatísticas por Escola")
+            
+            # Cabeçalhos
+            headers_escolas = ['Escola/Instituição', 'Total Agendamentos', 'Total Alunos', 'Realizados', 'Pendentes']
+            for col, header in enumerate(headers_escolas, 1):
+                cell = ws_escolas.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = center_alignment
+                cell.border = border
+            
+            # Dados por escola
+            for row_idx, escola_stat in enumerate(dados_agregados['escolas'], 2):
+                data_escola = [
+                    escola_stat.nome,
+                    escola_stat.total_agendamentos,
+                    escola_stat.total_alunos or 0,
+                    escola_stat.realizados,
+                    escola_stat.pendentes
+                ]
+                
+                for col_idx, value in enumerate(data_escola, 1):
+                    cell = ws_escolas.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = border
+                    if col_idx > 1:  # Números
+                        cell.alignment = center_alignment
+        
+        # Aba 5: Estatísticas por Professor
+        if dados_agregados and 'professores' in dados_agregados:
+            ws_professores = wb.create_sheet("Estatísticas por Professor")
+            
+            # Cabeçalhos
+            headers_professores = ['Professor/Responsável', 'Total Agendamentos', 'Total Alunos']
+            for col, header in enumerate(headers_professores, 1):
+                cell = ws_professores.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = center_alignment
+                cell.border = border
+            
+            # Dados por professor
+            for row_idx, prof_stat in enumerate(dados_agregados['professores'], 2):
+                data_professor = [
+                    prof_stat.nome,
+                    prof_stat.total_agendamentos,
+                    prof_stat.total_alunos or 0
+                ]
+                
+                for col_idx, value in enumerate(data_professor, 1):
+                    cell = ws_professores.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = border
+                    if col_idx > 1:  # Números
+                        cell.alignment = center_alignment
+        
+        # Ajustar largura das colunas em todas as abas
+        for ws in wb.worksheets:
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                ws.column_dimensions[column_letter].width = adjusted_width
+        
+        # Salvar o arquivo
+        wb.save(caminho_xlsx)
+        
+    except ImportError:
+        # Fallback usando pandas se openpyxl não estiver disponível
+        import pandas as pd
+        
+        # Criar DataFrame com dados dos agendamentos
+        agendamentos_data = []
+        for agendamento in agendamentos:
+            try:
+                horario = agendamento.horario
+                evento = horario.evento if horario else None
+                professor = agendamento.professor
+                
+                niveis_ensino = {
+                    1: 'Fundamental I',
+                    2: 'Fundamental II', 
+                    3: 'Ensino Médio',
+                    4: 'EJA',
+                    5: 'Superior'
+                }
+                nivel_ensino = niveis_ensino.get(agendamento.nivel_ensino, 'Não informado')
+                
+                agendamentos_data.append({
+                    'ID': agendamento.id,
+                    'Data da Visita': horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
+                    'Horário': f"{horario.hora_inicio.strftime('%H:%M')} - {horario.hora_fim.strftime('%H:%M')}" if horario and horario.hora_inicio and horario.hora_fim else 'N/A',
+                    'Evento': evento.nome if evento else 'N/A',
+                    'Escola/Instituição': agendamento.escola_nome or 'N/A',
+                    'Professor/Responsável': professor.nome if professor else agendamento.professor_nome or 'N/A',
+                    'E-mail': professor.email if professor else agendamento.professor_email or 'N/A',
+                    'Telefone': agendamento.professor_telefone or 'N/A',
+                    'Turma': agendamento.turma or 'N/A',
+                    'Quantidade de Alunos': agendamento.quantidade_alunos or 0,
+                    'Status': agendamento.status.title() if agendamento.status else 'N/A',
+                    'Data do Agendamento': agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_agendamento else 'N/A',
+                    'Nível de Ensino': nivel_ensino,
+                    'Observações': agendamento.observacoes or ''
+                })
+            except Exception as e:
+                logger.error(f"Erro ao processar agendamento {agendamento.id}: {e}")
+                continue
+        
+        # Criar DataFrame e salvar
+        df = pd.DataFrame(agendamentos_data)
+        
+        with pd.ExcelWriter(caminho_xlsx, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Agendamentos', index=False)
+            
+            # Adicionar resumo geral
+            resumo_data = {
+                'Métrica': ['Total de Agendamentos', 'Total de Visitantes', 'Confirmados', 'Realizados', 'Cancelados'],
+                'Valor': [
+                    totais.get('total_agendamentos', 0),
+                    totais.get('total_visitantes', 0),
+                    totais.get('confirmados', 0),
+                    totais.get('realizados', 0),
+                    totais.get('cancelados', 0)
+                ]
+            }
+            df_resumo = pd.DataFrame(resumo_data)
+            df_resumo.to_excel(writer, sheet_name='Resumo Geral', index=False)
+    
+    except Exception as e:
+        logger.error(f"Erro ao gerar XLSX: {e}")
+        raise
     
     # Busca horários disponíveis para edição utilizando vagas restantes
     horarios_disponiveis = (

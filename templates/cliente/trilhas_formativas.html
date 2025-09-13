@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Trilhas Formativas - Cliente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Gerenciar Trilhas Formativas</h1>
+                <div>
+                    <a href="{{ url_for('cliente_formador_routes.nova_trilha_formativa') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nova Trilha Formativa
+                    </a>
+                    <a href="{{ url_for('formador_routes.gerenciar_formadores') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Trilhas Formativas -->
+    <div class="row">
+        <div class="col-12">
+            {% if trilhas %}
+                {% for trilha in trilhas %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{{ trilha.nome }}</h5>
+                            <span class="badge badge-{{ 'success' if trilha.ativo else 'danger' }}">
+                                {{ 'Ativa' if trilha.ativo else 'Inativa' }}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">{{ trilha.descricao or 'Sem descrição' }}</p>
+                            
+                            {% if trilha.campos %}
+                                <div class="mb-3">
+                                    <small class="text-muted">Campos configurados:</small>
+                                    <ul class="list-unstyled mt-1">
+                                        {% for campo in trilha.campos[:3] %}
+                                            <li><small><i class="fas fa-check-circle text-success"></i> {{ campo.nome }}</small></li>
+                                        {% endfor %}
+                                        {% if trilha.campos|length > 3 %}
+                                            <li><small class="text-muted">... e mais {{ trilha.campos|length - 3 }} campos</small></li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="text-muted mb-3">
+                                <small>
+                                    <i class="fas fa-calendar"></i> Criada em: {{ trilha.data_criacao.strftime('%d/%m/%Y') if trilha.data_criacao else 'N/A' }}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('cliente_formador_routes.editar_trilha_formativa', trilha_id=trilha.id) }}" 
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                <a href="{{ url_for('cliente_formador_routes.ver_respostas_trilha', trilha_id=trilha.id) }}" 
+                                   class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-eye"></i> Respostas
+                                </a>
+                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                        onclick="confirmarExclusao({{ trilha.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-route fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhuma trilha formativa encontrada</h5>
+                            <p class="text-muted">Crie trilhas formativas para coletar informações dos seus formadores.</p>
+                            <a href="{{ url_for('cliente_formador_routes.nova_trilha_formativa') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Criar Primeira Trilha
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    {% if trilhas %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Estatísticas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ trilhas|length }}</h4>
+                                <small class="text-muted">Trilhas Totais</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">{{ trilhas|selectattr('ativo')|list|length }}</h4>
+                                <small class="text-muted">Trilhas Ativas</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-info">{{ trilhas|sum(attribute='campos')|length if trilhas else 0 }}</h4>
+                                <small class="text-muted">Total de Campos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-warning">{{ trilhas|selectattr('respostas')|list|length }}</h4>
+                                <small class="text-muted">Com Respostas</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalExclusao" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir esta trilha formativa?</p>
+                <p class="text-danger"><small>Esta ação não pode ser desfeita e todas as respostas serão perdidas.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <form id="formExclusao" method="POST" style="display: inline;">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit" class="btn btn-danger">Excluir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarExclusao(trilhaId) {
+    const form = document.getElementById('formExclusao');
+    form.action = `/cliente_formador/trilha_formativa/${trilhaId}/excluir`;
+    $('#modalExclusao').modal('show');
+}
+</script>
+{% endblock %}

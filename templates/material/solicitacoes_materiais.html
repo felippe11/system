@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitações de Materiais{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                Solicitações de Materiais
+                {% if formador_selecionado %}
+                    <small class="text-muted">- {{ formador_selecionado.nome }}</small>
+                {% endif %}
+            </h1>
+            {% if formador_selecionado %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    Visualizando solicitações do formador: <strong>{{ formador_selecionado.nome }}</strong>
+                    <a href="{{ url_for('material_routes.listar_solicitacoes_materiais') }}" class="btn btn-sm btn-outline-primary ms-2">
+                        <i class="fas fa-times"></i> Remover Filtro
+                    </a>
+                </div>
+            {% endif %}
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Solicitações de Materiais dos Formadores</h4>
+                </div>
+                <div class="card-body">
+                    {% if solicitacoes %}
+                        <!-- Filtros -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <select class="form-select" id="filtroStatus">
+                                    <option value="">Todos os status</option>
+                                    <option value="pendente">Pendente</option>
+                                    <option value="aprovada">Aprovada</option>
+                                    <option value="rejeitada">Rejeitada</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filtroTipo">
+                                    <option value="">Todos os tipos</option>
+                                    <option value="existente">Material Existente</option>
+                                    <option value="adicional">Material Adicional</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="filtroFormador" placeholder="Buscar por formador...">
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="tabelaSolicitacoes">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Formador</th>
+                                        <th>Tipo</th>
+                                        <th>Material</th>
+                                        <th>Quantidade</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for solicitacao in solicitacoes %}
+                                    <tr data-status="{{ solicitacao.status }}" data-tipo="{{ solicitacao.tipo }}" data-formador="{{ solicitacao.formador.nome.lower() }}">
+                                        <td>{{ solicitacao.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td>
+                                            <strong>{{ solicitacao.formador.nome }}</strong>
+                                            {% if solicitacao.formador.email %}
+                                                <br><small class="text-muted">{{ solicitacao.formador.email }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if solicitacao.tipo == 'existente' %}
+                                                <span class="badge bg-primary">Material Existente</span>
+                                            {% else %}
+                                                <span class="badge bg-info">Material Adicional</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if solicitacao.material %}
+                                                <strong>{{ solicitacao.material.nome }}</strong>
+                                                <br><small class="text-muted">{{ solicitacao.material.categoria or 'Sem categoria' }}</small>
+                                            {% else %}
+                                                <strong>{{ solicitacao.nome_material_adicional }}</strong>
+                                                {% if solicitacao.descricao_material_adicional %}
+                                                    <br><small class="text-muted">{{ solicitacao.descricao_material_adicional }}</small>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ solicitacao.quantidade }}</span>
+                                            {% if solicitacao.material %}
+                                                {{ solicitacao.material.unidade }}
+                                            {% elif solicitacao.unidade_material_adicional %}
+                                                {{ solicitacao.unidade_material_adicional }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if solicitacao.status == 'pendente' %}
+                                                <span class="badge bg-warning">Pendente</span>
+                                            {% elif solicitacao.status == 'aprovada' %}
+                                                <span class="badge bg-success">Aprovada</span>
+                                                {% if solicitacao.data_aprovacao %}
+                                                    <br><small class="text-muted">{{ solicitacao.data_aprovacao.strftime('%d/%m/%Y %H:%M') }}</small>
+                                                {% endif %}
+                                            {% elif solicitacao.status == 'rejeitada' %}
+                                                <span class="badge bg-danger">Rejeitada</span>
+                                                {% if solicitacao.motivo_rejeicao %}
+                                                    <br><small class="text-muted" title="{{ solicitacao.motivo_rejeicao }}">{{ solicitacao.motivo_rejeicao[:30] }}{% if solicitacao.motivo_rejeicao|length > 30 %}...{% endif %}</small>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if solicitacao.status == 'pendente' %}
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-sm btn-success" 
+                                                            onclick="aprovarSolicitacao({{ solicitacao.id }})" 
+                                                            title="Aprovar">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger" 
+                                                            onclick="rejeitarSolicitacao({{ solicitacao.id }}, '{{ solicitacao.formador.nome }}', '{% if solicitacao.material %}{{ solicitacao.material.nome }}{% else %}{{ solicitacao.nome_material_adicional }}{% endif %}')" 
+                                                            title="Rejeitar">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhuma solicitação de material</h5>
+                            <p class="text-muted">As solicitações dos formadores aparecerão aqui.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Rejeitar Solicitação -->
+<div class="modal fade" id="rejeitarSolicitacaoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="formRejeitar">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rejeitar Solicitação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja rejeitar a solicitação de <strong id="formadorNome"></strong> para o material <strong id="materialNome"></strong>?</p>
+                    
+                    <div class="mb-3">
+                        <label for="motivo" class="form-label">Motivo da rejeição (opcional)</label>
+                        <textarea class="form-control" id="motivo" name="motivo" rows="3" 
+                                  placeholder="Informe o motivo da rejeição..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Rejeitar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function aprovarSolicitacao(solicitacaoId) {
+    if (confirm('Tem certeza que deseja aprovar esta solicitação?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/solicitacoes-materiais/aprovar/${solicitacaoId}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function rejeitarSolicitacao(solicitacaoId, formadorNome, materialNome) {
+    document.getElementById('formadorNome').textContent = formadorNome;
+    document.getElementById('materialNome').textContent = materialNome;
+    document.getElementById('formRejeitar').action = `/solicitacoes-materiais/rejeitar/${solicitacaoId}`;
+    new bootstrap.Modal(document.getElementById('rejeitarSolicitacaoModal')).show();
+}
+
+// Filtros
+document.addEventListener('DOMContentLoaded', function() {
+    const filtroStatus = document.getElementById('filtroStatus');
+    const filtroTipo = document.getElementById('filtroTipo');
+    const filtroFormador = document.getElementById('filtroFormador');
+    const tabela = document.getElementById('tabelaSolicitacoes');
+    
+    function aplicarFiltros() {
+        const statusSelecionado = filtroStatus.value.toLowerCase();
+        const tipoSelecionado = filtroTipo.value.toLowerCase();
+        const formadorBusca = filtroFormador.value.toLowerCase();
+        
+        const linhas = tabela.querySelectorAll('tbody tr');
+        
+        linhas.forEach(linha => {
+            const status = linha.dataset.status;
+            const tipo = linha.dataset.tipo;
+            const formador = linha.dataset.formador;
+            
+            let mostrar = true;
+            
+            if (statusSelecionado && status !== statusSelecionado) {
+                mostrar = false;
+            }
+            
+            if (tipoSelecionado && tipo !== tipoSelecionado) {
+                mostrar = false;
+            }
+            
+            if (formadorBusca && !formador.includes(formadorBusca)) {
+                mostrar = false;
+            }
+            
+            linha.style.display = mostrar ? '' : 'none';
+        });
+    }
+    
+    filtroStatus.addEventListener('change', aplicarFiltros);
+    filtroTipo.addEventListener('change', aplicarFiltros);
+    filtroFormador.addEventListener('input', aplicarFiltros);
+});
+</script>
+{% endblock %}
