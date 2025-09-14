@@ -26,119 +26,29 @@
       {{ render_card('Informações Importantes', info_processo, '', 'card shadow-sm border-0 mb-4 bg-light') }}
       {% endif %}
       
-      <!-- Etapas do Processo -->
-      {% if processo and processo.etapas %}
-      {% set etapas_content %}
-        <div class="row">
-          {% for etapa in processo.etapas %}
-          <div class="col-md-6 col-lg-4 mb-3">
-            <div class="d-flex align-items-center p-3 border rounded bg-light">
-              <div class="step-number me-3">
-                <span class="badge bg-primary rounded-circle" style="width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">
-                  {{ etapa.numero }}
-                </span>
-              </div>
-              <div>
-                <h6 class="mb-1 fw-bold">{{ etapa.nome }}</h6>
-                {% if etapa.descricao %}
-                <small class="text-muted">{{ etapa.descricao }}</small>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="alert alert-info mt-3">
-          <i class="bi bi-info-circle me-2"></i>
-          <strong>Processo em {{ processo.num_etapas }} etapa{{ 's' if processo.num_etapas > 1 else '' }}:</strong>
-          Sua candidatura passará por todas as etapas listadas acima. Você receberá atualizações sobre o progresso por e-mail.
-        </div>
-      {% endset %}
-      {{ render_card('Etapas do Processo Seletivo', etapas_content, '', 'card shadow-sm border-0 mb-4') }}
-      {% endif %}
+
       
       <!-- Formulário de candidatura -->
       {% set form_content %}
         <form method="POST" enctype="multipart/form-data" id="candidaturaForm" novalidate>
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           
-          <!-- Navegação por etapas -->
-          {% set campos_por_etapa = formulario.campos|groupby('etapa')|list %}
-          {% set total_etapas = campos_por_etapa|length %}
+
           
-          <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="mb-0">Etapa <span id="etapaAtual">1</span> de {{ total_etapas }}</h6>
-              <small class="text-muted"><span id="progressText">0</span> de <span id="totalCamposEtapa">0</span> campos preenchidos</small>
-            </div>
-            
-            <!-- Indicador de etapas -->
-            <div class="d-flex align-items-center mb-3">
-              {% for etapa_num, campos_etapa in campos_por_etapa %}
-              <div class="step-indicator d-flex align-items-center" data-etapa="{{ etapa_num }}">
-                <div class="step-circle {{ 'active' if loop.first else 'disabled' }}" id="step-{{ etapa_num }}">
-                  <span class="step-number">{{ etapa_num }}</span>
-                  <i class="bi bi-check step-check" style="display: none;"></i>
-                </div>
-                {% if not loop.last %}
-                <div class="step-line"></div>
-                {% endif %}
-              </div>
-              {% endfor %}
-            </div>
-            
-            <div class="progress" style="height: 6px;">
-              <div class="progress-bar bg-success" id="progressBar" style="width: 0%"></div>
-            </div>
-          </div>
-          
-          <!-- Etapas do formulário -->
-          {% for etapa_num, campos_etapa in campos_por_etapa %}
-          <div class="etapa-container" data-etapa="{{ etapa_num }}" style="{{ 'display: block;' if loop.first else 'display: none;' }}">
-            <div class="card border-primary mb-4">
-              <div class="card-header bg-primary text-white">
-                <h6 class="mb-0">
-                  <i class="bi bi-list-check me-2"></i>
-                  Etapa {{ etapa_num }}
-                  {% if processo and processo.etapas %}
-                    {% for etapa_processo in processo.etapas %}
-                      {% if etapa_processo.numero == etapa_num %}
-                        - {{ etapa_processo.nome }}
-                      {% endif %}
-                    {% endfor %}
+          <!-- Campos do formulário -->
+          <div class="row">
+            {% for campo in campos %}
+              <div class="col-md-6 mb-3">
+                <label for="campo_{{ campo.id }}" class="form-label">
+                  {{ campo.nome }}
+                  {% if campo.obrigatorio %}
+                    <span class="text-danger">*</span>
                   {% endif %}
-                </h6>
-              </div>
-              <div class="card-body">
-                {% for campo in campos_etapa|sort(attribute='ordem') %}
-          <div class="mb-4 campo-container" data-campo-id="{{ campo.id }}">
-            <label class="form-label fw-bold d-flex align-items-center" for="campo-{{ campo.id }}">
-              {% if campo.tipo == 'text' %}
-                <i class="bi bi-type text-muted me-2"></i>
-              {% elif campo.tipo == 'textarea' %}
-                <i class="bi bi-textarea-t text-muted me-2"></i>
-              {% elif campo.tipo == 'number' %}
-                <i class="bi bi-123 text-muted me-2"></i>
-              {% elif campo.tipo == 'file' %}
-                <i class="bi bi-file-earmark-arrow-up text-muted me-2"></i>
-              {% elif campo.tipo == 'date' %}
-                <i class="bi bi-calendar-date text-muted me-2"></i>
-              {% elif campo.tipo == 'dropdown' %}
-                <i class="bi bi-list text-muted me-2"></i>
-              {% elif campo.tipo == 'checkbox' %}
-                <i class="bi bi-check-square text-muted me-2"></i>
-              {% elif campo.tipo == 'radio' %}
-                <i class="bi bi-record-circle text-muted me-2"></i>
-              {% endif %}
-              {{ campo.nome }}
-              {% if campo.obrigatorio %}
-                <span class="text-danger ms-1" title="Campo obrigatório">*</span>
-              {% endif %}
-            </label>
+                </label>
             
             {% if campo.descricao %}
-            <small class="text-muted d-block mb-2">{{ campo.descricao }}</small>
-            {% endif %}
+                   <small class="form-text text-muted d-block mb-2">{{ campo.descricao }}</small>
+                 {% endif %}
             
             <div class="form-field-container">
               {% if campo.tipo == 'text' %}
@@ -247,58 +157,24 @@
               </div>
               {% endif %}
               
-              <!-- Feedback de validação -->
-              <div class="invalid-feedback"></div>
-              <div class="valid-feedback">
-                <i class="bi bi-check-circle me-1"></i>Campo preenchido corretamente
-              </div>
-            </div>
-          </div>
-                 {% endfor %}
-                 
-                 <!-- Botões de navegação da etapa -->
-                 <div class="d-flex justify-content-between mt-4">
-                   <button type="button" class="btn btn-outline-secondary btn-etapa-anterior" 
-                           data-etapa="{{ etapa_num }}" 
-                           style="{{ 'visibility: hidden;' if loop.first else '' }}">
-                     <i class="bi bi-arrow-left me-1"></i>Etapa Anterior
-                   </button>
-                   
-                   {% if loop.last %}
-                   <button type="button" class="btn btn-success btn-finalizar" 
-                           data-etapa="{{ etapa_num }}" disabled>
-                     <i class="bi bi-check-circle me-1"></i>Finalizar
-                   </button>
-                   {% else %}
-                   <button type="button" class="btn btn-primary btn-proxima-etapa" 
-                           data-etapa="{{ etapa_num }}" disabled>
-                     <i class="bi bi-arrow-right me-1"></i>Próxima Etapa
-                   </button>
-                   {% endif %}
+                 <!-- Feedback de validação -->
+                 <div class="invalid-feedback"></div>
+                 <div class="valid-feedback">
+                   <i class="bi bi-check-circle me-1"></i>Campo preenchido corretamente
                  </div>
                </div>
-             </div>
+               </div>
+             {% endfor %}
            </div>
-           {% endfor %}
+           
+           <!-- Botão de envio -->
+           <div class="d-flex justify-content-center mt-4">
+             <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+               <i class="bi bi-send me-2"></i>Enviar Candidatura
+             </button>
+           </div>
           
-          <!-- Resumo antes do envio -->
-          <div class="card bg-light border-0 mb-4" id="resumoCard" style="display: none;">
-            <div class="card-body">
-              <h6 class="text-primary mb-3">
-                <i class="bi bi-clipboard-check me-2"></i>Resumo da Candidatura
-              </h6>
-              <div id="resumoContent"></div>
-              
-              <div class="d-flex justify-content-between mt-4">
-                <button type="button" class="btn btn-outline-secondary" id="voltarEdicaoBtn">
-                  <i class="bi bi-pencil me-1"></i>Voltar para Edição
-                </button>
-                <button type="submit" class="btn btn-success" id="submitBtn">
-                  <i class="bi bi-send me-1"></i>Enviar Candidatura
-                </button>
-              </div>
-            </div>
-          </div>
+
         </form>
       {% endset %}
       {{ render_card('Formulário de Candidatura', form_content, '', 'card shadow-sm border-0') }}
@@ -309,153 +185,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('candidaturaForm');
-  const etapas = document.querySelectorAll('.etapa-card');
-  const indicadores = document.querySelectorAll('.stage-indicator');
-  const resumoCard = document.getElementById('resumoCard');
-  const resumoContent = document.getElementById('resumoContent');
-  const voltarEdicaoBtn = document.getElementById('voltarEdicaoBtn');
-  
-  let etapaAtual = 1;
-  
-  // Inicializar - mostrar apenas primeira etapa
-  function inicializarEtapas() {
-    etapas.forEach((etapa, index) => {
-      if (index === 0) {
-        etapa.style.display = 'block';
-        indicadores[index].classList.add('active');
-      } else {
-        etapa.style.display = 'none';
-      }
-    });
-    
-    atualizarNavegacao();
-  }
-  
-  // Validar etapa atual
-  function validarEtapa(numeroEtapa) {
-    const etapaCard = document.querySelector(`[data-etapa="${numeroEtapa}"]`);
-    if (!etapaCard) return false;
-    
-    const camposEtapa = etapaCard.querySelectorAll('.campo-input[required]');
-    let etapaValida = true;
-    
-    camposEtapa.forEach(campo => {
-      if (campo.type === 'file') {
-        if (!campo.files || campo.files.length === 0) {
-          etapaValida = false;
-          campo.classList.add('is-invalid');
-        } else {
-          campo.classList.remove('is-invalid');
-          campo.classList.add('is-valid');
-        }
-      } else if (campo.value.trim() === '') {
-        etapaValida = false;
-        campo.classList.add('is-invalid');
-      } else {
-        campo.classList.remove('is-invalid');
-        campo.classList.add('is-valid');
-      }
-    });
-    
-    return etapaValida;
-  }
-  
-  // Atualizar navegação
-  function atualizarNavegacao() {
-    // Atualizar indicadores
-    indicadores.forEach((indicador, index) => {
-      const numeroEtapa = index + 1;
-      
-      if (numeroEtapa < etapaAtual) {
-        indicador.classList.remove('active');
-        indicador.classList.add('completed');
-      } else if (numeroEtapa === etapaAtual) {
-        indicador.classList.remove('completed');
-        indicador.classList.add('active');
-      } else {
-        indicador.classList.remove('active', 'completed');
-      }
-    });
-    
-    // Atualizar botões de navegação
-    const btnProxima = document.querySelector(`[data-etapa="${etapaAtual}"].btn-proxima-etapa`);
-    const btnFinalizar = document.querySelector(`[data-etapa="${etapaAtual}"].btn-finalizar`);
-    
-    if (btnProxima) {
-      btnProxima.disabled = !validarEtapa(etapaAtual);
-    }
-    
-    if (btnFinalizar) {
-      btnFinalizar.disabled = !validarEtapa(etapaAtual);
-    }
-  }
-  
-  // Event listeners para navegação
-  document.querySelectorAll('.btn-proxima-etapa').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const etapaAtualNum = parseInt(this.dataset.etapa);
-      if (validarEtapa(etapaAtualNum)) {
-        mostrarEtapa(etapaAtualNum + 1);
-      }
-    });
-  });
-  
-  document.querySelectorAll('.btn-etapa-anterior').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const etapaAtualNum = parseInt(this.dataset.etapa);
-      if (etapaAtualNum > 1) {
-        mostrarEtapa(etapaAtualNum - 1);
-      }
-    });
-  });
-  
-  document.querySelectorAll('.btn-finalizar').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const etapaAtualNum = parseInt(this.dataset.etapa);
-      if (validarEtapa(etapaAtualNum)) {
-        mostrarResumo();
-      }
-    });
-  });
-  
-  function mostrarEtapa(numeroEtapa) {
-    // Esconder todas as etapas
-    document.querySelectorAll('.etapa-container').forEach(container => {
-      container.style.display = 'none';
-    });
-    
-    // Mostrar etapa atual
-    const etapaContainer = document.querySelector(`[data-etapa="${numeroEtapa}"]`);
-    if (etapaContainer) {
-      etapaContainer.style.display = 'block';
-    }
-    
-    etapaAtual = numeroEtapa;
-    document.getElementById('etapaAtual').textContent = numeroEtapa;
-    atualizarNavegacao();
-  }
-  
-  function mostrarResumo() {
-    // Esconder todas as etapas
-    document.querySelectorAll('.etapa-container').forEach(container => {
-      container.style.display = 'none';
-    });
-    
-    generateResumo();
-    resumoCard.style.display = 'block';
-    resumoCard.scrollIntoView({ behavior: 'smooth' });
-  }
+  const campos = document.querySelectorAll('.campo-input');
   
   // Validação em tempo real
-  document.querySelectorAll('.campo-input').forEach(campo => {
+  campos.forEach(campo => {
     campo.addEventListener('input', function() {
       validateField(this);
-      atualizarNavegacao();
     });
     
     campo.addEventListener('change', function() {
       validateField(this);
-      atualizarNavegacao();
       
       // Preview de arquivo
       if (this.type === 'file' && this.files.length > 0) {
@@ -527,49 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Botão voltar para edição
-  voltarEdicaoBtn.addEventListener('click', function() {
-    resumoCard.style.display = 'none';
-    const totalEtapas = document.querySelectorAll('.etapa-container').length;
-    mostrarEtapa(totalEtapas);
-  });
-  
-  // Gerar resumo
-  function generateResumo() {
-    let html = '<div class="row g-3">';
-    
-    document.querySelectorAll('.campo-input').forEach(campo => {
-      const label = document.querySelector('label[for="' + campo.id + '"]');
-      const labelText = label ? label.textContent.replace('*', '').trim() : campo.name;
-      let value = '';
-      
-      if (campo.type === 'file' && campo.files.length > 0) {
-        value = campo.files[0].name;
-      } else if (campo.type === 'checkbox') {
-        const checked = document.querySelectorAll(`input[name="${campo.name}"]:checked`);
-        value = Array.from(checked).map(cb => cb.value).join(', ') || 'Nenhuma opção selecionada';
-      } else if (campo.type === 'radio') {
-        const selected = document.querySelector(`input[name="${campo.name}"]:checked`);
-        value = selected ? selected.value : 'Nenhuma opção selecionada';
-      } else {
-        value = campo.value || 'Não informado';
-      }
-      
-      if (value !== 'Não informado' && value !== 'Nenhuma opção selecionada') {
-        html += `
-          <div class="col-md-6">
-            <div class="border rounded p-2">
-              <small class="text-muted d-block">${labelText}</small>
-              <strong class="small">${value}</strong>
-            </div>
-          </div>
-        `;
-      }
-    });
-    
-    html += '</div>';
-    resumoContent.innerHTML = html;
-  }
+
   
   // Validação do formulário antes do envio
   form.addEventListener('submit', function(e) {
@@ -591,9 +288,6 @@ document.addEventListener('DOMContentLoaded', function() {
       alert('Por favor, corrija os erros no formulário antes de enviar.');
     }
   });
-  
-  // Inicializar
-  inicializarEtapas();
 });
 </script>
 
