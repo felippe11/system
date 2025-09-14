@@ -488,3 +488,89 @@ def toggle_usuario(usuario_id: int):
     if usuario.cliente_id:
         return redirect(url_for("cliente_routes.listar_usuarios", cliente_id=usuario.cliente_id))
     return redirect(url_for(endpoints.DASHBOARD))
+
+
+# ---------------------------------------------------------------------------
+# Rotas de gerenciamento de formadores
+# ---------------------------------------------------------------------------
+
+@cliente_routes.route("/editar_formador/<int:id>", methods=["GET", "POST"])
+@login_required
+@require_permission('formadores.edit')
+def editar_formador(id):
+    """Edita o cadastro de um formador."""
+    from models.user import Ministrante
+    
+    formador = Ministrante.query.get_or_404(id)
+    
+    if request.method == "POST":
+        # Atualizar dados do formador
+        formador.nome = request.form.get("nome")
+        formador.email = request.form.get("email")
+        formador.telefone = request.form.get("telefone")
+        formador.especialidade = request.form.get("especialidade")
+        formador.biografia = request.form.get("biografia")
+        
+        try:
+            db.session.commit()
+            flash("Formador atualizado com sucesso!", "success")
+            return redirect(url_for("formador_routes.gerenciar_formadores"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erro ao atualizar formador: {str(e)}", "danger")
+    
+    return render_template("cliente/editar_formador.html", formador=formador)
+
+
+@cliente_routes.route("/excluir_formador/<int:id>", methods=["POST"])
+@login_required
+@require_permission('formadores.delete')
+def excluir_formador(id):
+    """Exclui um formador."""
+    from models.user import Ministrante
+    
+    formador = Ministrante.query.get_or_404(id)
+    
+    try:
+        db.session.delete(formador)
+        db.session.commit()
+        flash("Formador excluído com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao excluir formador: {str(e)}", "danger")
+    
+    return redirect(url_for("formador_routes.gerenciar_formadores"))
+
+
+@cliente_routes.route("/vincular_monitor/<int:id>", methods=["GET", "POST"])
+@login_required
+@require_permission('formadores.edit')
+def vincular_monitor(id):
+    """Vincula um monitor ao formador."""
+    from models.user import Ministrante, Usuario
+    
+    formador = Ministrante.query.get_or_404(id)
+    
+    if request.method == "POST":
+        monitor_id = request.form.get("monitor_id")
+        if monitor_id:
+            monitor = Usuario.query.get(monitor_id)
+            if monitor:
+                # Assumindo que existe um relacionamento entre formador e monitor
+                formador.monitor_id = monitor_id
+                try:
+                    db.session.commit()
+                    flash("Monitor vinculado com sucesso!", "success")
+                    return redirect(url_for("formador_routes.gerenciar_formadores"))
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f"Erro ao vincular monitor: {str(e)}", "danger")
+            else:
+                flash("Monitor não encontrado!", "danger")
+        else:
+            flash("Selecione um monitor!", "warning")
+    
+    # Buscar usuários que podem ser monitores
+    monitores = Usuario.query.filter_by(tipo="monitor").all()
+    
+    return render_template("cliente/vincular_monitor.html", formador=formador, monitores=monitores)

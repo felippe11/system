@@ -242,6 +242,7 @@ def has_permission(permission_name, resource_id=None):
             'templates.activate', 'templates.deactivate',
             'ai.use', 'ai.configure',
             'eventos.view', 'eventos.create', 'eventos.edit',
+            'formadores.view', 'formadores.create', 'formadores.edit', 'formadores.delete',
             'relatorios.view', 'relatorios.export',
             'configuracoes.view', 'configuracoes.edit',
             # Dashboard Analytics Permissions (Limited)

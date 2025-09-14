@@ -51,6 +51,13 @@ def inscricao_formador(token):
         estado = request.form.get('estado')
         telefone = request.form.get('telefone')
         senha = request.form.get('senha')
+        categorias_formacao = request.form.get('categorias_formacao')
+        endereco = request.form.get('endereco')
+        banco = request.form.get('banco')
+        agencia = request.form.get('agencia')
+        conta = request.form.get('conta')
+        tipo_conta = request.form.get('tipo_conta')
+        chave_pix = request.form.get('chave_pix')
         
         # Validações básicas
         if not all([nome, email, formacao, areas_atuacao, cpf, cidade, estado, senha]):
@@ -80,6 +87,13 @@ def inscricao_formador(token):
                 telefone=telefone,
                 senha=generate_password_hash(senha),
                 cliente_id=link.cliente_id,
+                categorias_formacao=categorias_formacao or '',
+                endereco=endereco or '',
+                banco=banco or '',
+                agencia=agencia or '',
+                conta=conta or '',
+                tipo_conta=tipo_conta or '',
+                chave_pix=chave_pix or '',
                 pix='',  # Campo obrigatório, pode ser preenchido depois
                 ativo=True
             )

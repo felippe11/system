@@ -60,8 +60,12 @@
 
                         <div class="form-group mb-3">
                             <label for="areas_atuacao" class="form-label">Áreas de Atuação *</label>
-                            <textarea class="form-control" id="areas_atuacao" name="areas_atuacao" rows="3" 
-                                      placeholder="Descreva suas principais áreas de atuação e especialidades" required></textarea>
+                            <textarea class="form-control" id="areas_atuacao" name="areas_atuacao" rows="3" placeholder="Descreva suas principais áreas de atuação e especialidades" required></textarea>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="categorias_formacao" class="form-label">Categorias de Formação</label>
+                            <input type="text" class="form-control" id="categorias_formacao" name="categorias_formacao" placeholder="Ex: Educação Infantil, Ensino Fundamental">
                         </div>
 
                         <div class="row">
@@ -106,6 +110,52 @@
                                     </select>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="endereco" class="form-label">Endereço</label>
+                            <textarea class="form-control" id="endereco" name="endereco" rows="2" placeholder="Rua, número, bairro, CEP"></textarea>
+                        </div>
+
+                        <h5 class="mt-4 mb-3">Informações Bancárias</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="banco" class="form-label">Banco</label>
+                                    <input type="text" class="form-control" id="banco" name="banco" placeholder="Ex: Banco do Brasil, Caixa">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="agencia" class="form-label">Agência</label>
+                                    <input type="text" class="form-control" id="agencia" name="agencia" placeholder="Ex: 1234-5">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="conta" class="form-label">Conta</label>
+                                    <input type="text" class="form-control" id="conta" name="conta" placeholder="Ex: 12345-6">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="tipo_conta" class="form-label">Tipo de Conta</label>
+                                    <select class="form-control" id="tipo_conta" name="tipo_conta">
+                                        <option value="">Selecione...</option>
+                                        <option value="corrente">Corrente</option>
+                                        <option value="poupanca">Poupança</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="chave_pix" class="form-label">Chave PIX</label>
+                            <input type="text" class="form-control" id="chave_pix" name="chave_pix" placeholder="CPF, e-mail, telefone ou chave aleatória">
                         </div>
 
                         <div class="form-group mb-3">

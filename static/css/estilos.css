@@ -95,3 +95,67 @@ button:hover {
     font-size: 0.9rem;
     margin-top: auto;
 }
+
+/* Fix para badges do Bootstrap 4 que não existem no Bootstrap 5 */
+.badge-success {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+}
+
+.badge-warning {
+    background-color: #ffc107 !important;
+    color: #000000 !important;
+}
+
+.badge-info {
+    background-color: #0dcaf0 !important;
+    color: #000000 !important;
+}
+
+.badge-danger {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+.badge-secondary {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+.badge-primary {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+
+.badge-light {
+    background-color: #f8f9fa !important;
+    color: #000000 !important;
+}
+
+.badge-dark {
+    background-color: #212529 !important;
+    color: #ffffff !important;
+}
+
+/* Garantir que badges em tabelas tenham contraste adequado */
+td .badge {
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+}
+
+/* Modo escuro - ajustar cores dos badges */
+[data-bs-theme="dark"] .badge-warning {
+    background-color: #ffca2c !important;
+    color: #000000 !important;
+}
+
+[data-bs-theme="dark"] .badge-info {
+    background-color: #31d2f2 !important;
+    color: #000000 !important;
+}
+
+[data-bs-theme="dark"] .badge-light {
+    background-color: #adb5bd !important;
+    color: #000000 !important;
+}
