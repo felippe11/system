@@ -16,7 +16,7 @@ from models.formador import (
     SolicitacaoMaterial, MaterialAprovado, ConfiguracaoRelatorioFormador,
     RelatorioFormador, ArquivoFormador, FormadorMonitor
 )
-from models.material import MaterialDisponivel, SolicitacaoMaterialFormador, Material
+from models.material import MaterialDisponivel, SolicitacaoMaterialFormador, Material, FormadorPolo
 from models import Oficina
 from utils.auth import ministrante_required
 from utils import endpoints
@@ -239,11 +239,24 @@ def solicitar_material():
             db.session.rollback()
             flash(f'Erro ao enviar solicitação: {str(e)}', 'error')
     
-    # Buscar materiais disponíveis para formadores
-    materiais_disponiveis = MaterialDisponivel.query.filter_by(
-        cliente_id=current_user.cliente_id,
+    # Buscar polos atribuídos ao formador atual
+    polos_formador = FormadorPolo.query.filter_by(
+        formador_id=current_user.id,
         ativo=True
     ).all()
+    
+    polo_ids = [fp.polo_id for fp in polos_formador]
+    
+    # Buscar materiais disponíveis nos polos atribuídos ao formador
+    if polo_ids:
+        materiais_disponiveis = Material.query.filter(
+            Material.polo_id.in_(polo_ids),
+            Material.cliente_id == current_user.cliente_id,
+            Material.ativo == True,
+            Material.quantidade_atual > 0
+        ).all()
+    else:
+        materiais_disponiveis = []
     
     return render_template('formador/solicitar_material.html', materiais_disponiveis=materiais_disponiveis)
 

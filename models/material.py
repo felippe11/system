@@ -192,6 +192,35 @@ class MonitorPolo(db.Model):
         }
 
 
+class FormadorPolo(db.Model):
+    """Modelo para associar formadores a polos específicos."""
+    __tablename__ = "formador_polo"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    formador_id = db.Column(db.Integer, db.ForeignKey("ministrante.id"), nullable=False)
+    polo_id = db.Column(db.Integer, db.ForeignKey("polo.id"), nullable=False)
+    data_atribuicao = db.Column(db.DateTime, default=datetime.utcnow)
+    ativo = db.Column(db.Boolean, default=True)
+    
+    # Relacionamentos
+    formador = db.relationship("Ministrante", backref=db.backref("polos_atribuidos", lazy=True))
+    polo = db.relationship("Polo", backref=db.backref("formadores_atribuidos", lazy=True))
+    
+    def __repr__(self):
+        return f"<FormadorPolo {self.formador.nome} - {self.polo.nome}>"
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'formador_id': self.formador_id,
+            'formador_nome': self.formador.nome if self.formador else None,
+            'polo_id': self.polo_id,
+            'polo_nome': self.polo.nome if self.polo else None,
+            'data_atribuicao': self.data_atribuicao.isoformat() if self.data_atribuicao else None,
+            'ativo': self.ativo
+        }
+
+
 class MaterialDisponivel(db.Model):
     """Modelo para materiais disponíveis para solicitação por formadores."""
     __tablename__ = "material_disponivel"
@@ -284,6 +313,8 @@ class SolicitacaoMaterialFormador(db.Model):
     # Datas
     data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow)
     data_resposta = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamentos
     formador = db.relationship("Ministrante", backref=db.backref("solicitacoes_material_formador", lazy=True))
@@ -313,5 +344,7 @@ class SolicitacaoMaterialFormador(db.Model):
             'data_entrega': self.data_entrega.isoformat() if self.data_entrega else None,
             'observacoes_entrega': self.observacoes_entrega,
             'data_solicitacao': self.data_solicitacao.isoformat() if self.data_solicitacao else None,
-            'data_resposta': self.data_resposta.isoformat() if self.data_resposta else None
+            'data_resposta': self.data_resposta.isoformat() if self.data_resposta else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

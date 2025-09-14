@@ -30,7 +30,7 @@ def upgrade():
         sa.Column('ativo', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['cliente_id'], ['user.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['cliente_id'], ['cliente.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['material_id'], ['material.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
@@ -55,7 +55,7 @@ def upgrade():
         sa.Column('observacoes_entrega', sa.Text(), nullable=True),
         sa.Column('data_solicitacao', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('data_resposta', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['cliente_id'], ['user.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['cliente_id'], ['cliente.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['formador_id'], ['ministrante.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['material_disponivel_id'], ['material_disponivel.id'], ondelete='SET NULL'),
         sa.PrimaryKeyConstraint('id')

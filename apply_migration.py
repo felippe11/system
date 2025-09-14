@@ -9,7 +9,11 @@ from flask_migrate import Migrate, upgrade
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from app import app, db
+    from app import create_app
+    from extensions import db
+    
+    # Criar a aplicação
+    app = create_app()
     
     # Configurar Flask-Migrate
     migrate_instance = Migrate(app, db)

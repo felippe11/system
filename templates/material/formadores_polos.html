@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Atribuir Formadores{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">👨‍🏫 Atribuir Formadores aos Polos</h2>
+            <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-outline-secondary">Voltar</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <table class="table table-striped" id="tabela-formadores">
+                <thead>
+                    <tr>
+                        <th>Formador</th>
+                        <th>Polos Atribuídos</th>
+                        <th>Atribuir Polo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for formador in formadores %}
+                    <tr data-formador-id="{{ formador.id }}">
+                        <td>{{ formador.nome }}</td>
+                        <td>
+                            <ul class="list-unstyled mb-0 polos-atribuidos">
+                                {% for fp in formador.polos_atribuidos if fp.ativo %}
+                                <li data-polo-id="{{ fp.polo.id }}">
+                                    {{ fp.polo.nome }}
+                                    <button class="btn btn-sm btn-danger ms-2 remover-polo" data-polo-id="{{ fp.polo.id }}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <div class="input-group">
+                                <select class="form-select select-polo">
+                                    <option value="">Selecione um polo</option>
+                                    {% for polo in polos %}
+                                    <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-primary atribuir-polo">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/formadores_polos.js') }}"></script>
+{% endblock %}

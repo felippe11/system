@@ -54,14 +54,12 @@
                                 <label for="material_id" class="form-label">Material Disponível *</label>
                                 <select class="form-control" id="material_id" name="material_id">
                                     <option value="">Selecione um material</option>
-                                    {% for material_disp in materiais_disponiveis %}
-                                        <option value="{{ material_disp.material.id }}" 
-                                                data-min="{{ material_disp.quantidade_minima }}" 
-                                                data-max="{{ material_disp.quantidade_maxima }}"
-                                                data-estoque="{{ material_disp.material.quantidade_estoque }}"
-                                                data-unidade="{{ material_disp.material.unidade }}">
-                                            {{ material_disp.material.nome }} - {{ material_disp.material.categoria or 'Sem categoria' }} 
-                                            (Estoque: {{ material_disp.material.quantidade_estoque }} {{ material_disp.material.unidade }})
+                                    {% for material in materiais_disponiveis %}
+                                        <option value="{{ material.id }}" 
+                                                data-estoque="{{ material.quantidade_atual }}"
+                                                data-unidade="{{ material.unidade }}">
+                                            {{ material.nome }} - {{ material.categoria or 'Sem categoria' }} 
+                                            (Estoque: {{ material.quantidade_atual }} {{ material.unidade }})
                                         </option>
                                     {% endfor %}
                                 </select>
@@ -231,24 +229,24 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for material_disp in materiais_disponiveis %}
+                                    {% for material in materiais_disponiveis %}
                                     <tr>
                                         <td>
-                                            <strong>{{ material_disp.material.nome }}</strong>
-                                            {% if material_disp.material.descricao %}
-                                                <br><small class="text-muted">{{ material_disp.material.descricao }}</small>
+                                            <strong>{{ material.nome }}</strong>
+                                            {% if material.descricao %}
+                                                <br><small class="text-muted">{{ material.descricao }}</small>
                                             {% endif %}
                                         </td>
-                                        <td>{{ material_disp.material.categoria or '-' }}</td>
-                                        <td>{{ material_disp.material.unidade }}</td>
+                                        <td>{{ material.categoria or '-' }}</td>
+                                        <td>{{ material.unidade }}</td>
                                         <td>
-                                            <span class="badge {% if material_disp.material.quantidade_estoque <= material_disp.material.quantidade_minima %}badge-danger{% elif material_disp.material.quantidade_estoque <= (material_disp.material.quantidade_minima * 2) %}badge-warning{% else %}badge-success{% endif %}">
-                                                {{ material_disp.material.quantidade_estoque }}
+                                            <span class="badge {% if material.quantidade_atual <= material.quantidade_minima %}badge-danger{% elif material.quantidade_atual <= (material.quantidade_minima * 2) %}badge-warning{% else %}badge-success{% endif %}">
+                                                {{ material.quantidade_atual }}
                                             </span>
                                         </td>
-                                        <td>{{ material_disp.quantidade_minima }} - {{ material_disp.quantidade_maxima }}</td>
+                                        <td>{{ material.quantidade_minima or '-' }} - {{ material.quantidade_maxima or '-' }}</td>
                                         <td>
-                                            {% if material_disp.material.quantidade_estoque > 0 %}
+                                            {% if material.quantidade_atual > 0 %}
                                                 <span class="badge badge-success">Disponível</span>
                                             {% else %}
                                                 <span class="badge badge-danger">Sem estoque</span>
@@ -312,19 +310,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function atualizarInfoMaterial() {
         if (tipoExistente.checked && materialSelect.value) {
             const option = materialSelect.selectedOptions[0];
-            const min = parseInt(option.dataset.min);
-            const max = parseInt(option.dataset.max);
             const estoque = parseInt(option.dataset.estoque);
             const unidade = option.dataset.unidade;
             
-            quantidadeInput.min = min;
-            quantidadeInput.max = Math.min(max, estoque);
-            quantidadeInput.value = Math.max(min, 1);
+            quantidadeInput.min = 1;
+            quantidadeInput.max = estoque;
+            quantidadeInput.value = 1;
             
             infoMaterial.style.display = 'block';
-            infoMaterial.innerHTML = `Quantidade permitida: ${min} - ${max} ${unidade}`;
+            infoMaterial.innerHTML = `Material disponível no seu polo`;
             
-            infoQuantidade.innerHTML = `Máximo disponível: ${Math.min(max, estoque)} ${unidade}`;
+            infoQuantidade.innerHTML = `Máximo disponível: ${estoque} ${unidade}`;
             
             estoqueInfo.innerHTML = `${estoque} ${unidade} disponível`;
             estoqueInfo.className = `form-control-plaintext ${estoque > 0 ? 'text-success' : 'text-danger'}`;
@@ -342,15 +338,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function validarQuantidade() {
         if (tipoExistente.checked && materialSelect.value) {
             const option = materialSelect.selectedOptions[0];
-            const min = parseInt(option.dataset.min);
-            const max = parseInt(option.dataset.max);
             const estoque = parseInt(option.dataset.estoque);
             const quantidade = parseInt(quantidadeInput.value);
             
-            if (quantidade < min) {
-                quantidadeInput.setCustomValidity(`Quantidade mínima: ${min}`);
-            } else if (quantidade > max) {
-                quantidadeInput.setCustomValidity(`Quantidade máxima: ${max}`);
+            if (quantidade < 1) {
+                quantidadeInput.setCustomValidity(`Quantidade mínima: 1`);
             } else if (quantidade > estoque) {
                 quantidadeInput.setCustomValidity(`Estoque insuficiente. Máximo: ${estoque}`);
             } else {

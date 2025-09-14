@@ -9,8 +9,8 @@ from datetime import datetime
 import json
 
 from extensions import db, csrf
-from models.user import Cliente, Monitor
-from models.material import Polo, Material, MovimentacaoMaterial, MonitorPolo
+from models.user import Cliente, Monitor, Ministrante
+from models.material import Polo, Material, MovimentacaoMaterial, MonitorPolo, MaterialDisponivel, SolicitacaoMaterialFormador, FormadorPolo
 from utils import endpoints
 from sqlalchemy.orm import joinedload
 
@@ -1038,6 +1038,39 @@ def gerenciar_monitores_polo():
         flash('Erro ao carregar dados', 'error')
         return redirect(url_for('material_routes.gerenciar_materiais'))
 
+
+# ==================== ROTAS DE ATRIBUIÇÃO DE FORMADORES ====================
+
+@material_routes.route('/formadores-polos')
+@login_required
+def gerenciar_formadores_polo():
+    """Página para atribuir formadores a polos."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    try:
+        formadores = (
+            Ministrante.query.options(
+                joinedload(Ministrante.polos_atribuidos).joinedload(FormadorPolo.polo)
+            )
+            .filter(
+                Ministrante.cliente_id == current_user.id,
+                Ministrante.ativo == True
+            )
+            .all()
+        )
+        polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
+        return render_template(
+            'material/formadores_polos.html', formadores=formadores, polos=polos
+        )
+    except Exception as e:
+        current_app.logger.error(
+            f"Erro ao carregar atribuições de formadores: {str(e)}"
+        )
+        flash('Erro ao carregar dados', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
 @material_routes.route('/api/monitores/atribuir-polo', methods=['POST'])
 @csrf.exempt
 @login_required
@@ -1138,6 +1171,117 @@ def listar_monitores_polos():
         atribuicoes = db.session.query(MonitorPolo).join(Polo).filter(
             Polo.cliente_id == current_user.id,
             MonitorPolo.ativo == True
+        ).all()
+        
+        return jsonify({
+            'success': True,
+            'atribuicoes': [atribuicao.to_dict() for atribuicao in atribuicoes]
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@material_routes.route('/api/formadores/atribuir-polo', methods=['POST'])
+@csrf.exempt
+@login_required
+def atribuir_formador_polo():
+    """API para atribuir formador a um polo."""
+    if not verificar_acesso_cliente():
+        return jsonify({'success': False, 'message': 'Acesso negado'}), 403
+    
+    try:
+        data = request.get_json()
+        formador_id = data['formador_id']
+        polo_id = data['polo_id']
+        
+        # Verificar se o formador e polo pertencem ao cliente
+        formador = Ministrante.query.filter_by(id=formador_id, cliente_id=current_user.id).first()
+        polo = Polo.query.filter_by(id=polo_id, cliente_id=current_user.id).first()
+        
+        if not formador or not polo:
+            return jsonify({'success': False, 'message': 'Formador ou polo não encontrado'}), 404
+        
+        # Verificar se já existe atribuição ativa
+        atribuicao_existente = FormadorPolo.query.filter_by(
+            formador_id=formador_id, polo_id=polo_id, ativo=True
+        ).first()
+        
+        if atribuicao_existente:
+            return jsonify({'success': False, 'message': 'Formador já está atribuído a este polo'}), 400
+        
+        # Criar nova atribuição
+        atribuicao = FormadorPolo(
+            formador_id=formador_id,
+            polo_id=polo_id
+        )
+        
+        db.session.add(atribuicao)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Formador atribuído ao polo com sucesso',
+            'atribuicao': atribuicao.to_dict()
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@material_routes.route('/api/formadores/remover-polo', methods=['POST'])
+@csrf.exempt
+@login_required
+def remover_formador_polo():
+    """API para remover formador de um polo."""
+    if not verificar_acesso_cliente():
+        return jsonify({'success': False, 'message': 'Acesso negado'}), 403
+    
+    try:
+        data = request.get_json()
+        formador_id = data['formador_id']
+        polo_id = data['polo_id']
+        
+        # Buscar atribuição ativa
+        atribuicao = FormadorPolo.query.filter_by(
+            formador_id=formador_id, polo_id=polo_id, ativo=True
+        ).first()
+        
+        if not atribuicao:
+            return jsonify({'success': False, 'message': 'Atribuição não encontrada'}), 404
+        
+        # Verificar se o polo pertence ao cliente
+        polo = Polo.query.filter_by(id=polo_id, cliente_id=current_user.id).first()
+        if not polo:
+            return jsonify({'success': False, 'message': 'Polo não encontrado'}), 404
+        
+        atribuicao.ativo = False
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Formador removido do polo com sucesso'
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@material_routes.route('/api/formadores/polos', methods=['GET'])
+@csrf.exempt
+@login_required
+def listar_formadores_polos():
+    """API para listar atribuições de formadores a polos."""
+    if not verificar_acesso_cliente():
+        return jsonify({'success': False, 'message': 'Acesso negado'}), 403
+    
+    try:
+        # Buscar todas as atribuições ativas dos polos do cliente
+        atribuicoes = db.session.query(FormadorPolo).join(Polo).filter(
+            Polo.cliente_id == current_user.id,
+            FormadorPolo.ativo == True
         ).all()
         
         return jsonify({
