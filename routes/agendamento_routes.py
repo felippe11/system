@@ -2234,38 +2234,41 @@ def criar_agendamento():
                 )
                 flash(form_erro, "danger")
             else:
-                horario = HorarioVisitacao.query.get(horario_id)
-                if not horario:
-                    form_erro = "Horário inválido."
-                    flash(form_erro, "danger")
-                elif horario.evento_id != int(evento_id):
-                    form_erro = "Horário não pertence ao evento selecionado."
-                    flash(form_erro, "danger")
+                professor_id = None
+                cliente_id = None
+                usuario_id = None
+                if getattr(current_user, 'is_cliente', lambda: False)():
+                    cliente = Cliente.query.get(current_user.id)
+                    if not cliente:
+                        form_erro = 'Cliente inválido.'
+                        flash(form_erro, 'danger')
+                        return redirect(url_for('agendamento_routes.criar_agendamento'))
+                    cliente_id = cliente.id
                 else:
-                    quantidade = int(quantidade_alunos)
-                    if quantidade > horario.vagas_disponiveis:
-                        form_erro = f"Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}"
-                        flash(form_erro, "danger")
-                    else:
-                        professor_id = None
-                        cliente_id = None
-                        usuario_id = None
-                        if getattr(current_user, 'is_cliente', lambda: False)():
-                            cliente = Cliente.query.get(current_user.id)
-                            if not cliente:
-                                form_erro = 'Cliente inválido.'
-                                flash(form_erro, 'danger')
-                                return redirect(url_for('agendamento_routes.criar_agendamento'))
-                            cliente_id = cliente.id
-                        else:
-                            usuario = Usuario.query.get(current_user.id)
-                            if not usuario:
-                                form_erro = 'Usuário inválido.'
-                                flash(form_erro, 'danger')
-                                return redirect(url_for('agendamento_routes.criar_agendamento'))
-                            usuario_id = usuario.id
-                            if getattr(usuario, 'is_professor', lambda: False)():
-                                professor_id = usuario.id
+                    usuario = Usuario.query.get(current_user.id)
+                    if not usuario:
+                        form_erro = 'Usuário inválido.'
+                        flash(form_erro, 'danger')
+                        return redirect(url_for('agendamento_routes.criar_agendamento'))
+                    usuario_id = usuario.id
+                    if getattr(usuario, 'is_professor', lambda: False)():
+                        professor_id = usuario.id
+
+                quantidade = int(quantidade_alunos)
+                agendamento = None
+                try:
+                    with db.session.begin():
+                        horario = Horario.get_for_update(horario_id)
+                        if not horario:
+                            raise ValueError('Horário inválido.')
+                        if horario.evento_id != int(evento_id):
+                            raise ValueError(
+                                'Horário não pertence ao evento selecionado.'
+                            )
+                        if quantidade > horario.vagas_disponiveis:
+                            raise ValueError(
+                                f"Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}"
+                            )
 
                         agendamento = AgendamentoVisita(
                             horario_id=horario.id,
@@ -2288,32 +2291,32 @@ def criar_agendamento():
                             compromisso_4=True,
                             status='pendente',
                         )
-
                         horario.vagas_disponiveis -= quantidade
                         db.session.add(agendamento)
-
-                        try:
-                            db.session.commit()
-                            flash("Agendamento criado com sucesso!", "success")
-                            if current_user.tipo == 'professor':
-                                return redirect(
-                                    url_for(
-                                        'routes.adicionar_alunos_professor',
-                                        agendamento_id=agendamento.id,
-                                    )
-                                )
-                            if current_user.tipo == 'cliente':
-                                return redirect(
-                                    url_for(
-                                        'routes.adicionar_alunos_professor',
-                                        agendamento_id=agendamento.id,
-                                    )
-                                )
-                            return redirect(url_for(endpoints.DASHBOARD))
-                        except Exception as e:
-                            db.session.rollback()
-                            form_erro = f"Erro ao salvar agendamento: {str(e)}"
-                            flash(form_erro, "danger")
+                except ValueError as exc:
+                    form_erro = str(exc)
+                    flash(form_erro, 'danger')
+                except Exception as e:
+                    db.session.rollback()
+                    form_erro = f"Erro ao salvar agendamento: {str(e)}"
+                    flash(form_erro, 'danger')
+                else:
+                    flash("Agendamento criado com sucesso!", "success")
+                    if current_user.tipo == 'professor':
+                        return redirect(
+                            url_for(
+                                'routes.adicionar_alunos_professor',
+                                agendamento_id=agendamento.id,
+                            )
+                        )
+                    if current_user.tipo == 'cliente':
+                        return redirect(
+                            url_for(
+                                'routes.adicionar_alunos_professor',
+                                agendamento_id=agendamento.id,
+                            )
+                        )
+                    return redirect(url_for(endpoints.DASHBOARD))
                 
         except Exception as e:
             form_erro = f"Erro ao processar o formulário: {str(e)}"
