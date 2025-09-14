@@ -5303,9 +5303,10 @@ def aprovar_agendamento_cliente(agendamento_id):
         db.session.commit()
         NotificacaoAgendamentoService.enviar_email_confirmacao(agendamento)
         flash('Agendamento aprovado com sucesso!', 'success')
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        flash(f'Erro ao aprovar agendamento: {str(e)}', 'danger')
+        current_app.logger.exception("Erro ao aprovar agendamento")
+        flash('Erro ao aprovar agendamento.', 'danger')
 
     return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
 
