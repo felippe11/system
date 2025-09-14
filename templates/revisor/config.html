@@ -107,12 +107,12 @@
       <div class="card-body">
 
         <div class="row mb-3">
-          <div class="col-md-6 mb-3 mb-md-0">
+          <div class="col-12 mb-3">
             <label class="form-label fw-semibold">Nome do Processo</label>
             <input type="text" class="form-control" name="nome" value="{{ processo.nome if processo else '' }}" required>
             <div class="invalid-feedback">Por favor, informe o nome do processo.</div>
           </div>
-          <div class="col-md-6">
+          <div class="col-12">
             <label class="form-label fw-semibold">Status</label>
             {% set pstatus = processo.status if processo else '' %}
             <select class="form-select" name="status" required>
@@ -144,7 +144,7 @@
       <div class="card-body">
 
         <div class="row">
-          <div class="col-md-6 mb-3">
+          <div class="col-12 mb-3">
             <label class="form-label fw-semibold">
               <i class="bi bi-calendar-plus me-1"></i>
               Data de Início
@@ -156,7 +156,7 @@
               Por favor, selecione a data de início.
             </div>
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col-12 mb-3">
             <label class="form-label fw-semibold">
               <i class="bi bi-calendar-x me-1"></i>
               Data de Término
@@ -203,7 +203,7 @@
       </div>
       <div class="card-body">
         <div class="row">
-          <div class="col-md-6 mb-3">
+          <div class="col-12 mb-3">
             <label class="form-label fw-semibold">
               <i class="bi bi-clipboard-data me-1"></i>
               Formulário de Candidatura
@@ -224,7 +224,7 @@
             </div>
             {% endif %}
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col-12 mb-3">
             <label class="form-label fw-semibold">
               <i class="bi bi-calendar-event me-1"></i>
               Eventos Vinculados <small class="text-muted">(opcional)</small>
