@@ -1,4 +1,4 @@
-from flask import g
+from datetime import datetime
 from flask_login import current_user
 from utils.auth import (
     has_permission, 
@@ -22,7 +22,8 @@ def inject_auth_context():
         'is_ministrante': is_ministrante,
         'is_participante': is_participante,
         'can_access_resource': can_access_resource,
-        'current_user_authenticated': current_user.is_authenticated if current_user else False
+        'current_user_authenticated': current_user.is_authenticated if current_user else False,
+        'now': datetime.utcnow
     }
 
 def register_template_context(app):
