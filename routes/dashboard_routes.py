@@ -41,7 +41,7 @@ def dashboard():
 
     elif tipo == "ministrante":
         return redirect(
-            url_for("dashboard_ministrante_routes.dashboard_ministrante")
+            url_for("formador_routes.dashboard_formador")
         )
 
     elif tipo == "professor":

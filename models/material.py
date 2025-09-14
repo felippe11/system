@@ -190,3 +190,128 @@ class MonitorPolo(db.Model):
             'data_atribuicao': self.data_atribuicao.isoformat() if self.data_atribuicao else None,
             'ativo': self.ativo
         }
+
+
+class MaterialDisponivel(db.Model):
+    """Modelo para materiais disponíveis para solicitação por formadores."""
+    __tablename__ = "material_disponivel"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    tipo_material = db.Column(db.String(100), nullable=False)  # consumivel, permanente, equipamento
+    unidade_medida = db.Column(db.String(50), nullable=False, default="unidade")
+    
+    # Controle de solicitação
+    quantidade_minima_pedido = db.Column(db.Integer, nullable=False, default=1)
+    quantidade_maxima_pedido = db.Column(db.Integer, nullable=False, default=100)
+    disponivel_para_solicitacao = db.Column(db.Boolean, default=True)
+    
+    # Controle de estoque
+    quantidade_estoque = db.Column(db.Integer, nullable=False, default=0)
+    estoque_minimo = db.Column(db.Integer, nullable=False, default=0)
+    
+    # Relacionamento com cliente
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    cliente = db.relationship("Cliente", backref=db.backref("materiais_disponiveis", lazy=True))
+    
+    # Controle
+    ativo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<MaterialDisponivel {self.nome}>"
+    
+    @property
+    def status_estoque(self):
+        """Retorna o status do estoque."""
+        if self.quantidade_estoque <= 0:
+            return "esgotado"
+        elif self.quantidade_estoque <= self.estoque_minimo:
+            return "baixo"
+        else:
+            return "normal"
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'descricao': self.descricao,
+            'tipo_material': self.tipo_material,
+            'unidade_medida': self.unidade_medida,
+            'quantidade_minima_pedido': self.quantidade_minima_pedido,
+            'quantidade_maxima_pedido': self.quantidade_maxima_pedido,
+            'disponivel_para_solicitacao': self.disponivel_para_solicitacao,
+            'quantidade_estoque': self.quantidade_estoque,
+            'estoque_minimo': self.estoque_minimo,
+            'status_estoque': self.status_estoque,
+            'ativo': self.ativo,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class SolicitacaoMaterialFormador(db.Model):
+    """Modelo para solicitações de material feitas por formadores."""
+    __tablename__ = "solicitacao_material_formador"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Relacionamentos
+    formador_id = db.Column(db.Integer, db.ForeignKey("ministrante.id"), nullable=False)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    material_disponivel_id = db.Column(db.Integer, db.ForeignKey("material_disponivel.id"), nullable=True)
+    
+    # Dados da solicitação
+    tipo_solicitacao = db.Column(db.String(20), nullable=False)  # 'catalogo' ou 'adicional'
+    nome_material = db.Column(db.String(255), nullable=False)  # Para materiais adicionais
+    descricao_material = db.Column(db.Text, nullable=True)
+    unidade_medida = db.Column(db.String(50), nullable=False)
+    quantidade_solicitada = db.Column(db.Integer, nullable=False)
+    justificativa = db.Column(db.Text, nullable=False)
+    
+    # Controle de status
+    status = db.Column(db.String(20), default='pendente')  # pendente, aprovado, rejeitado, parcialmente_aprovado
+    quantidade_aprovada = db.Column(db.Integer, nullable=True)
+    observacoes_cliente = db.Column(db.Text, nullable=True)
+    
+    # Controle de entrega
+    entregue = db.Column(db.Boolean, default=False)
+    data_entrega = db.Column(db.DateTime, nullable=True)
+    observacoes_entrega = db.Column(db.Text, nullable=True)
+    
+    # Datas
+    data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_resposta = db.Column(db.DateTime, nullable=True)
+    
+    # Relacionamentos
+    formador = db.relationship("Ministrante", backref=db.backref("solicitacoes_material_formador", lazy=True))
+    cliente = db.relationship("Cliente", backref=db.backref("solicitacoes_material_formador", lazy=True))
+    material_disponivel = db.relationship("MaterialDisponivel", backref=db.backref("solicitacoes", lazy=True))
+    
+    def __repr__(self):
+        return f"<SolicitacaoMaterialFormador {self.nome_material} - {self.formador.nome}>"
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'formador_id': self.formador_id,
+            'formador_nome': self.formador.nome if self.formador else None,
+            'cliente_id': self.cliente_id,
+            'material_disponivel_id': self.material_disponivel_id,
+            'tipo_solicitacao': self.tipo_solicitacao,
+            'nome_material': self.nome_material,
+            'descricao_material': self.descricao_material,
+            'unidade_medida': self.unidade_medida,
+            'quantidade_solicitada': self.quantidade_solicitada,
+            'quantidade_aprovada': self.quantidade_aprovada,
+            'justificativa': self.justificativa,
+            'status': self.status,
+            'observacoes_cliente': self.observacoes_cliente,
+            'entregue': self.entregue,
+            'data_entrega': self.data_entrega.isoformat() if self.data_entrega else None,
+            'observacoes_entrega': self.observacoes_entrega,
+            'data_solicitacao': self.data_solicitacao.isoformat() if self.data_solicitacao else None,
+            'data_resposta': self.data_resposta.isoformat() if self.data_resposta else None
+        }

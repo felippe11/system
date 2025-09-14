@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Trilha Formativa - Cliente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Nova Trilha Formativa</h1>
+                <a href="{{ url_for('cliente_formador_routes.listar_trilhas_formativas') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações da Trilha</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="formTrilha">
+                        <div class="form-group">
+                            <label for="nome">Nome da Trilha *</label>
+                            <input type="text" class="form-control" id="nome" name="nome" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="descricao">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Campos da Trilha</h5>
+                            <button type="button" class="btn btn-success btn-sm" onclick="adicionarCampo()">
+                                <i class="fas fa-plus"></i> Adicionar Campo
+                            </button>
+                        </div>
+                        
+                        <div id="camposList">
+                            <!-- Campos serão adicionados aqui dinamicamente -->
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Trilha
+                            </button>
+                            <a href="{{ url_for('cliente_formador_routes.listar_trilhas_formativas') }}" class="btn btn-secondary">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Ajuda</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Tipos de Campo Disponíveis:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Texto:</strong> Campo de texto simples</li>
+                        <li><strong>Textarea:</strong> Campo de texto longo</li>
+                        <li><strong>Número:</strong> Campo numérico</li>
+                        <li><strong>Data:</strong> Campo de data</li>
+                        <li><strong>Select:</strong> Lista de opções</li>
+                        <li><strong>Checkbox:</strong> Múltiplas opções</li>
+                        <li><strong>Radio:</strong> Opção única</li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6>Dicas:</h6>
+                    <ul class="list-unstyled">
+                        <li>• Use nomes descritivos para os campos</li>
+                        <li>• Marque como obrigatório apenas campos essenciais</li>
+                        <li>• Para campos select, checkbox e radio, separe as opções por vírgula</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para novo campo -->
+<template id="campoTemplate">
+    <div class="card mb-3 campo-item">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Campo #{index}</h6>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removerCampo(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Nome do Campo *</label>
+                        <input type="text" class="form-control" name="campo_nome[]" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Tipo *</label>
+                        <select class="form-control" name="campo_tipo[]" onchange="toggleOpcoes(this)" required>
+                            <option value="">Selecione...</option>
+                            <option value="texto">Texto</option>
+                            <option value="textarea">Textarea</option>
+                            <option value="numero">Número</option>
+                            <option value="data">Data</option>
+                            <option value="select">Select</option>
+                            <option value="checkbox">Checkbox</option>
+                            <option value="radio">Radio</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group opcoes-group" style="display: none;">
+                <label>Opções (separadas por vírgula)</label>
+                <input type="text" class="form-control" name="campo_opcoes[]" placeholder="Opção 1, Opção 2, Opção 3">
+            </div>
+            
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" name="campo_obrigatorio[]" value="{index}">
+                <label class="form-check-label">Campo obrigatório</label>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+let campoIndex = 0;
+
+function adicionarCampo() {
+    const template = document.getElementById('campoTemplate');
+    const clone = template.content.cloneNode(true);
+    
+    // Substituir {index} pelo índice atual
+    clone.innerHTML = clone.innerHTML.replace(/\{index\}/g, campoIndex);
+    
+    document.getElementById('camposList').appendChild(clone);
+    campoIndex++;
+}
+
+function removerCampo(button) {
+    button.closest('.campo-item').remove();
+}
+
+function toggleOpcoes(select) {
+    const opcoesGroup = select.closest('.card-body').querySelector('.opcoes-group');
+    const needsOptions = ['select', 'checkbox', 'radio'].includes(select.value);
+    
+    if (needsOptions) {
+        opcoesGroup.style.display = 'block';
+        opcoesGroup.querySelector('input').required = true;
+    } else {
+        opcoesGroup.style.display = 'none';
+        opcoesGroup.querySelector('input').required = false;
+    }
+}
+
+// Adicionar um campo inicial
+document.addEventListener('DOMContentLoaded', function() {
+    adicionarCampo();
+});
+
+// Validação do formulário
+document.getElementById('formTrilha').addEventListener('submit', function(e) {
+    const campos = document.querySelectorAll('input[name="campo_nome[]"]');
+    if (campos.length === 0) {
+        e.preventDefault();
+        alert('Adicione pelo menos um campo à trilha formativa.');
+        return false;
+    }
+    
+    // Verificar se todos os campos têm nome
+    for (let campo of campos) {
+        if (!campo.value.trim()) {
+            e.preventDefault();
+            alert('Todos os campos devem ter um nome.');
+            campo.focus();
+            return false;
+        }
+    }
+});
+</script>
+{% endblock %}

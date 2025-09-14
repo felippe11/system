@@ -16,6 +16,7 @@ from models.formador import (
     SolicitacaoMaterial, MaterialAprovado, ConfiguracaoRelatorioFormador,
     RelatorioFormador, ArquivoFormador, FormadorMonitor
 )
+from models.material import MaterialDisponivel, SolicitacaoMaterialFormador, Material
 from models import Oficina
 from utils.auth import ministrante_required
 from utils import endpoints
@@ -118,7 +119,7 @@ def dashboard_formador():
     oficinas = Oficina.query.filter_by(ministrante_id=formador.id).all()
     
     # Buscar solicitações de material pendentes
-    solicitacoes_pendentes = SolicitacaoMaterial.query.filter_by(
+    solicitacoes_pendentes = SolicitacaoMaterialFormador.query.filter_by(
         formador_id=formador.id,
         status='pendente'
     ).count()
@@ -151,34 +152,86 @@ def dashboard_formador():
 def solicitar_material():
     """Página para solicitação de materiais"""
     if request.method == 'POST':
-        tipo_solicitacao = request.form.get('tipo_solicitacao')
-        atividade_id = request.form.get('atividade_id') if tipo_solicitacao == 'atividade' else None
-        tipo_material = request.form.get('tipo_material')
-        unidade_medida = request.form.get('unidade_medida')
-        quantidade = int(request.form.get('quantidade'))
-        justificativa = request.form.get('justificativa')
-        
-        solicitacao = SolicitacaoMaterial(
-            formador_id=current_user.id,
-            cliente_id=current_user.cliente_id,
-            atividade_id=atividade_id,
-            tipo_solicitacao=tipo_solicitacao,
-            tipo_material=tipo_material,
-            unidade_medida=unidade_medida,
-            quantidade=quantidade,
-            justificativa=justificativa
-        )
-        
-        db.session.add(solicitacao)
-        db.session.commit()
-        
-        flash('Solicitação de material enviada com sucesso!', 'success')
-        return redirect(url_for('formador_routes.minhas_solicitacoes'))
+        try:
+            tipo = request.form.get('tipo')  # 'existente' ou 'adicional'
+            quantidade = int(request.form.get('quantidade'))
+            justificativa = request.form.get('justificativa', '')
+            
+            if tipo == 'existente':
+                material_id = int(request.form.get('material_id'))
+                
+                # Verificar se o material está disponível para formadores
+                material_disponivel = MaterialDisponivel.query.filter_by(
+                    material_id=material_id,
+                    cliente_id=current_user.cliente_id,
+                    ativo=True
+                ).first()
+                
+                if not material_disponivel:
+                    flash('Material não disponível para solicitação', 'error')
+                    return redirect(url_for('formador_routes.solicitar_material'))
+                
+                # Verificar limites de quantidade
+                if quantidade < material_disponivel.quantidade_minima or quantidade > material_disponivel.quantidade_maxima:
+                    flash(f'Quantidade deve estar entre {material_disponivel.quantidade_minima} e {material_disponivel.quantidade_maxima}', 'error')
+                    return redirect(url_for('formador_routes.solicitar_material'))
+                
+                # Verificar estoque
+                material = Material.query.get(material_id)
+                if material.quantidade_estoque < quantidade:
+                    flash('Quantidade solicitada excede o estoque disponível', 'error')
+                    return redirect(url_for('formador_routes.solicitar_material'))
+                
+                solicitacao = SolicitacaoMaterialFormador(
+                    formador_id=current_user.id,
+                    cliente_id=current_user.cliente_id,
+                    material_id=material_id,
+                    tipo='existente',
+                    quantidade=quantidade,
+                    justificativa=justificativa,
+                    status='pendente',
+                    created_at=datetime.utcnow()
+                )
+                
+            else:  # tipo == 'adicional'
+                nome_material = request.form.get('nome_material_adicional')
+                descricao_material = request.form.get('descricao_material_adicional', '')
+                unidade_material = request.form.get('unidade_material_adicional')
+                
+                if not nome_material or not unidade_material:
+                    flash('Nome e unidade do material são obrigatórios', 'error')
+                    return redirect(url_for('formador_routes.solicitar_material'))
+                
+                solicitacao = SolicitacaoMaterialFormador(
+                    formador_id=current_user.id,
+                    cliente_id=current_user.cliente_id,
+                    tipo='adicional',
+                    nome_material_adicional=nome_material,
+                    descricao_material_adicional=descricao_material,
+                    unidade_material_adicional=unidade_material,
+                    quantidade=quantidade,
+                    justificativa=justificativa,
+                    status='pendente',
+                    created_at=datetime.utcnow()
+                )
+            
+            db.session.add(solicitacao)
+            db.session.commit()
+            
+            flash('Solicitação de material enviada com sucesso!', 'success')
+            return redirect(url_for('formador_routes.minhas_solicitacoes'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao enviar solicitação: {str(e)}', 'error')
     
-    # Buscar atividades do formador para o select
-    oficinas = Oficina.query.filter_by(ministrante_id=current_user.id).all()
+    # Buscar materiais disponíveis para formadores
+    materiais_disponiveis = MaterialDisponivel.query.filter_by(
+        cliente_id=current_user.cliente_id,
+        ativo=True
+    ).all()
     
-    return render_template('formador/solicitar_material.html', oficinas=oficinas)
+    return render_template('formador/solicitar_material.html', materiais_disponiveis=materiais_disponiveis)
 
 
 @formador_routes.route('/minhas_solicitacoes')
@@ -186,9 +239,9 @@ def solicitar_material():
 @ministrante_required
 def minhas_solicitacoes():
     """Lista de solicitações de material do formador"""
-    solicitacoes = SolicitacaoMaterial.query.filter_by(
+    solicitacoes = SolicitacaoMaterialFormador.query.filter_by(
         formador_id=current_user.id
-    ).order_by(SolicitacaoMaterial.data_solicitacao.desc()).all()
+    ).order_by(SolicitacaoMaterialFormador.created_at.desc()).all()
     
     return render_template('formador/minhas_solicitacoes.html', solicitacoes=solicitacoes)
 
