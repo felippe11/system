@@ -61,12 +61,12 @@ class NotificacaoAgendamentoService:
     
     @staticmethod
     def enviar_email_confirmacao(agendamento):
-        """
-        Envia email de confirmação para o professor após um agendamento
-        
+        """Envia email de confirmação para o professor após um agendamento.
+
         Args:
             agendamento: Objeto AgendamentoVisita
         """
+        from datetime import datetime
         professor = agendamento.professor
         if professor is None:
             return
@@ -81,7 +81,8 @@ class NotificacaoAgendamentoService:
             professor=professor,
             agendamento=agendamento,
             horario=horario,
-            evento=evento
+            evento=evento,
+            current_year=datetime.utcnow().year,
         )
         
         # Enviar em um thread separado para não bloquear a resposta ao usuário
