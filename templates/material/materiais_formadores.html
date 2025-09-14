@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Materiais para Formadores{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                Gerenciar Materiais para Formadores
+                {% if formador_selecionado %}
+                    <small class="text-muted">- {{ formador_selecionado.nome }}</small>
+                {% endif %}
+            </h1>
+            {% if formador_selecionado %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    Visualizando materiais para o formador: <strong>{{ formador_selecionado.nome }}</strong>
+                    <a href="{{ url_for('material_routes.gerenciar_materiais_formadores') }}" class="btn btn-sm btn-outline-primary ms-2">
+                        <i class="fas fa-times"></i> Remover Filtro
+                    </a>
+                </div>
+            {% endif %}
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Materiais Disponíveis para Formadores</h4>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#adicionarMaterialModal">
+                        <i class="fas fa-plus"></i> Adicionar Material
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if materiais_disponiveis %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Categoria</th>
+                                        <th>Unidade</th>
+                                        <th>Estoque Atual</th>
+                                        <th>Qtd. Mínima</th>
+                                        <th>Qtd. Máxima</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for material_disp in materiais_disponiveis %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ material_disp.material.nome }}</strong>
+                                            {% if material_disp.material.descricao %}
+                                                <br><small class="text-muted">{{ material_disp.material.descricao }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ material_disp.material.categoria or '-' }}</td>
+                                        <td>{{ material_disp.material.unidade }}</td>
+                                        <td>
+                                            <span class="badge {% if material_disp.material.quantidade_estoque <= material_disp.material.quantidade_minima %}bg-danger{% elif material_disp.material.quantidade_estoque <= (material_disp.material.quantidade_minima * 2) %}bg-warning{% else %}bg-success{% endif %}">
+                                                {{ material_disp.material.quantidade_estoque }}
+                                            </span>
+                                        </td>
+                                        <td>{{ material_disp.quantidade_minima }}</td>
+                                        <td>{{ material_disp.quantidade_maxima }}</td>
+                                        <td>
+                                            {% if material_disp.material.quantidade_estoque > 0 %}
+                                                <span class="badge bg-success">Disponível</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Indisponível</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('material_routes.editar_material_formador', material_disponivel_id=material_disp.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="confirmarRemocao({{ material_disp.id }}, '{{ material_disp.material.nome }}')" 
+                                                        title="Remover">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhum material disponível para formadores</h5>
+                            <p class="text-muted">Adicione materiais para que os formadores possam solicitar.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar Material -->
+<div class="modal fade" id="adicionarMaterialModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('material_routes.adicionar_material_formador') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Adicionar Material para Formadores</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="material_id" class="form-label">Material *</label>
+                        <select class="form-select" id="material_id" name="material_id" required>
+                            <option value="">Selecione um material</option>
+                            {% for material in materiais %}
+                                <option value="{{ material.id }}">
+                                    {{ material.nome }} - {{ material.categoria or 'Sem categoria' }} (Estoque: {{ material.quantidade_estoque }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantidade_minima" class="form-label">Quantidade Mínima *</label>
+                                <input type="number" class="form-control" id="quantidade_minima" name="quantidade_minima" 
+                                       value="1" min="1" required>
+                                <div class="form-text">Quantidade mínima que o formador pode solicitar</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantidade_maxima" class="form-label">Quantidade Máxima *</label>
+                                <input type="number" class="form-control" id="quantidade_maxima" name="quantidade_maxima" 
+                                       value="100" min="1" required>
+                                <div class="form-text">Quantidade máxima que o formador pode solicitar</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Remoção -->
+<div class="modal fade" id="confirmarRemocaoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover o material <strong id="materialNome"></strong> da lista de materiais disponíveis para formadores?</p>
+                <p class="text-muted">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" id="formRemover" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Remover</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarRemocao(materialId, materialNome) {
+    document.getElementById('materialNome').textContent = materialNome;
+    document.getElementById('formRemover').action = `/materiais-formadores/remover/${materialId}`;
+    new bootstrap.Modal(document.getElementById('confirmarRemocaoModal')).show();
+}
+
+// Validação do formulário
+document.addEventListener('DOMContentLoaded', function() {
+    const quantidadeMinima = document.getElementById('quantidade_minima');
+    const quantidadeMaxima = document.getElementById('quantidade_maxima');
+    
+    function validarQuantidades() {
+        const min = parseInt(quantidadeMinima.value) || 0;
+        const max = parseInt(quantidadeMaxima.value) || 0;
+        
+        if (min > max) {
+            quantidadeMaxima.setCustomValidity('A quantidade máxima deve ser maior ou igual à mínima');
+        } else {
+            quantidadeMaxima.setCustomValidity('');
+        }
+    }
+    
+    quantidadeMinima.addEventListener('input', validarQuantidades);
+    quantidadeMaxima.addEventListener('input', validarQuantidades);
+});
+</script>
+{% endblock %}

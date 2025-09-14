@@ -1259,3 +1259,286 @@ def movimentar_material(material_id):
 
     return render_template('material/movimentar_material.html', material=material)
 
+
+@material_routes.route('/materiais-formadores')
+@login_required
+def gerenciar_materiais_formadores():
+    """Página para gerenciar materiais disponíveis para formadores."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    # Filtro por formador específico (opcional)
+    formador_id = request.args.get('formador_id')
+    formador_selecionado = None
+    
+    if formador_id:
+        from models.user import Ministrante
+        formador_selecionado = Ministrante.query.filter_by(
+            id=formador_id, cliente_id=current_user.id
+        ).first()
+
+    # Buscar materiais disponíveis para formadores
+    materiais_disponiveis = MaterialDisponivel.query.filter_by(
+        cliente_id=current_user.id, ativo=True
+    ).all()
+    
+    # Buscar todos os materiais para adicionar
+    materiais = Material.query.filter_by(
+        cliente_id=current_user.id, ativo=True
+    ).all()
+    
+    # Buscar todos os formadores para o filtro
+    from models.user import Ministrante
+    formadores = Ministrante.query.filter_by(
+        cliente_id=current_user.id, ativo=True
+    ).all()
+    
+    return render_template(
+        'material/materiais_formadores.html',
+        materiais_disponiveis=materiais_disponiveis,
+        materiais=materiais,
+        formadores=formadores,
+        formador_selecionado=formador_selecionado
+    )
+
+
+@material_routes.route('/materiais-formadores/adicionar', methods=['POST'])
+@login_required
+def adicionar_material_formador():
+    """Adicionar material disponível para formadores."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    try:
+        material_id = int(request.form.get('material_id'))
+        quantidade_minima = int(request.form.get('quantidade_minima', 1))
+        quantidade_maxima = int(request.form.get('quantidade_maxima', 100))
+        
+        # Verificar se o material já está disponível
+        material_existente = MaterialDisponivel.query.filter_by(
+            material_id=material_id,
+            cliente_id=current_user.id,
+            ativo=True
+        ).first()
+        
+        if material_existente:
+            flash('Material já está disponível para formadores', 'warning')
+            return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+        
+        # Criar novo material disponível
+        material_disponivel = MaterialDisponivel(
+            material_id=material_id,
+            cliente_id=current_user.id,
+            quantidade_minima=quantidade_minima,
+            quantidade_maxima=quantidade_maxima,
+            ativo=True,
+            created_at=datetime.utcnow()
+        )
+        
+        db.session.add(material_disponivel)
+        db.session.commit()
+        
+        flash('Material adicionado com sucesso para formadores', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao adicionar material: {str(e)}', 'error')
+    
+    return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+
+
+@material_routes.route('/materiais-formadores/editar/<int:material_disponivel_id>', methods=['GET', 'POST'])
+@login_required
+def editar_material_formador(material_disponivel_id):
+    """Editar material disponível para formadores."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    material_disponivel = MaterialDisponivel.query.filter_by(
+        id=material_disponivel_id,
+        cliente_id=current_user.id,
+        ativo=True
+    ).first()
+    
+    if not material_disponivel:
+        flash('Material não encontrado', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+    
+    if request.method == 'POST':
+        try:
+            material_disponivel.quantidade_minima = int(request.form.get('quantidade_minima', 1))
+            material_disponivel.quantidade_maxima = int(request.form.get('quantidade_maxima', 100))
+            material_disponivel.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            flash('Material atualizado com sucesso', 'success')
+            return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar material: {str(e)}', 'error')
+    
+    return render_template(
+        'material/editar_material_formador.html',
+        material_disponivel=material_disponivel
+    )
+
+
+@material_routes.route('/materiais-formadores/remover/<int:material_disponivel_id>', methods=['POST'])
+@login_required
+def remover_material_formador(material_disponivel_id):
+    """Remover material disponível para formadores."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    try:
+        material_disponivel = MaterialDisponivel.query.filter_by(
+            id=material_disponivel_id,
+            cliente_id=current_user.id,
+            ativo=True
+        ).first()
+        
+        if not material_disponivel:
+            flash('Material não encontrado', 'error')
+            return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+        
+        material_disponivel.ativo = False
+        material_disponivel.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        flash('Material removido com sucesso', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao remover material: {str(e)}', 'error')
+    
+    return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+
+
+@material_routes.route('/solicitacoes-materiais')
+@login_required
+def listar_solicitacoes_materiais():
+    """Listar solicitações de materiais dos formadores."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    # Filtro por formador específico (opcional)
+    formador_id = request.args.get('formador_id')
+    formador_selecionado = None
+    
+    # Query base para solicitações
+    query = SolicitacaoMaterialFormador.query.filter_by(
+        cliente_id=current_user.id
+    )
+    
+    # Aplicar filtro por formador se especificado
+    if formador_id:
+        from models.user import Ministrante
+        formador_selecionado = Ministrante.query.filter_by(
+            id=formador_id, cliente_id=current_user.id
+        ).first()
+        if formador_selecionado:
+            query = query.filter_by(formador_id=formador_id)
+    
+    # Buscar solicitações de materiais
+    solicitacoes = query.order_by(SolicitacaoMaterialFormador.created_at.desc()).all()
+    
+    # Buscar todos os formadores para o filtro
+    from models.user import Ministrante
+    formadores = Ministrante.query.filter_by(
+        cliente_id=current_user.id, ativo=True
+    ).all()
+    
+    return render_template(
+        'material/solicitacoes_materiais.html',
+        solicitacoes=solicitacoes,
+        formadores=formadores,
+        formador_selecionado=formador_selecionado
+    )
+
+
+@material_routes.route('/solicitacoes-materiais/aprovar/<int:solicitacao_id>', methods=['POST'])
+@login_required
+def aprovar_solicitacao_material(solicitacao_id):
+    """Aprovar solicitação de material."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    try:
+        solicitacao = SolicitacaoMaterialFormador.query.filter_by(
+            id=solicitacao_id,
+            cliente_id=current_user.id
+        ).first()
+        
+        if not solicitacao:
+            flash('Solicitação não encontrada', 'error')
+            return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
+        
+        if solicitacao.status != 'pendente':
+            flash('Solicitação já foi processada', 'warning')
+            return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
+        
+        # Atualizar status
+        solicitacao.status = 'aprovada'
+        solicitacao.data_aprovacao = datetime.utcnow()
+        solicitacao.updated_at = datetime.utcnow()
+        
+        # Se for material existente, atualizar estoque
+        if solicitacao.tipo == 'existente' and solicitacao.material_id:
+            material = Material.query.get(solicitacao.material_id)
+            if material and material.quantidade_estoque >= solicitacao.quantidade:
+                material.quantidade_estoque -= solicitacao.quantidade
+                material.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        flash('Solicitação aprovada com sucesso', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao aprovar solicitação: {str(e)}', 'error')
+    
+    return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
+
+
+@material_routes.route('/solicitacoes-materiais/rejeitar/<int:solicitacao_id>', methods=['POST'])
+@login_required
+def rejeitar_solicitacao_material(solicitacao_id):
+    """Rejeitar solicitação de material."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    try:
+        solicitacao = SolicitacaoMaterialFormador.query.filter_by(
+            id=solicitacao_id,
+            cliente_id=current_user.id
+        ).first()
+        
+        if not solicitacao:
+            flash('Solicitação não encontrada', 'error')
+            return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
+        
+        if solicitacao.status != 'pendente':
+            flash('Solicitação já foi processada', 'warning')
+            return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
+        
+        # Atualizar status
+        solicitacao.status = 'rejeitada'
+        solicitacao.motivo_rejeicao = request.form.get('motivo', '')
+        solicitacao.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        flash('Solicitação rejeitada', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao rejeitar solicitação: {str(e)}', 'error')
+    
+    return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
+

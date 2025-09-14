@@ -8,7 +8,7 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3">Solicitar Material</h1>
-                <a href="{{ url_for('formador_routes.dashboard') }}" class="btn btn-secondary">
+                <a href="{{ url_for('formador_routes.dashboard_formador') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
                 </a>
             </div>
@@ -22,38 +22,108 @@
                     <h5 class="mb-0">Nova Solicitação de Material</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST">
-                        {{ form.hidden_tag() }}
+                    <form method="POST" id="formSolicitacao">
+                        
+                        <div class="form-group mb-4">
+                            <label class="form-label">Tipo de Solicitação *</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo" id="tipoExistente" value="existente" checked>
+                                        <label class="form-check-label" for="tipoExistente">
+                                            <strong>Material Existente</strong>
+                                            <br><small class="text-muted">Solicitar material já cadastrado no sistema</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo" id="tipoAdicional" value="adicional">
+                                        <label class="form-check-label" for="tipoAdicional">
+                                            <strong>Material Adicional</strong>
+                                            <br><small class="text-muted">Solicitar material não cadastrado</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Seção Material Existente -->
+                        <div id="secaoMaterialExistente">
+                            <div class="form-group">
+                                <label for="material_id" class="form-label">Material Disponível *</label>
+                                <select class="form-control" id="material_id" name="material_id">
+                                    <option value="">Selecione um material</option>
+                                    {% for material_disp in materiais_disponiveis %}
+                                        <option value="{{ material_disp.material.id }}" 
+                                                data-min="{{ material_disp.quantidade_minima }}" 
+                                                data-max="{{ material_disp.quantidade_maxima }}"
+                                                data-estoque="{{ material_disp.material.quantidade_estoque }}"
+                                                data-unidade="{{ material_disp.material.unidade }}">
+                                            {{ material_disp.material.nome }} - {{ material_disp.material.categoria or 'Sem categoria' }} 
+                                            (Estoque: {{ material_disp.material.quantidade_estoque }} {{ material_disp.material.unidade }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div id="infoMaterial" class="form-text" style="display: none;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Seção Material Adicional -->
+                        <div id="secaoMaterialAdicional" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="nome_material_adicional" class="form-label">Nome do Material *</label>
+                                        <input type="text" class="form-control" id="nome_material_adicional" name="nome_material_adicional" 
+                                               placeholder="Ex: Papel A4, Caneta azul...">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="unidade_material_adicional" class="form-label">Unidade de Medida *</label>
+                                        <input type="text" class="form-control" id="unidade_material_adicional" name="unidade_material_adicional" 
+                                               placeholder="Ex: unidade, pacote, caixa...">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="descricao_material_adicional" class="form-label">Descrição (opcional)</label>
+                                <textarea class="form-control" id="descricao_material_adicional" name="descricao_material_adicional" 
+                                          rows="3" placeholder="Descreva as características do material..."></textarea>
+                            </div>
+                        </div>
                         
                         <div class="form-group">
-                            {{ form.atividade_id.label(class="form-label") }}
-                            {{ form.atividade_id(class="form-control") }}
+                            <label for="atividade_id" class="form-label">Atividade</label>
+                            <select name="atividade_id" id="atividade_id" class="form-control">
+                                <option value="">Selecione uma atividade (opcional)</option>
+                                {% for oficina in oficinas %}
+                                    <option value="{{ oficina.id }}">{{ oficina.nome }}</option>
+                                {% endfor %}
+                            </select>
                             <small class="form-text text-muted">Selecione a atividade relacionada ou deixe em branco para pedido geral</small>
-                        </div>
-
-                        <div class="form-group">
-                            {{ form.tipo_material.label(class="form-label") }}
-                            {{ form.tipo_material(class="form-control", required=True) }}
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    {{ form.unidade_medida.label(class="form-label") }}
-                                    {{ form.unidade_medida(class="form-control", required=True) }}
+                                    <label for="quantidade" class="form-label">Quantidade *</label>
+                                    <input type="number" name="quantidade" id="quantidade" class="form-control" required min="1" step="0.01">
+                                    <div id="infoQuantidade" class="form-text"></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    {{ form.quantidade.label(class="form-label") }}
-                                    {{ form.quantidade(class="form-control", required=True, min="1", step="0.01") }}
+                                    <label class="form-label">Estoque Disponível</label>
+                                    <div id="estoqueInfo" class="form-control-plaintext text-muted">Selecione um material</div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            {{ form.justificativa.label(class="form-label") }}
-                            {{ form.justificativa(class="form-control", rows="4", required=True) }}
+                            <label for="justificativa" class="form-label">Justificativa</label>
+                            <textarea name="justificativa" id="justificativa" class="form-control" rows="4" required></textarea>
                             <small class="form-text text-muted">Explique detalhadamente a necessidade do material</small>
                         </div>
 
@@ -61,7 +131,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-paper-plane"></i> Enviar Solicitação
                             </button>
-                            <a href="{{ url_for('formador_routes.dashboard') }}" class="btn btn-secondary ml-2">
+                            <a href="{{ url_for('formador_routes.dashboard_formador') }}" class="btn btn-secondary ml-2">
                                 Cancelar
                             </a>
                         </div>
@@ -139,34 +209,182 @@
             </div>
         </div>
     </div>
+    
+    {% if materiais_disponiveis %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Materiais Disponíveis para Solicitação</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Categoria</th>
+                                        <th>Unidade</th>
+                                        <th>Estoque</th>
+                                        <th>Qtd. Mín/Máx</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for material_disp in materiais_disponiveis %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ material_disp.material.nome }}</strong>
+                                            {% if material_disp.material.descricao %}
+                                                <br><small class="text-muted">{{ material_disp.material.descricao }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ material_disp.material.categoria or '-' }}</td>
+                                        <td>{{ material_disp.material.unidade }}</td>
+                                        <td>
+                                            <span class="badge {% if material_disp.material.quantidade_estoque <= material_disp.material.quantidade_minima %}badge-danger{% elif material_disp.material.quantidade_estoque <= (material_disp.material.quantidade_minima * 2) %}badge-warning{% else %}badge-success{% endif %}">
+                                                {{ material_disp.material.quantidade_estoque }}
+                                            </span>
+                                        </td>
+                                        <td>{{ material_disp.quantidade_minima }} - {{ material_disp.quantidade_maxima }}</td>
+                                        <td>
+                                            {% if material_disp.material.quantidade_estoque > 0 %}
+                                                <span class="badge badge-success">Disponível</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Sem estoque</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Nenhum material disponível</strong><br>
+                    Não há materiais cadastrados para solicitação. Entre em contato com o administrador ou solicite um material adicional.
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Validação do formulário
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const tipoMaterial = document.getElementById('tipo_material').value;
-        const quantidade = document.getElementById('quantidade').value;
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoExistente = document.getElementById('tipoExistente');
+    const tipoAdicional = document.getElementById('tipoAdicional');
+    const secaoExistente = document.getElementById('secaoMaterialExistente');
+    const secaoAdicional = document.getElementById('secaoMaterialAdicional');
+    const materialSelect = document.getElementById('material_id');
+    const quantidadeInput = document.getElementById('quantidade');
+    const infoMaterial = document.getElementById('infoMaterial');
+    const infoQuantidade = document.getElementById('infoQuantidade');
+    const estoqueInfo = document.getElementById('estoqueInfo');
+    
+    // Alternar entre tipos de solicitação
+    function alternarTipo() {
+        if (tipoExistente.checked) {
+            secaoExistente.style.display = 'block';
+            secaoAdicional.style.display = 'none';
+            materialSelect.required = true;
+            document.getElementById('nome_material_adicional').required = false;
+            document.getElementById('unidade_material_adicional').required = false;
+        } else {
+            secaoExistente.style.display = 'none';
+            secaoAdicional.style.display = 'block';
+            materialSelect.required = false;
+            document.getElementById('nome_material_adicional').required = true;
+            document.getElementById('unidade_material_adicional').required = true;
+        }
+        atualizarInfoMaterial();
+    }
+    
+    // Atualizar informações do material selecionado
+    function atualizarInfoMaterial() {
+        if (tipoExistente.checked && materialSelect.value) {
+            const option = materialSelect.selectedOptions[0];
+            const min = parseInt(option.dataset.min);
+            const max = parseInt(option.dataset.max);
+            const estoque = parseInt(option.dataset.estoque);
+            const unidade = option.dataset.unidade;
+            
+            quantidadeInput.min = min;
+            quantidadeInput.max = Math.min(max, estoque);
+            quantidadeInput.value = Math.max(min, 1);
+            
+            infoMaterial.style.display = 'block';
+            infoMaterial.innerHTML = `Quantidade permitida: ${min} - ${max} ${unidade}`;
+            
+            infoQuantidade.innerHTML = `Máximo disponível: ${Math.min(max, estoque)} ${unidade}`;
+            
+            estoqueInfo.innerHTML = `${estoque} ${unidade} disponível`;
+            estoqueInfo.className = `form-control-plaintext ${estoque > 0 ? 'text-success' : 'text-danger'}`;
+        } else {
+            infoMaterial.style.display = 'none';
+            infoQuantidade.innerHTML = '';
+            estoqueInfo.innerHTML = 'Selecione um material';
+            estoqueInfo.className = 'form-control-plaintext text-muted';
+            quantidadeInput.min = 1;
+            quantidadeInput.max = '';
+        }
+    }
+    
+    // Validar quantidade
+    function validarQuantidade() {
+        if (tipoExistente.checked && materialSelect.value) {
+            const option = materialSelect.selectedOptions[0];
+            const min = parseInt(option.dataset.min);
+            const max = parseInt(option.dataset.max);
+            const estoque = parseInt(option.dataset.estoque);
+            const quantidade = parseInt(quantidadeInput.value);
+            
+            if (quantidade < min) {
+                quantidadeInput.setCustomValidity(`Quantidade mínima: ${min}`);
+            } else if (quantidade > max) {
+                quantidadeInput.setCustomValidity(`Quantidade máxima: ${max}`);
+            } else if (quantidade > estoque) {
+                quantidadeInput.setCustomValidity(`Estoque insuficiente. Máximo: ${estoque}`);
+            } else {
+                quantidadeInput.setCustomValidity('');
+            }
+        } else {
+            quantidadeInput.setCustomValidity('');
+        }
+    }
+    
+    // Event listeners
+    tipoExistente.addEventListener('change', alternarTipo);
+    tipoAdicional.addEventListener('change', alternarTipo);
+    materialSelect.addEventListener('change', atualizarInfoMaterial);
+    quantidadeInput.addEventListener('input', validarQuantidade);
+    
+    // Validação no envio
+    document.getElementById('formSolicitacao').addEventListener('submit', function(e) {
         const justificativa = document.getElementById('justificativa').value;
-        
-        if (!tipoMaterial.trim() || !quantidade || !justificativa.trim()) {
-            e.preventDefault();
-            alert('Por favor, preencha todos os campos obrigatórios.');
-            return false;
-        }
-        
-        if (parseFloat(quantidade) <= 0) {
-            e.preventDefault();
-            alert('A quantidade deve ser maior que zero.');
-            return false;
-        }
         
         if (justificativa.trim().length < 10) {
             e.preventDefault();
             alert('A justificativa deve ter pelo menos 10 caracteres.');
             return false;
         }
+        
+        validarQuantidade();
+        if (!quantidadeInput.checkValidity()) {
+            e.preventDefault();
+        }
     });
+    
+    // Inicializar
+    alternarTipo();
+});
 </script>
 {% endblock %}

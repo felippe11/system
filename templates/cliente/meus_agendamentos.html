@@ -39,6 +39,7 @@
     </div>
     <div class="card-body">
       <form method="GET" action="{{ url_for('agendamento_routes.meus_agendamentos_cliente') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row g-3">
           <div class="col-md-4">
             <label for="data_inicio" class="form-label">Data Inicial</label>
@@ -125,6 +126,7 @@
           <form method="GET"
                 action="{{ url_for('agendamento_routes.meus_agendamentos_cliente') }}"
                 class="row g-2 align-items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="col-md-4">
               <select name="status" class="form-select">
                 <option value="">Todos os status</option>
@@ -236,12 +238,14 @@
                       {% if agendamento.status == 'pendente' %}
                       <!-- Botões para aprovar/negar agendamentos pendentes -->
                       <form method="POST" action="{{ url_for('agendamento_routes.aprovar_agendamento_cliente', agendamento_id=agendamento.id) }}" style="display: inline;" class="form-single-submit">
-                        <button type="submit" class="btn btn-sm btn-success" title="Aprovar agendamento" 
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-success" title="Aprovar agendamento"
                                 onclick="return confirm('Tem certeza que deseja aprovar este agendamento?')">
                           <i class="fas fa-check me-1"></i>Aprovar
                         </button>
                       </form>
                       <form method="POST" action="{{ url_for('agendamento_routes.negar_agendamento_cliente', agendamento_id=agendamento.id) }}" style="display: inline;" class="form-single-submit">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-danger" title="Negar agendamento"
                                 onclick="return confirm('Tem certeza que deseja negar este agendamento?')">
                           <i class="fas fa-times me-1"></i>Negar

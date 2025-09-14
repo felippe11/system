@@ -179,7 +179,7 @@ def enviar_relatorio(oficina_id):
 
     if oficina.ministrante_id != ministrante_logado.id:
         flash('Você não é responsável por esta oficina!', 'danger')
-        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
+        return redirect(url_for('formador_routes.dashboard_formador'))
 
     if request.method == 'POST':
         metodologia = request.form.get('metodologia')
@@ -207,7 +207,7 @@ def enviar_relatorio(oficina_id):
         db.session.commit()
 
         flash("Relatório enviado com sucesso!", "success")
-        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
+        return redirect(url_for('formador_routes.dashboard_formador'))
 
     return render_template('enviar_relatorio.html', oficina=oficina)
 
@@ -245,7 +245,7 @@ def upload_material(oficina_id):
             db.session.commit()
             
             flash('Material anexado com sucesso!', 'success')
-            return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
+            return redirect(url_for('formador_routes.dashboard_formador'))
         else:
             flash('Nenhum arquivo foi enviado.', 'danger')
     
