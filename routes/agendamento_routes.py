@@ -5303,6 +5303,7 @@ def aprovar_agendamento_cliente(agendamento_id):
         db.session.commit()
         NotificacaoAgendamentoService.enviar_email_confirmacao(agendamento)
         flash('Agendamento aprovado com sucesso!', 'success')
+
     except Exception:
         db.session.rollback()
         current_app.logger.exception("Erro ao aprovar agendamento")
