@@ -98,8 +98,8 @@ def app():
         db.session.commit()
         form.eventos.append(event)
         db.session.commit()
-        campo_email = CampoFormulario(formulario_id=form.id, nome="email", tipo="text")
-        campo_nome = CampoFormulario(formulario_id=form.id, nome="nome", tipo="text")
+        campo_email = CampoFormulario(formulario_id=form.id, nome="Email", tipo="text")
+        campo_nome = CampoFormulario(formulario_id=form.id, nome="Nome", tipo="text")
         db.session.add_all([campo_email, campo_nome])
         db.session.commit()
         evento = Evento(
@@ -158,7 +158,7 @@ def test_application_and_approval_flow(client, app):
 
     resp = client.post(
         f"/revisor/apply/{proc.id}",
-        data={str(campos["email"]): "rev@test", str(campos["nome"]): "Rev"},
+        data={str(campos["Email"]): "rev@test", str(campos["Nome"]): "Rev"},
     )
     assert resp.status_code in (302, 200)
 
@@ -196,7 +196,7 @@ def test_progress_pdf_download(client, app):
 
     client.post(
         f"/revisor/apply/{proc.id}",
-        data={str(campos["email"]): "pdf@test", str(campos["nome"]): "Pdf"},
+        data={str(campos["Email"]): "pdf@test", str(campos["Nome"]): "Pdf"},
     )
 
     with app.app_context():
@@ -269,7 +269,7 @@ def test_dashboard_lists_candidaturas_and_status_update(client, app):
 
     client.post(
         f"/revisor/apply/{proc.id}",
-        data={str(campos["email"]): "cand@test", str(campos["nome"]): "Cand"},
+        data={str(campos["Email"]): "cand@test", str(campos["Nome"]): "Cand"},
     )
 
     with app.app_context():
@@ -303,7 +303,7 @@ def test_approve_candidatura_without_email(client, app):
     # submit candidatura only with nome
     client.post(
         f"/revisor/apply/{proc.id}",
-        data={str(campos["nome"]): "SemEmail"},
+        data={str(campos["Nome"]): "SemEmail"},
     )
 
     with app.app_context():
@@ -326,7 +326,7 @@ def test_missing_required_field(client, app):
     with app.app_context():
         proc = RevisorProcess.query.first()
         campos = {c.nome: c.id for c in proc.formulario.campos}
-        campo_nome = CampoFormulario.query.get(campos["nome"])
+        campo_nome = CampoFormulario.query.get(campos["Nome"])
         campo_nome.obrigatorio = True
         db.session.commit()
         proc_id = proc.id
@@ -349,8 +349,8 @@ def test_duplicate_email(client, app):
         proc = RevisorProcess.query.first()
         campos = {c.nome: c.id for c in proc.formulario.campos}
         proc_id = proc.id
-        email_id = campos["email"]
-        nome_id = campos["nome"]
+        email_id = campos["Email"]
+        nome_id = campos["Nome"]
         start = RevisorCandidatura.query.count()
 
     client.post(
@@ -433,8 +433,8 @@ def test_application_with_checkbox_and_radio(client, app):
         campos = {c.nome: c.id for c in form.campos}
 
     data = {
-        str(campos["email"]): "cb@test",
-        str(campos["nome"]): "Checker",
+        str(campos["Email"]): "cb@test",
+        str(campos["Nome"]): "Checker",
         str(campos["areas"]): ["A", "B"],
         str(campos["nivel"]): "Junior",
     }

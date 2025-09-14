@@ -41,14 +41,14 @@ def app():
         db.session.commit()
         campo_email = CampoFormulario(
             formulario_id=form.id,
-            nome="email",
+            nome="Email",
             tipo="text",
             obrigatorio=True,
             protegido=True,
         )
         campo_nome = CampoFormulario(
             formulario_id=form.id,
-            nome="nome",
+            nome="Nome",
             tipo="text",
             obrigatorio=True,
             protegido=True,
@@ -78,9 +78,9 @@ def login(client, email, senha):
 
 def test_can_rename_protected_fields(client, app):
     with app.app_context():
-        campo_email = CampoFormulario.query.filter_by(nome="email").first()
+        campo_email = CampoFormulario.query.filter_by(nome="Email").first()
         email_id = campo_email.id
-        campo_nome = CampoFormulario.query.filter_by(nome="nome").first()
+        campo_nome = CampoFormulario.query.filter_by(nome="Nome").first()
         nome_id = campo_nome.id
     login(client, "cli@test", "123")
     resp_email = client.post(
@@ -112,7 +112,7 @@ def test_can_rename_protected_fields(client, app):
 
 def test_cannot_modify_other_attributes(client, app):
     with app.app_context():
-        campo = CampoFormulario.query.filter_by(nome="email").first()
+        campo = CampoFormulario.query.filter_by(nome="Email").first()
         campo_id = campo.id
     login(client, "cli@test", "123")
     resp = client.post(

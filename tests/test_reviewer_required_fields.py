@@ -97,7 +97,7 @@ def test_config_revisor_adds_default_fields(app, client):
         assert resp.status_code == 201
         campos = CampoFormulario.query.filter_by(formulario_id=formulario.id).all()
         campos = {c.nome: c for c in campos}
-        assert {"nome", "email"} <= set(campos)
-        assert campos["nome"].obrigatorio is True
-        assert campos["email"].obrigatorio is True
+        assert {"Nome", "Email"} <= set(campos)
+        assert campos["Nome"].obrigatorio is True
+        assert campos["Email"].obrigatorio is True
 

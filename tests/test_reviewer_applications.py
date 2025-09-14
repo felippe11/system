@@ -186,7 +186,7 @@ def test_revisor_approval_without_email(client, app):
         form = Formulario(nome='Form', cliente_id=cliente.id)
         db.session.add(form)
         db.session.commit()
-        campo_nome = CampoFormulario(formulario_id=form.id, nome='nome', tipo='text')
+        campo_nome = CampoFormulario(formulario_id=form.id, nome='Nome', tipo='text')
         db.session.add(campo_nome)
         db.session.commit()
         proc = RevisorProcess(

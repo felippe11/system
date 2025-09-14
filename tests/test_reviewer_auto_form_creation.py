@@ -87,8 +87,8 @@ def test_config_revisor_creates_basic_form(app, client):
         form = Formulario.query.filter_by(cliente_id=cliente.id).first()
         assert form is not None
         campos = {c.nome: c for c in form.campos}
-        assert {"nome", "email"} <= set(campos)
-        assert campos["nome"].obrigatorio is True
-        assert campos["email"].obrigatorio is True
+        assert {"Nome", "Email"} <= set(campos)
+        assert campos["Nome"].obrigatorio is True
+        assert campos["Email"].obrigatorio is True
         proc = RevisorProcess.query.get(proc_id)
         assert proc is not None and proc.formulario_id == form.id
