@@ -24,13 +24,12 @@ from models import (
     Assignment,
     Evento,
     Formulario,
-    RespostaCampo,
-    RespostaFormulario,
     Review,
     Submission,
     Usuario,
     WorkMetadata,
 )
+from models.event import RespostaCampo, RespostaFormulario
 from models.review import Assignment
 from sqlalchemy import func
 from services.submission_service import SubmissionService
