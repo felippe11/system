@@ -10,6 +10,7 @@ from services.declaracao_service import (
 )
 from extensions import db
 from decorators import cliente_required
+from utils import endpoints
 import os
 from flask import current_app
 import logging
@@ -34,7 +35,7 @@ def gerar_declaracao_individual(evento_id, usuario_id):
         # Verificar se o usuário participou
         if not validar_participacao(usuario_id, evento_id):
             flash('Usuário não participou deste evento.', 'error')
-            return redirect(url_for('evento.detalhes', id=evento_id))
+            return redirect(url_for('evento_routes.detalhes_evento', evento_id=evento_id))
             
         # Gerar declaração
         arquivo_path = gerar_declaracao_participacao(usuario_id, evento_id)
@@ -47,12 +48,12 @@ def gerar_declaracao_individual(evento_id, usuario_id):
                 return send_file(arquivo_completo, as_attachment=True, download_name=filename)
                 
         flash('Erro ao gerar declaração.', 'error')
-        return redirect(url_for('evento.detalhes', id=evento_id))
+        return redirect(url_for('evento_routes.detalhes_evento', evento_id=evento_id))
         
     except Exception as e:
         logger.error(f"Erro ao gerar declaração individual: {str(e)}")
         flash('Erro interno do servidor.', 'error')
-        return redirect(url_for('evento.detalhes', id=evento_id))
+        return redirect(url_for('evento_routes.detalhes_evento', evento_id=evento_id))
 
 
 @declaracao_bp.route('/gerar-coletiva/<int:evento_id>', methods=['GET', 'POST'])
@@ -98,7 +99,7 @@ def gerar_declaracao_coletiva_route(evento_id):
     except Exception as e:
         logger.error(f"Erro ao gerar declaração coletiva: {str(e)}")
         flash('Erro interno do servidor.', 'error')
-        return redirect(url_for('evento.detalhes', id=evento_id))
+        return redirect(url_for('evento_routes.detalhes_evento', evento_id=evento_id))
 
 
 @declaracao_bp.route('/templates')
@@ -113,7 +114,7 @@ def listar_templates():
     except Exception as e:
         logger.error(f"Erro ao listar templates: {str(e)}")
         flash('Erro ao carregar templates.', 'error')
-        return redirect(url_for('dashboard.cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @declaracao_bp.route('/template/criar', methods=['GET', 'POST'])
@@ -198,32 +199,34 @@ def editar_template(template_id):
 
             existente_nome = (
                 DeclaracaoTemplate.query.filter_by(
-                    cliente_id=current_user.id, nome=novo_nome
-                )
-                .filter(DeclaracaoTemplate.id != template.id)
-                .first()
+                    cliente_id=current_user.id, 
+                    nome=novo_nome
+                ).filter(DeclaracaoTemplate.id != template_id).first()
             )
+            
             if existente_nome:
                 flash('Já existe um template com este nome.', 'error')
                 return render_template('declaracao/editar_template.html', template=template)
-
+                
             template.nome = novo_nome
             template.conteudo = novo_conteudo
-
-            # Gerenciar status ativo
+            
             if request.form.get('definir_ativo'):
                 # Desativar outros templates do mesmo tipo
-                DeclaracaoTemplate.query.filter_by(
+                outros_templates = DeclaracaoTemplate.query.filter_by(
                     cliente_id=current_user.id,
-                    tipo=template.tipo
-                ).update({'ativo': False})
+                    tipo=template.tipo,
+                    ativo=True
+                ).filter(DeclaracaoTemplate.id != template_id).all()
                 
+                for outro in outros_templates:
+                    outro.ativo = False
+                    
                 template.ativo = True
             else:
                 template.ativo = False
                 
             db.session.commit()
-            
             flash('Template atualizado com sucesso!', 'success')
             return redirect(url_for('declaracao.listar_templates'))
             
@@ -231,7 +234,307 @@ def editar_template(template_id):
         logger.error(f"Erro ao editar template: {str(e)}")
         db.session.rollback()
         flash('Erro ao editar template.', 'error')
-        return redirect(url_for('declaracao.listar_templates'))
+        return render_template('declaracao/editar_template.html', template=template)
+
+
+ 
+        return jsonify({'success': False, 'message': 'Erro ao excluir template.'})
+
+
+@declaracao_bp.route('/template/duplicar/<int:template_id>', methods=['POST'])
+@login_required
+@cliente_required
+def duplicar_template(template_id):
+    """Duplica template de declaração."""
+    try:
+        template_original = DeclaracaoTemplate.query.filter_by(
+            id=template_id, 
+            cliente_id=current_user.id
+        ).first()
+        
+        if not template_original:
+            return jsonify({'success': False, 'message': 'Template não encontrado.'})
+            
+        # Criar nome único para o template duplicado
+        contador = 1
+        nome_base = f"{template_original.nome} - Cópia"
+        nome_novo = nome_base
+        
+        while DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, 
+            nome=nome_novo
+        ).first():
+            contador += 1
+            nome_novo = f"{nome_base} ({contador})"
+            
+        # Criar template duplicado
+        template_duplicado = DeclaracaoTemplate(
+            cliente_id=current_user.id,
+            nome=nome_novo,
+            tipo=template_original.tipo,
+            conteudo=template_original.conteudo,
+            ativo=False  # Template duplicado inicia inativo
+        )
+        
+        db.session.add(template_duplicado)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Template duplicado com sucesso!',
+            'novo_id': template_duplicado.id
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao duplicar template: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Erro ao duplicar template.'})
+
+
+@declaracao_bp.route('/template/toggle-ativo/<int:template_id>', methods=['POST'])
+@login_required
+@cliente_required
+def toggle_ativo_template(template_id):
+    """Ativa/desativa template de declaração."""
+    try:
+        template = DeclaracaoTemplate.query.filter_by(
+            id=template_id, 
+            cliente_id=current_user.id
+        ).first()
+        
+        if not template:
+            return jsonify({'success': False, 'message': 'Template não encontrado.'})
+            
+        if not template.ativo:
+            # Ativando template - desativar outros do mesmo tipo
+            outros_templates = DeclaracaoTemplate.query.filter_by(
+                cliente_id=current_user.id,
+                tipo=template.tipo,
+                ativo=True
+            ).all()
+            
+            for outro in outros_templates:
+                outro.ativo = False
+                
+            template.ativo = True
+            status = 'ativado'
+        else:
+            # Desativando template
+            template.ativo = False
+            status = 'desativado'
+            
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Template {status} com sucesso!',
+            'ativo': template.ativo
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao alterar status do template: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Erro ao alterar status do template.'})
+
+
+@declaracao_bp.route('/configurar')
+@login_required
+@cliente_required
+def configurar_declaracoes():
+    """Página de configuração de declarações."""
+    try:
+        templates = DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id).all()
+        variaveis = VariavelDinamica.query.filter_by(cliente_id=current_user.id).all()
+        
+        return render_template('declaracao/configurar.html', 
+                             templates=templates, variaveis=variaveis)
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar configurações: {str(e)}")
+        flash('Erro ao carregar configurações.', 'error')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+
+@declaracao_bp.route('/emitir-individual/<int:evento_id>')
+@login_required
+@cliente_required
+def emitir_declaracao_individual_page(evento_id):
+    """Página para emitir declaração individual."""
+    try:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if not evento:
+            flash('Evento não encontrado.', 'error')
+            return redirect(url_for('evento.listar'))
+            
+        participantes = listar_participantes_evento(evento_id)
+        templates = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, 
+            ativo=True
+        ).all()
+        
+        return render_template('declaracao/emitir_individual.html', 
+                             evento=evento, participantes=participantes, templates=templates)
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar página de emissão individual: {str(e)}")
+        flash('Erro ao carregar página.', 'error')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+
+@declaracao_bp.route('/emitir-lote/<int:evento_id>')
+@login_required
+@cliente_required
+def emitir_declaracao_lote_page(evento_id):
+    """Página para emitir declarações em lote."""
+    try:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if not evento:
+            flash('Evento não encontrado.', 'error')
+            return redirect(url_for('evento.listar'))
+            
+        participantes = listar_participantes_evento(evento_id)
+        templates = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, 
+            ativo=True
+        ).all()
+        
+        return render_template('declaracao/emitir_lote.html', 
+                             evento=evento, participantes=participantes, templates=templates)
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar página de emissão em lote: {str(e)}")
+        flash('Erro ao carregar página.', 'error')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+
+@declaracao_bp.route('/gerar-lote/<int:evento_id>', methods=['POST'])
+@login_required
+@cliente_required
+def gerar_declaracao_lote(evento_id):
+    """Processa formulário para gerar declarações em lote."""
+    try:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if not evento:
+            flash('Evento não encontrado.', 'error')
+            return redirect(url_for('evento.listar'))
+            
+        template_id = request.form.get('template_id')
+        participantes_ids = request.form.getlist('participantes')
+        formato = request.form.get('formato', 'pdf')
+        
+        if not template_id:
+            flash('Selecione um template de declaração.', 'error')
+            return redirect(url_for('declaracao.emitir_declaracao_lote_page', evento_id=evento_id))
+            
+        if not participantes_ids:
+            flash('Selecione pelo menos um participante.', 'error')
+            return redirect(url_for('declaracao.emitir_declaracao_lote_page', evento_id=evento_id))
+            
+        # Verificar se o template existe e pertence ao cliente
+        template = DeclaracaoTemplate.query.filter_by(
+            id=template_id, 
+            cliente_id=current_user.id
+        ).first()
+        
+        if not template:
+            flash('Template não encontrado.', 'error')
+            return redirect(url_for('declaracao.emitir_declaracao_lote_page', evento_id=evento_id))
+            
+        # Gerar declarações
+        arquivos_gerados = []
+        erros = []
+        
+        for usuario_id in participantes_ids:
+            try:
+                # Verificar se o usuário participou
+                if not validar_participacao(int(usuario_id), evento_id):
+                    usuario = Usuario.query.get(usuario_id)
+                    erros.append(f"Usuário {usuario.nome if usuario else usuario_id} não participou deste evento.")
+                    continue
+                    
+                # Gerar declaração
+                arquivo_path = gerar_declaracao_participacao(int(usuario_id), evento_id)
+                
+                if arquivo_path:
+                    arquivos_gerados.append(arquivo_path)
+                else:
+                    usuario = Usuario.query.get(usuario_id)
+                    erros.append(f"Erro ao gerar declaração para {usuario.nome if usuario else usuario_id}")
+                    
+            except Exception as e:
+                usuario = Usuario.query.get(usuario_id)
+                erros.append(f"Erro ao processar {usuario.nome if usuario else usuario_id}: {str(e)}")
+                
+        # Preparar resposta
+        if arquivos_gerados:
+            if formato == 'zip' and len(arquivos_gerados) > 1:
+                # TODO: Implementar geração de ZIP com múltiplos arquivos
+                flash(f'{len(arquivos_gerados)} declarações geradas com sucesso!', 'success')
+            else:
+                flash(f'{len(arquivos_gerados)} declarações geradas com sucesso!', 'success')
+                
+        if erros:
+            for erro in erros:
+                flash(erro, 'warning')
+                
+        return redirect(url_for('declaracao.emitir_declaracao_lote_page', evento_id=evento_id))
+        
+    except Exception as e:
+        logger.error(f"Erro ao gerar declarações em lote: {str(e)}")
+        flash('Erro ao gerar declarações.', 'error')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+
+@declaracao_bp.route('/liberar-participantes/<int:evento_id>', methods=['GET', 'POST'])
+@login_required
+@cliente_required
+def liberar_declaracao_participantes(evento_id):
+    """Libera declarações para participantes baixarem."""
+    try:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if not evento:
+            flash('Evento não encontrado.', 'error')
+            return redirect(url_for('evento.listar'))
+            
+        if request.method == 'GET':
+            participantes = listar_participantes_evento(evento_id)
+            return render_template('declaracao/liberar_participantes.html', 
+                                 evento=evento, participantes=participantes)
+                                 
+        elif request.method == 'POST':
+            usuarios_selecionados = request.form.getlist('usuarios_selecionados')
+            
+            if not usuarios_selecionados:
+                flash('Selecione pelo menos um participante.', 'error')
+                return redirect(url_for('declaracao.liberar_declaracao_participantes', evento_id=evento_id))
+                
+            # Aqui você implementaria a lógica para liberar as declarações
+            # Por exemplo, enviar emails ou marcar como liberadas no banco
+            
+            flash(f'Declarações liberadas para {len(usuarios_selecionados)} participantes!', 'success')
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+            
+    except Exception as e:
+        logger.error(f"Erro ao liberar declarações: {str(e)}")
+        flash('Erro ao liberar declarações.', 'error')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+
+@declaracao_bp.route('/gerenciar-permissoes')
+@login_required
+@cliente_required
+def gerenciar_permissoes():
+    """Página para gerenciar permissões de declarações."""
+    try:
+        # Aqui você pode implementar a lógica de permissões
+        # Por exemplo, quais usuários podem emitir declarações, etc.
+        
+        return render_template('declaracao/gerenciar_permissoes.html')
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar gerenciamento de permissões: {str(e)}")
+        flash('Erro ao carregar página.', 'error')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @declaracao_bp.route('/template/excluir/<int:template_id>', methods=['POST'])

@@ -332,7 +332,7 @@ def _calcular_dados_participacao(usuario_id, evento_id):
         'total_checkins': len(checkins),
         'oficinas_participadas': oficinas,
         'carga_horaria': carga_horaria,
-        'datas_participacao': [c.data_checkin for c in checkins if c.data_checkin]
+        'datas_participacao': [c.data_hora for c in checkins if c.data_hora]
     }
 
 

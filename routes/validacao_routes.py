@@ -174,3 +174,85 @@ def api_verificar_integridade():
         return jsonify({
             'erro': 'Erro interno do sistema'
         }), 500
+
+@validacao_bp.route('/admin/regenerar-certificado/<int:certificado_id>', methods=['POST'])
+@login_required
+@cliente_required
+def regenerar_certificado(certificado_id):
+    """Regenerar um certificado específico."""
+    try:
+        from models.certificado import Certificado
+        from services.certificado_service import regenerar_certificado_individual
+        
+        # Verificar se o certificado pertence ao cliente
+        certificado = Certificado.query.filter_by(
+            id=certificado_id,
+            cliente_id=current_user.id
+        ).first()
+        
+        if not certificado:
+            return jsonify({'erro': 'Certificado não encontrado'}), 404
+        
+        # Regenerar certificado
+        sucesso = regenerar_certificado_individual(certificado_id)
+        
+        if sucesso:
+            return jsonify({
+                'sucesso': True,
+                'mensagem': 'Certificado regenerado com sucesso'
+            })
+        else:
+            return jsonify({'erro': 'Erro ao regenerar certificado'}), 500
+            
+    except Exception as e:
+        logger.error(f"Erro ao regenerar certificado {certificado_id}: {str(e)}")
+        return jsonify({'erro': 'Erro interno do sistema'}), 500
+
+@validacao_bp.route('/admin/regenerar-todos', methods=['POST'])
+@login_required
+@cliente_required
+def regenerar_todos_certificados():
+    """Regenerar todos os certificados inválidos do cliente."""
+    try:
+        from services.certificado_service import regenerar_certificados_invalidos
+        
+        # Regenerar certificados inválidos
+        resultado = regenerar_certificados_invalidos(current_user.id)
+        
+        return jsonify({
+            'sucesso': True,
+            'regenerados': resultado['regenerados'],
+            'erros': resultado['erros'],
+            'mensagem': f'{resultado["regenerados"]} certificados regenerados com sucesso'
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao regenerar certificados do cliente {current_user.id}: {str(e)}")
+        return jsonify({'erro': 'Erro interno do sistema'}), 500
+
+@validacao_bp.route('/admin/detalhes-certificado/<int:certificado_id>')
+@login_required
+@cliente_required
+def detalhes_certificado(certificado_id):
+    """Obter detalhes técnicos de um certificado."""
+    try:
+        from models.certificado import Certificado
+        from services.validacao_certificado_service import obter_detalhes_certificado
+        
+        # Verificar se o certificado pertence ao cliente
+        certificado = Certificado.query.filter_by(
+            id=certificado_id,
+            cliente_id=current_user.id
+        ).first()
+        
+        if not certificado:
+            return jsonify({'erro': 'Certificado não encontrado'}), 404
+        
+        # Obter detalhes
+        detalhes = obter_detalhes_certificado(certificado_id)
+        
+        return jsonify(detalhes)
+        
+    except Exception as e:
+        logger.error(f"Erro ao obter detalhes do certificado {certificado_id}: {str(e)}")
+        return jsonify({'erro': 'Erro interno do sistema'}), 500

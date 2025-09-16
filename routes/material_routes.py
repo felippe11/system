@@ -5,6 +5,7 @@ Unauthorized AJAX requests receive a JSON 401 from the global handler.
 
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
+from utils.auth import cliente_required
 from datetime import datetime
 import json
 
@@ -1456,29 +1457,42 @@ def adicionar_material_formador():
         return redirect(url_for('evento_routes.home'))
 
     try:
-        material_id = int(request.form.get('material_id'))
-        quantidade_minima = int(request.form.get('quantidade_minima', 1))
-        quantidade_maxima = int(request.form.get('quantidade_maxima', 100))
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao', '')
+        tipo_material = request.form.get('tipo_material', 'consumivel')
+        unidade_medida = request.form.get('unidade_medida', 'unidade')
+        quantidade_minima_pedido = int(request.form.get('quantidade_minima_pedido', 1))
+        quantidade_maxima_pedido = int(request.form.get('quantidade_maxima_pedido', 100))
+        quantidade_estoque = int(request.form.get('quantidade_estoque', 0))
+        estoque_minimo = int(request.form.get('estoque_minimo', 0))
         
-        # Verificar se o material já está disponível
+        if not nome:
+            flash('Nome do material é obrigatório', 'error')
+            return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+        
+        # Verificar se já existe um material com o mesmo nome
         material_existente = MaterialDisponivel.query.filter_by(
-            material_id=material_id,
+            nome=nome,
             cliente_id=current_user.id,
             ativo=True
         ).first()
         
         if material_existente:
-            flash('Material já está disponível para formadores', 'warning')
+            flash('Já existe um material com este nome', 'warning')
             return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
         
         # Criar novo material disponível
         material_disponivel = MaterialDisponivel(
-            material_id=material_id,
+            nome=nome,
+            descricao=descricao,
+            tipo_material=tipo_material,
+            unidade_medida=unidade_medida,
+            quantidade_minima_pedido=quantidade_minima_pedido,
+            quantidade_maxima_pedido=quantidade_maxima_pedido,
+            quantidade_estoque=quantidade_estoque,
+            estoque_minimo=estoque_minimo,
             cliente_id=current_user.id,
-            quantidade_minima=quantidade_minima,
-            quantidade_maxima=quantidade_maxima,
-            ativo=True,
-            created_at=datetime.utcnow()
+            ativo=True
         )
         
         db.session.add(material_disponivel)
@@ -1623,31 +1637,88 @@ def aprovar_solicitacao_material(solicitacao_id):
         if not solicitacao:
             flash('Solicitação não encontrada', 'error')
             return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
-        
+
         if solicitacao.status != 'pendente':
             flash('Solicitação já foi processada', 'warning')
             return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
-        
-        # Atualizar status
-        solicitacao.status = 'aprovada'
-        solicitacao.data_aprovacao = datetime.utcnow()
-        solicitacao.updated_at = datetime.utcnow()
-        
-        # Se for material existente, atualizar estoque
-        if solicitacao.tipo == 'existente' and solicitacao.material_id:
-            material = Material.query.get(solicitacao.material_id)
-            if material and material.quantidade_estoque >= solicitacao.quantidade:
-                material.quantidade_estoque -= solicitacao.quantidade
-                material.updated_at = datetime.utcnow()
-        
+
+        # Quantidade aprovada (opcional no formulário)
+        quantidade_aprovada_raw = request.form.get('quantidade_aprovada')
+        try:
+            quantidade_aprovada = int(quantidade_aprovada_raw) if quantidade_aprovada_raw else solicitacao.quantidade_solicitada
+        except ValueError:
+            quantidade_aprovada = solicitacao.quantidade_solicitada
+
+        # Garantir limites mínimos/máximos
+        if quantidade_aprovada < 0:
+            quantidade_aprovada = 0
+        if quantidade_aprovada > solicitacao.quantidade_solicitada:
+            quantidade_aprovada = solicitacao.quantidade_solicitada
+
+        status_final = 'aprovada' if quantidade_aprovada == solicitacao.quantidade_solicitada else 'parcialmente_aprovada'
+
+        # Se veio de catálogo, opcionalmente validar estoque atual
+        if solicitacao.material_disponivel_id:
+            material_cat = MaterialDisponivel.query.filter_by(
+                id=solicitacao.material_disponivel_id,
+                cliente_id=current_user.id
+            ).first()
+            if material_cat:
+                if quantidade_aprovada > material_cat.quantidade_estoque:
+                    quantidade_aprovada = max(0, material_cat.quantidade_estoque)
+                    status_final = 'parcialmente_aprovada' if quantidade_aprovada > 0 else 'rejeitada'
+
+        observacoes = request.form.get('observacoes_cliente', '')
+
+        solicitacao.status = status_final
+        solicitacao.quantidade_aprovada = quantidade_aprovada
+        solicitacao.observacoes_cliente = observacoes
+        solicitacao.data_resposta = datetime.utcnow()
+
         db.session.commit()
-        flash('Solicitação aprovada com sucesso', 'success')
-        
+        if status_final == 'rejeitada' or quantidade_aprovada == 0:
+            flash('Solicitação não pode ser aprovada pelo estoque atual', 'warning')
+        elif status_final == 'parcialmente_aprovada':
+            flash('Solicitação aprovada parcialmente', 'success')
+        else:
+            flash('Solicitação aprovada', 'success')
+
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao aprovar solicitação: {str(e)}', 'error')
-    
+
     return redirect(url_for('material_routes.listar_solicitacoes_materiais'))
+
+
+@material_routes.route('/toggle_visibilidade_material/<int:material_id>', methods=['POST'])
+@login_required
+@cliente_required
+def toggle_visibilidade_material(material_id):
+    """Alterna a visibilidade de um material para formadores."""
+    try:
+        material = MaterialDisponivel.query.filter_by(
+            id=material_id,
+            cliente_id=current_user.id
+        ).first()
+        
+        if not material:
+            flash('Material não encontrado', 'error')
+            return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
+        
+        # Alternar visibilidade
+        material.disponivel_para_solicitacao = not material.disponivel_para_solicitacao
+        material.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        status = "visível" if material.disponivel_para_solicitacao else "oculto"
+        flash(f'Material "{material.nome}" agora está {status} para formadores', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao alterar visibilidade: {str(e)}', 'error')
+    
+    return redirect(url_for('material_routes.gerenciar_materiais_formadores'))
 
 
 @material_routes.route('/solicitacoes-materiais/rejeitar/<int:solicitacao_id>', methods=['POST'])

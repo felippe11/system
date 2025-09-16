@@ -35,12 +35,13 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th>Material</th>
-                                        <th>Categoria</th>
+                                        <th>Tipo</th>
                                         <th>Unidade</th>
-                                        <th>Estoque Atual</th>
-                                        <th>Qtd. Mínima</th>
-                                        <th>Qtd. Máxima</th>
+                                        <th>Estoque</th>
+                                        <th>Qtd. Mín</th>
+                                        <th>Qtd. Máx</th>
                                         <th>Status</th>
+                                        <th>Visibilidade</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -48,37 +49,52 @@
                                     {% for material_disp in materiais_disponiveis %}
                                     <tr>
                                         <td>
-                                            <strong>{{ material_disp.material.nome }}</strong>
-                                            {% if material_disp.material.descricao %}
-                                                <br><small class="text-muted">{{ material_disp.material.descricao }}</small>
+                                            <strong>{{ material_disp.nome }}</strong>
+                                            {% if material_disp.descricao %}
+                                                <br><small class="text-muted">{{ material_disp.descricao }}</small>
                                             {% endif %}
                                         </td>
-                                        <td>{{ material_disp.material.categoria or '-' }}</td>
-                                        <td>{{ material_disp.material.unidade }}</td>
                                         <td>
-                                            <span class="badge {% if material_disp.material.quantidade_estoque <= material_disp.material.quantidade_minima %}bg-danger{% elif material_disp.material.quantidade_estoque <= (material_disp.material.quantidade_minima * 2) %}bg-warning{% else %}bg-success{% endif %}">
-                                                {{ material_disp.material.quantidade_estoque }}
+                                            <span class="badge bg-secondary">{{ material_disp.tipo_material|title }}</span>
+                                        </td>
+                                        <td>{{ material_disp.unidade_medida|title }}</td>
+                                        <td>
+                                            <span class="badge {% if material_disp.quantidade_estoque <= material_disp.estoque_minimo %}bg-danger{% elif material_disp.quantidade_estoque <= (material_disp.estoque_minimo * 2) %}bg-warning{% else %}bg-success{% endif %}">
+                                                {{ material_disp.quantidade_estoque }}
                                             </span>
                                         </td>
-                                        <td>{{ material_disp.quantidade_minima }}</td>
-                                        <td>{{ material_disp.quantidade_maxima }}</td>
+                                        <td>{{ material_disp.quantidade_minima_pedido }}</td>
+                                        <td>{{ material_disp.quantidade_maxima_pedido }}</td>
                                         <td>
-                                            {% if material_disp.material.quantidade_estoque > 0 %}
+                                            {% if material_disp.quantidade_estoque > 0 %}
                                                 <span class="badge bg-success">Disponível</span>
                                             {% else %}
-                                                <span class="badge bg-danger">Indisponível</span>
+                                                <span class="badge bg-danger">Esgotado</span>
                                             {% endif %}
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('material_routes.toggle_visibilidade_material', material_id=material_disp.id) }}" class="d-inline">
+                                                <button type="submit" 
+                                                        class="btn btn-sm {% if material_disp.disponivel_para_solicitacao %}btn-success{% else %}btn-outline-secondary{% endif %}" 
+                                                        title="{% if material_disp.disponivel_para_solicitacao %}Clique para ocultar dos formadores{% else %}Clique para mostrar aos formadores{% endif %}">
+                                                    {% if material_disp.disponivel_para_solicitacao %}
+                                                        <i class="bi bi-eye"></i> Visível
+                                                    {% else %}
+                                                        <i class="bi bi-eye-slash"></i> Oculto
+                                                    {% endif %}
+                                                </button>
+                                            </form>
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
                                                 <a href="{{ url_for('material_routes.editar_material_formador', material_disponivel_id=material_disp.id) }}" 
                                                    class="btn btn-sm btn-outline-primary" title="Editar">
-                                                    <i class="fas fa-edit"></i>
+                                                    <i class="bi bi-pencil"></i>
                                                 </a>
                                                 <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        onclick="confirmarRemocao({{ material_disp.id }}, '{{ material_disp.material.nome }}')" 
+                                                        onclick="confirmarRemocao({{ material_disp.id }}, '{{ material_disp.nome }}')" 
                                                         title="Remover">
-                                                    <i class="fas fa-trash"></i>
+                                                    <i class="bi bi-trash"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -111,31 +127,70 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="material_id" class="form-label">Material *</label>
-                        <select class="form-select" id="material_id" name="material_id" required>
-                            <option value="">Selecione um material</option>
-                            {% for material in materiais %}
-                                <option value="{{ material.id }}">
-                                    {{ material.nome }} - {{ material.categoria or 'Sem categoria' }} (Estoque: {{ material.quantidade_estoque }})
-                                </option>
-                            {% endfor %}
-                        </select>
+                        <label for="nome" class="form-label">Nome do Material *</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descricao" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricao" name="descricao" rows="2"></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="quantidade_minima" class="form-label">Quantidade Mínima *</label>
-                                <input type="number" class="form-control" id="quantidade_minima" name="quantidade_minima" 
+                                <label for="tipo_material" class="form-label">Tipo de Material *</label>
+                                <select class="form-select" id="tipo_material" name="tipo_material" required>
+                                    <option value="consumivel">Consumível</option>
+                                    <option value="permanente">Permanente</option>
+                                    <option value="equipamento">Equipamento</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="unidade_medida" class="form-label">Unidade de Medida *</label>
+                                <select class="form-select" id="unidade_medida" name="unidade_medida" required>
+                                    <option value="unidade">Unidade</option>
+                                    <option value="kg">Quilograma</option>
+                                    <option value="litro">Litro</option>
+                                    <option value="metro">Metro</option>
+                                    <option value="pacote">Pacote</option>
+                                    <option value="caixa">Caixa</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantidade_minima_pedido" class="form-label">Quantidade Mínima por Pedido *</label>
+                                <input type="number" class="form-control" id="quantidade_minima_pedido" name="quantidade_minima_pedido" 
                                        value="1" min="1" required>
                                 <div class="form-text">Quantidade mínima que o formador pode solicitar</div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="quantidade_maxima" class="form-label">Quantidade Máxima *</label>
-                                <input type="number" class="form-control" id="quantidade_maxima" name="quantidade_maxima" 
+                                <label for="quantidade_maxima_pedido" class="form-label">Quantidade Máxima por Pedido *</label>
+                                <input type="number" class="form-control" id="quantidade_maxima_pedido" name="quantidade_maxima_pedido" 
                                        value="100" min="1" required>
                                 <div class="form-text">Quantidade máxima que o formador pode solicitar</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantidade_estoque" class="form-label">Quantidade em Estoque</label>
+                                <input type="number" class="form-control" id="quantidade_estoque" name="quantidade_estoque" 
+                                       value="0" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="estoque_minimo" class="form-label">Estoque Mínimo</label>
+                                <input type="number" class="form-control" id="estoque_minimo" name="estoque_minimo" 
+                                       value="0" min="0">
+                                <div class="form-text">Quantidade mínima para alerta de estoque baixo</div>
                             </div>
                         </div>
                     </div>

@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Emitir Declarações em Lote - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Emitir Declarações em Lote - {{ evento.nome }}</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('evento_routes.detalhes_evento', evento_id=evento.id) }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5>Gerar Declarações para Múltiplos Participantes</h5>
+                            <p class="text-muted">Selecione um template e os participantes para gerar declarações em lote.</p>
+                        </div>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('declaracao.gerar_declaracao_lote', evento_id=evento.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="template_id">Template de Declaração</label>
+                                    <select name="template_id" id="template_id" class="form-control" required>
+                                        <option value="">Selecione um template...</option>
+                                        {% for template in templates %}
+                                        <option value="{{ template.id }}">{{ template.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Formato de Saída</label>
+                                    <select name="formato" class="form-control">
+                                        <option value="pdf">PDF Individual</option>
+                                        <option value="zip">ZIP com todos os PDFs</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6>Participantes do Evento</h6>
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" class="custom-control-input" id="selectAll">
+                                        <label class="custom-control-label" for="selectAll">
+                                            <strong>Selecionar Todos</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                {% if participantes %}
+                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                    <table class="table table-striped table-sm">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th width="50">
+                                                    <input type="checkbox" id="selectAllTable">
+                                                </th>
+                                                <th>Nome</th>
+                                                <th>Email</th>
+                                                <th>CPF</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for participante in participantes %}
+                                            <tr>
+                                                <td>
+                                                    <input type="checkbox" name="participantes_selecionados" 
+                                                           value="{{ participante.id }}" class="participante-checkbox">
+                                                </td>
+                                                <td>{{ participante.nome }}</td>
+                                                <td>{{ participante.email }}</td>
+                                                <td>{{ participante.cpf or '-' }}</td>
+                                                <td>
+                                                    <span class="badge badge-success">Participante</span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">Nenhum participante encontrado</h5>
+                                    <p class="text-muted">Este evento ainda não possui participantes registrados.</p>
+                                    <a href="{{ url_for('evento_routes.detalhes_evento', evento_id=evento.id) }}" class="btn btn-primary">
+                                        <i class="fas fa-arrow-left"></i> Voltar ao Evento
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if participantes %}
+                        <div class="card-footer">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="alert alert-info mb-0">
+                                        <i class="fas fa-info-circle"></i>
+                                        <strong>Dica:</strong> Selecione os participantes e o template para gerar as declarações.
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-right">
+                                    <button type="submit" class="btn btn-primary" id="btnGerar" disabled>
+                                        <i class="fas fa-file-pdf"></i> Gerar Declarações
+                                    </button>
+                                    <a href="{{ url_for('evento_routes.detalhes_evento', evento_id=evento.id) }}" class="btn btn-secondary">
+                                        Cancelar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const selectAllTable = document.getElementById('selectAllTable');
+    const participanteCheckboxes = document.querySelectorAll('.participante-checkbox');
+    const btnGerar = document.getElementById('btnGerar');
+    const templateSelect = document.getElementById('template_id');
+    
+    function updateGenerateButton() {
+        const hasTemplate = templateSelect.value !== '';
+        const hasParticipantes = Array.from(participanteCheckboxes).some(cb => cb.checked);
+        btnGerar.disabled = !(hasTemplate && hasParticipantes);
+    }
+    
+    // Selecionar todos os participantes
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            participanteCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            if (selectAllTable) selectAllTable.checked = this.checked;
+            updateGenerateButton();
+        });
+    }
+    
+    if (selectAllTable) {
+        selectAllTable.addEventListener('change', function() {
+            participanteCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            if (selectAll) selectAll.checked = this.checked;
+            updateGenerateButton();
+        });
+    }
+    
+    // Monitorar checkboxes individuais
+    participanteCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(participanteCheckboxes).every(cb => cb.checked);
+            const noneChecked = Array.from(participanteCheckboxes).every(cb => !cb.checked);
+            
+            if (selectAll) {
+                selectAll.checked = allChecked;
+                selectAll.indeterminate = !allChecked && !noneChecked;
+            }
+            
+            if (selectAllTable) {
+                selectAllTable.checked = allChecked;
+                selectAllTable.indeterminate = !allChecked && !noneChecked;
+            }
+            
+            updateGenerateButton();
+        });
+    });
+    
+    // Monitorar seleção de template
+    if (templateSelect) {
+        templateSelect.addEventListener('change', updateGenerateButton);
+    }
+    
+    // Inicializar estado do botão
+    updateGenerateButton();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Preview - {{ template.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Preview - {{ template.nome }}</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('declaracao.listar_templates') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="imprimirPreview()">
+                            <i class="fas fa-print"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Preview:</strong> Esta é uma visualização do template com dados de exemplo.
+                    </div>
+                    
+                    <div id="preview-content" class="border p-4 bg-white" style="min-height: 600px;">
+                        {% if template.conteudo_html %}
+                            {{ template.conteudo_html | safe }}
+                        {% else %}
+                            <div class="text-center text-muted">
+                                <i class="fas fa-file-alt fa-3x mb-3"></i>
+                                <p>Template sem conteúdo definido.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if template.tipo == 'coletiva' and dados.dados_usuarios %}
+                        <div class="mt-4">
+                            <h5>Dados de Exemplo (Declaração Coletiva):</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>CPF</th>
+                                            <th>Check-ins</th>
+                                            <th>Carga Horária</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in dados.dados_usuarios %}
+                                            <tr>
+                                                <td>{{ item.usuario.nome }}</td>
+                                                <td>{{ item.usuario.cpf }}</td>
+                                                <td>{{ item.total_checkins }}</td>
+                                                <td>{{ item.carga_horaria }}h</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h6>Informações do Template:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Nome:</strong> {{ template.nome }}</li>
+                            <li><strong>Tipo:</strong> {{ template.tipo.title() }}</li>
+                            <li><strong>Orientação:</strong> {{ template.orientacao.title() }}</li>
+                            {% if template.descricao %}
+                                <li><strong>Descrição:</strong> {{ template.descricao }}</li>
+                            {% endif %}
+                            <li><strong>Ativo:</strong> {{ 'Sim' if template.ativo else 'Não' }}</li>
+                            <li><strong>Criado em:</strong> {{ template.data_criacao.strftime('%d/%m/%Y %H:%M') if template.data_criacao else 'N/A' }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function imprimirPreview() {
+    const conteudo = document.getElementById('preview-content').innerHTML;
+    const janela = window.open('', '_blank');
+    janela.document.write(`
+        <html>
+            <head>
+                <title>Preview - {{ template.nome }}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .border { border: 1px solid #ddd; }
+                    .p-4 { padding: 1.5rem; }
+                    .bg-white { background-color: white; }
+                </style>
+            </head>
+            <body>
+                ${conteudo}
+            </body>
+        </html>
+    `);
+    janela.document.close();
+    janela.print();
+}
+</script>
+
+<style>
+@media print {
+    .card-header, .card-tools, .alert, .mt-4 h6, .list-unstyled {
+        display: none !important;
+    }
+    
+    #preview-content {
+        border: none !important;
+        padding: 0 !important;
+    }
+}
+</style>
+{% endblock %}

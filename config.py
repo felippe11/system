@@ -138,3 +138,16 @@ class Config:
     # ------------------------------------------------------------------ #
     SEND_FILE_MAX_AGE_DEFAULT = 31536000  # 1 ano
 
+    # ------------------------------------------------------------------ #
+    #  Configurações do servidor                                         #
+    # ------------------------------------------------------------------ #
+    # Configurações para prevenir broken pipe errors
+    SERVER_TIMEOUT = int(os.getenv("SERVER_TIMEOUT", "300"))  # 5 minutos
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+    
+    # Configurações do SocketIO
+    # Use 'threading' por padrão para evitar dependências de eventlet/gevent
+    SOCKETIO_ASYNC_MODE = os.getenv('SOCKETIO_ASYNC_MODE', 'threading')
+    SOCKETIO_PING_TIMEOUT = 60
+    SOCKETIO_PING_INTERVAL = 25
+

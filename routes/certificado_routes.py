@@ -549,6 +549,76 @@ def variaveis_dinamicas():
     return render_template('certificado/variaveis_dinamicas.html', variaveis=variaveis)
 
 
+@certificado_routes.route('/importar_variaveis_dinamicas', methods=['POST'])
+@login_required
+@require_permission('templates.edit')
+def importar_variaveis_dinamicas():
+    """Importar variáveis dinâmicas de um arquivo JSON."""
+    try:
+        data = request.get_json()
+        
+        if not data or 'variaveis' not in data:
+            return jsonify({'success': False, 'message': 'Dados inválidos'}), 400
+        
+        variaveis_importadas = 0
+        variaveis_ignoradas = 0
+        erros = []
+        
+        for variavel_data in data['variaveis']:
+            try:
+                # Verificar se já existe uma variável com o mesmo nome
+                nome = variavel_data.get('nome', '').upper().strip()
+                if not nome:
+                    erros.append('Nome da variável é obrigatório')
+                    continue
+                
+                variavel_existente = VariavelDinamica.query.filter_by(
+                    nome=nome,
+                    cliente_id=current_user.id
+                ).first()
+                
+                if variavel_existente:
+                    variaveis_ignoradas += 1
+                    continue
+                
+                # Criar nova variável
+                nova_variavel = VariavelDinamica(
+                    nome=nome,
+                    descricao=variavel_data.get('descricao', ''),
+                    valor_padrao=variavel_data.get('valor_padrao', ''),
+                    tipo=variavel_data.get('tipo', 'texto'),
+                    opcoes=variavel_data.get('opcoes') if variavel_data.get('tipo') == 'lista' else None,
+                    cliente_id=current_user.id
+                )
+                
+                db.session.add(nova_variavel)
+                variaveis_importadas += 1
+                
+            except Exception as e:
+                erros.append(f"Erro ao importar variável '{variavel_data.get('nome', 'sem nome')}': {str(e)}")
+        
+        db.session.commit()
+        
+        mensagem = f'{variaveis_importadas} variáveis importadas com sucesso'
+        if variaveis_ignoradas > 0:
+            mensagem += f', {variaveis_ignoradas} ignoradas (já existem)'
+        if erros:
+            mensagem += f', {len(erros)} erros'
+        
+        return jsonify({
+            'success': True,
+            'message': mensagem,
+            'importadas': variaveis_importadas,
+            'ignoradas': variaveis_ignoradas,
+            'erros': erros
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao importar variáveis dinâmicas: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro interno do sistema'}), 500
+
+
 @certificado_routes.route('/variaveis_dinamicas/<int:variavel_id>', methods=['PUT', 'DELETE'])
 @login_required
 @require_permission('templates.edit')
@@ -1670,6 +1740,38 @@ def excluir_regra_certificado(regra_id):
         return {'success': False, 'message': 'Erro ao excluir regra'}, 500
 
 
+@certificado_routes.route('/obter_regra_certificado/<int:regra_id>', methods=['GET'])
+@login_required
+@require_permission('configuracoes.view')
+@require_resource_access('regra', 'regra_id', 'view')
+def obter_regra_certificado(regra_id):
+    """Obter dados de uma regra específica."""
+    try:
+        regra = RegraCertificado.query.filter_by(
+            id=regra_id, cliente_id=current_user.id
+        ).first()
+        
+        if not regra:
+            return {'success': False, 'message': 'Regra não encontrada'}, 404
+        
+        return {
+            'success': True,
+            'regra': {
+                'id': regra.id,
+                'nome': regra.nome,
+                'descricao': regra.descricao,
+                'prioridade': regra.prioridade,
+                'condicoes': regra.condicoes,
+                'acoes': regra.acoes,
+                'ativa': regra.ativa
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao obter regra: {str(e)}")
+        return {'success': False, 'message': 'Erro ao obter regra'}, 500
+
+
 @certificado_routes.route('/solicitar_declaracao', methods=['POST'])
 @login_required
 def solicitar_declaracao():
@@ -1881,6 +1983,81 @@ def listar_solicitacoes_pendentes():
     ).order_by(SolicitacaoCertificado.data_solicitacao.desc()).all()
     
     return render_template('solicitacoes_pendentes.html', solicitacoes=solicitacoes)
+
+
+@certificado_routes.route('/detalhes_solicitacao/<int:solicitacao_id>')
+@login_required
+@require_permission('certificados.approve')
+def detalhes_solicitacao(solicitacao_id):
+    """Obter detalhes de uma solicitação de certificado."""
+    try:
+        from models.event import Evento
+        
+        solicitacao = SolicitacaoCertificado.query.filter_by(
+            id=solicitacao_id
+        ).join(SolicitacaoCertificado.evento).filter(
+            Evento.cliente_id == current_user.id
+        ).first()
+        
+        if not solicitacao:
+            return jsonify({'erro': 'Solicitação não encontrada'}), 404
+        
+        # Obter informações detalhadas
+        detalhes = {
+            'id': solicitacao.id,
+            'status': solicitacao.status,
+            'data_solicitacao': solicitacao.data_solicitacao.strftime('%d/%m/%Y %H:%M'),
+            'data_processamento': solicitacao.data_processamento.strftime('%d/%m/%Y %H:%M') if solicitacao.data_processamento else None,
+            'motivo_rejeicao': solicitacao.motivo_rejeicao,
+            'usuario': {
+                'id': solicitacao.usuario.id,
+                'nome': solicitacao.usuario.nome,
+                'email': solicitacao.usuario.email,
+                'cpf': solicitacao.usuario.cpf
+            },
+            'evento': {
+                'id': solicitacao.evento.id,
+                'nome': solicitacao.evento.nome,
+                'data_inicio': solicitacao.evento.data_inicio.strftime('%d/%m/%Y'),
+                'data_fim': solicitacao.evento.data_fim.strftime('%d/%m/%Y'),
+                'carga_horaria': solicitacao.evento.carga_horaria
+            },
+            'tipo_certificado': solicitacao.tipo_certificado,
+            'observacoes': solicitacao.observacoes
+        }
+        
+        # Verificar participação do usuário
+        from models.event import Participacao, Atividade, ParticipacaoAtividade
+        
+        participacao = Participacao.query.filter_by(
+            usuario_id=solicitacao.usuario_id,
+            evento_id=solicitacao.evento_id
+        ).first()
+        
+        if participacao:
+            detalhes['participacao'] = {
+                'data_inscricao': participacao.data_inscricao.strftime('%d/%m/%Y %H:%M'),
+                'presente': participacao.presente,
+                'horas_participacao': participacao.horas_participacao or 0
+            }
+            
+            # Obter atividades participadas
+            atividades_participadas = ParticipacaoAtividade.query.filter_by(
+                participacao_id=participacao.id,
+                presente=True
+            ).join(Atividade).all()
+            
+            detalhes['atividades'] = [{
+                'nome': pa.atividade.nome,
+                'data': pa.atividade.data.strftime('%d/%m/%Y'),
+                'carga_horaria': pa.atividade.carga_horaria
+            } for pa in atividades_participadas]
+        
+        return jsonify(detalhes)
+        
+    except Exception as e:
+        logger.error(f"Erro ao obter detalhes da solicitação {solicitacao_id}: {str(e)}")
+        return jsonify({'erro': 'Erro interno do sistema'}), 500
 
 
 @certificado_routes.route('/notificacoes_certificado')
@@ -2602,3 +2779,132 @@ def verificar_participacao_evento(usuario_id, evento_id):
         'atividades': atividades,
         'carga_horaria_total': carga_horaria_total
     }
+
+
+@certificado_routes.route('/testar_template/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('templates.test')
+def testar_template(template_id):
+    """Testa um template personalizado com dados de exemplo."""
+    try:
+        template = CertificadoTemplateAvancado.query.filter_by(
+            id=template_id,
+            cliente_id=current_user.id
+        ).first_or_404()
+        
+        # Dados de exemplo para teste
+        dados_exemplo = {
+            'nome_participante': 'João da Silva',
+            'nome_evento': 'Evento de Teste',
+            'data_evento': datetime.now().strftime('%d/%m/%Y'),
+            'carga_horaria': '8 horas',
+            'organizador': current_user.nome or 'Organizador Teste'
+        }
+        
+        # Processar template com dados de exemplo
+        conteudo_teste = template.conteudo
+        for chave, valor in dados_exemplo.items():
+            placeholder = f"{{{chave}}}"
+            conteudo_teste = conteudo_teste.replace(placeholder, str(valor))
+        
+        return jsonify({
+            'success': True,
+            'conteudo_teste': conteudo_teste,
+            'dados_exemplo': dados_exemplo
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao testar template: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro ao testar template'}), 500
+
+
+@certificado_routes.route('/duplicar_template_personalizado/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('templates.create')
+def duplicar_template_personalizado(template_id):
+    """Duplica um template personalizado."""
+    try:
+        template_original = CertificadoTemplateAvancado.query.filter_by(
+            id=template_id,
+            cliente_id=current_user.id
+        ).first_or_404()
+        
+        # Criar cópia do template
+        novo_template = CertificadoTemplateAvancado(
+            titulo=f"{template_original.titulo} (Cópia)",
+            conteudo=template_original.conteudo,
+            layout_config=template_original.layout_config,
+            elementos_visuais=template_original.elementos_visuais,
+            variaveis_dinamicas=template_original.variaveis_dinamicas,
+            orientacao=template_original.orientacao,
+            tamanho_pagina=template_original.tamanho_pagina,
+            margem_config=template_original.margem_config,
+            cliente_id=current_user.id,
+            ativo=False,  # Cópia inicia inativa
+            data_criacao=datetime.now()
+        )
+        
+        db.session.add(novo_template)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Template duplicado com sucesso',
+            'novo_template_id': novo_template.id
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao duplicar template: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro ao duplicar template'}), 500
+
+
+@certificado_routes.route('/toggle_template_personalizado/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('templates.activate')
+def toggle_template_personalizado(template_id):
+    """Ativa ou desativa um template personalizado."""
+    try:
+        data = request.get_json()
+        ativar = data.get('ativar', False)
+        
+        template = CertificadoTemplateAvancado.query.filter_by(
+            id=template_id,
+            cliente_id=current_user.id
+        ).first_or_404()
+        
+        template.ativo = ativar
+        db.session.commit()
+        
+        acao = 'ativado' if ativar else 'desativado'
+        return jsonify({
+            'success': True,
+            'message': f'Template {acao} com sucesso'
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao alterar status do template: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro ao alterar status do template'}), 500
+
+
+@certificado_routes.route('/excluir_template_personalizado/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('templates.delete')
+def excluir_template_personalizado(template_id):
+    """Exclui um template personalizado."""
+    try:
+        template = CertificadoTemplateAvancado.query.filter_by(
+            id=template_id,
+            cliente_id=current_user.id
+        ).first_or_404()
+        
+        db.session.delete(template)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Template excluído com sucesso'
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao excluir template: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro ao excluir template'}), 500

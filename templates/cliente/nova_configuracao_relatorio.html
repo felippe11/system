@@ -164,9 +164,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Adicionar Campo</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="campoForm">
@@ -231,7 +229,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="confirmarCampo()">Adicionar Campo</button>
             </div>
         </div>
@@ -279,8 +277,9 @@ function adicionarCampo() {
     document.getElementById('campoForm').reset();
     campoEditandoIndex = -1;
     
-    // Mostrar modal
-    $('#campoModal').modal('show');
+    // Mostrar modal usando Bootstrap 5
+    const modal = new bootstrap.Modal(document.getElementById('campoModal'));
+    modal.show();
 }
 
 function confirmarCampo() {
@@ -320,7 +319,8 @@ function confirmarCampo() {
     }
     
     atualizarListaCampos();
-    $('#campoModal').modal('hide');
+    const modal = bootstrap.Modal.getInstance(document.getElementById('campoModal'));
+    modal.hide();
 }
 
 function atualizarListaCampos() {
@@ -378,7 +378,8 @@ function editarCampo(index) {
         document.getElementById('campo_opcoes').value = campo.opcoes.join('\n');
     }
     
-    $('#campoModal').modal('show');
+    const modal = new bootstrap.Modal(document.getElementById('campoModal'));
+    modal.show();
 }
 
 function removerCampo(index) {

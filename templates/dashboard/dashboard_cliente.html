@@ -2174,38 +2174,46 @@
   }
 
   function gerenciarTemplatesDeclaracao() {
-    // Implementar quando as rotas de declaração estiverem prontas
-    alert('Funcionalidade em desenvolvimento.');
+    window.open('/declaracao/templates', '_blank');
   }
 
   function criarTemplateDeclaracao() {
-    // Implementar quando as rotas de declaração estiverem prontas
-    alert('Funcionalidade em desenvolvimento.');
+    window.open('/declaracao/template/criar', '_blank');
   }
 
   function configurarDeclaracoes() {
-    // Implementar quando as rotas de declaração estiverem prontas
-    alert('Funcionalidade em desenvolvimento.');
+    window.open('/declaracao/configurar', '_blank');
   }
 
   function gerenciarPermissoes() {
-    // Implementar quando as rotas de declaração estiverem prontas
-    alert('Funcionalidade em desenvolvimento.');
+    window.open('/declaracao/gerenciar-permissoes', '_blank');
   }
 
   function emitirDeclaracaoIndividual() {
-    // Implementar quando as rotas de declaração estiverem prontas
-    alert('Funcionalidade em desenvolvimento.');
+    const eventoId = document.getElementById('selectEventoCertificado')?.value;
+    if (!eventoId) {
+      alert('Selecione um evento primeiro.');
+      return;
+    }
+    window.open(`/declaracao/emitir-individual/${eventoId}`, '_blank');
   }
 
   function emitirDeclaracaoLote() {
-    // Implementar quando as rotas de declaração estiverem prontas
-    alert('Funcionalidade em desenvolvimento.');
+    const eventoId = document.getElementById('selectEventoCertificado')?.value;
+    if (!eventoId) {
+      alert('Selecione um evento primeiro.');
+      return;
+    }
+    window.open(`/declaracao/emitir-lote/${eventoId}`, '_blank');
   }
 
   function liberarDeclaracaoParticipantes() {
-    // Implementar quando as rotas de declaração estiverem prontas
-    alert('Funcionalidade em desenvolvimento.');
+    const eventoId = document.getElementById('selectEventoCertificado')?.value;
+    if (!eventoId) {
+      alert('Selecione um evento primeiro.');
+      return;
+    }
+    window.open(`/declaracao/liberar-participantes/${eventoId}`, '_blank');
   }
 
   function aplicarFiltrosHistorico() {

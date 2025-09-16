@@ -255,15 +255,53 @@ function verificarNovamente() {
 
 function regenerarCertificado(certificadoId) {
     if (confirm('Deseja regenerar este certificado? Esta ação irá criar um novo hash de verificação.')) {
-        // Implementar regeneração individual
-        alert('Funcionalidade em desenvolvimento');
+        $.ajax({
+            url: `/validacao/admin/regenerar-certificado/${certificadoId}`,
+            type: 'POST',
+            headers: {
+                'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+            },
+            success: function(response) {
+                if (response.sucesso) {
+                    showToast('Sucesso', response.mensagem, 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showToast('Erro', response.erro || 'Erro ao regenerar certificado', 'error');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showToast('Erro', response?.erro || 'Erro interno do sistema', 'error');
+            }
+        });
     }
 }
 
 function regenerarTodos() {
     if (confirm('Deseja regenerar todos os certificados inválidos? Esta ação pode demorar alguns minutos.')) {
-        // Implementar regeneração em lote
-        alert('Funcionalidade em desenvolvimento');
+        $.ajax({
+            url: '/validacao/admin/regenerar-todos',
+            type: 'POST',
+            headers: {
+                'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+            },
+            success: function(response) {
+                if (response.sucesso) {
+                    showToast('Sucesso', response.mensagem, 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showToast('Erro', response.erro || 'Erro ao regenerar certificados', 'error');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showToast('Erro', response?.erro || 'Erro interno do sistema', 'error');
+            }
+        });
     }
 }
 
@@ -272,15 +310,47 @@ function verificarDetalhes(certificadoId) {
     $('#detalhesContent').html('<div class="text-center"><div class="spinner-border"></div></div>');
     $('#modalDetalhes').modal('show');
     
-    // Simular carregamento de detalhes
-    setTimeout(() => {
-        $('#detalhesContent').html(`
-            <div class="alert alert-info">
-                <strong>Detalhes técnicos do certificado ID: ${certificadoId}</strong>
-                <br>Esta funcionalidade será implementada para mostrar informações detalhadas sobre o certificado.
-            </div>
-        `);
-    }, 1000);
+    $.ajax({
+        url: `/validacao/admin/detalhes-certificado/${certificadoId}`,
+        type: 'GET',
+        success: function(response) {
+            let detalhesHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Informações Básicas</h6>
+                        <p><strong>ID:</strong> ${response.id}</p>
+                        <p><strong>Código:</strong> ${response.codigo_verificacao}</p>
+                        <p><strong>Status:</strong> <span class="badge badge-${response.valido ? 'success' : 'danger'}">${response.valido ? 'Válido' : 'Inválido'}</span></p>
+                        <p><strong>Data de Emissão:</strong> ${response.data_emissao}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Integridade</h6>
+                        <p><strong>Hash:</strong> <code>${response.hash_verificacao}</code></p>
+                        <p><strong>Última Verificação:</strong> ${response.ultima_verificacao || 'Nunca'}</p>
+                        <p><strong>Acessos:</strong> ${response.total_acessos}</p>
+                    </div>
+                </div>
+            `;
+            
+            if (response.erro_integridade) {
+                detalhesHtml += `
+                    <div class="alert alert-danger mt-3">
+                        <strong>Erro de Integridade:</strong> ${response.erro_integridade}
+                    </div>
+                `;
+            }
+            
+            $('#detalhesContent').html(detalhesHtml);
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            $('#detalhesContent').html(`
+                <div class="alert alert-danger">
+                    <strong>Erro:</strong> ${response?.erro || 'Erro ao carregar detalhes'}
+                </div>
+            `);
+        }
+    });
 }
 </script>
 {% endblock %}

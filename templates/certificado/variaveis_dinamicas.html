@@ -585,13 +585,48 @@ function importarVariaveis() {
       try {
         const data = JSON.parse(e.target.result);
         if (data.variaveis && Array.isArray(data.variaveis)) {
-          // Implementar importação
-          showToast('Funcionalidade de importação em desenvolvimento', 'info');
+          // Confirmar importação
+          if (confirm(`Deseja importar ${data.variaveis.length} variáveis? Variáveis com nomes duplicados serão ignoradas.`)) {
+            $.ajax({
+              url: '/certificado/importar_variaveis_dinamicas',
+              type: 'POST',
+              contentType: 'application/json',
+              data: JSON.stringify(data),
+              headers: {
+                'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+              },
+              success: function(response) {
+                if (response.success) {
+                  showToast('Sucesso', response.message, 'success');
+                  
+                  // Mostrar detalhes se houver erros
+                  if (response.erros && response.erros.length > 0) {
+                    let detalhes = 'Erros encontrados:\n';
+                    response.erros.forEach(erro => {
+                      detalhes += '- ' + erro + '\n';
+                    });
+                    console.warn(detalhes);
+                  }
+                  
+                  // Recarregar página após 2 segundos
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2000);
+                } else {
+                  showToast('Erro', response.message, 'error');
+                }
+              },
+              error: function(xhr) {
+                const response = xhr.responseJSON;
+                showToast('Erro', response?.message || 'Erro ao importar variáveis', 'error');
+              }
+            });
+          }
         } else {
-          showToast('Arquivo inválido', 'error');
+          showToast('Arquivo inválido', 'O arquivo deve conter um objeto JSON com a propriedade "variaveis"', 'error');
         }
       } catch (error) {
-        showToast('Erro ao ler arquivo', 'error');
+        showToast('Erro', 'Erro ao ler arquivo JSON: ' + error.message, 'error');
       }
     };
     reader.readAsText(file);

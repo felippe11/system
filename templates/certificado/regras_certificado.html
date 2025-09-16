@@ -153,6 +153,65 @@
     </div>
 </div>
 
+<!-- Modal Editar Regra -->
+<div class="modal fade" id="modalEditarRegra" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Regra de Certificado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditarRegra">
+                <input type="hidden" id="editRegraId" name="regra_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">Nome da Regra</label>
+                                <input type="text" class="form-control" id="editNome" name="nome" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Prioridade</label>
+                                <input type="number" class="form-control" id="editPrioridade" name="prioridade" value="0" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Descrição</label>
+                        <textarea class="form-control" id="editDescricao" name="descricao" rows="2"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Condições (JSON)</label>
+                        <textarea class="form-control" id="editCondicoes" name="condicoes" rows="4" 
+                                  placeholder='{"carga_horaria_minima": 20, "percentual_presenca": 75}'></textarea>
+                        <small class="text-muted">Defina as condições em formato JSON</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ações (JSON)</label>
+                        <textarea class="form-control" id="editAcoes" name="acoes" rows="4" 
+                                  placeholder='{"liberar_certificado": true, "notificar": true}'></textarea>
+                        <small class="text-muted">Defina as ações em formato JSON</small>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="editAtiva" name="ativa">
+                        <label class="form-check-label">Regra ativa</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // Criar nova regra
 document.getElementById('formNovaRegra').addEventListener('submit', function(e) {
@@ -192,9 +251,70 @@ document.getElementById('formNovaRegra').addEventListener('submit', function(e) 
 
 // Editar regra
 function editarRegra(regraId) {
-    // Implementar edição
-    alert('Funcionalidade de edição em desenvolvimento');
+    // Buscar dados da regra
+    fetch(`{{ url_for('certificado_routes.obter_regra_certificado', regra_id=0) }}`.replace('0', regraId))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const regra = data.regra;
+                
+                // Preencher formulário de edição
+                document.getElementById('editRegraId').value = regra.id;
+                document.getElementById('editNome').value = regra.nome;
+                document.getElementById('editDescricao').value = regra.descricao || '';
+                document.getElementById('editPrioridade').value = regra.prioridade;
+                document.getElementById('editCondicoes').value = regra.condicoes || '';
+                document.getElementById('editAcoes').value = regra.acoes || '';
+                document.getElementById('editAtiva').checked = regra.ativa;
+                
+                // Mostrar modal
+                new bootstrap.Modal(document.getElementById('modalEditarRegra')).show();
+            } else {
+                alert('Erro ao carregar dados da regra: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao carregar regra');
+        });
 }
+
+// Salvar edição da regra
+document.getElementById('formEditarRegra').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const regraId = formData.get('regra_id');
+    const data = {
+        nome: formData.get('nome'),
+        descricao: formData.get('descricao'),
+        prioridade: parseInt(formData.get('prioridade')),
+        condicoes: formData.get('condicoes'),
+        acoes: formData.get('acoes'),
+        ativa: formData.has('ativa')
+    };
+    
+    fetch(`{{ url_for('certificado_routes.editar_regra_certificado', regra_id=0) }}`.replace('0', regraId), {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalEditarRegra')).hide();
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar alterações');
+    });
+});
 
 // Excluir regra
 function excluirRegra(regraId) {

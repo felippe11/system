@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Emitir Declaração Individual - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Emitir Declaração Individual - {{ evento.nome }}</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('evento_routes.detalhes_evento', evento_id=evento.id) }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5>Selecione o Participante e Template</h5>
+                            <p class="text-muted">Escolha um participante e um template para gerar a declaração individual.</p>
+                        </div>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('declaracao.gerar_declaracao_individual', evento_id=evento.id, usuario_id=0) }}" id="formDeclaracao">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="participante_id">Participante:</label>
+                                    <select name="participante_id" id="participante_id" class="form-control" required>
+                                        <option value="">Selecione um participante...</option>
+                                        {% for participante in participantes %}
+                                            <option value="{{ participante.id }}">
+                                                {{ participante.nome }} - {{ participante.email }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="template_id">Template:</label>
+                                    <select name="template_id" id="template_id" class="form-control" required>
+                                        <option value="">Selecione um template...</option>
+                                        {% for template in templates %}
+                                            <option value="{{ template.id }}">
+                                                {{ template.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-file-pdf"></i> Gerar Declaração
+                                </button>
+                                <button type="button" class="btn btn-info ml-2" onclick="visualizarPreview()">
+                                    <i class="fas fa-eye"></i> Visualizar Preview
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    {% if participantes|length == 0 %}
+                        <div class="alert alert-warning mt-4">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Não há participantes com check-in realizado para este evento.
+                        </div>
+                    {% endif %}
+                    
+                    {% if templates|length == 0 %}
+                        <div class="alert alert-warning mt-4">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Não há templates de declaração disponíveis. 
+                            <a href="{{ url_for('declaracao.listar_templates') }}" class="alert-link">Criar template</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const participanteSelect = document.getElementById('participante_id');
+    const form = document.getElementById('formDeclaracao');
+    
+    // Atualizar action do formulário quando participante for selecionado
+    participanteSelect.addEventListener('change', function() {
+        const participanteId = this.value;
+        if (participanteId) {
+            const newAction = `{{ url_for('declaracao.gerar_declaracao_individual', evento_id=evento.id, usuario_id=0) }}`.replace('0', participanteId);
+            form.action = newAction;
+        }
+    });
+    
+    // Validar antes de submeter
+    form.addEventListener('submit', function(e) {
+        const participanteId = participanteSelect.value;
+        const templateId = document.getElementById('template_id').value;
+        
+        if (!participanteId || !templateId) {
+            e.preventDefault();
+            alert('Por favor, selecione um participante e um template.');
+            return false;
+        }
+    });
+});
+
+function visualizarPreview() {
+    const participanteId = document.getElementById('participante_id').value;
+    const templateId = document.getElementById('template_id').value;
+    
+    if (!participanteId || !templateId) {
+        alert('Por favor, selecione um participante e um template.');
+        return;
+    }
+    
+    const baseUrl = '{{ url_for("certificado_routes.preview_declaracao", template_id=1, evento_id=evento.id) }}';
+    const url = baseUrl.replace('/1/', `/${templateId}/`) + `?participante_id=${participanteId}`;
+    window.open(url, '_blank');
+}
+</script>
+{% endblock %}

@@ -369,8 +369,102 @@
         }
         
         function verDetalhes(solicitacaoId) {
-            // Por simplicidade, vamos apenas mostrar um alert
-            alert('Funcionalidade de detalhes será implementada');
+            // Carregar detalhes via AJAX
+            $('#detalhesContent').html('<div class="text-center"><div class="spinner-border"></div></div>');
+            $('#modalDetalhes').modal('show');
+            
+            $.ajax({
+                url: `/certificado/detalhes_solicitacao/${solicitacaoId}`,
+                type: 'GET',
+                success: function(response) {
+                    let detalhesHtml = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Informações da Solicitação</h6>
+                                <p><strong>ID:</strong> ${response.id}</p>
+                                <p><strong>Status:</strong> <span class="badge badge-warning">${response.status}</span></p>
+                                <p><strong>Data da Solicitação:</strong> ${response.data_solicitacao}</p>
+                                <p><strong>Tipo:</strong> ${response.tipo_certificado}</p>
+                                ${response.observacoes ? `<p><strong>Observações:</strong> ${response.observacoes}</p>` : ''}
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Dados do Participante</h6>
+                                <p><strong>Nome:</strong> ${response.usuario.nome}</p>
+                                <p><strong>Email:</strong> ${response.usuario.email}</p>
+                                <p><strong>CPF:</strong> ${response.usuario.cpf}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Informações do Evento</h6>
+                                <p><strong>Nome:</strong> ${response.evento.nome}</p>
+                                <p><strong>Período:</strong> ${response.evento.data_inicio} a ${response.evento.data_fim}</p>
+                                <p><strong>Carga Horária:</strong> ${response.evento.carga_horaria}h</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (response.participacao) {
+                        detalhesHtml += `
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Participação</h6>
+                                    <p><strong>Data de Inscrição:</strong> ${response.participacao.data_inscricao}</p>
+                                    <p><strong>Presente:</strong> <span class="badge badge-${response.participacao.presente ? 'success' : 'danger'}">${response.participacao.presente ? 'Sim' : 'Não'}</span></p>
+                                    <p><strong>Horas de Participação:</strong> ${response.participacao.horas_participacao}h</p>
+                                </div>
+                            </div>
+                        `;
+                        
+                        if (response.atividades && response.atividades.length > 0) {
+                            detalhesHtml += `
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h6>Atividades Participadas</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Atividade</th>
+                                                        <th>Data</th>
+                                                        <th>Carga Horária</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                            `;
+                            
+                            response.atividades.forEach(atividade => {
+                                detalhesHtml += `
+                                    <tr>
+                                        <td>${atividade.nome}</td>
+                                        <td>${atividade.data}</td>
+                                        <td>${atividade.carga_horaria}h</td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            detalhesHtml += `
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    $('#detalhesContent').html(detalhesHtml);
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON;
+                    $('#detalhesContent').html(`
+                        <div class="alert alert-danger">
+                            <strong>Erro:</strong> ${response?.erro || 'Erro ao carregar detalhes'}
+                        </div>
+                    `);
+                }
+            });
         }
         
         function filtrarSolicitacoes() {

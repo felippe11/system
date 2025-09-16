@@ -56,10 +56,12 @@
                                     <option value="">Selecione um material</option>
                                     {% for material in materiais_disponiveis %}
                                         <option value="{{ material.id }}" 
-                                                data-estoque="{{ material.quantidade_atual }}"
-                                                data-unidade="{{ material.unidade }}">
-                                            {{ material.nome }} - {{ material.categoria or 'Sem categoria' }} 
-                                            (Estoque: {{ material.quantidade_atual }} {{ material.unidade }})
+                                                data-estoque="{{ material.quantidade_estoque }}"
+                                                data-unidade="{{ material.unidade_medida }}"
+                                                data-min="{{ material.quantidade_minima_pedido }}"
+                                                data-max="{{ material.quantidade_maxima_pedido }}">
+                                            {{ material.nome }} - {{ material.tipo_material or 'Sem categoria' }} 
+                                            (Estoque: {{ material.quantidade_estoque }} {{ material.unidade_medida }})
                                         </option>
                                     {% endfor %}
                                 </select>
@@ -221,7 +223,7 @@
                                 <thead>
                                     <tr>
                                         <th>Material</th>
-                                        <th>Categoria</th>
+                                        <th>Tipo</th>
                                         <th>Unidade</th>
                                         <th>Estoque</th>
                                         <th>Qtd. Mín/Máx</th>
@@ -237,19 +239,21 @@
                                                 <br><small class="text-muted">{{ material.descricao }}</small>
                                             {% endif %}
                                         </td>
-                                        <td>{{ material.categoria or '-' }}</td>
-                                        <td>{{ material.unidade }}</td>
+                                        <td>{{ material.tipo_material or '-' }}</td>
+                                        <td>{{ material.unidade_medida }}</td>
                                         <td>
-                                            <span class="badge {% if material.quantidade_atual <= material.quantidade_minima %}badge-danger{% elif material.quantidade_atual <= (material.quantidade_minima * 2) %}badge-warning{% else %}badge-success{% endif %}">
-                                                {{ material.quantidade_atual }}
+                                            <span class="badge {% if material.quantidade_estoque <= material.estoque_minimo %}badge-danger{% elif material.quantidade_estoque <= (material.estoque_minimo * 2) %}badge-warning{% else %}badge-success{% endif %}">
+                                                {{ material.quantidade_estoque }}
                                             </span>
                                         </td>
-                                        <td>{{ material.quantidade_minima or '-' }} - {{ material.quantidade_maxima or '-' }}</td>
+                                        <td>{{ material.quantidade_minima_pedido or '-' }} - {{ material.quantidade_maxima_pedido or '-' }}</td>
                                         <td>
-                                            {% if material.quantidade_atual > 0 %}
+                                            {% if material.disponivel_para_solicitacao and material.quantidade_estoque > 0 %}
                                                 <span class="badge badge-success">Disponível</span>
-                                            {% else %}
+                                            {% elif material.quantidade_estoque <= 0 %}
                                                 <span class="badge badge-danger">Sem estoque</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">Oculto</span>
                                             {% endif %}
                                         </td>
                                     </tr>

@@ -1351,6 +1351,13 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             pdf.cell(95, 6, f'Turma: {agendamento.turma}', 1, 0)
             pdf.cell(95, 6, f'Total de Alunos: {agendamento.quantidade_alunos}', 1, 1)
             
+            # Informações de localização
+            municipio_agendamento = agendamento.municipio or 'Não informado'
+            bairro_agendamento = agendamento.bairro or 'Não informado'
+            
+            pdf.cell(95, 6, f'Município: {municipio_agendamento}', 1, 0)
+            pdf.cell(95, 6, f'Bairro: {bairro_agendamento}', 1, 1)
+            
             # Lista de alunos
             if agendamento.alunos:
                 pdf.ln(2)
@@ -4081,7 +4088,7 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
         # Cabeçalhos
         headers = [
             'ID', 'Data da Visita', 'Horário', 'Evento', 'Escola/Instituição',
-            'Professor/Responsável', 'E-mail', 'Telefone', 'Turma', 
+            'Professor/Responsável', 'E-mail', 'Telefone', 'Município', 'Bairro', 'Turma', 
             'Quantidade de Alunos', 'Status', 'Data do Agendamento',
             'Nível de Ensino', 'Tem Necessidades Especiais', 'Observações'
         ]
@@ -4119,6 +4126,10 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                             tem_necessidades = 'Sim'
                             break
                 
+                # Obter município e bairro do agendamento
+                municipio_agendamento = agendamento.municipio or 'N/A'
+                bairro_agendamento = agendamento.bairro or 'N/A'
+                
                 data = [
                     agendamento.id,
                     horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
@@ -4128,6 +4139,8 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                     professor.nome if professor else agendamento.professor_nome or 'N/A',
                     professor.email if professor else agendamento.professor_email or 'N/A',
                     agendamento.professor_telefone or 'N/A',
+                    municipio_agendamento,
+                    bairro_agendamento,
                     agendamento.turma or 'N/A',
                     agendamento.quantidade_alunos or 0,
                     agendamento.status.title() if agendamento.status else 'N/A',

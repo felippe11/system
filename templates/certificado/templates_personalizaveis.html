@@ -495,30 +495,104 @@ function previewTemplate(templateId) {
 }
 
 function testarTemplate(templateId) {
-  // Implementar teste do template
-  showToast('Funcionalidade de teste em desenvolvimento', 'info');
+  $.ajax({
+    url: `/certificado/testar_template/${templateId}`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    success: function(response) {
+      if (response.success) {
+        $('#previewContent').html(`
+          <div class="alert alert-info mb-3">
+            <i class="bi bi-info-circle me-2"></i>
+            Teste do template com dados de exemplo
+          </div>
+          <div style="white-space: pre-wrap; font-family: 'Times New Roman', serif; line-height: 1.6;">
+            ${response.conteudo_teste}
+          </div>
+        `);
+        $('#modalPreview').modal('show');
+        showToast('Template testado com sucesso!', 'success');
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao testar template', 'error');
+    }
+  });
 }
 
 function duplicarTemplate(templateId) {
   if (!confirm('Deseja duplicar este template?')) return;
   
-  // Implementar duplicação
-  showToast('Funcionalidade de duplicação em desenvolvimento', 'info');
+  $.ajax({
+    url: `/certificado/duplicar_template_personalizado/${templateId}`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    success: function(response) {
+      if (response.success) {
+        showToast(response.message, 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao duplicar template', 'error');
+    }
+  });
 }
 
 function toggleTemplate(templateId, ativar) {
   const acao = ativar ? 'ativar' : 'desativar';
   if (!confirm(`Deseja ${acao} este template?`)) return;
   
-  // Implementar toggle
-  showToast(`Funcionalidade de ${acao} em desenvolvimento`, 'info');
+  $.ajax({
+    url: `/certificado/toggle_template_personalizado/${templateId}`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: JSON.stringify({ ativar: ativar }),
+    success: function(response) {
+      if (response.success) {
+        showToast(response.message, 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast(`Erro ao ${acao} template`, 'error');
+    }
+  });
 }
 
 function excluirTemplate(templateId) {
   if (!confirm('Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.')) return;
   
-  // Implementar exclusão
-  showToast('Funcionalidade de exclusão em desenvolvimento', 'info');
+  $.ajax({
+    url: `/certificado/excluir_template_personalizado/${templateId}`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    success: function(response) {
+      if (response.success) {
+        showToast(response.message, 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao excluir template', 'error');
+    }
+  });
 }
 
 function showToast(message, type = 'info') {

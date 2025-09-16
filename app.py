@@ -18,6 +18,13 @@ import pytz
 import logging
 import os
 
+# Importar configurações de estabilidade do servidor
+try:
+    from server_config import configure_server_stability
+    configure_server_stability()
+except ImportError:
+    logging.warning("Configurações de estabilidade do servidor não encontradas")
+
 # Configuração centralizada de logging
 logging.basicConfig(
     level=logging.DEBUG if Config.DEBUG else logging.INFO,
@@ -52,7 +59,12 @@ def create_app():
     app.config["UPLOAD_FOLDER"] = "uploads"
 
     # Inicialização de extensões
-    socketio.init_app(app)
+    socketio.init_app(
+        app, 
+        async_mode=app.config.get('SOCKETIO_ASYNC_MODE', 'eventlet'),
+        ping_timeout=app.config.get('SOCKETIO_PING_TIMEOUT', 60),
+        ping_interval=app.config.get('SOCKETIO_PING_INTERVAL', 25)
+    )
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
@@ -77,6 +89,40 @@ def create_app():
             }), 400
         # For non-API requests, return the default HTML error
         return e.description, 400
+
+    # Broken pipe error handler
+    @app.errorhandler(BrokenPipeError)
+    def handle_broken_pipe(e):
+        """Handle broken pipe errors gracefully."""
+        logging.warning(f"Broken pipe error on {request.path}: {str(e)}")
+        # Don't try to send a response as the connection is already broken
+        return None
+
+    # General connection error handler
+    @app.errorhandler(ConnectionError)
+    def handle_connection_error(e):
+        """Handle connection errors gracefully."""
+        logging.warning(f"Connection error on {request.path}: {str(e)}")
+        return jsonify({
+            'error': 'Connection error',
+            'message': 'Erro de conexão. Tente novamente.'
+        }), 500
+
+    # Middleware para capturar broken pipe errors
+    @app.before_request
+    def before_request():
+        """Set up request handling."""
+        pass
+
+    @app.after_request
+    def after_request(response):
+        """Handle response and catch broken pipe errors."""
+        try:
+            return response
+        except (BrokenPipeError, ConnectionError) as e:
+            logging.warning(f"Connection error during response: {str(e)}")
+            # Return None to indicate the connection is broken
+            return None
 
     login_manager.login_view = "auth_routes.login"
     login_manager.session_protection = "strong"
