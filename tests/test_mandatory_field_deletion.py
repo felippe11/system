@@ -45,8 +45,8 @@ def app():
         db.session.add(form)
         db.session.commit()
 
-        campo_nome = CampoFormulario(formulario_id=form.id, nome="nome", tipo="texto")
-        campo_email = CampoFormulario(formulario_id=form.id, nome="email", tipo="texto")
+        campo_nome = CampoFormulario(formulario_id=form.id, nome="Nome", tipo="texto")
+        campo_email = CampoFormulario(formulario_id=form.id, nome="Email", tipo="texto")
         campo_idade = CampoFormulario(formulario_id=form.id, nome="idade", tipo="texto")
         db.session.add_all([campo_nome, campo_email, campo_idade])
         db.session.commit()
@@ -88,8 +88,8 @@ def login(client):
 def test_mandatory_fields_not_deleted(client, app):
     login(client)
     with app.app_context():
-        campo_nome = CampoFormulario.query.filter_by(nome="nome").first()
-        campo_email = CampoFormulario.query.filter_by(nome="email").first()
+        campo_nome = CampoFormulario.query.filter_by(nome="Nome").first()
+        campo_email = CampoFormulario.query.filter_by(nome="Email").first()
         campo_idade = CampoFormulario.query.filter_by(nome="idade").first()
 
     client.post(f"/campos/{campo_nome.id}/deletar")

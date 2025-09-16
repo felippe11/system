@@ -15,6 +15,7 @@ from config import Config
 
 # --- Stubs de módulos externos ---
 utils_stub = types.ModuleType('utils')
+utils_stub.__path__ = []
 taxa_service = types.ModuleType('utils.taxa_service')
 taxa_service.calcular_taxa_cliente = lambda *a, **k: {
     'taxa_aplicada': 0,
@@ -29,6 +30,11 @@ utils_stub.gerar_comprovante_pdf = lambda *a, **k: ''
 utils_stub.enviar_email = lambda *a, **k: None
 utils_stub.formatar_brasilia = lambda *a, **k: ''
 utils_stub.determinar_turno = lambda *a, **k: ''
+utils_stub.endpoints = types.SimpleNamespace(
+    DASHBOARD='',
+    DASHBOARD_PARTICIPANTE='',
+    DASHBOARD_SUPERADMIN='',
+)
 sys.modules.setdefault('utils', utils_stub)
 sys.modules.setdefault('utils.taxa_service', taxa_service)
 
@@ -45,6 +51,26 @@ sys.modules.setdefault('utils.security', utils_security)
 utils_mfa = types.ModuleType('utils.mfa')
 utils_mfa.mfa_required = lambda f: f
 sys.modules.setdefault('utils.mfa', utils_mfa)
+
+utils_auth = types.ModuleType('utils.auth')
+
+
+def _auth_stub(*args, **kwargs):
+    if args and callable(args[0]) and len(args) == 1:
+        return args[0]
+
+    def decorator(f):
+        return f
+
+    return decorator
+
+
+utils_auth.__getattr__ = lambda name: _auth_stub
+sys.modules.setdefault('utils.auth', utils_auth)
+
+template_context_stub = types.ModuleType('utils.template_context')
+template_context_stub.register_template_context = lambda app: None
+sys.modules.setdefault('utils.template_context', template_context_stub)
 
 pdf_service_stub = types.ModuleType('services.pdf_service')
 
@@ -89,7 +115,12 @@ utils_revisor_helpers.update_revisor_process = lambda *a, **k: None
 sys.modules.setdefault('utils.revisor_helpers', utils_revisor_helpers)
 utils_stub.revisor_helpers = utils_revisor_helpers
 
-sys.modules.setdefault('pandas', types.ModuleType('pandas'))
+pd_stub = types.ModuleType('pandas')
+pd_stub.DataFrame = type('DataFrame', (), {})
+pd_stub.Series = type('Series', (), {})
+pd_stub.read_csv = lambda *a, **k: pd_stub.DataFrame()
+pd_stub.read_excel = lambda *a, **k: pd_stub.DataFrame()
+sys.modules.setdefault('pandas', pd_stub)
 sys.modules.setdefault('qrcode', types.ModuleType('qrcode'))
 sys.modules.setdefault('openpyxl', types.ModuleType('openpyxl'))
 sys.modules['openpyxl'].Workbook = object
@@ -128,6 +159,7 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 
 from app import create_app
 from extensions import db
+from routes import agendamento_routes
 from models import (
     Cliente,
     Usuario,
@@ -143,7 +175,11 @@ from models import (
 
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
+    monkeypatch.setattr(
+        'models.formulario.ensure_formulario_trabalhos',
+        lambda: None,
+    )
     app = create_app()
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
@@ -714,6 +750,40 @@ def test_confirmar_checkin_cria_checkin(app):
             palavra_chave='QR-AGENDAMENTO',
         ).first()
         assert chk is not None
+
+
+def test_cliente_aprovar_agendamento_redirect(app, monkeypatch):
+    client = app.test_client()
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamentoService,
+        'enviar_email_confirmacao',
+        lambda ag: None,
+    )
+
+    login(client, 'cli@test', '123')
+
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        horario = HorarioVisitacao.query.first()
+        agendamento = AgendamentoVisita(
+            cliente_id=cliente.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            salas_selecionadas='1',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.post(
+        f'/cliente/aprovar_agendamento/{agendamento_id}',
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/cliente/meus_agendamentos' in resp.headers['Location']
 
 
 def test_confirmar_checkin_sem_alunos_presente(app):

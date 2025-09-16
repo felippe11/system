@@ -488,3 +488,123 @@ def toggle_usuario(usuario_id: int):
     if usuario.cliente_id:
         return redirect(url_for("cliente_routes.listar_usuarios", cliente_id=usuario.cliente_id))
     return redirect(url_for(endpoints.DASHBOARD))
+
+
+# ---------------------------------------------------------------------------
+# Rotas de gerenciamento de formadores
+# ---------------------------------------------------------------------------
+
+@cliente_routes.route("/editar_formador/<int:id>", methods=["GET", "POST"])
+@login_required
+@require_permission('formadores.edit')
+def editar_formador(id):
+    """Edita o cadastro de um formador."""
+    from models.user import Ministrante
+    from werkzeug.security import generate_password_hash
+    
+    formador = Ministrante.query.get_or_404(id)
+    
+    if request.method == "POST":
+        # Atualizar dados pessoais
+        formador.nome = request.form.get("nome")
+        formador.email = request.form.get("email")
+        formador.cpf = request.form.get("cpf")
+        formador.telefone = request.form.get("telefone")
+        
+        # Atualizar formação e áreas
+        formador.formacao = request.form.get("formacao")
+        formador.areas_atuacao = request.form.get("areas_atuacao")
+        formador.categorias_formacao = request.form.get("categorias_formacao")
+        
+        # Atualizar localização
+        formador.cidade = request.form.get("cidade")
+        formador.estado = request.form.get("estado")
+        formador.endereco = request.form.get("endereco")
+        
+        # Atualizar informações bancárias
+        formador.banco = request.form.get("banco")
+        formador.agencia = request.form.get("agencia")
+        formador.conta = request.form.get("conta")
+        formador.tipo_conta = request.form.get("tipo_conta")
+        formador.chave_pix = request.form.get("chave_pix")
+        
+        # Atualizar senha se fornecida
+        nova_senha = request.form.get("senha")
+        if nova_senha and nova_senha.strip():
+            confirmar_senha = request.form.get("confirmar_senha")
+            if nova_senha == confirmar_senha:
+                if len(nova_senha) >= 6:
+                    formador.senha = generate_password_hash(nova_senha)
+                else:
+                    flash("A senha deve ter pelo menos 6 caracteres!", "danger")
+                    return render_template("cliente/editar_formador.html", formador=formador)
+            else:
+                flash("As senhas não coincidem!", "danger")
+                return render_template("cliente/editar_formador.html", formador=formador)
+        
+        # Atualizar status ativo
+        formador.ativo = 'ativo' in request.form
+        
+        try:
+            db.session.commit()
+            flash("Formador atualizado com sucesso!", "success")
+            return redirect(url_for("formador_routes.gerenciar_formadores"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erro ao atualizar formador: {str(e)}", "danger")
+    
+    return render_template("cliente/editar_formador.html", formador=formador)
+
+
+@cliente_routes.route("/excluir_formador/<int:id>", methods=["POST"])
+@login_required
+@require_permission('formadores.delete')
+def excluir_formador(id):
+    """Exclui um formador."""
+    from models.user import Ministrante
+    
+    formador = Ministrante.query.get_or_404(id)
+    
+    try:
+        db.session.delete(formador)
+        db.session.commit()
+        flash("Formador excluído com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao excluir formador: {str(e)}", "danger")
+    
+    return redirect(url_for("formador_routes.gerenciar_formadores"))
+
+
+@cliente_routes.route("/vincular_monitor/<int:id>", methods=["GET", "POST"])
+@login_required
+@require_permission('formadores.edit')
+def vincular_monitor(id):
+    """Vincula um monitor ao formador."""
+    from models.user import Ministrante, Usuario
+    
+    formador = Ministrante.query.get_or_404(id)
+    
+    if request.method == "POST":
+        monitor_id = request.form.get("monitor_id")
+        if monitor_id:
+            monitor = Usuario.query.get(monitor_id)
+            if monitor:
+                # Assumindo que existe um relacionamento entre formador e monitor
+                formador.monitor_id = monitor_id
+                try:
+                    db.session.commit()
+                    flash("Monitor vinculado com sucesso!", "success")
+                    return redirect(url_for("formador_routes.gerenciar_formadores"))
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f"Erro ao vincular monitor: {str(e)}", "danger")
+            else:
+                flash("Monitor não encontrado!", "danger")
+        else:
+            flash("Selecione um monitor!", "warning")
+    
+    # Buscar usuários que podem ser monitores
+    monitores = Usuario.query.filter_by(tipo="monitor").all()
+    
+    return render_template("cliente/vincular_monitor.html", formador=formador, monitores=monitores)

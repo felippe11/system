@@ -174,9 +174,7 @@ def create_process() -> Any:
         if formulario:
             rh.ensure_reviewer_required_fields(formulario)
     
-    # Update field step assignments
-    if processo.formulario_id and dados.get("campos_etapas"):
-        rh.update_campos_etapas(processo.formulario_id, dados["campos_etapas"])
+
     
     db.session.commit()
     flash("Processo criado com sucesso!", "success")
@@ -229,7 +227,6 @@ def edit_process(process_id: int):
         update_revisor_process(processo, dados)
 
         update_process_eventos(processo, dados.get("eventos_ids", []))
-        recreate_stages(processo, dados.get("stage_names", []))
         recreate_criterios(processo, dados.get("criterios", []))
         if processo.formulario_id:
 
@@ -237,9 +234,7 @@ def edit_process(process_id: int):
             if formulario:
                 rh.ensure_reviewer_required_fields(formulario)
         
-        # Update field step assignments
-        if processo.formulario_id and dados.get("campos_etapas"):
-            rh.update_campos_etapas(processo.formulario_id, dados["campos_etapas"])
+
         
         db.session.commit()
         flash("Processo atualizado", "success")
@@ -249,7 +244,6 @@ def edit_process(process_id: int):
         )
 
 
-    etapas: List[RevisorEtapa] = processo.etapas  # type: ignore[index]
     try:
         criterios = processo.criterios  # type: ignore[attr-defined]
     except ProgrammingError as exc:  # pragma: no cover - depends on db state
@@ -266,7 +260,6 @@ def edit_process(process_id: int):
         "revisor/config.html",
         processo=processo,
         formularios=formularios,
-        etapas=etapas,
         criterios=criterios,
         eventos=eventos,
         selected_event_ids=selected_event_ids,
@@ -604,26 +597,14 @@ def submit_application(process_id: int):
         flash(f"Seu código: {candidatura.codigo}", "success")
         return redirect(url_for("revisor_routes.progress", codigo=candidatura.codigo))
 
-    # Agrupar campos por etapa
-    from collections import defaultdict
-    campos_por_etapa = defaultdict(list)
-    
-    for campo in formulario.campos:
-        etapa = getattr(campo, 'etapa', 1)  # Padrão etapa 1 se não definida
-        campos_por_etapa[etapa].append(campo)
-    
-    # Ordenar campos dentro de cada etapa pela ordem
-    for etapa in campos_por_etapa:
-        campos_por_etapa[etapa].sort(key=lambda c: getattr(c, 'ordem', 0))
-    
-    # Converter para lista ordenada de tuplas (etapa, campos)
-    etapas_ordenadas = sorted(campos_por_etapa.items())
+    # Ordenar todos os campos pela ordem
+    campos_ordenados = sorted(formulario.campos, key=lambda c: getattr(c, 'ordem', 0) or 0)
     
     return render_template(
         "revisor/candidatura_form.html", 
         formulario=formulario, 
         processo=processo,
-        etapas=etapas_ordenadas
+        campos=campos_ordenados
     )
 
 
@@ -1256,7 +1237,7 @@ def get_formulario_campos(formulario_id: int) -> Any:
     """API endpoint para buscar campos de um formulário específico."""
     
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
-        return jsonify({"error": "Acesso negado"}), 403
+        return jsonify({"success": False, "error": "Acesso negado"}), 403
     
     formulario = Formulario.query.filter_by(
         id=formulario_id,
@@ -1264,7 +1245,7 @@ def get_formulario_campos(formulario_id: int) -> Any:
     ).first()
     
     if not formulario:
-        return jsonify({"error": "Formulário não encontrado"}), 404
+        return jsonify({"success": False, "error": "Formulário não encontrado"}), 404
     
     campos = [{
         "id": campo.id,
@@ -1274,4 +1255,4 @@ def get_formulario_campos(formulario_id: int) -> Any:
         "etapa": campo.etapa or 1
     } for campo in formulario.campos]
     
-    return jsonify(campos)
+    return jsonify({"success": True, "campos": campos})

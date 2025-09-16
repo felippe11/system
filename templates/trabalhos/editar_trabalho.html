@@ -58,13 +58,13 @@
                             </div>
                         </div>
                         
+                        {% set valores_campos = {} %}
+                        {% for resposta_campo in resposta.respostas_campos %}
+                            {% set _ = valores_campos.update({resposta_campo.campo_id: resposta_campo.valor}) %}
+                        {% endfor %}
+                        
                         {% for campo in formulario.campos %}
-                            {% set valor_atual = '' %}
-                            {% for resposta_campo in resposta.respostas_campos %}
-                                {% if resposta_campo.campo_id == campo.id %}
-                                    {% set valor_atual = resposta_campo.valor %}
-                                {% endif %}
-                            {% endfor %}
+                            {% set valor_atual = valores_campos.get(campo.id, '') %}
                             
                             <div class="mb-3">
                                 <label for="campo_{{ campo.id }}" class="form-label">

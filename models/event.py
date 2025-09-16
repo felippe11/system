@@ -936,6 +936,13 @@ class HorarioVisitacao(db.Model):
         "Evento", backref=db.backref("horarios_visitacao", lazy=True)
     )
 
+    @classmethod
+    def get_for_update(cls, horario_id):
+        """Return a HorarioVisitacao row locked for update."""
+        return (
+            cls.query.filter_by(id=horario_id).with_for_update().first()
+        )
+
     def __repr__(self):
         return f"<HorarioVisitacao {self.data} {self.horario_inicio}-{self.horario_fim} ({self.vagas_disponiveis} vagas)>"
 

@@ -16,7 +16,7 @@ from models.formador import (
     SolicitacaoMaterial, MaterialAprovado, ConfiguracaoRelatorioFormador,
     RelatorioFormador, ArquivoFormador, FormadorMonitor
 )
-from models.material import MaterialDisponivel, SolicitacaoMaterialFormador, Material
+from models.material import MaterialDisponivel, SolicitacaoMaterialFormador, Material, FormadorPolo
 from models import Oficina
 from utils.auth import ministrante_required
 from utils import endpoints
@@ -52,6 +52,13 @@ def inscricao_formador(token):
         estado = request.form.get('estado')
         telefone = request.form.get('telefone')
         senha = request.form.get('senha')
+        categorias_formacao = request.form.get('categorias_formacao')
+        endereco = request.form.get('endereco')
+        banco = request.form.get('banco')
+        agencia = request.form.get('agencia')
+        conta = request.form.get('conta')
+        tipo_conta = request.form.get('tipo_conta')
+        chave_pix = request.form.get('chave_pix')
         
         # Validações básicas
         if not all([nome, email, formacao, areas_atuacao, cpf, cidade, estado, senha]):
@@ -81,6 +88,13 @@ def inscricao_formador(token):
                 telefone=telefone,
                 senha=generate_password_hash(senha),
                 cliente_id=link.cliente_id,
+                categorias_formacao=categorias_formacao or '',
+                endereco=endereco or '',
+                banco=banco or '',
+                agencia=agencia or '',
+                conta=conta or '',
+                tipo_conta=tipo_conta or '',
+                chave_pix=chave_pix or '',
                 pix='',  # Campo obrigatório, pode ser preenchido depois
                 ativo=True
             )
@@ -225,11 +239,24 @@ def solicitar_material():
             db.session.rollback()
             flash(f'Erro ao enviar solicitação: {str(e)}', 'error')
     
-    # Buscar materiais disponíveis para formadores
-    materiais_disponiveis = MaterialDisponivel.query.filter_by(
-        cliente_id=current_user.cliente_id,
+    # Buscar polos atribuídos ao formador atual
+    polos_formador = FormadorPolo.query.filter_by(
+        formador_id=current_user.id,
         ativo=True
     ).all()
+    
+    polo_ids = [fp.polo_id for fp in polos_formador]
+    
+    # Buscar materiais disponíveis nos polos atribuídos ao formador
+    if polo_ids:
+        materiais_disponiveis = Material.query.filter(
+            Material.polo_id.in_(polo_ids),
+            Material.cliente_id == current_user.cliente_id,
+            Material.ativo == True,
+            Material.quantidade_atual > 0
+        ).all()
+    else:
+        materiais_disponiveis = []
     
     return render_template('formador/solicitar_material.html', materiais_disponiveis=materiais_disponiveis)
 

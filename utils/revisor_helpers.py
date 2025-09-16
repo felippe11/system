@@ -33,10 +33,6 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
 
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = [s.strip() for s in req.form.getlist("stage_name")]
-    if len(stage_names) < num_etapas or any(
-        not nome for nome in stage_names[:num_etapas]
-    ):
-        raise ValueError("Todos os nomes das etapas são obrigatórios")
     eventos_ids: List[int] = req.form.getlist("eventos_ids", type=int)
     criterio_nomes: List[str] = req.form.getlist("criterio_nome")
     start_raw = req.form.get("availability_start")
@@ -59,16 +55,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         if nome or requisitos:
             criterios.append({"nome": nome, "requisitos": requisitos})
 
-    # Parse field step assignments
-    campos_etapas: Dict[int, int] = {}
-    for key, value in req.form.items():
-        if key.startswith("campo_") and key.endswith("_etapa"):
-            try:
-                campo_id = int(key.split("_")[1])
-                etapa = int(value) if value else 1
-                campos_etapas[campo_id] = etapa
-            except (ValueError, IndexError):
-                continue
+
 
     return {
         "formulario_id": formulario_id,
@@ -82,7 +69,6 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         "exibir_para_participantes": exibir_para_participantes,
         "eventos_ids": eventos_ids,
         "criterios": criterios,
-        "campos_etapas": campos_etapas,
     }
 
 
@@ -156,28 +142,45 @@ def recreate_criterios(
                 )
 
 
+
+
+
 def ensure_reviewer_required_fields(formulario: Formulario) -> None:
     """Ensure that reviewer application forms have required name and email fields.
 
-    The function checks for fields named ``nome`` and ``email`` in ``formulario``.
+    The function checks for fields named ``Nome`` and ``Email`` in ``formulario``.
     Missing fields are created with ``obrigatorio=True``, ``protegido=True`` and type ``text``; existing
     fields are marked as required and protected if not already.
     """
 
     existing = {campo.nome: campo for campo in formulario.campos}
-    for field in ("nome", "email"):
-        campo = existing.get(field)
+    # Mapear campos antigos para novos nomes com capitalização correta
+    field_mapping = {
+        "nome": "Nome",
+        "email": "Email",
+        "Nome": "Nome",
+        "Email": "Email"
+    }
+    
+    for old_field, new_field in [("nome", "Nome"), ("email", "Email")]:
+        # Verificar se existe campo com nome antigo ou novo
+        campo = existing.get(old_field) or existing.get(new_field)
+        
         if campo is None:
+            # Criar novo campo com capitalização correta
             db.session.add(
                 CampoFormulario(
                     formulario_id=formulario.id,
-                    nome=field,
+                    nome=new_field,
                     tipo="text",
                     obrigatorio=True,
                     protegido=True,  # Marca como protegido para impedir edição/exclusão
                 )
             )
         else:
+            # Atualizar nome do campo existente para capitalização correta
+            if campo.nome != new_field:
+                campo.nome = new_field
             # Marca campos existentes como obrigatórios e protegidos
             if not campo.obrigatorio:
                 campo.obrigatorio = True

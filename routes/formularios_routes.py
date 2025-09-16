@@ -331,7 +331,7 @@ def editar_campo(campo_id):
         novo_obrigatorio = request.form.get("obrigatorio") == "on"
 
         if getattr(campo, "protegido", False):
-            if campo.nome in ("nome", "email"):
+            if campo.nome in ("nome", "email", "Nome", "Email"):
                 campo.nome = novo_nome
                 db.session.commit()
                 flash("Campo atualizado com sucesso!", "success")
@@ -348,14 +348,14 @@ def editar_campo(campo_id):
             return render_template("editar_campo.html", campo=campo)
 
         if (
-            campo.nome in ("nome", "email")
+            campo.nome.lower() in ("nome", "email")
             and RevisorProcess.query.filter_by(
                 formulario_id=campo.formulario_id
             ).first()
         ):
             if novo_nome != campo.nome or novo_obrigatorio != campo.obrigatorio:
                 flash(
-                    "Campos 'nome' e 'email' não podem ser alterados em "
+                    "Campos 'Nome' e 'Email' não podem ser alterados em "
                     "formulários de processo seletivo.",
                     "danger",
                 )

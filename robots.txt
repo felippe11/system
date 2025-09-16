@@ -1,0 +1,31 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://appfiber.com/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /static/tmp/
+Disallow: /static/qrcodes/
+Disallow: /static/certificados/
+Disallow: /static/comprovantes/
+Disallow: /static/relatorios/
+Disallow: /static/reports/
+Disallow: /static/feedback_pdfs/
+Disallow: /static/etiquetas/
+Disallow: /static/agendamentos/
+Disallow: /static/programacoes/
+
+# Allow important static resources
+Allow: /static/css/
+Allow: /static/js/
+Allow: /static/img/
+Allow: /static/favicon/
+Allow: /static/hero/
+Allow: /static/banners/
+
+# Crawl delay
+Crawl-delay: 1

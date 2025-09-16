@@ -1,10 +1,9 @@
-
-<!-- Template: emails/confirmacao_agendamento.html -->
+<!-- Template: emails/cancelamento_agendamento.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Confirmação de Agendamento</title>
+    <title>Confirmação de Cancelamento</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,7 +18,7 @@
             border-radius: 5px;
         }
         .header {
-            background-color: #007bff;
+            background-color: #dc3545;
             color: white;
             padding: 10px 20px;
             text-align: center;
@@ -53,37 +52,48 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Confirmação de Agendamento</h1>
+            <h1>Confirmação de Cancelamento</h1>
         </div>
         
         <p>Olá, {{ professor.nome }}!</p>
         
-        <p>Seu agendamento para visitação ao evento <strong>{{ evento.nome }}</strong> foi confirmado com sucesso!</p>
+        <p>Seu agendamento para visitação ao evento <strong>{{ evento.nome }}</strong> foi cancelado conforme solicitado.</p>
         
         <div class="info-block">
-            <h3>Detalhes do Agendamento:</h3>
+            <h3>Detalhes do Agendamento Cancelado:</h3>
             <p><strong>Código do Agendamento:</strong> #{{ agendamento.id }}</p>
             <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
             <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</p>
             <p><strong>Local:</strong> {{ evento.local }}</p>
             <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
             <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
-            <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+            <p><strong>Data do Cancelamento:</strong> {{ agendamento.data_cancelamento.strftime('%d/%m/%Y %H:%M') }}</p>
         </div>
         
-        <p>Lembre-se de adicionar a lista de alunos que participarão da visita. Você pode fazer isso acessando o sistema e navegando até "Meus Agendamentos".</p>
+        {% set config = evento.configuracoes_agendamento[0] if evento.configuracoes_agendamento else None %}
+        {% if config %}
+            {% set data_hora_visita = horario.data|string + ' ' + horario.horario_inicio|string %}
+            {% set data_hora_visita = data_hora_visita|to_datetime %}
+            {% set prazo_limite = data_hora_visita - config.prazo_cancelamento|timedelta(hours=true) %}
+            {% set data_cancelamento = agendamento.data_cancelamento %}
+            
+            {% if data_cancelamento > prazo_limite %}
+                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin: 15px 0;">
+                    <p><strong>Aviso de Bloqueio:</strong> Seu cancelamento foi realizado fora do prazo estipulado ({{ config.prazo_cancelamento }} horas antes da visita).</p>
+                    <p>De acordo com as regras do evento, você está temporariamente bloqueado para novos agendamentos neste evento por {{ config.tempo_bloqueio }} dias.</p>
+                </div>
+            {% endif %}
+        {% endif %}
         
-        <p>No dia da visita, apresente o QR Code ou o comprovante impresso para agilizar o check-in.</p>
+        <p>Caso queira agendar uma nova visita, você pode fazê-lo através do sistema.</p>
         
         <center>
-            <a href="{{ url_for('agendamento_routes.meus_agendamentos', _external=True) }}" class="btn">Acessar Meus Agendamentos</a>
+            <a href="{{ url_for('routes.eventos_disponiveis_professor', _external=True) }}" class="btn">Ver Eventos Disponíveis</a>
         </center>
-        
-        <p>Se precisar cancelar ou modificar seu agendamento, faça isso com pelo menos {{ evento.configuracoes_agendamento[0].prazo_cancelamento if evento.configuracoes_agendamento else 24 }} horas de antecedência para evitar bloqueios temporários.</p>
         
         <div class="footer">
             <p>Este é um e-mail automático. Por favor, não responda a esta mensagem.</p>
-            <p>&copy; {{ current_year }} {{ evento.cliente.nome }} - Todos os direitos reservados.</p>
+            <p>&copy; {{ now().year }} {{ evento.cliente.nome }} - Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
