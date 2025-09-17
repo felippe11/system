@@ -22,6 +22,23 @@
           </div>
         </div>
         
+        <!-- Informações da categoria -->
+        {% if categoria_trabalho %}
+        <div class="alert alert-info mb-3">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-tag-fill me-2"></i>
+            <div>
+              <strong>Categoria do Trabalho:</strong> {{ categoria_trabalho }}
+              {% if barema and barema.__class__.__name__ == 'CategoriaBarema' %}
+              <br><small class="text-muted">Utilizando barema específico para esta categoria</small>
+              {% else %}
+              <br><small class="text-muted">Utilizando barema geral do evento</small>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        
         <div class="trabalho-viewer">
           {% if review.submission.file_path %}
           <div class="pdf-viewer-container">

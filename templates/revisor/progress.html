@@ -192,9 +192,15 @@
                                         <i class="bi bi-file-earmark-pdf"></i> Ver PDF
                                     </a>
                                     {% if not trabalho.assignment_completed %}
-                                        <a href="#" class="btn btn-sm btn-success" title="Iniciar Revisão">
-                                            <i class="bi bi-play-circle"></i> Revisar
-                                        </a>
+                                        {% if trabalho.submission_id %}
+                                            <a href="{{ url_for('revisor_routes.iniciar_revisao', trabalho_id=trabalho.submission_id) }}" class="btn btn-sm btn-success" title="Iniciar Revisão">
+                                                <i class="bi bi-play-circle"></i> Revisar
+                                            </a>
+                                        {% else %}
+                                            <span class="btn btn-sm btn-secondary disabled" title="Trabalho não disponível">
+                                                <i class="bi bi-exclamation-triangle"></i> Indisponível
+                                            </span>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </td>

@@ -50,31 +50,53 @@ monitor_routes = Blueprint(
 @login_required
 def gerar_link_monitor():
     """Gera link de inscrição para monitores."""
-    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['cliente', 'admin']:
-        return jsonify({'success': False, 'message': 'Não autorizado'}), 403
-
-    data = request.get_json() or {}
-    expires_at_str = data.get('expires_at')
-    if not expires_at_str:
-        return jsonify({'success': False, 'message': 'expires_at é obrigatório'}), 400
     try:
-        expires_at = datetime.fromisoformat(expires_at_str)
-    except ValueError:
-        return jsonify({'success': False, 'message': 'Data inválida'}), 400
+        print(f"DEBUG: Usuário atual: {current_user}, Tipo: {getattr(current_user, 'tipo', 'N/A')}")
+        
+        if not hasattr(current_user, 'tipo') or current_user.tipo not in ['cliente', 'admin']:
+            print("DEBUG: Usuário não autorizado")
+            return jsonify({'success': False, 'message': 'Não autorizado'}), 403
 
-    if current_user.tipo == 'admin':
-        cliente_id = data.get('cliente_id')
-        if not cliente_id:
-            return jsonify({'success': False, 'message': 'cliente_id é obrigatório'}), 400
-    else:
-        cliente_id = current_user.id
+        data = request.get_json() or {}
+        print(f"DEBUG: Dados recebidos: {data}")
+        
+        expires_at_str = data.get('expires_at')
+        if not expires_at_str:
+            print("DEBUG: expires_at não fornecido")
+            return jsonify({'success': False, 'message': 'expires_at é obrigatório'}), 400
+            
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str)
+            print(f"DEBUG: Data parseada: {expires_at}")
+        except ValueError as e:
+            print(f"DEBUG: Erro ao parsear data: {e}")
+            return jsonify({'success': False, 'message': 'Data inválida'}), 400
 
-    link = MonitorCadastroLink(cliente_id=cliente_id, expires_at=expires_at)
-    db.session.add(link)
-    db.session.commit()
+        if current_user.tipo == 'admin':
+            cliente_id = data.get('cliente_id')
+            if not cliente_id:
+                print("DEBUG: cliente_id não fornecido para admin")
+                return jsonify({'success': False, 'message': 'cliente_id é obrigatório'}), 400
+        else:
+            cliente_id = current_user.id
+            
+        print(f"DEBUG: Criando link para cliente_id: {cliente_id}")
+        
+        link = MonitorCadastroLink(cliente_id=cliente_id, expires_at=expires_at)
+        db.session.add(link)
+        db.session.commit()
+        
+        print(f"DEBUG: Link criado com token: {link.token}")
 
-    url = url_for('monitor_routes.monitor_inscricao_form', token=link.token, _external=True)
-    return jsonify({'success': True, 'url': url})
+        url = url_for('monitor_routes.monitor_inscricao_form', token=link.token, _external=True)
+        print(f"DEBUG: URL gerada: {url}")
+        
+        return jsonify({'success': True, 'url': url})
+        
+    except Exception as e:
+        print(f"DEBUG: Erro inesperado: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
 
 
 @monitor_routes.route('/monitor/inscricao/<token>', methods=['GET'])
