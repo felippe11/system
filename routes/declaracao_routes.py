@@ -76,13 +76,13 @@ def gerar_declaracao_coletiva_route(evento_id):
                                  
         elif request.method == 'POST':
             # Processar seleção
-            usuarios_selecionados = request.form.getlist('usuarios_selecionados')
+            participantes_selecionados = request.form.getlist('participantes_selecionados')
             
-            if not usuarios_selecionados:
+            if not participantes_selecionados:
                 flash('Selecione pelo menos um participante.', 'error')
                 return redirect(url_for('declaracao.gerar_declaracao_coletiva_route', evento_id=evento_id))
                 
-            usuarios_ids = [int(uid) for uid in usuarios_selecionados]
+            usuarios_ids = [int(uid) for uid in participantes_selecionados]
             
             # Gerar declaração coletiva
             arquivo_path = gerar_declaracao_coletiva(evento_id, usuarios_ids)
@@ -419,7 +419,7 @@ def gerar_declaracao_lote(evento_id):
             return redirect(url_for('evento.listar'))
             
         template_id = request.form.get('template_id')
-        participantes_ids = request.form.getlist('participantes')
+        participantes_ids = request.form.getlist('participantes_selecionados')
         formato = request.form.get('formato', 'pdf')
         
         if not template_id:
@@ -502,16 +502,16 @@ def liberar_declaracao_participantes(evento_id):
                                  evento=evento, participantes=participantes)
                                  
         elif request.method == 'POST':
-            usuarios_selecionados = request.form.getlist('usuarios_selecionados')
+            participantes_selecionados = request.form.getlist('participantes_selecionados')
             
-            if not usuarios_selecionados:
+            if not participantes_selecionados:
                 flash('Selecione pelo menos um participante.', 'error')
                 return redirect(url_for('declaracao.liberar_declaracao_participantes', evento_id=evento_id))
                 
             # Aqui você implementaria a lógica para liberar as declarações
             # Por exemplo, enviar emails ou marcar como liberadas no banco
             
-            flash(f'Declarações liberadas para {len(usuarios_selecionados)} participantes!', 'success')
+            flash(f'Declarações liberadas para {len(participantes_selecionados)} participantes!', 'success')
             return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
             
     except Exception as e:

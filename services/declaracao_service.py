@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 import os
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 from flask import current_app, render_template_string
@@ -404,19 +405,34 @@ def _gerar_arquivo_declaracao_coletiva(evento, dados_usuarios, template):
 # Consultas auxiliares
 # ------------------------------- #
 def listar_participantes_evento(evento_id):
-    """Lista todos os participantes de um evento com dados de participação."""
+    """Lista participantes do evento com informacoes essenciais para emissao."""
     try:
-        participantes = db.session.query(Usuario).join(
-            Checkin, Usuario.id == Checkin.usuario_id
-        ).filter(
-            Checkin.evento_id == evento_id
-        ).distinct().all()
+        participantes = (
+            db.session.query(Usuario)
+            .join(Checkin, Usuario.id == Checkin.usuario_id)
+            .filter(Checkin.evento_id == evento_id)
+            .distinct()
+            .all()
+        )
 
         dados_participantes = []
         for participante in participantes:
-            dados = _calcular_dados_participacao(participante.id, evento_id)
-            dados['usuario'] = participante
-            dados_participantes.append(dados)
+            participacao = _calcular_dados_participacao(participante.id, evento_id)
+            dados_participantes.append(
+                SimpleNamespace(
+                    id=participante.id,
+                    nome=participante.nome,
+                    email=participante.email,
+                    cpf=getattr(participante, "cpf", None),
+                    usuario=participante,
+                    total_checkins=participacao["total_checkins"],
+                    oficinas_participadas=participacao["oficinas_participadas"],
+                    carga_horaria=participacao["carga_horaria"],
+                    datas_participacao=participacao["datas_participacao"],
+                    declaracao_liberada=getattr(participante, "declaracao_liberada", False),
+                    ultima_atualizacao=getattr(participante, "ultima_atualizacao", None),
+                )
+            )
 
         return dados_participantes
 

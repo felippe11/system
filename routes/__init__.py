@@ -67,6 +67,7 @@ def register_routes(app):
     from .ai_routes import ai_bp
     from .validacao_routes import validacao_bp
     from .declaracao_routes import declaracao_bp
+    from .editor_routes import editor_bp
 
     from .importar_trabalhos_routes import importar_trabalhos_routes
     
@@ -129,6 +130,7 @@ def register_routes(app):
     app.register_blueprint(ai_bp)
     app.register_blueprint(validacao_bp)
     app.register_blueprint(declaracao_bp)
+    app.register_blueprint(editor_bp)
 
     app.register_blueprint(importar_trabalhos_routes)
 

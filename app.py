@@ -94,7 +94,10 @@ def create_app():
     @app.errorhandler(BrokenPipeError)
     def handle_broken_pipe(e):
         """Handle broken pipe errors gracefully."""
-        logging.warning(f"Broken pipe error on {request.path}: {str(e)}")
+        try:
+            logging.warning("Broken pipe error on %s: %s", request.path, str(e))
+        except:
+            logging.warning("Broken pipe error: %s", str(e))
         # Don't try to send a response as the connection is already broken
         return None
 
@@ -102,7 +105,7 @@ def create_app():
     @app.errorhandler(ConnectionError)
     def handle_connection_error(e):
         """Handle connection errors gracefully."""
-        logging.warning(f"Connection error on {request.path}: {str(e)}")
+        logging.warning("Connection error on %s: %s", request.path, str(e))
         return jsonify({
             'error': 'Connection error',
             'message': 'Erro de conexão. Tente novamente.'
@@ -120,7 +123,7 @@ def create_app():
         try:
             return response
         except (BrokenPipeError, ConnectionError) as e:
-            logging.warning(f"Connection error during response: {str(e)}")
+            logging.warning("Connection error during response: %s", str(e))
             # Return None to indicate the connection is broken
             return None
 

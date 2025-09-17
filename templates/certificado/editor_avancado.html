@@ -1,415 +1,406 @@
-{% extends 'base.html' %}
-{% block title %}Editor Avançado de Certificados{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Editor Avançado de Certificado{% endblock %}
 
 {% block extra_css %}
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<style>
-  .editor-container {
-    height: 100vh;
-    overflow: hidden;
-  }
-  
-  .toolbar {
-    background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-    padding: 10px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  
-  .editor-workspace {
-    display: flex;
-    height: calc(100vh - 120px);
-  }
-  
-  .sidebar {
-    width: 300px;
-    background: #f8f9fa;
-    border-right: 1px solid #dee2e6;
-    overflow-y: auto;
-  }
-  
-  .canvas-container {
-    flex: 1;
-    background: #e9ecef;
-    position: relative;
-    overflow: auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-  }
-  
-  .certificate-canvas {
-    background: white;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    position: relative;
-    min-height: 600px;
-    width: 800px;
-    border: 1px solid #ccc;
-  }
-  
-  .properties-panel {
-    width: 300px;
-    background: #f8f9fa;
-    border-left: 1px solid #dee2e6;
-    overflow-y: auto;
-  }
-  
-  .draggable-element {
-    position: absolute;
-    cursor: move;
-    border: 2px dashed transparent;
-    min-width: 100px;
-    min-height: 30px;
-    padding: 5px;
-  }
-  
-  .draggable-element:hover {
-    border-color: #007bff;
-  }
-  
-  .draggable-element.selected {
-    border-color: #28a745;
-    border-style: solid;
-  }
-  
-  .element-controls {
-    position: absolute;
-    top: -25px;
-    right: 0;
-    display: none;
-    gap: 2px;
-  }
-  
-  .draggable-element.selected .element-controls {
-    display: flex;
-  }
-  
-  .resize-handle {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: #007bff;
-    border: 1px solid white;
-    display: none;
-  }
-  
-  .draggable-element.selected .resize-handle {
-    display: block;
-  }
-  
-  .resize-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
-  .resize-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
-  .resize-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
-  .resize-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
-  
-  .element-library {
-    padding: 15px;
-  }
-  
-  .element-item {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 10px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .element-item:hover {
-    background: #e9ecef;
-    border-color: #007bff;
-  }
-  
-  .properties-content {
-    padding: 15px;
-  }
-  
-  .form-group {
-    margin-bottom: 15px;
-  }
-  
-  .color-picker {
-    width: 40px;
-    height: 30px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  .font-preview {
-    padding: 5px;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-top: 5px;
-  }
-  
-  .template-actions {
-    padding: 15px;
-    border-top: 1px solid #dee2e6;
-    background: white;
-  }
-  
-  .preview-mode {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.8);
-    z-index: 1000;
-    display: none;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .preview-content {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    max-width: 90%;
-    max-height: 90%;
-    overflow: auto;
-  }
-  
-  .variable-tag {
-    background: #e3f2fd;
-    color: #1976d2;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.85em;
-    cursor: pointer;
-  }
-  
-  .ai-suggestions {
-    background: #f0f8ff;
-    border: 1px solid #b3d9ff;
-    border-radius: 4px;
-    padding: 10px;
-    margin-top: 10px;
-  }
-</style>
+<link href="{{ url_for('static', filename='css/certificate-editor.css') }}" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 {% endblock %}
 
 {% block content %}
 <div class="editor-container">
   <!-- Toolbar -->
   <div class="toolbar">
-    <button class="btn btn-primary btn-sm" id="saveTemplate">
-      <i class="fas fa-save"></i> Salvar
-    </button>
-    <button class="btn btn-success btn-sm" id="previewTemplate">
-      <i class="fas fa-eye"></i> Pré-visualizar
-    </button>
-    <button class="btn btn-outline-success btn-sm" id="livePreviewToggle">
-      <i class="fas fa-play"></i> Preview ao Vivo
-    </button>
-    <button class="btn btn-info btn-sm" id="exportTemplate">
-      <i class="fas fa-download"></i> Exportar
-    </button>
-    <div class="vr"></div>
-    <button class="btn btn-outline-secondary btn-sm" id="undoAction">
-      <i class="fas fa-undo"></i>
-    </button>
-    <button class="btn btn-outline-secondary btn-sm" id="redoAction">
-      <i class="fas fa-redo"></i>
-    </button>
-    <div class="vr"></div>
-    <button class="btn btn-outline-secondary btn-sm" id="toggleGrid" title="Mostrar/Ocultar Grid">
-      <i class="fas fa-th"></i>
-    </button>
-    <button class="btn btn-outline-secondary btn-sm active" id="toggleSnap" title="Ativar/Desativar Snap">
-      <i class="fas fa-magnet"></i>
-    </button>
-    <div class="vr"></div>
-    <select class="form-select form-select-sm" id="zoomLevel" style="width: auto;">
-      <option value="0.5">50%</option>
-      <option value="0.75">75%</option>
-      <option value="1" selected>100%</option>
-      <option value="1.25">125%</option>
-      <option value="1.5">150%</option>
-    </select>
-    <div class="vr"></div>
-    <span class="text-muted">Template: <strong id="templateName">{{ template.titulo if template else 'Novo Template' }}</strong></span>
+    <div class="toolbar-group">
+      <button type="button" class="btn btn-primary" id="saveTemplate">
+        <i class="fas fa-save me-1"></i> Salvar
+      </button>
+      <button type="button" class="btn btn-outline-primary" id="previewTemplate">
+        <i class="fas fa-eye me-1"></i> Preview
+      </button>
+      <button type="button" class="btn btn-outline-secondary" id="livePreviewToggle">
+        <i class="fas fa-play me-1"></i> Preview Dinâmico
+      </button>
+      <button type="button" class="btn btn-outline-success" id="exportTemplate">
+        <i class="fas fa-download me-1"></i> Exportar
+      </button>
+    </div>
+    
+    <div class="toolbar-group">
+      <button type="button" class="btn btn-outline-secondary" id="undoAction">
+        <i class="fas fa-undo me-1"></i> Desfazer
+      </button>
+      <button type="button" class="btn btn-outline-secondary" id="redoAction">
+        <i class="fas fa-redo me-1"></i> Refazer
+      </button>
+    </div>
+    
+    <div class="toolbar-group">
+      <button type="button" class="btn btn-outline-secondary" id="toggleGrid">
+        <i class="fas fa-th me-1"></i> Grade
+      </button>
+      <button type="button" class="btn btn-outline-secondary" id="toggleSnap">
+        <i class="fas fa-magnet me-1"></i> Ímã
+      </button>
+    </div>
+    
+    <div class="toolbar-group">
+      <label for="zoomLevel" class="form-label me-2 mb-0">Zoom:</label>
+      <select class="form-select form-select-sm" id="zoomLevel" style="width: auto;">
+        <option value="0.5">50%</option>
+        <option value="0.75">75%</option>
+        <option value="1" selected>100%</option>
+        <option value="1.25">125%</option>
+        <option value="1.5">150%</option>
+        <option value="2">200%</option>
+      </select>
+    </div>
   </div>
 
   <!-- Workspace -->
-  <div class="editor-workspace">
-    <!-- Sidebar - Biblioteca de Elementos -->
-    <div class="sidebar">
-      <div class="element-library">
-        <h6 class="fw-bold mb-3">Elementos</h6>
-        
-        <div class="element-item" data-type="text">
-          <i class="fas fa-font me-2"></i>
-          <strong>Texto</strong>
-          <small class="d-block text-muted">Adicionar texto personalizado</small>
+  <div class="workspace">
+    <!-- Sidebar da biblioteca de elementos -->
+    <div class="elements-sidebar">
+      <div class="sidebar-header">
+        <i class="fas fa-layer-group me-2"></i>
+        Biblioteca de Elementos
+      </div>
+      
+      <div class="elements-library">
+        <!-- Elementos básicos -->
+        <div class="element-category">
+          <div class="category-title">Elementos Básicos</div>
+          
+          <div class="element-item" data-type="text">
+            <i class="fas fa-font me-2"></i>
+            <div>
+              <strong>Texto</strong>
+              <small class="d-block text-muted">Adicionar texto personalizado</small>
+            </div>
+          </div>
+          
+          <div class="element-item" data-type="logo">
+            <i class="fas fa-image me-2"></i>
+            <div>
+              <strong>Logo</strong>
+              <small class="d-block text-muted">Inserir logotipo</small>
+            </div>
+          </div>
+          
+          <div class="element-item" data-type="signature">
+            <i class="fas fa-signature me-2"></i>
+            <div>
+              <strong>Assinatura</strong>
+              <small class="d-block text-muted">Campo para assinatura</small>
+            </div>
+          </div>
+          
+          <div class="element-item" data-type="qrcode">
+            <i class="fas fa-qrcode me-2"></i>
+            <div>
+              <strong>QR Code</strong>
+              <small class="d-block text-muted">Código QR dinâmico</small>
+            </div>
+          </div>
         </div>
-        
-        <div class="element-item" data-type="title">
-          <i class="fas fa-heading me-2"></i>
-          <strong>Título</strong>
-          <small class="d-block text-muted">Título principal do certificado</small>
+
+        <!-- Variáveis dinâmicas -->
+        <div class="element-category">
+          <div class="category-title">Variáveis Dinâmicas</div>
+          
+          <div class="element-item" data-type="variable">
+            <i class="fas fa-tag me-2"></i>
+            <div>
+              <strong>Variável Personalizada</strong>
+              <small class="d-block text-muted">Adicionar variável customizada</small>
+            </div>
+          </div>
+          
+          <div id="dynamicVariables">
+            <!-- Variáveis serão carregadas dinamicamente -->
+          </div>
+          
+          <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-2" data-bs-toggle="modal" data-bs-target="#newVariableModal">
+            <i class="fas fa-plus me-1"></i> Nova Variável
+          </button>
         </div>
-        
-        <div class="element-item" data-type="participant-name">
-          <i class="fas fa-user me-2"></i>
-          <strong>Nome do Participante</strong>
-          <small class="d-block text-muted">{NOME_PARTICIPANTE}</small>
+      </div>
+    </div>
+
+    <!-- Canvas principal -->
+    <div class="canvas-container">
+      <div class="canvas-wrapper">
+        <div id="canvas" class="landscape">
+          <!-- Elementos serão adicionados aqui dinamicamente -->
         </div>
-        
-        <div class="element-item" data-type="workload">
-          <i class="fas fa-clock me-2"></i>
-          <strong>Carga Horária</strong>
-          <small class="d-block text-muted">{CARGA_HORARIA}</small>
+      </div>
+    </div>
+
+    <!-- Painel de propriedades -->
+    <div class="properties-panel">
+      <div class="properties-header">
+        <i class="fas fa-cog me-2"></i>
+        Propriedades
+      </div>
+      
+      <div class="properties-content" id="propertiesPanel" style="display: none;">
+        <!-- Propriedades de texto -->
+        <div class="property-section" id="textProperties" style="display: none;">
+          <div class="property-group">
+            <h6>Conteúdo</h6>
+            <div class="form-group">
+              <label class="form-label">Texto</label>
+              <textarea class="form-control" id="elementText" rows="3" placeholder="Digite o texto..."></textarea>
+            </div>
+          </div>
+          
+          <div class="property-group">
+            <h6>Formatação</h6>
+            <div class="form-group">
+              <label class="form-label">Fonte</label>
+              <select class="form-select" id="fontFamily">
+                <option value="Arial">Arial</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tamanho</label>
+              <div class="input-group">
+                <input type="range" class="form-range" id="fontSize" min="8" max="72" value="16">
+                <span class="range-value" id="fontSizeValue">16px</span>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Peso</label>
+              <select class="form-select" id="fontWeight">
+                <option value="normal">Normal</option>
+                <option value="bold">Negrito</option>
+                <option value="lighter">Mais Leve</option>
+                <option value="bolder">Mais Pesado</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Alinhamento</label>
+              <select class="form-select" id="textAlign">
+                <option value="left">Esquerda</option>
+                <option value="center">Centro</option>
+                <option value="right">Direita</option>
+                <option value="justify">Justificado</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Cor</label>
+              <input type="color" class="form-control form-control-color" id="textColor" value="#000000">
+            </div>
+          </div>
         </div>
-        
-        <div class="element-item" data-type="activities">
-          <i class="fas fa-list me-2"></i>
-          <strong>Lista de Atividades</strong>
-          <small class="d-block text-muted">{LISTA_OFICINAS}</small>
+
+        <!-- Propriedades de logo -->
+        <div class="property-section" id="logoProperties" style="display: none;">
+          <div class="property-group">
+            <h6>Imagem</h6>
+            <div class="form-group">
+              <label class="form-label">URL da Imagem</label>
+              <input type="url" class="form-control" id="logoUrl" placeholder="https://exemplo.com/logo.png">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tamanho</label>
+              <select class="form-select" id="logoSize">
+                <option value="small">Pequeno (100px)</option>
+                <option value="medium">Médio (150px)</option>
+                <option value="large">Grande (200px)</option>
+              </select>
+            </div>
+          </div>
         </div>
-        
-        <div class="element-item" data-type="date">
-          <i class="fas fa-calendar me-2"></i>
-          <strong>Data</strong>
-          <small class="d-block text-muted">{DATA_EMISSAO}</small>
+
+        <!-- Propriedades de borda -->
+        <div class="property-section" id="borderProperties" style="display: none;">
+          <div class="property-group">
+            <h6>Borda</h6>
+            <div class="form-group">
+              <label class="form-label">Largura</label>
+              <div class="input-group">
+                <input type="range" class="form-range" id="borderWidth" min="0" max="10" value="1">
+                <span class="range-value" id="borderWidthValue">1px</span>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Estilo</label>
+              <select class="form-select" id="borderStyle">
+                <option value="solid">Sólida</option>
+                <option value="dashed">Tracejada</option>
+                <option value="dotted">Pontilhada</option>
+                <option value="double">Dupla</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Cor</label>
+              <input type="color" class="form-control form-control-color" id="borderColor" value="#000000">
+            </div>
+          </div>
         </div>
-        
-        <div class="element-item" data-type="signature">
-          <i class="fas fa-signature me-2"></i>
-          <strong>Assinatura</strong>
-          <small class="d-block text-muted">Linha para assinatura</small>
+
+        <!-- Propriedades de assinatura -->
+        <div class="property-section" id="signatureProperties" style="display: none;">
+          <div class="property-group">
+            <h6>Assinatura</h6>
+            <div class="form-group">
+              <label class="form-label">Texto da Assinatura</label>
+              <input type="text" class="form-control" id="signatureText" placeholder="Nome do responsável">
+            </div>
+          </div>
         </div>
-        
-        <div class="element-item" data-type="logo">
-          <i class="fas fa-image me-2"></i>
-          <strong>Logo/Imagem</strong>
-          <small class="d-block text-muted">Inserir logotipo</small>
+
+        <!-- Propriedades de QR Code -->
+        <div class="property-section" id="qrcodeProperties" style="display: none;">
+          <div class="property-group">
+            <h6>QR Code</h6>
+            <div class="form-group">
+              <label class="form-label">Conteúdo</label>
+              <input type="text" class="form-control" id="qrCodeContent" placeholder="URL ou texto para o QR Code">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tamanho</label>
+              <select class="form-select" id="qrCodeSize">
+                <option value="small">Pequeno (100px)</option>
+                <option value="medium">Médio (150px)</option>
+                <option value="large">Grande (200px)</option>
+              </select>
+            </div>
+          </div>
         </div>
-        
-        <div class="element-item" data-type="border">
-          <i class="fas fa-border-style me-2"></i>
-          <strong>Borda Decorativa</strong>
-          <small class="d-block text-muted">Adicionar bordas</small>
+
+        <!-- Propriedades de variável personalizada -->
+        <div class="property-section" id="variableProperties" style="display: none;">
+          <div class="property-group">
+            <h6>Variável</h6>
+            <div class="form-group">
+              <label class="form-label">Variável</label>
+              <select class="form-select" id="customVariableSelect">
+                <option value="">Selecione uma variável</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Formato</label>
+              <select class="form-select" id="customVariableFormat">
+                <option value="text">Texto</option>
+                <option value="date">Data</option>
+                <option value="number">Número</option>
+                <option value="currency">Moeda</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Valor Padrão</label>
+              <input type="text" class="form-control" id="customVariableDefault" placeholder="Valor padrão (opcional)">
+            </div>
+          </div>
         </div>
-        
-        <div class="element-item" data-type="qr-code">
-          <i class="fas fa-qrcode me-2"></i>
-          <strong>QR Code</strong>
-          <small class="d-block text-muted">Código QR para validação</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Área de operações do template -->
+  <div class="template-operations">
+    <div class="template-info">
+      <div class="form-group">
+        <label for="templateName">Nome do Template</label>
+        <input type="text" class="form-control" id="templateName" placeholder="Digite o nome do template" value="Novo Template">
+      </div>
+      
+      <div class="form-group">
+        <label for="templateOrientation">Orientação</label>
+        <select class="form-select" id="templateOrientation">
+          <option value="landscape">Paisagem</option>
+          <option value="portrait">Retrato</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">
+          <i class="fas fa-eye me-2"></i>
+          Preview do Certificado
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="previewContent">
+          <!-- Conteúdo do preview será inserido aqui -->
         </div>
-        
-        <div class="element-item" data-type="custom-variable">
-          <i class="fas fa-code me-2"></i>
-          <strong>Variável Personalizada</strong>
-          <small class="d-block text-muted">Variável dinâmica customizada</small>
-        </div>
-        
-        <h6 class="fw-bold mb-3 mt-4">Variáveis Dinâmicas</h6>
-        <div id="dynamicVariables">
-          <!-- Variáveis serão carregadas dinamicamente -->
-        </div>
-        
-        <button class="btn btn-outline-primary btn-sm w-100 mt-2" id="addVariable">
-          <i class="fas fa-plus"></i> Nova Variável
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-primary">
+          <i class="fas fa-print me-1"></i> Imprimir
         </button>
       </div>
     </div>
-
-    <!-- Canvas Principal -->
-    <div class="canvas-container">
-      <div class="certificate-canvas" id="certificateCanvas">
-        <!-- Elementos do certificado serão adicionados aqui -->
-      </div>
-    </div>
-
-    <!-- Painel de Propriedades -->
-    <div class="properties-panel">
-      <div class="properties-content">
-        <h6 class="fw-bold mb-3">Propriedades</h6>
-        <div id="elementProperties">
-          <p class="text-muted">Selecione um elemento para editar suas propriedades.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Ações do Template -->
-  <div class="template-actions">
-    <div class="row">
-      <div class="col-md-6">
-        <div class="form-group">
-          <label>Nome do Template</label>
-          <input type="text" class="form-control" id="templateTitle" value="{{ template.titulo if template else '' }}" placeholder="Digite o nome do template">
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="form-group">
-          <label>Orientação</label>
-          <select class="form-select" id="pageOrientation">
-            <option value="landscape">Paisagem</option>
-            <option value="portrait">Retrato</option>
-          </select>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
-<!-- Modal de Pré-visualização -->
-<div class="preview-mode" id="previewMode">
-  <div class="preview-content">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5>Pré-visualização do Certificado</h5>
-      <button class="btn btn-outline-secondary" id="closePreview">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    <div id="previewCanvas">
-      <!-- Pré-visualização será renderizada aqui -->
-    </div>
-  </div>
-</div>
-
-<!-- Modal para Nova Variável -->
-<div class="modal fade" id="newVariableModal" tabindex="-1">
+<!-- Modal de Nova Variável -->
+<div class="modal fade" id="newVariableModal" tabindex="-1" aria-labelledby="newVariableModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Nova Variável Dinâmica</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title" id="newVariableModalLabel">
+          <i class="fas fa-plus me-2"></i>
+          Nova Variável
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="form-group mb-3">
-          <label>Nome da Variável</label>
-          <input type="text" class="form-control" id="variableName" placeholder="Ex: NOME_INSTITUICAO">
-        </div>
-        <div class="form-group mb-3">
-          <label>Descrição</label>
-          <input type="text" class="form-control" id="variableDescription" placeholder="Descrição da variável">
-        </div>
-        <div class="form-group mb-3">
-          <label>Valor Padrão</label>
-          <input type="text" class="form-control" id="variableDefault" placeholder="Valor padrão">
-        </div>
         <div class="form-group">
-          <label>Tipo</label>
-          <select class="form-select" id="variableType">
-            <option value="texto">Texto</option>
-            <option value="data">Data</option>
-            <option value="numero">Número</option>
-            <option value="lista">Lista</option>
+          <label for="newVariableName" class="form-label">Nome da Variável</label>
+          <input type="text" class="form-control" id="newVariableName" placeholder="Ex: NOME_PARTICIPANTE">
+          <small class="form-text text-muted">Use apenas letras maiúsculas, números e underscore</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="newVariableDescription" class="form-label">Descrição</label>
+          <input type="text" class="form-control" id="newVariableDescription" placeholder="Ex: Nome do participante">
+        </div>
+        
+        <div class="form-group">
+          <label for="newVariableType" class="form-label">Tipo</label>
+          <select class="form-select" id="newVariableType">
+            <option value="text">Texto</option>
+            <option value="date">Data</option>
+            <option value="number">Número</option>
+            <option value="list">Lista</option>
           </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="newVariableDefault" class="form-label">Valor Padrão (opcional)</label>
+          <input type="text" class="form-control" id="newVariableDefault" placeholder="Valor padrão">
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="saveVariable">Salvar Variável</button>
+        <button type="button" class="btn btn-primary" id="saveNewVariable">
+          <i class="fas fa-save me-1"></i> Salvar Variável
+        </button>
       </div>
     </div>
   </div>
@@ -417,1284 +408,5 @@
 {% endblock %}
 
 {% block scripts_extra %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
-<script>
-// Editor Avançado de Certificados
-class CertificateEditor {
-  constructor() {
-    this.canvas = document.getElementById('certificateCanvas');
-    this.selectedElement = null;
-    this.elements = [];
-    this.history = [];
-    this.historyIndex = -1;
-    this.nextElementId = 1;
-    
-    this.init();
-  }
-  
-  init() {
-    this.setupEventListeners();
-    this.setupDragAndDrop();
-    this.loadTemplate();
-  }
-  
-  setupEventListeners() {
-    // Biblioteca de elementos
-    document.querySelectorAll('.element-item').forEach(item => {
-      item.addEventListener('click', () => {
-        this.addElement(item.dataset.type);
-      });
-    });
-    
-    // Toolbar
-    document.getElementById('saveTemplate').addEventListener('click', () => this.saveTemplate());
-    document.getElementById('previewTemplate').addEventListener('click', () => this.previewTemplate());
-    document.getElementById('exportTemplate').addEventListener('click', () => this.exportTemplate());
-    document.getElementById('undoAction').addEventListener('click', () => this.undo());
-    document.getElementById('redoAction').addEventListener('click', () => this.redo());
-    
-    // Zoom
-    document.getElementById('zoomLevel').addEventListener('change', (e) => {
-      this.setZoom(parseFloat(e.target.value));
-    });
-    
-    // Preview
-    document.getElementById('closePreview').addEventListener('click', () => {
-      document.getElementById('previewMode').style.display = 'none';
-    });
-    
-    // Nova variável
-    document.getElementById('addVariable').addEventListener('click', () => {
-      new bootstrap.Modal(document.getElementById('newVariableModal')).show();
-    });
-    
-    document.getElementById('saveVariable').addEventListener('click', () => this.saveNewVariable());
-    
-    // Canvas click
-    this.canvas.addEventListener('click', (e) => {
-      if (e.target === this.canvas) {
-        this.deselectElement();
-      }
-    });
-  }
-  
-  setupDragAndDrop() {
-    // Configurar interact.js para elementos arrastáveis
-    interact('.draggable-element')
-      .draggable({
-        listeners: {
-          move: (event) => {
-            const target = event.target;
-            let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-            let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-            
-            // Snap to grid se habilitado
-            if (this.snapToGrid) {
-              x = Math.round(x / this.gridSize) * this.gridSize;
-              y = Math.round(y / this.gridSize) * this.gridSize;
-            }
-            
-            // Mostrar guidelines
-            this.showGuidelines(target, x, y);
-            
-            target.style.transform = `translate(${x}px, ${y}px)`;
-            target.setAttribute('data-x', x);
-            target.setAttribute('data-y', y);
-            
-            this.updateElementPosition(target.id, x, y);
-          },
-          end: (event) => {
-            // Esconder guidelines ao terminar o arraste
-            this.hideGuidelines();
-          }
-        }
-      })
-      .resizable({
-        edges: { left: true, right: true, bottom: true, top: true },
-        listeners: {
-          move: (event) => {
-            const target = event.target;
-            let x = (parseFloat(target.getAttribute('data-x')) || 0);
-            let y = (parseFloat(target.getAttribute('data-y')) || 0);
-            
-            let width = event.rect.width;
-            let height = event.rect.height;
-            
-            // Snap to grid para redimensionamento
-            if (this.snapToGrid) {
-              width = Math.round(width / this.gridSize) * this.gridSize;
-              height = Math.round(height / this.gridSize) * this.gridSize;
-            }
-            
-            target.style.width = width + 'px';
-            target.style.height = height + 'px';
-            
-            x += event.deltaRect.left;
-            y += event.deltaRect.top;
-            
-            target.style.transform = `translate(${x}px, ${y}px)`;
-            target.setAttribute('data-x', x);
-            target.setAttribute('data-y', y);
-            
-            this.updateElementSize(target.id, width, height);
-            this.updateElementPosition(target.id, x, y);
-          }
-        }
-      });
-    
-    // Configurar grid e guidelines
-    this.setupGrid();
-    this.setupGuidelines();
-  }
-  
-  setupGrid() {
-    this.gridSize = 10;
-    this.snapToGrid = true;
-    
-    // Criar overlay de grid
-    if (!document.getElementById('gridOverlay')) {
-      const gridOverlay = document.createElement('div');
-      gridOverlay.id = 'gridOverlay';
-      gridOverlay.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        opacity: 0.1;
-        background-image: 
-          linear-gradient(to right, #000 1px, transparent 1px),
-          linear-gradient(to bottom, #000 1px, transparent 1px);
-        background-size: ${this.gridSize}px ${this.gridSize}px;
-        z-index: 1;
-      `;
-      this.canvas.appendChild(gridOverlay);
-    }
-  }
-  
-  setupGuidelines() {
-    this.guidelines = {
-      vertical: [],
-      horizontal: []
-    };
-    
-    // Criar containers para guidelines
-    if (!document.getElementById('guidelinesContainer')) {
-      const container = document.createElement('div');
-      container.id = 'guidelinesContainer';
-      container.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 10;
-      `;
-      this.canvas.appendChild(container);
-    }
-  }
-  
-  showGuidelines(draggedElement, x, y) {
-    this.hideGuidelines();
-    
-    const container = document.getElementById('guidelinesContainer');
-    if (!container) return;
-    
-    const tolerance = 5; // pixels de tolerância para snap
-    const draggedRect = {
-      left: x,
-      top: y,
-      right: x + draggedElement.offsetWidth,
-      bottom: y + draggedElement.offsetHeight,
-      centerX: x + draggedElement.offsetWidth / 2,
-      centerY: y + draggedElement.offsetHeight / 2
-    };
-    
-    // Verificar alinhamento com outros elementos
-    this.canvas.querySelectorAll('.draggable-element').forEach(element => {
-      if (element === draggedElement) return;
-      
-      const rect = element.getBoundingClientRect();
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const elementRect = {
-        left: rect.left - canvasRect.left,
-        top: rect.top - canvasRect.top,
-        right: rect.right - canvasRect.left,
-        bottom: rect.bottom - canvasRect.top,
-        centerX: (rect.left + rect.right) / 2 - canvasRect.left,
-        centerY: (rect.top + rect.bottom) / 2 - canvasRect.top
-      };
-      
-      // Guidelines verticais
-      if (Math.abs(draggedRect.left - elementRect.left) < tolerance) {
-        this.createGuideline('vertical', elementRect.left);
-      }
-      if (Math.abs(draggedRect.right - elementRect.right) < tolerance) {
-        this.createGuideline('vertical', elementRect.right);
-      }
-      if (Math.abs(draggedRect.centerX - elementRect.centerX) < tolerance) {
-        this.createGuideline('vertical', elementRect.centerX);
-      }
-      
-      // Guidelines horizontais
-      if (Math.abs(draggedRect.top - elementRect.top) < tolerance) {
-        this.createGuideline('horizontal', elementRect.top);
-      }
-      if (Math.abs(draggedRect.bottom - elementRect.bottom) < tolerance) {
-        this.createGuideline('horizontal', elementRect.bottom);
-      }
-      if (Math.abs(draggedRect.centerY - elementRect.centerY) < tolerance) {
-        this.createGuideline('horizontal', elementRect.centerY);
-      }
-    });
-  }
-  
-  createGuideline(type, position) {
-    const container = document.getElementById('guidelinesContainer');
-    const guideline = document.createElement('div');
-    
-    if (type === 'vertical') {
-      guideline.style.cssText = `
-        position: absolute;
-        left: ${position}px;
-        top: 0;
-        width: 1px;
-        height: 100%;
-        background-color: #007bff;
-        z-index: 10;
-      `;
-    } else {
-      guideline.style.cssText = `
-        position: absolute;
-        left: 0;
-        top: ${position}px;
-        width: 100%;
-        height: 1px;
-        background-color: #007bff;
-        z-index: 10;
-      `;
-    }
-    
-    guideline.className = 'guideline';
-    container.appendChild(guideline);
-  }
-  
-  hideGuidelines() {
-     const container = document.getElementById('guidelinesContainer');
-     if (container) {
-       container.querySelectorAll('.guideline').forEach(guideline => {
-         guideline.remove();
-       });
-     }
-   }
-   
-   toggleGrid() {
-     const gridOverlay = document.getElementById('gridOverlay');
-     const toggleBtn = document.getElementById('toggleGrid');
-     
-     if (gridOverlay) {
-       const isVisible = gridOverlay.style.display !== 'none';
-       gridOverlay.style.display = isVisible ? 'none' : 'block';
-       toggleBtn.classList.toggle('active', !isVisible);
-     }
-   }
-   
-   toggleSnap() {
-     this.snapToGrid = !this.snapToGrid;
-     const toggleBtn = document.getElementById('toggleSnap');
-     toggleBtn.classList.toggle('active', this.snapToGrid);
-   }
-   
-   setGridSize(size) {
-     this.gridSize = size;
-     const gridOverlay = document.getElementById('gridOverlay');
-     if (gridOverlay) {
-       gridOverlay.style.backgroundSize = `${size}px ${size}px`;
-     }
-   }
-  
-  addElement(type) {
-    const elementId = `element_${this.nextElementId++}`;
-    const element = this.createElement(type, elementId);
-    
-    this.canvas.appendChild(element);
-    this.elements.push({
-      id: elementId,
-      type: type,
-      x: 50,
-      y: 50,
-      width: 200,
-      height: 40,
-      properties: this.getDefaultProperties(type)
-    });
-    
-    this.selectElement(element);
-    this.saveState();
-  }
-  
-  createElement(type, id) {
-    const element = document.createElement('div');
-    element.id = id;
-    element.className = 'draggable-element';
-    element.style.left = '50px';
-    element.style.top = '50px';
-    element.style.width = '200px';
-    element.style.height = '40px';
-    
-    // Conteúdo baseado no tipo
-    switch(type) {
-      case 'text':
-        element.innerHTML = 'Texto personalizado';
-        break;
-      case 'title':
-        element.innerHTML = '<h3>CERTIFICADO</h3>';
-        element.style.textAlign = 'center';
-        break;
-      case 'participant-name':
-        element.innerHTML = '<strong>{NOME_PARTICIPANTE}</strong>';
-        element.style.textAlign = 'center';
-        break;
-      case 'workload':
-        element.innerHTML = 'Carga horária: {CARGA_HORARIA} horas';
-        break;
-      case 'activities':
-        element.innerHTML = '{LISTA_OFICINAS}';
-        break;
-      case 'date':
-        element.innerHTML = 'Data: {DATA_EMISSAO}';
-        break;
-      case 'signature':
-        element.innerHTML = '<div style="border-top: 1px solid #000; margin-top: 20px; text-align: center;">Assinatura</div>';
-        break;
-      case 'logo':
-        element.innerHTML = '<div style="border: 2px dashed #ccc; text-align: center; padding: 20px;">Logo</div>';
-        element.style.width = '120px';
-        element.style.height = '80px';
-        break;
-      case 'border':
-        element.innerHTML = '';
-        element.style.border = '3px solid #000';
-        element.style.background = 'transparent';
-        element.style.width = '150px';
-        element.style.height = '100px';
-        break;
-      case 'qr-code':
-        element.innerHTML = '<div style="border: 1px solid #333; text-align: center; line-height: 100px; background: #fff;">QR Code</div>';
-        element.style.width = '100px';
-        element.style.height = '100px';
-        break;
-      case 'custom-variable':
-        element.innerHTML = '{VARIAVEL_PERSONALIZADA}';
-        element.style.backgroundColor = '#fff3cd';
-        element.style.border = '1px solid #ffeaa7';
-        element.style.padding = '5px';
-        break;
-    }
-    
-    // Controles do elemento
-    const controls = document.createElement('div');
-    controls.className = 'element-controls';
-    controls.innerHTML = `
-      <button class="btn btn-sm btn-outline-primary" onclick="editor.editElement('${id}')">
-        <i class="fas fa-edit"></i>
-      </button>
-      <button class="btn btn-sm btn-outline-danger" onclick="editor.deleteElement('${id}')">
-        <i class="fas fa-trash"></i>
-      </button>
-    `;
-    element.appendChild(controls);
-    
-    // Handles de redimensionamento
-    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
-      const handle = document.createElement('div');
-      handle.className = `resize-handle ${pos}`;
-      element.appendChild(handle);
-    });
-    
-    element.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.selectElement(element);
-    });
-    
-    return element;
-  }
-  
-  getDefaultProperties(type) {
-    const defaults = {
-      fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#000000',
-      backgroundColor: 'transparent',
-      textAlign: 'left',
-      fontWeight: 'normal',
-      fontStyle: 'normal'
-    };
-    
-    switch(type) {
-      case 'title':
-        defaults.fontSize = '24px';
-        defaults.fontWeight = 'bold';
-        defaults.textAlign = 'center';
-        break;
-      case 'participant-name':
-        defaults.fontSize = '20px';
-        defaults.fontWeight = 'bold';
-        defaults.textAlign = 'center';
-        break;
-    }
-    
-    return defaults;
-  }
-  
-  selectElement(element) {
-    // Deselecionar elemento anterior
-    if (this.selectedElement) {
-      this.selectedElement.classList.remove('selected');
-    }
-    
-    // Selecionar novo elemento
-    this.selectedElement = element;
-    element.classList.add('selected');
-    
-    // Atualizar painel de propriedades
-    this.updatePropertiesPanel();
-  }
-  
-  deselectElement() {
-    if (this.selectedElement) {
-      this.selectedElement.classList.remove('selected');
-      this.selectedElement = null;
-    }
-    
-    document.getElementById('elementProperties').innerHTML = 
-      '<p class="text-muted">Selecione um elemento para editar suas propriedades.</p>';
-  }
-  
-  updatePropertiesPanel() {
-    if (!this.selectedElement) return;
-    
-    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-    if (!elementData) return;
-    
-    const properties = elementData.properties;
-    
-    document.getElementById('elementProperties').innerHTML = `
-      <div class="form-group">
-        <label>Texto</label>
-        <textarea class="form-control" id="elementText" rows="3">${this.selectedElement.innerHTML.replace(/<[^>]*>/g, '')}</textarea>
-      </div>
-      
-      <div class="form-group">
-        <label>Fonte</label>
-        <select class="form-select" id="fontFamily">
-          <option value="Arial, sans-serif">Arial</option>
-          <option value="Times New Roman, serif">Times New Roman</option>
-          <option value="Helvetica, sans-serif">Helvetica</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="Verdana, sans-serif">Verdana</option>
-        </select>
-      </div>
-      
-      <div class="row">
-        <div class="col-6">
-          <div class="form-group">
-            <label>Tamanho</label>
-            <input type="number" class="form-control" id="fontSize" value="${parseInt(properties.fontSize)}" min="8" max="72">
-          </div>
-        </div>
-        <div class="col-6">
-          <div class="form-group">
-            <label>Cor</label>
-            <input type="color" class="form-control color-picker" id="textColor" value="${properties.color}">
-          </div>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label>Alinhamento</label>
-        <div class="btn-group w-100" role="group">
-          <input type="radio" class="btn-check" name="textAlign" id="alignLeft" value="left" ${properties.textAlign === 'left' ? 'checked' : ''}>
-          <label class="btn btn-outline-secondary" for="alignLeft"><i class="fas fa-align-left"></i></label>
-          
-          <input type="radio" class="btn-check" name="textAlign" id="alignCenter" value="center" ${properties.textAlign === 'center' ? 'checked' : ''}>
-          <label class="btn btn-outline-secondary" for="alignCenter"><i class="fas fa-align-center"></i></label>
-          
-          <input type="radio" class="btn-check" name="textAlign" id="alignRight" value="right" ${properties.textAlign === 'right' ? 'checked' : ''}>
-          <label class="btn btn-outline-secondary" for="alignRight"><i class="fas fa-align-right"></i></label>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="fontBold" ${properties.fontWeight === 'bold' ? 'checked' : ''}>
-          <label class="form-check-label" for="fontBold">Negrito</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="fontItalic" ${properties.fontStyle === 'italic' ? 'checked' : ''}>
-          <label class="form-check-label" for="fontItalic">Itálico</label>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label>Cor de Fundo</label>
-        <input type="color" class="form-control color-picker" id="backgroundColor" value="${properties.backgroundColor === 'transparent' ? '#ffffff' : properties.backgroundColor}">
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" id="transparentBg" ${properties.backgroundColor === 'transparent' ? 'checked' : ''}>
-          <label class="form-check-label" for="transparentBg">Fundo transparente</label>
-        </div>
-      </div>
-      
-      <div id="logoProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Logo/Imagem</h6>
-        <div class="mb-3">
-          <label class="form-label">Arquivo de Imagem</label>
-          <input type="file" class="form-control" id="logoFile" accept="image/*">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">URL da Imagem</label>
-          <input type="url" class="form-control" id="logoUrl" placeholder="https://exemplo.com/logo.png">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Ajuste da Imagem</label>
-          <select class="form-select" id="logoFit">
-            <option value="contain">Ajustar</option>
-            <option value="cover">Preencher</option>
-            <option value="fill">Esticar</option>
-          </select>
-        </div>
-      </div>
-      
-      <div id="borderProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Borda</h6>
-        <div class="mb-3">
-          <label class="form-label">Estilo da Borda</label>
-          <select class="form-select" id="borderStyle">
-            <option value="solid">Sólida</option>
-            <option value="dashed">Tracejada</option>
-            <option value="dotted">Pontilhada</option>
-            <option value="double">Dupla</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Espessura</label>
-          <input type="range" class="form-range" id="borderWidth" min="1" max="10" value="3">
-          <span id="borderWidthValue">3px</span>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Cor da Borda</label>
-          <input type="color" class="form-control color-picker" id="borderColor" value="#000000">
-        </div>
-      </div>
-      
-      <div id="signatureProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Assinatura</h6>
-        <div class="mb-3">
-          <label class="form-label">Tipo de Assinatura</label>
-          <select class="form-select" id="signatureType">
-            <option value="digital">Digital</option>
-            <option value="manual">Manual</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Posição</label>
-          <select class="form-select" id="signaturePosition">
-            <option value="bottom-left">Inferior Esquerda</option>
-            <option value="bottom-center">Inferior Centro</option>
-            <option value="bottom-right">Inferior Direita</option>
-          </select>
-        </div>
-      </div>
-      
-      <div id="qrCodeProperties" class="property-group" style="display: none;">
-        <h6>Propriedades do QR Code</h6>
-        <div class="mb-3">
-          <label class="form-label">Tamanho</label>
-          <select class="form-select" id="qrCodeSize">
-            <option value="small">Pequeno (100x100)</option>
-            <option value="medium">Médio (150x150)</option>
-            <option value="large">Grande (200x200)</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Posição</label>
-          <select class="form-select" id="qrCodePosition">
-            <option value="top-left">Superior Esquerda</option>
-            <option value="top-right">Superior Direita</option>
-            <option value="bottom-left">Inferior Esquerda</option>
-            <option value="bottom-right">Inferior Direita</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Conteúdo</label>
-          <select class="form-select" id="qrCodeContent">
-            <option value="validation-url">URL de Validação</option>
-            <option value="certificate-id">ID do Certificado</option>
-            <option value="custom">Personalizado</option>
-          </select>
-        </div>
-      </div>
-      
-      <div id="customVariableProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Variável Personalizada</h6>
-        <div class="mb-3">
-          <label class="form-label">Variável</label>
-          <select class="form-select" id="customVariableSelect">
-            <option value="">Selecione uma variável...</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Formato</label>
-          <select class="form-select" id="customVariableFormat">
-            <option value="text">Texto</option>
-            <option value="uppercase">MAIÚSCULO</option>
-            <option value="lowercase">minúsculo</option>
-            <option value="capitalize">Primeira Letra Maiúscula</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Valor Padrão</label>
-          <input type="text" class="form-control" id="customVariableDefault" placeholder="Valor quando variável estiver vazia">
-        </div>
-      </div>
-      
-      <button class="btn btn-primary w-100 mt-3" onclick="editor.applyProperties(); editor.applySpecialProperties();">Aplicar Alterações</button>
-    `;
-    
-    // Definir valores selecionados
-    document.getElementById('fontFamily').value = properties.fontFamily;
-    
-    // Mostrar/ocultar painéis específicos baseado no tipo
-    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-    document.querySelectorAll('.property-group').forEach(group => group.style.display = 'none');
-    
-    if (elementData) {
-      switch(elementData.type) {
-        case 'logo':
-          document.getElementById('logoProperties').style.display = 'block';
-          break;
-        case 'border':
-          document.getElementById('borderProperties').style.display = 'block';
-          break;
-        case 'signature':
-          document.getElementById('signatureProperties').style.display = 'block';
-          break;
-        case 'qr-code':
-          document.getElementById('qrCodeProperties').style.display = 'block';
-          break;
-        case 'custom-variable':
-          document.getElementById('customVariableProperties').style.display = 'block';
-          this.loadCustomVariables();
-          break;
-      }
-    }
-  }
-  
-  applyProperties() {
-    if (!this.selectedElement) return;
-    
-    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-    if (!elementData) return;
-    
-    // Coletar valores
-    const text = document.getElementById('elementText').value;
-    const fontFamily = document.getElementById('fontFamily').value;
-    const fontSize = document.getElementById('fontSize').value + 'px';
-    const textColor = document.getElementById('textColor').value;
-    const textAlign = document.querySelector('input[name="textAlign"]:checked').value;
-    const fontWeight = document.getElementById('fontBold').checked ? 'bold' : 'normal';
-    const fontStyle = document.getElementById('fontItalic').checked ? 'italic' : 'normal';
-    const transparentBg = document.getElementById('transparentBg').checked;
-    const backgroundColor = transparentBg ? 'transparent' : document.getElementById('backgroundColor').value;
-    
-    // Aplicar estilos
-    this.selectedElement.style.fontFamily = fontFamily;
-    this.selectedElement.style.fontSize = fontSize;
-    this.selectedElement.style.color = textColor;
-    this.selectedElement.style.textAlign = textAlign;
-    this.selectedElement.style.fontWeight = fontWeight;
-    this.selectedElement.style.fontStyle = fontStyle;
-    this.selectedElement.style.backgroundColor = backgroundColor;
-    
-    // Atualizar texto (preservando HTML se necessário)
-    if (elementData.type === 'text') {
-      this.selectedElement.innerHTML = text;
-    }
-    
-    // Salvar propriedades
-    elementData.properties = {
-      fontSize, fontFamily, color: textColor, textAlign,
-      fontWeight, fontStyle, backgroundColor
-    };
-    
-    this.saveState();
-  }
-  
-  deleteElement(elementId) {
-    const element = document.getElementById(elementId);
-    if (element) {
-      element.remove();
-      this.elements = this.elements.filter(el => el.id !== elementId);
-      
-      if (this.selectedElement && this.selectedElement.id === elementId) {
-        this.deselectElement();
-      }
-      
-      this.saveState();
-    }
-  }
-  
-  updateElementPosition(elementId, x, y) {
-    const elementData = this.elements.find(el => el.id === elementId);
-    if (elementData) {
-      elementData.x = x;
-      elementData.y = y;
-    }
-  }
-  
-  updateElementSize(elementId, width, height) {
-    const elementData = this.elements.find(el => el.id === elementId);
-    if (elementData) {
-      elementData.width = width;
-      elementData.height = height;
-    }
-  }
-  
-  setZoom(level) {
-    this.canvas.style.transform = `scale(${level})`;
-    this.canvas.style.transformOrigin = 'top left';
-  }
-  
-  saveState() {
-    const state = {
-      elements: JSON.parse(JSON.stringify(this.elements)),
-      html: this.canvas.innerHTML
-    };
-    
-    this.history = this.history.slice(0, this.historyIndex + 1);
-    this.history.push(state);
-    this.historyIndex++;
-    
-    // Limitar histórico
-    if (this.history.length > 50) {
-      this.history.shift();
-      this.historyIndex--;
-    }
-    
-    // Atualizar live preview se ativo
-    if (this.livePreview) {
-      setTimeout(() => this.updateLivePreview(), 100);
-    }
-  }
-  
-  undo() {
-    if (this.historyIndex > 0) {
-      this.historyIndex--;
-      this.restoreState(this.history[this.historyIndex]);
-    }
-  }
-  
-  redo() {
-    if (this.historyIndex < this.history.length - 1) {
-      this.historyIndex++;
-      this.restoreState(this.history[this.historyIndex]);
-    }
-  }
-  
-  restoreState(state) {
-    this.elements = JSON.parse(JSON.stringify(state.elements));
-    this.canvas.innerHTML = state.html;
-    this.deselectElement();
-    this.setupDragAndDrop();
-  }
-  
-  saveTemplate() {
-    const titulo = document.getElementById('templateTitle').value;
-    const orientacao = document.getElementById('pageOrientation').value;
-    
-    if (!titulo) {
-      alert('Por favor, insira um título para o template.');
-      return;
-    }
-    
-    // Validar elementos obrigatórios
-    const hasParticipant = this.elements.some(el => el.type === 'participant-name');
-    if (!hasParticipant) {
-      if (!confirm('O template não possui um campo para nome do participante. Deseja continuar mesmo assim?')) {
-        return;
-      }
-    }
-    
-    const templateData = {
-      titulo: titulo,
-      orientacao: orientacao,
-      elementos: this.elements.map(el => ({
-        ...el,
-        // Incluir propriedades específicas dos novos elementos
-        variavel: el.variavel || null,
-        formato: el.formato || 'text',
-        valorPadrao: el.valorPadrao || '',
-        configuracoes: el.configuracoes || {}
-      })),
-      configuracoes: {
-        largura: this.canvas.offsetWidth,
-        altura: this.canvas.offsetHeight,
-        versao: '2.0', // Versão com novos elementos
-        elementos_suportados: ['text', 'title', 'participant-name', 'workload', 'activities', 'date', 'signature', 'logo', 'border', 'qr-code', 'custom-variable']
-      },
-      html: this.canvas.innerHTML
-    };
-    
-    // Enviar para o servidor
-    fetch('/certificado/salvar_template_avancado', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(templateData)
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert('Template salvo com sucesso!');
-        window.location.href = '/certificado/templates_avancados';
-      } else {
-        alert('Erro ao salvar template: ' + data.message);
-      }
-    })
-    .catch(error => {
-      console.error('Erro:', error);
-      alert('Erro ao salvar template.');
-    });
-  }
-  
-  previewTemplate() {
-    // Criar modal de preview se não existir
-    if (!document.getElementById('previewModal')) {
-      this.createPreviewModal();
-    }
-    
-    const previewCanvas = document.getElementById('previewCanvas');
-    previewCanvas.innerHTML = this.canvas.innerHTML;
-    
-    // Remover controles de edição da pré-visualização
-    previewCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
-    previewCanvas.querySelectorAll('.draggable-element').forEach(el => {
-      el.classList.remove('draggable-element', 'selected');
-      el.style.border = 'none';
-      el.style.cursor = 'default';
-      el.style.transform = 'none';
-    });
-    
-    // Substituir variáveis por valores de exemplo para preview
-    this.replaceVariablesForPreview(previewCanvas);
-    
-    // Mostrar modal
-    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-    modal.show();
-  }
-  
-  createPreviewModal() {
-    const modalHTML = `
-      <div class="modal fade" id="previewModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Pré-visualização do Certificado</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-              <div id="previewCanvas" class="certificate-canvas" style="margin: 0 auto; transform: scale(0.8); transform-origin: center;"></div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-              <button type="button" class="btn btn-primary" onclick="editor.generatePDF()">Gerar PDF</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-  }
-  
-  enableLivePreview() {
-    this.livePreview = true;
-    
-    // Criar painel de preview ao vivo
-    if (!document.getElementById('livePreviewPanel')) {
-      const panel = document.createElement('div');
-      panel.id = 'livePreviewPanel';
-      panel.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        width: 300px;
-        height: 400px;
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        overflow: hidden;
-      `;
-      
-      panel.innerHTML = `
-        <div style="padding: 10px; border-bottom: 1px solid #dee2e6; background: #f8f9fa;">
-          <strong>Preview ao Vivo</strong>
-          <button class="btn btn-sm btn-outline-secondary float-end" onclick="editor.closeLivePreview()">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div id="livePreviewContent" style="padding: 10px; height: calc(100% - 50px); overflow: auto;">
-          <div id="livePreviewCanvas" style="transform: scale(0.3); transform-origin: top left; width: 333%; height: 333%;"></div>
-        </div>
-      `;
-      
-      document.body.appendChild(panel);
-    }
-    
-    this.updateLivePreview();
-  }
-  
-  updateLivePreview() {
-    if (!this.livePreview) return;
-    
-    const liveCanvas = document.getElementById('livePreviewCanvas');
-    if (liveCanvas) {
-      liveCanvas.innerHTML = this.canvas.innerHTML;
-      
-      // Limpar elementos de edição
-      liveCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
-      liveCanvas.querySelectorAll('.draggable-element').forEach(el => {
-        el.classList.remove('draggable-element', 'selected');
-        el.style.border = 'none';
-        el.style.cursor = 'default';
-      });
-      
-      this.replaceVariablesForPreview(liveCanvas);
-    }
-  }
-  
-  closeLivePreview() {
-    this.livePreview = false;
-    const panel = document.getElementById('livePreviewPanel');
-    if (panel) {
-      panel.remove();
-    }
-    
-    // Atualizar botão
-    const btn = document.getElementById('livePreviewToggle');
-    if (btn) {
-      btn.innerHTML = '<i class="fas fa-play"></i> Preview ao Vivo';
-      btn.classList.remove('active');
-    }
-  }
-  
-  toggleLivePreview() {
-    const btn = document.getElementById('livePreviewToggle');
-    
-    if (this.livePreview) {
-      this.closeLivePreview();
-    } else {
-      this.enableLivePreview();
-      btn.innerHTML = '<i class="fas fa-stop"></i> Parar Preview';
-      btn.classList.add('active');
-    }
-  }
-  
-  exportTemplate() {
-    // Implementar exportação para PDF
-    alert('Funcionalidade de exportação será implementada.');
-  }
-  
-  loadTemplate() {
-    // Carregar template existente se houver
-    {% if template %}
-    try {
-      const templateData = {{ template.configuracoes|tojson|safe }};
-      if (templateData && templateData.elementos) {
-        this.elements = templateData.elementos;
-        this.nextElementId = Math.max(...this.elements.map(el => parseInt(el.id.split('_')[1]) || 0)) + 1;
-        
-        // Recriar elementos no canvas
-        this.elements.forEach(elementData => {
-          const element = this.createElement(elementData.type, elementData.id);
-          element.style.left = elementData.x + 'px';
-          element.style.top = elementData.y + 'px';
-          element.style.width = elementData.width + 'px';
-          element.style.height = elementData.height + 'px';
-          
-          // Aplicar propriedades
-          if (elementData.properties) {
-            Object.assign(element.style, elementData.properties);
-          }
-          
-          this.canvas.appendChild(element);
-        });
-        
-        this.setupDragAndDrop();
-      }
-    } catch (error) {
-      console.error('Erro ao carregar template:', error);
-    }
-    {% endif %}
-  }
-  
-  saveNewVariable() {
-    const variableData = {
-      nome: document.getElementById('variableName').value,
-      descricao: document.getElementById('variableDescription').value,
-      valor_padrao: document.getElementById('variableDefault').value,
-      tipo: document.getElementById('variableType').value
-    };
-    
-    fetch('/certificado/salvar_variavel', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(variableData)
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        bootstrap.Modal.getInstance(document.getElementById('newVariableModal')).hide();
-        this.loadDynamicVariables();
-      } else {
-        alert('Erro ao salvar variável: ' + data.message);
-      }
-    });
-  }
-  
-  loadDynamicVariables() {
-    fetch('/certificado/variaveis_dinamicas')
-    .then(response => response.json())
-    .then(data => {
-      const container = document.getElementById('dynamicVariables');
-      container.innerHTML = '';
-      
-      data.variaveis.forEach(variavel => {
-        const item = document.createElement('div');
-        item.className = 'element-item';
-        item.innerHTML = `
-          <i class="fas fa-tag me-2"></i>
-          <strong>{${variavel.nome}}</strong>
-          <small class="d-block text-muted">${variavel.descricao}</small>
-        `;
-        item.addEventListener('click', () => {
-          this.addVariableElement(variavel);
-        });
-        container.appendChild(item);
-      });
-    })
-    .catch(error => {
-      console.error('Erro ao carregar variáveis dinâmicas:', error);
-      // Adicionar variáveis padrão se houver erro
-      this.addDefaultVariables();
-    });
-  }
-  
-  addVariableElement(variavel) {
-    const elementId = `element_${this.nextElementId++}`;
-    const element = this.createElement('text', elementId);
-    element.innerHTML = `{${variavel.nome}}`;
-    
-    this.canvas.appendChild(element);
-    this.elements.push({
-      id: elementId,
-      type: 'variable',
-      variavel: variavel.nome,
-      x: 50,
-      y: 50,
-      width: 200,
-      height: 40,
-      properties: this.getDefaultProperties('text')
-    });
-    
-    this.selectElement(element);
-    this.saveState();
-  }
-  
-  loadCustomVariables() {
-    const select = document.getElementById('customVariableSelect');
-    if (!select) return;
-    
-    fetch('/certificado/variaveis_dinamicas')
-    .then(response => response.json())
-    .then(data => {
-      select.innerHTML = '<option value="">Selecione uma variável...</option>';
-      data.variaveis.forEach(variavel => {
-        const option = document.createElement('option');
-        option.value = variavel.nome;
-        option.textContent = `{${variavel.nome}} - ${variavel.descricao}`;
-        select.appendChild(option);
-      });
-    })
-    .catch(error => console.error('Erro ao carregar variáveis:', error));
-  }
-  
-  applySpecialProperties() {
-    if (!this.selectedElement) return;
-    
-    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-    if (!elementData) return;
-    
-    switch(elementData.type) {
-      case 'logo':
-        this.applyLogoProperties();
-        break;
-      case 'border':
-        this.applyBorderProperties();
-        break;
-      case 'qr-code':
-        this.applyQRCodeProperties();
-        break;
-      case 'custom-variable':
-        this.applyCustomVariableProperties();
-        break;
-    }
-  }
-  
-  applyLogoProperties() {
-    const logoFile = document.getElementById('logoFile');
-    const logoUrl = document.getElementById('logoUrl');
-    const logoFit = document.getElementById('logoFit');
-    
-    if (logoFile && logoFile.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.selectedElement.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: ${logoFit.value};">`;
-      };
-      reader.readAsDataURL(logoFile.files[0]);
-    } else if (logoUrl && logoUrl.value) {
-      this.selectedElement.innerHTML = `<img src="${logoUrl.value}" style="width: 100%; height: 100%; object-fit: ${logoFit.value};">`;
-    }
-  }
-  
-  applyBorderProperties() {
-    const borderStyle = document.getElementById('borderStyle');
-    const borderWidth = document.getElementById('borderWidth');
-    const borderColor = document.getElementById('borderColor');
-    
-    if (borderStyle && borderWidth && borderColor) {
-      this.selectedElement.style.border = `${borderWidth.value}px ${borderStyle.value} ${borderColor.value}`;
-      document.getElementById('borderWidthValue').textContent = `${borderWidth.value}px`;
-    }
-  }
-  
-  applyQRCodeProperties() {
-    const qrCodeSize = document.getElementById('qrCodeSize');
-    const qrCodeContent = document.getElementById('qrCodeContent');
-    
-    if (qrCodeSize) {
-      let size;
-      switch(qrCodeSize.value) {
-        case 'small': size = '100px'; break;
-        case 'medium': size = '150px'; break;
-        case 'large': size = '200px'; break;
-        default: size = '100px';
-      }
-      this.selectedElement.style.width = size;
-      this.selectedElement.style.height = size;
-    }
-  }
-  
-  applyCustomVariableProperties() {
-    const variableSelect = document.getElementById('customVariableSelect');
-    const variableFormat = document.getElementById('customVariableFormat');
-    const variableDefault = document.getElementById('customVariableDefault');
-    
-    if (variableSelect && variableSelect.value) {
-      let content = `{${variableSelect.value}}`;
-      
-      if (variableDefault && variableDefault.value) {
-        content += ` (padrão: ${variableDefault.value})`;
-      }
-      
-      this.selectedElement.innerHTML = content;
-      
-      // Salvar propriedades específicas
-      const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-      if (elementData) {
-        elementData.variavel = variableSelect.value;
-        elementData.formato = variableFormat ? variableFormat.value : 'text';
-        elementData.valorPadrao = variableDefault ? variableDefault.value : '';
-      }
-    }
-  }
-}
-
-// Inicializar editor
-let editor;
-document.addEventListener('DOMContentLoaded', function() {
-  editor = new CertificateEditor();
-  
-  // Carregar variáveis dinâmicas
-  editor.loadDynamicVariables();
-  
-  // Event listeners para controles do toolbar
-  document.getElementById('saveTemplate').addEventListener('click', () => editor.saveTemplate());
-  document.getElementById('previewTemplate').addEventListener('click', () => editor.previewTemplate());
-  document.getElementById('livePreviewToggle').addEventListener('click', () => editor.toggleLivePreview());
-  document.getElementById('exportTemplate').addEventListener('click', () => editor.exportTemplate());
-  document.getElementById('undoAction').addEventListener('click', () => editor.undo());
-  document.getElementById('redoAction').addEventListener('click', () => editor.redo());
-  document.getElementById('toggleGrid').addEventListener('click', () => editor.toggleGrid());
-  document.getElementById('toggleSnap').addEventListener('click', () => editor.toggleSnap());
-  
-  // Event listener para zoom
-  document.getElementById('zoomLevel').addEventListener('change', (e) => {
-    editor.setZoom(parseFloat(e.target.value));
-  });
-});
-
-// Função auxiliar para substituir variáveis no preview
-CertificateEditor.prototype.replaceVariablesForPreview = function(container) {
-  const sampleData = {
-    'NOME_PARTICIPANTE': 'João Silva Santos',
-    'CARGA_HORARIA': '40',
-    'LISTA_OFICINAS': 'Oficina de Programação, Oficina de Design, Oficina de Marketing Digital',
-    'DATA_EMISSAO': new Date().toLocaleDateString('pt-BR'),
-    'NOME_INSTITUICAO': 'Instituto de Tecnologia',
-    'NOME_CURSO': 'Curso de Desenvolvimento Web',
-    'PERIODO': '01/01/2024 a 31/01/2024'
-  };
-  
-  container.querySelectorAll('*').forEach(element => {
-    if (element.innerHTML) {
-      let content = element.innerHTML;
-      Object.keys(sampleData).forEach(variable => {
-        const regex = new RegExp(`\\{${variable}\\}`, 'g');
-        content = content.replace(regex, sampleData[variable]);
-      });
-      element.innerHTML = content;
-    }
-  });
-};
-
-// Função para adicionar variáveis padrão
-CertificateEditor.prototype.addDefaultVariables = function() {
-  const defaultVariables = [
-    { nome: 'NOME_INSTITUICAO', descricao: 'Nome da Instituição' },
-    { nome: 'NOME_CURSO', descricao: 'Nome do Curso' },
-    { nome: 'PERIODO', descricao: 'Período do Curso' }
-  ];
-  
-  const container = document.getElementById('dynamicVariables');
-  defaultVariables.forEach(variavel => {
-    const item = document.createElement('div');
-    item.className = 'element-item';
-    item.innerHTML = `
-      <i class="fas fa-tag me-2"></i>
-      <strong>{${variavel.nome}}</strong>
-      <small class="d-block text-muted">${variavel.descricao}</small>
-    `;
-    item.addEventListener('click', () => {
-      this.addVariableElement(variavel);
-    });
-    container.appendChild(item);
-  });
-};
-</script>
+<script src="{{ url_for('static', filename='js/certificate-editor.js') }}"></script>
 {% endblock %}
