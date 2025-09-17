@@ -130,7 +130,6 @@ def register_routes(app):
     app.register_blueprint(ai_bp)
     app.register_blueprint(validacao_bp)
     app.register_blueprint(declaracao_bp)
-    app.register_blueprint(editor_bp)
 
     app.register_blueprint(importar_trabalhos_routes)
 
