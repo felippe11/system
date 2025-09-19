@@ -79,12 +79,19 @@ def normalize_barema_requisitos(barema: Any) -> Dict[str, Dict[str, Any]]:
             if isinstance(data, dict):
                 label = data.get("nome") or label
                 descricao = data.get("descricao")
-                max_val = _coerce_number(
-                    data.get("pontuacao_max", data.get("pontuacaoMax")), None
-                )
-                min_val = _coerce_number(
-                    data.get("pontuacao_min", data.get("pontuacaoMin")), 0
-                ) or 0
+                max_source = data.get("pontuacao_max")
+                if max_source is None:
+                    max_source = data.get("pontuacaoMax")
+                if max_source is None:
+                    max_source = data.get("max")
+                max_val = _coerce_number(max_source, None)
+
+                min_source = data.get("pontuacao_min")
+                if min_source is None:
+                    min_source = data.get("pontuacaoMin")
+                if min_source is None:
+                    min_source = data.get("min")
+                min_val = _coerce_number(min_source, 0) or 0
             else:
                 max_val = _coerce_number(data, None)
             if max_val is None:
