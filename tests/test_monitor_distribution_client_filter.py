@@ -19,7 +19,12 @@ from models.event import Evento, HorarioVisitacao, AgendamentoVisita, MonitorAge
 
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
+    monkeypatch.setattr(
+        'models.formulario.ensure_formulario_trabalhos',
+        lambda: None,
+    )
+
     app = create_app()
     login_manager.session_protection = None
     app.config['TESTING'] = True
@@ -84,8 +89,8 @@ def app():
         m1 = Monitor(
             nome_completo='Monitor1',
             curso='C',
-            carga_horaria_disponibilidade=10,
-            dias_disponibilidade='segunda',
+            carga_horaria_disponibilidade=0,
+            dias_disponibilidade='segunda,terca,quarta,quinta,sexta,sabado,domingo',
             turnos_disponibilidade='manha',
             email='m1@test',
             telefone_whatsapp='1',
@@ -96,14 +101,25 @@ def app():
             nome_completo='Monitor2',
             curso='C',
             carga_horaria_disponibilidade=10,
-            dias_disponibilidade='segunda',
+            dias_disponibilidade='segunda,terca,quarta,quinta,sexta,sabado,domingo',
             turnos_disponibilidade='manha',
             email='m2@test',
             telefone_whatsapp='2',
             codigo_acesso='BBB222',
             cliente_id=c2.id,
         )
-        db.session.add_all([m1, m2])
+        global_monitor = Monitor(
+            nome_completo='MonitorGlobal',
+            curso='C',
+            carga_horaria_disponibilidade=10,
+            dias_disponibilidade='segunda,terca,quarta,quinta,sexta,sabado,domingo',
+            turnos_disponibilidade='manha',
+            email='mg@test',
+            telefone_whatsapp='3',
+            codigo_acesso='CCC333',
+            cliente_id=None,
+        )
+        db.session.add_all([m1, m2, global_monitor])
         db.session.commit()
     yield app
 
@@ -139,6 +155,7 @@ def test_client_statistics_and_distribution_isolated(client, app):
         ag2 = AgendamentoVisita.query.filter_by(cliente_id=c2.id).first()
         m1 = Monitor.query.filter_by(cliente_id=c1.id).first()
         m2 = Monitor.query.filter_by(cliente_id=c2.id).first()
+        global_monitor = Monitor.query.filter_by(cliente_id=None).first()
 
     # Cliente 1 statistics
     with client:
@@ -147,7 +164,7 @@ def test_client_statistics_and_distribution_isolated(client, app):
         assert resp.status_code == 200
         stats = extract_stats(resp.data.decode())
         assert stats.get('Agendamentos sem Monitor') == 1
-        assert stats.get('Monitores Ativos') == 1
+        assert stats.get('Monitores Ativos') == 2
 
         # Distribuição
         resp = client.post('/distribuir-automaticamente', json={'modo': 'somente_sem_monitor'})
@@ -155,12 +172,12 @@ def test_client_statistics_and_distribution_isolated(client, app):
         assert data['success'] is True
         assert data['atribuicoes'] == 1
         detalhes = data.get('atribuicoes_detalhes', [])
-        assert all(d['monitor_id'] == m1.id for d in detalhes)
+        assert all(d['monitor_id'] == global_monitor.id for d in detalhes)
         assert all(d['agendamento_id'] == ag1.id for d in detalhes)
 
     with app.app_context():
         assert (
-            MonitorAgendamento.query.filter_by(monitor_id=m1.id, agendamento_id=ag1.id).count()
+            MonitorAgendamento.query.filter_by(monitor_id=global_monitor.id, agendamento_id=ag1.id).count()
             == 1
         )
         assert (
@@ -174,7 +191,7 @@ def test_client_statistics_and_distribution_isolated(client, app):
         assert resp.status_code == 200
         stats = extract_stats(resp.data.decode())
         assert stats.get('Agendamentos sem Monitor') == 1
-        assert stats.get('Monitores Ativos') == 1
+        assert stats.get('Monitores Ativos') == 2
 
         resp = client.post('/distribuir-automaticamente', json={'modo': 'somente_sem_monitor'})
         data = resp.get_json()
@@ -192,5 +209,9 @@ def test_client_statistics_and_distribution_isolated(client, app):
         # Ensure no cross assignments
         assert (
             MonitorAgendamento.query.filter_by(monitor_id=m2.id, agendamento_id=ag1.id).count()
+            == 0
+        )
+        assert (
+            MonitorAgendamento.query.filter_by(monitor_id=global_monitor.id, agendamento_id=ag2.id).count()
             == 0
         )
