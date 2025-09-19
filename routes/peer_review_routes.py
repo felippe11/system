@@ -769,24 +769,22 @@ def get_categoria_trabalho_peer_review(submission):
         str: Nome da categoria ou None se não encontrada
     """
     try:
-        # Buscar resposta do formulário relacionada ao trabalho
-        resposta_formulario = RespostaFormulario.query.filter_by(
-            trabalho_id=submission.id,
-            evento_id=submission.evento_id
-        ).first()
-        
-        if not resposta_formulario:
-            return None
-            
-        # Buscar campo "Categoria" nas respostas
-        categoria_resposta = RespostaCampo.query.join(CampoFormulario).filter(
-            RespostaCampo.resposta_formulario_id == resposta_formulario.id,
-            CampoFormulario.nome.ilike('%categoria%')
-        ).first()
-        
+        categoria_resposta = (
+            RespostaCampo.query
+            .join(RespostaFormulario)
+            .join(CampoFormulario)
+            .filter(
+                RespostaFormulario.trabalho_id == submission.id,
+                RespostaFormulario.evento_id == submission.evento_id,
+                CampoFormulario.nome.ilike('%categoria%')
+            )
+            .order_by(RespostaFormulario.id)
+            .first()
+        )
+
         if categoria_resposta and categoria_resposta.valor:
             return categoria_resposta.valor.strip()
-            
+
         return None
     except Exception as e:
         print(f"Erro ao obter categoria do trabalho: {e}")
