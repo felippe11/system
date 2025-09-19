@@ -753,6 +753,39 @@ def create_review():
 # ---------------------------------------------------------------------------
 # Formulário de revisão (público via locator)
 # ---------------------------------------------------------------------------
+def get_categoria_trabalho_peer_review(submission):
+    """Obtém a categoria do trabalho a partir das respostas do formulário.
+    
+    Args:
+        submission: Objeto Submission
+        
+    Returns:
+        str: Nome da categoria ou None se não encontrada
+    """
+    try:
+        # Buscar resposta do formulário relacionada ao trabalho
+        resposta_formulario = RespostaFormulario.query.filter_by(
+            trabalho_id=submission.id,
+            evento_id=submission.evento_id
+        ).first()
+        
+        if not resposta_formulario:
+            return None
+            
+        # Buscar campo "Categoria" nas respostas
+        categoria_resposta = RespostaCampo.query.join(CampoFormulario).filter(
+            RespostaCampo.resposta_formulario_id == resposta_formulario.id,
+            CampoFormulario.nome.ilike('%categoria%')
+        ).first()
+        
+        if categoria_resposta and categoria_resposta.valor:
+            return categoria_resposta.valor.strip()
+            
+        return None
+    except Exception as e:
+        print(f"Erro ao obter categoria do trabalho: {e}")
+        return None
+
 @peer_review_routes.route("/review/<locator>", methods=["GET", "POST"])
 def review_form(locator):
     """Handle display and submission of a review form.
@@ -764,7 +797,21 @@ def review_form(locator):
         Response: Rendered form or redirect after submission.
     """
     review = Review.query.filter_by(locator=locator).first_or_404()
-    barema = EventoBarema.query.filter_by(evento_id=review.submission.evento_id).first()
+    
+    # Obter categoria do trabalho
+    categoria_trabalho = get_categoria_trabalho_peer_review(review.submission)
+    
+    # Buscar barema específico da categoria primeiro
+    barema = None
+    if categoria_trabalho:
+        barema = CategoriaBarema.query.filter_by(
+            evento_id=review.submission.evento_id,
+            categoria=categoria_trabalho
+        ).first()
+    
+    # Fallback para barema geral do evento se não encontrar barema específico
+    if not barema:
+        barema = EventoBarema.query.filter_by(evento_id=review.submission.evento_id).first()
 
     if request.method == "GET" and review.started_at is None:
         review.started_at = datetime.utcnow()
@@ -776,7 +823,7 @@ def review_form(locator):
             flash("Código incorreto!", "danger")
 
             return render_template(
-                "peer_review/review_form.html", review=review, barema=barema
+                "peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho
             )
 
         scores: Dict[str, float] = {}
@@ -799,7 +846,7 @@ def review_form(locator):
                         "danger",
                     )
                     return render_template(
-                        "peer_review/review_form.html", review=review, barema=barema
+                        "peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho
                     )
                 scores[requisito] = nota
                 total += nota
@@ -809,7 +856,7 @@ def review_form(locator):
             except (TypeError, ValueError):
                 flash("Nota inválida (use 1–5).", "danger")
                 return render_template(
-                    "peer_review/review_form.html", review=review, barema=barema
+                    "peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho
                 )
 
         review.scores = scores or None
@@ -837,7 +884,7 @@ def review_form(locator):
 
         return redirect(url_for("peer_review_routes.review_form", locator=locator))
 
-    return render_template("peer_review/review_form.html", review=review, barema=barema)
+    return render_template("peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho)
 
 
 # ---------------------------------------------------------------------------

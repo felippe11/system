@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Baremas - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clipboard-list me-2"></i>
+                        Gerenciar Baremas - {{ evento.nome }}
+                    </h4>
+                    <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Voltar ao Dashboard
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Configure baremas específicos para cada categoria de trabalho. Cada categoria pode ter critérios de avaliação personalizados.
+                    </div>
+
+                    <div class="row">
+                        {% for categoria in categorias %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-tag me-2"></i>
+                                        {{ categoria }}
+                                    </h6>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    {% set barema_existente = baremas_existentes|selectattr('categoria', 'equalto', categoria)|first %}
+                                    
+                                    {% if barema_existente %}
+                                        <div class="alert alert-success mb-3">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            <strong>Barema Configurado</strong>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <strong>Nome:</strong> {{ barema_existente.nome }}<br>
+                                            {% if barema_existente.descricao %}
+                                                <strong>Descrição:</strong> {{ barema_existente.descricao }}<br>
+                                            {% endif %}
+                                            <strong>Critérios:</strong> {{ barema_existente.criterios|length }} item(s)
+                                        </div>
+                                        
+                                        <div class="mt-auto">
+                                            <a href="{{ url_for('dashboard_routes.testar_barema', evento_id=evento.id, categoria=categoria) }}" 
+                                               class="btn btn-success btn-sm me-2">
+                                                <i class="fas fa-clipboard-check me-1"></i>Testar Barema
+                                            </a>
+                                            <a href="{{ url_for('dashboard_routes.criar_editar_barema', evento_id=evento.id, categoria=categoria) }}" 
+                                               class="btn btn-warning btn-sm me-2">
+                                                <i class="fas fa-edit me-1"></i>Editar
+                                            </a>
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    onclick="confirmarDelecao({{ barema_existente.id }}, '{{ categoria }}')">
+                                                <i class="fas fa-trash me-1"></i>Deletar
+                                            </button>
+                                        </div>
+                                    {% else %}
+                                        <div class="alert alert-warning mb-3">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>Barema Não Configurado</strong>
+                                        </div>
+                                        
+                                        <p class="text-muted mb-3">
+                                            Esta categoria ainda não possui um barema específico. 
+                                            Será usado o barema geral do evento.
+                                        </p>
+                                        
+                                        <div class="mt-auto">
+                                            <a href="{{ url_for('dashboard_routes.criar_editar_barema', evento_id=evento.id, categoria=categoria) }}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="fas fa-plus me-1"></i>Criar Barema
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if not categorias %}
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Nenhuma categoria de trabalho encontrada. Verifique a configuração do formulário de trabalhos.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Deleção -->
+<div class="modal fade" id="modalConfirmarDelecao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirmar Deleção
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja deletar o barema da categoria <strong id="categoriaDelecao"></strong>?</p>
+                <p class="text-muted">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <form id="formDelecao" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Deletar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarDelecao(baremaId, categoria) {
+    document.getElementById('categoriaDelecao').textContent = categoria;
+    document.getElementById('formDelecao').action = '{{ url_for("dashboard_routes.deletar_barema", barema_id=0) }}'.replace('0', baremaId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmarDelecao'));
+    modal.show();
+}
+</script>
+{% endblock %}

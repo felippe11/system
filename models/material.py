@@ -52,6 +52,7 @@ class Material(db.Model):
     unidade = db.Column(db.String(50), nullable=False, default="unidade")  # unidade, kg, litro, etc.
     categoria = db.Column(db.String(100), nullable=True)  # categoria do material
     preco_unitario = db.Column(db.Float, nullable=True)
+    fornecedor = db.Column(db.String(255))
     data_atualizacao = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -111,6 +112,7 @@ class Material(db.Model):
             'quantidade_necessaria': self.quantidade_necessaria,
             'status_estoque': self.status_estoque,
             'preco_unitario': self.preco_unitario,
+            'fornecedor': self.fornecedor,
             'ativo': self.ativo,
             'polo_id': self.polo_id,
             'polo_nome': self.polo.nome if self.polo else None,
