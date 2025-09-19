@@ -12,6 +12,7 @@ from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
 from extensions import db
 from utils import endpoints
+from utils.barema import normalize_barema_requisitos
 
 from models import (
     Usuario,
@@ -27,6 +28,11 @@ from models import (
     RevisorProcess,
     WorkMetadata,
     Formulario,
+    CategoriaBarema,
+    EventoBarema,
+    RespostaFormulario,
+    RespostaCampo,
+    CampoFormulario,
 )
 
 import uuid
@@ -813,6 +819,8 @@ def review_form(locator):
     if not barema:
         barema = EventoBarema.query.filter_by(evento_id=review.submission.evento_id).first()
 
+    requisitos = normalize_barema_requisitos(barema)
+
     if request.method == "GET" and review.started_at is None:
         review.started_at = datetime.utcnow()
         db.session.commit()
@@ -823,14 +831,18 @@ def review_form(locator):
             flash("Código incorreto!", "danger")
 
             return render_template(
-                "peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho
+                "peer_review/review_form.html",
+                review=review,
+                barema=barema,
+                categoria_trabalho=categoria_trabalho,
+                requisitos=requisitos,
             )
 
         scores: Dict[str, float] = {}
 
         total = 0.0
-        if barema and barema.requisitos:
-            for requisito, faixa in barema.requisitos.items():
+        if barema and requisitos:
+            for requisito, faixa in requisitos.items():
                 nota_raw = request.form.get(requisito)
                 if nota_raw is None:
                     continue
@@ -846,7 +858,11 @@ def review_form(locator):
                         "danger",
                     )
                     return render_template(
-                        "peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho
+                        "peer_review/review_form.html",
+                        review=review,
+                        barema=barema,
+                        categoria_trabalho=categoria_trabalho,
+                        requisitos=requisitos,
                     )
                 scores[requisito] = nota
                 total += nota
@@ -856,7 +872,11 @@ def review_form(locator):
             except (TypeError, ValueError):
                 flash("Nota inválida (use 1–5).", "danger")
                 return render_template(
-                    "peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho
+                    "peer_review/review_form.html",
+                    review=review,
+                    barema=barema,
+                    categoria_trabalho=categoria_trabalho,
+                    requisitos=requisitos,
                 )
 
         review.scores = scores or None
@@ -884,7 +904,13 @@ def review_form(locator):
 
         return redirect(url_for("peer_review_routes.review_form", locator=locator))
 
-    return render_template("peer_review/review_form.html", review=review, barema=barema, categoria_trabalho=categoria_trabalho)
+    return render_template(
+        "peer_review/review_form.html",
+        review=review,
+        barema=barema,
+        categoria_trabalho=categoria_trabalho,
+        requisitos=requisitos,
+    )
 
 
 # ---------------------------------------------------------------------------
