@@ -38,7 +38,6 @@ from sqlalchemy.exc import ProgrammingError
 
 from models import (
     Assignment,
-    CampoFormulario,
     Cliente,
     ConfiguracaoCliente,
     Evento,
@@ -46,7 +45,6 @@ from models import (
     EventoBarema,
     ProcessoBarema,
     ProcessoBaremaRequisito,
-    RespostaFormulario,
     RevisorCandidatura,
     RevisorCandidaturaEtapa,
     RevisorEtapa,
@@ -56,6 +54,7 @@ from models import (
     Review,
     Usuario,
 )
+from models.event import CampoFormulario, RespostaCampo, RespostaFormulario
 from models.review import CategoriaBarema
 from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
@@ -1038,6 +1037,42 @@ def view_candidatura(cand_id: int):
 # -----------------------------------------------------------------------------
 # AVALIAÇÃO DE TRABALHOS
 # -----------------------------------------------------------------------------
+def _extract_categoria_valor(raw_valor):
+    """Normalize raw category values coming from form answers."""
+
+    if raw_valor is None:
+        return None
+
+    if isinstance(raw_valor, str):
+        valor = raw_valor.strip()
+        if not valor:
+            return None
+
+        if valor.startswith("[") and valor.endswith("]"):
+            try:
+                parsed = json.loads(valor)
+            except (TypeError, ValueError):
+                parsed = None
+            if isinstance(parsed, list):
+                for item in parsed:
+                    item_valor = str(item).strip()
+                    if item_valor:
+                        return item_valor
+                return None
+
+        return valor
+
+    if isinstance(raw_valor, list):
+        for item in raw_valor:
+            item_valor = str(item).strip()
+            if item_valor:
+                return item_valor
+        return None
+
+    valor = str(raw_valor).strip()
+    return valor or None
+
+
 def get_categoria_trabalho(resposta_formulario):
     """Obtém a categoria do trabalho a partir das respostas dos campos."""
     if not resposta_formulario:
@@ -1048,30 +1083,62 @@ def get_categoria_trabalho(resposta_formulario):
         if "categoria" not in campo_nome:
             continue
 
-        raw_valor = resposta_campo.valor
-        if raw_valor is None:
-            continue
-
-        if isinstance(raw_valor, str):
-            valor = raw_valor.strip()
-            if not valor:
-                continue
-
-            # Algumas respostas chegam serializadas como listas JSON (ex.: "[\"Categoria\"]").
-            if valor.startswith("[") and valor.endswith("]"):
-                try:
-                    parsed = json.loads(valor)
-                except (TypeError, ValueError):
-                    parsed = None
-                else:
-                    if isinstance(parsed, list) and parsed:
-                        valor = str(parsed[0]).strip()
-
+        valor = _extract_categoria_valor(resposta_campo.valor)
+        if valor:
             return valor
 
-        # Se o valor já vier como lista (ex.: seleção múltipla), pegar o primeiro item.
-        if isinstance(raw_valor, list) and raw_valor:
-            return str(raw_valor[0]).strip()
+    return None
+
+
+def resolve_categoria_trabalho(submission, assignment=None):
+    """Resolve a categoria do trabalho reutilizando a resposta do assignment.
+
+    Primeiro tenta extrair a categoria da resposta vinculada ao assignment.
+    Caso não encontre, faz uma busca abrangente em todas as respostas do
+    trabalho procurando campos cujo nome contenha "categoria".
+    """
+
+    resposta_formulario = None
+    if assignment is not None:
+        resposta_formulario = getattr(assignment, "resposta_formulario", None)
+        if (
+            resposta_formulario is None
+            and getattr(assignment, "resposta_formulario_id", None)
+        ):
+            resposta_formulario = RespostaFormulario.query.get(
+                assignment.resposta_formulario_id
+            )
+
+    categoria = None
+    if resposta_formulario:
+        categoria = get_categoria_trabalho(resposta_formulario)
+        if categoria:
+            return categoria
+
+    respostas_categoria = (
+        RespostaFormulario.query
+        .join(
+            RespostaCampo,
+            RespostaCampo.resposta_formulario_id == RespostaFormulario.id,
+        )
+        .join(CampoFormulario, RespostaCampo.campo_id == CampoFormulario.id)
+        .filter(
+            RespostaFormulario.trabalho_id == submission.id,
+            RespostaFormulario.evento_id == submission.evento_id,
+            CampoFormulario.nome.ilike("%categoria%"),
+        )
+        .order_by(RespostaFormulario.id)
+        .all()
+    )
+
+    vistos: set[int] = set()
+    for resposta in respostas_categoria:
+        if resposta.id in vistos:
+            continue
+        vistos.add(resposta.id)
+        categoria = get_categoria_trabalho(resposta)
+        if categoria:
+            return categoria
 
     return None
 
@@ -1107,19 +1174,7 @@ def avaliar(submission_id: int):
             flash("Acesso negado!", "danger")
             return redirect(url_for(endpoints.DASHBOARD))
 
-    # Utiliza a resposta associada ao assignment para determinar a categoria
-    resposta_formulario = None
-    if assignment is not None:
-        resposta_formulario = getattr(assignment, "resposta_formulario", None)
-        if resposta_formulario is None and assignment.resposta_formulario_id:
-            resposta_formulario = RespostaFormulario.query.get(
-                assignment.resposta_formulario_id
-            )
-
-    # Obter a categoria do trabalho
-    categoria_trabalho = None
-    if resposta_formulario:
-        categoria_trabalho = get_categoria_trabalho(resposta_formulario)
+    categoria_trabalho = resolve_categoria_trabalho(submission, assignment)
     
     # Buscar barema específico da categoria primeiro
     barema_categoria = None
@@ -1383,17 +1438,7 @@ def iniciar_revisao(trabalho_id: int):
         flash("Nenhum revisor atribuído para este trabalho!", "warning")
         return redirect(url_for("evento_routes.home"))
     
-    # Utiliza a resposta associada ao assignment para determinar a categoria
-    resposta_formulario = getattr(assignment, "resposta_formulario", None)
-    if resposta_formulario is None and assignment.resposta_formulario_id:
-        resposta_formulario = RespostaFormulario.query.get(
-            assignment.resposta_formulario_id
-        )
-
-    # Obter a categoria do trabalho
-    categoria = None
-    if resposta_formulario:
-        categoria = get_categoria_trabalho(resposta_formulario)
+    categoria = resolve_categoria_trabalho(submission, assignment)
     
     # Buscar barema específico da categoria primeiro
     barema_categoria = None
