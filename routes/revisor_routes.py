@@ -1076,9 +1076,15 @@ def avaliar(submission_id: int):
             flash("Acesso negado!", "danger")
             return redirect(url_for(endpoints.DASHBOARD))
 
-    # Buscar a resposta_formulario relacionada ao trabalho
-    resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=submission.id).first()
-    
+    # Utiliza a resposta associada ao assignment para determinar a categoria
+    resposta_formulario = None
+    if assignment is not None:
+        resposta_formulario = getattr(assignment, "resposta_formulario", None)
+        if resposta_formulario is None and assignment.resposta_formulario_id:
+            resposta_formulario = RespostaFormulario.query.get(
+                assignment.resposta_formulario_id
+            )
+
     # Obter a categoria do trabalho
     categoria_trabalho = None
     if resposta_formulario:
@@ -1346,9 +1352,13 @@ def iniciar_revisao(trabalho_id: int):
         flash("Nenhum revisor atribuído para este trabalho!", "warning")
         return redirect(url_for("evento_routes.home"))
     
-    # Buscar a resposta_formulario relacionada ao trabalho
-    resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=submission.id).first()
-    
+    # Utiliza a resposta associada ao assignment para determinar a categoria
+    resposta_formulario = getattr(assignment, "resposta_formulario", None)
+    if resposta_formulario is None and assignment.resposta_formulario_id:
+        resposta_formulario = RespostaFormulario.query.get(
+            assignment.resposta_formulario_id
+        )
+
     # Obter a categoria do trabalho
     categoria = None
     if resposta_formulario:

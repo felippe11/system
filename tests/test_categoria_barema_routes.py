@@ -92,6 +92,14 @@ def app(monkeypatch):
         db.session.add_all([formulario, campo_categoria, submission])
         db.session.flush()
 
+        resposta_sem_categoria = RespostaFormulario(
+            formulario_id=formulario.id,
+            trabalho_id=submission.id,
+            evento_id=evento.id,
+        )
+        db.session.add(resposta_sem_categoria)
+        db.session.flush()
+
         resposta = RespostaFormulario(
             formulario_id=formulario.id,
             trabalho_id=submission.id,
@@ -212,6 +220,17 @@ def test_revisor_categoria_barema_get(app):
     with app.app_context():
         submission = Submission.query.first()
         reviewer = Usuario.query.filter_by(email="rev@test").first()
+        respostas = (
+            RespostaFormulario.query.filter_by(trabalho_id=submission.id)
+            .order_by(RespostaFormulario.id)
+            .all()
+        )
+        assert len(respostas) == 2
+        assert respostas[0].respostas_campos == []
+        assert any(
+            resposta_campo.campo.nome.lower() == "categoria"
+            for resposta_campo in respostas[1].respostas_campos
+        )
 
     with app.test_request_context(f"/revisor/avaliar/{submission.id}", method="GET"):
         login_user(reviewer)
