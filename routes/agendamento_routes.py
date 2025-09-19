@@ -1151,7 +1151,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     pdf.add_page()
     
         # Register fonts before setting them
-    font_dir = os.path.join(current_app.root_path, "fonts")
+    font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
     pdf.add_font("DejaVu", "", os.path.join(font_dir, "DejaVuSans.ttf"), uni=True)
     pdf.add_font("DejaVu", "B", os.path.join(font_dir, "DejaVuSans-Bold.ttf"), uni=True)
     pdf.add_font(
