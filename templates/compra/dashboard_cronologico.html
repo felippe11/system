@@ -1,0 +1,688 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Cronológico - Compras{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css" rel="stylesheet">
+<style>
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .variation-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 20px;
+        margin-top: 0.5rem;
+        display: inline-block;
+    }
+    
+    .variation-positive {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+        border: 1px solid #28a745;
+    }
+    
+    .variation-negative {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+        border: 1px solid #dc3545;
+    }
+    
+    .variation-neutral {
+        background-color: rgba(108, 117, 125, 0.2);
+        color: #6c757d;
+        border: 1px solid #6c757d;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .filter-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .period-selector {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .period-btn {
+        padding: 0.5rem 1rem;
+        border: 2px solid #e9ecef;
+        background: white;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .period-btn.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        display: none;
+    }
+    
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0">Dashboard Cronológico de Compras</h1>
+            <p class="text-muted">Análise temporal e tendências de compras</p>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="filter-card">
+        <h5 class="mb-3">Filtros e Configurações</h5>
+        
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label">Período de Análise</label>
+                <div class="period-selector">
+                    <button class="period-btn" data-periodo="diario">Diário</button>
+                    <button class="period-btn active" data-periodo="mensal">Mensal</button>
+                    <button class="period-btn" data-periodo="trimestral">Trimestral</button>
+                    <button class="period-btn" data-periodo="anual">Anual</button>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <label for="dataInicio" class="form-label">Data Início</label>
+                <input type="date" class="form-control" id="dataInicio">
+            </div>
+            
+            <div class="col-md-3">
+                <label for="dataFim" class="form-label">Data Fim</label>
+                <input type="date" class="form-control" id="dataFim">
+            </div>
+            
+            <div class="col-md-3">
+                <label for="poloFiltro" class="form-label">Polo</label>
+                <select class="form-select" id="poloFiltro">
+                    <option value="">Todos os Polos</option>
+                    <!-- Opções serão carregadas dinamicamente -->
+                </select>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="compararPeriodo">
+                    <label class="form-check-label" for="compararPeriodo">
+                        Comparar com período anterior
+                    </label>
+                </div>
+            </div>
+            
+            <div class="col-md-6 text-end">
+                <button class="btn btn-primary" onclick="atualizarDashboard()">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Atualizar
+                </button>
+                <button class="btn btn-success" onclick="exportarRelatorio()">
+                    <i class="bi bi-download me-2"></i>Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Métricas Principais -->
+    <div class="row" id="metricas">
+        <!-- Métricas serão carregadas dinamicamente -->
+    </div>
+    
+    <!-- Gráficos -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="chart-container">
+                <h5 class="mb-3">Evolução Temporal</h5>
+                <canvas id="chartEvolucao" height="100"></canvas>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="chart-container">
+                <h5 class="mb-3">Distribuição por Status</h5>
+                <canvas id="chartStatus" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <h5 class="mb-3">Top Fornecedores</h5>
+                <canvas id="chartFornecedores" height="150"></canvas>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <h5 class="mb-3">Compras por Polo</h5>
+                <canvas id="chartPolos" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Comparação de Períodos -->
+    <div class="row" id="comparacaoContainer" style="display: none;">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5 class="mb-3">Comparação com Período Anterior</h5>
+                <div id="comparacaoContent">
+                    <!-- Conteúdo da comparação será carregado dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+
+<script>
+let chartEvolucao, chartStatus, chartFornecedores, chartPolos;
+let dadosAtuais = null;
+let periodoAtual = 'mensal';
+
+// Configurações dos gráficos
+const chartColors = {
+    primary: '#007bff',
+    success: '#28a745',
+    warning: '#ffc107',
+    danger: '#dc3545',
+    info: '#17a2b8',
+    secondary: '#6c757d'
+};
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarFiltros();
+    carregarPolos();
+    atualizarDashboard();
+    
+    // Event listeners
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            periodoAtual = this.dataset.periodo;
+            atualizarDashboard();
+        });
+    });
+});
+
+function inicializarFiltros() {
+    // Definir datas padrão
+    const hoje = new Date();
+    const umAnoAtras = new Date();
+    umAnoAtras.setFullYear(hoje.getFullYear() - 1);
+    
+    document.getElementById('dataFim').value = hoje.toISOString().split('T')[0];
+    document.getElementById('dataInicio').value = umAnoAtras.toISOString().split('T')[0];
+}
+
+async function carregarPolos() {
+    try {
+        const response = await fetch('/api/polos');
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('poloFiltro');
+            data.polos.forEach(polo => {
+                const option = document.createElement('option');
+                option.value = polo.id;
+                option.textContent = polo.nome;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar polos:', error);
+    }
+}
+
+async function atualizarDashboard() {
+    mostrarLoading(true);
+    
+    try {
+        // Buscar dados cronológicos
+        const paramsCronologico = new URLSearchParams({
+            periodo: periodoAtual,
+            data_inicio: document.getElementById('dataInicio').value,
+            data_fim: document.getElementById('dataFim').value,
+            comparar_anterior: document.getElementById('compararPeriodo').checked
+        });
+        
+        const poloId = document.getElementById('poloFiltro').value;
+        if (poloId) {
+            paramsCronologico.append('polo_id', poloId);
+        }
+        
+        // Buscar dados do dashboard
+        const paramsDashboard = new URLSearchParams();
+        if (poloId) {
+            paramsDashboard.append('polo_id', poloId);
+        }
+        
+        const [responseCronologico, responseDashboard] = await Promise.all([
+            fetch(`/api/relatorios/cronologico?${paramsCronologico}`),
+            fetch(`/api/relatorios/dashboard?${paramsDashboard}`)
+        ]);
+        
+        const dadosCronologicos = await responseCronologico.json();
+        const dadosDashboard = await responseDashboard.json();
+        
+        if (dadosCronologicos.success && dadosDashboard.success) {
+            dadosAtuais = { cronologico: dadosCronologicos, dashboard: dadosDashboard };
+            
+            atualizarMetricas(dadosDashboard.metricas);
+            atualizarGraficos(dadosCronologicos, dadosDashboard);
+            
+            if (dadosCronologicos.comparacao) {
+                mostrarComparacao(dadosCronologicos.comparacao);
+            } else {
+                document.getElementById('comparacaoContainer').style.display = 'none';
+            }
+        } else {
+            throw new Error('Erro ao carregar dados');
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar dashboard:', error);
+        alert('Erro ao carregar dados do dashboard');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+function atualizarMetricas(metricas) {
+    const container = document.getElementById('metricas');
+    
+    const metricasHtml = `
+        <div class="col-md-4">
+            <div class="metric-card">
+                <div class="metric-value">R$ ${formatarMoeda(metricas.valor_total.atual)}</div>
+                <div class="metric-label">Valor Total (30 dias)</div>
+                <div class="variation-badge ${getVariationClass(metricas.valor_total.variacao)}">
+                    ${metricas.valor_total.variacao > 0 ? '↗' : metricas.valor_total.variacao < 0 ? '↘' : '→'} 
+                    ${Math.abs(metricas.valor_total.variacao)}%
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric-card">
+                <div class="metric-value">${metricas.total_compras.atual}</div>
+                <div class="metric-label">Total de Compras</div>
+                <div class="variation-badge ${getVariationClass(metricas.total_compras.variacao)}">
+                    ${metricas.total_compras.variacao > 0 ? '↗' : metricas.total_compras.variacao < 0 ? '↘' : '→'} 
+                    ${Math.abs(metricas.total_compras.variacao)}%
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric-card">
+                <div class="metric-value">R$ ${formatarMoeda(metricas.ticket_medio.atual)}</div>
+                <div class="metric-label">Ticket Médio</div>
+                <div class="variation-badge ${getVariationClass(metricas.ticket_medio.atual - metricas.ticket_medio.anterior)}">
+                    ${metricas.ticket_medio.atual > metricas.ticket_medio.anterior ? '↗' : metricas.ticket_medio.atual < metricas.ticket_medio.anterior ? '↘' : '→'} 
+                    R$ ${formatarMoeda(Math.abs(metricas.ticket_medio.atual - metricas.ticket_medio.anterior))}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = metricasHtml;
+}
+
+function atualizarGraficos(dadosCronologicos, dadosDashboard) {
+    // Gráfico de evolução temporal
+    atualizarGraficoEvolucao(dadosCronologicos.dados_cronologicos);
+    
+    // Gráfico de status
+    atualizarGraficoStatus(dadosDashboard.distribuicoes.status);
+    
+    // Gráfico de fornecedores
+    atualizarGraficoFornecedores(dadosDashboard.distribuicoes.top_fornecedores);
+    
+    // Gráfico de polos
+    atualizarGraficoPolos(dadosDashboard.distribuicoes.compras_por_polo);
+}
+
+function atualizarGraficoEvolucao(dados) {
+    const ctx = document.getElementById('chartEvolucao').getContext('2d');
+    
+    if (chartEvolucao) {
+        chartEvolucao.destroy();
+    }
+    
+    chartEvolucao = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dados.map(d => d.periodo),
+            datasets: [{
+                label: 'Valor Total',
+                data: dados.map(d => d.valor_total),
+                borderColor: chartColors.primary,
+                backgroundColor: chartColors.primary + '20',
+                tension: 0.4,
+                fill: true
+            }, {
+                label: 'Quantidade de Compras',
+                data: dados.map(d => d.total_compras),
+                borderColor: chartColors.success,
+                backgroundColor: chartColors.success + '20',
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Valor (R$)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Quantidade'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (context.datasetIndex === 0) {
+                                return `Valor: R$ ${formatarMoeda(context.parsed.y)}`;
+                            } else {
+                                return `Compras: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarGraficoStatus(dados) {
+    const ctx = document.getElementById('chartStatus').getContext('2d');
+    
+    if (chartStatus) {
+        chartStatus.destroy();
+    }
+    
+    const labels = Object.keys(dados);
+    const values = Object.values(dados);
+    
+    chartStatus = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+            datasets: [{
+                data: values,
+                backgroundColor: [
+                    chartColors.success,
+                    chartColors.warning,
+                    chartColors.danger,
+                    chartColors.info,
+                    chartColors.secondary
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function atualizarGraficoFornecedores(dados) {
+    const ctx = document.getElementById('chartFornecedores').getContext('2d');
+    
+    if (chartFornecedores) {
+        chartFornecedores.destroy();
+    }
+    
+    chartFornecedores = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dados.map(d => d.nome.length > 15 ? d.nome.substring(0, 15) + '...' : d.nome),
+            datasets: [{
+                label: 'Valor Total',
+                data: dados.map(d => d.total),
+                backgroundColor: chartColors.primary
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `R$ ${formatarMoeda(context.parsed.x)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarGraficoPolos(dados) {
+    const ctx = document.getElementById('chartPolos').getContext('2d');
+    
+    if (chartPolos) {
+        chartPolos.destroy();
+    }
+    
+    if (dados.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Dados filtrados por polo específico', ctx.canvas.width/2, ctx.canvas.height/2);
+        return;
+    }
+    
+    chartPolos = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: dados.map(d => d.polo),
+            datasets: [{
+                data: dados.map(d => d.valor_total),
+                backgroundColor: [
+                    chartColors.primary,
+                    chartColors.success,
+                    chartColors.warning,
+                    chartColors.danger,
+                    chartColors.info
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: R$ ${formatarMoeda(context.parsed)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function mostrarComparacao(comparacao) {
+    const container = document.getElementById('comparacaoContainer');
+    const content = document.getElementById('comparacaoContent');
+    
+    const tendenciaIcon = comparacao.tendencia === 'alta' ? '📈' : 
+                         comparacao.tendencia === 'baixa' ? '📉' : '📊';
+    
+    const tendenciaClass = comparacao.tendencia === 'alta' ? 'text-success' : 
+                          comparacao.tendencia === 'baixa' ? 'text-danger' : 'text-secondary';
+    
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Período Atual</h6>
+                <p><strong>Valor Total:</strong> R$ ${formatarMoeda(dadosAtuais.cronologico.estatisticas.total_geral)}</p>
+                <p><strong>Total de Compras:</strong> ${dadosAtuais.cronologico.estatisticas.total_compras}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Período Anterior</h6>
+                <p><strong>Valor Total:</strong> R$ ${formatarMoeda(comparacao.periodo_anterior.valor_total)}</p>
+                <p><strong>Total de Compras:</strong> ${comparacao.periodo_anterior.total_compras}</p>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12 text-center">
+                <h4 class="${tendenciaClass}">
+                    ${tendenciaIcon} ${Math.abs(comparacao.variacao_percentual)}% 
+                    ${comparacao.variacao_percentual > 0 ? 'de aumento' : comparacao.variacao_percentual < 0 ? 'de redução' : 'sem alteração'}
+                </h4>
+            </div>
+        </div>
+    `;
+    
+    container.style.display = 'block';
+}
+
+function mostrarLoading(show) {
+    document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
+
+function getVariationClass(variacao) {
+    if (variacao > 0) return 'variation-positive';
+    if (variacao < 0) return 'variation-negative';
+    return 'variation-neutral';
+}
+
+function formatarMoeda(valor) {
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(valor);
+}
+
+async function exportarRelatorio() {
+    if (!dadosAtuais) {
+        alert('Nenhum dado para exportar');
+        return;
+    }
+    
+    try {
+        const params = new URLSearchParams({
+            periodo: periodoAtual,
+            data_inicio: document.getElementById('dataInicio').value,
+            data_fim: document.getElementById('dataFim').value,
+            formato: 'excel'
+        });
+        
+        const poloId = document.getElementById('poloFiltro').value;
+        if (poloId) {
+            params.append('polo_id', poloId);
+        }
+        
+        window.open(`/api/relatorios/exportar?${params}`, '_blank');
+    } catch (error) {
+        console.error('Erro ao exportar:', error);
+        alert('Erro ao exportar relatório');
+    }
+}
+</script>
+{% endblock %}

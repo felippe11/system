@@ -1,4 +1,5 @@
 from functools import wraps
+from collections.abc import Iterable
 from flask import session, redirect, url_for, flash, abort, request, jsonify
 from flask_login import current_user, login_required as flask_login_required
 import logging
@@ -170,29 +171,53 @@ def monitor_required(f):
 
 def role_required(*allowed_roles):
     """Decorator que permite acesso apenas para roles específicos."""
+
+    def _normalize_roles(roles):
+        normalized = []
+        for role in roles:
+            if isinstance(role, str):
+                normalized.append(role)
+            elif isinstance(role, Iterable):
+                normalized.extend(r for r in role if isinstance(r, str))
+            else:
+                normalized.append(str(role))
+        return tuple(dict.fromkeys(normalized))  # remove duplicates mantendo ordem
+
+    normalized_roles = _normalize_roles(allowed_roles)
+
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
+            is_json_request = (
+                request.is_json
+                or request.path.startswith('/api/')
+                or 'application/json' in request.headers.get('Accept', '')
+            )
+
             if not current_user.is_authenticated:
-                if request.is_json:
+                if is_json_request:
                     return jsonify({'error': 'Autenticação necessária'}), 401
                 return redirect(url_for('auth_routes.login'))
-            
+
             user_type = getattr(current_user, 'tipo', None)
             session_type = session.get('user_type')
-            
+
             current_role = user_type or session_type
-            
-            if current_role not in allowed_roles:
-                if request.is_json:
+
+            if current_role not in normalized_roles:
+                if is_json_request:
                     return jsonify({
-                        'error': f'Acesso negado - roles permitidos: {", ".join(allowed_roles)}'
+                        'error': 'Acesso negado',
+                        'roles_permitidos': list(normalized_roles),
                     }), 403
-                flash(f'Acesso negado - roles permitidos: {", ".join(allowed_roles)}!', 'danger')
+                roles_txt = ", ".join(normalized_roles) if normalized_roles else 'Nenhum'
+                flash(f'Acesso negado - roles permitidos: {roles_txt}!', 'danger')
                 return redirect(url_for(endpoints.DASHBOARD))
-            
+
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 

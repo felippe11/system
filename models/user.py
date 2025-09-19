@@ -60,6 +60,9 @@ class Usuario(db.Model, UserMixin):
     mfa_enabled = db.Column(db.Boolean, default=False)
     mfa_secret = db.Column(db.String(32), nullable=True)
     ativo = db.Column(db.Boolean, default=True)
+    
+    # Campo para permissões de aprovação de compras
+    pode_aprovar_compras = db.Column(db.Boolean, default=False)
 
     def verificar_senha(self, senha):
         return check_password_hash(self.senha, senha)

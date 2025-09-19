@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Compra #{{ compra.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">✏️ Editar Compra #{{ compra.id }}</h2>
+                    <p class="text-muted mb-0">{{ compra.fornecedor }} - {{ compra.data_compra.strftime('%d/%m/%Y') }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('compra_routes.detalhes_compra', compra_id=compra.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário de Edição -->
+    <form method="POST" id="formEditarCompra">
+        {{ csrf_token() }}
+        
+        <div class="row">
+            <!-- Informações Principais -->
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Informações da Compra</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="polo_id" class="form-label">Polo *</label>
+                                    <select class="form-select" id="polo_id" name="polo_id" required>
+                                        <option value="">Selecione um polo</option>
+                                        {% for polo in polos %}
+                                        <option value="{{ polo.id }}" {% if polo.id == compra.polo_id %}selected{% endif %}>
+                                            {{ polo.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="data_compra" class="form-label">Data da Compra *</label>
+                                    <input type="date" class="form-control" id="data_compra" name="data_compra" 
+                                           value="{{ compra.data_compra.strftime('%Y-%m-%d') }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="fornecedor" class="form-label">Fornecedor *</label>
+                                    <input type="text" class="form-control" id="fornecedor" name="fornecedor" 
+                                           value="{{ compra.fornecedor }}" required maxlength="200">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="cnpj_fornecedor" class="form-label">CNPJ do Fornecedor</label>
+                                    <input type="text" class="form-control" id="cnpj_fornecedor" name="cnpj_fornecedor" 
+                                           value="{{ compra.cnpj_fornecedor or '' }}" placeholder="00.000.000/0000-00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="valor_total" class="form-label">Valor Total *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="number" class="form-control" id="valor_total" name="valor_total" 
+                                               value="{{ compra.valor_total }}" step="0.01" min="0" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="forma_pagamento" class="form-label">Forma de Pagamento</label>
+                                    <select class="form-select" id="forma_pagamento" name="forma_pagamento">
+                                        <option value="">Selecione</option>
+                                        <option value="dinheiro" {% if compra.forma_pagamento == 'dinheiro' %}selected{% endif %}>Dinheiro</option>
+                                        <option value="cartao_credito" {% if compra.forma_pagamento == 'cartao_credito' %}selected{% endif %}>Cartão de Crédito</option>
+                                        <option value="cartao_debito" {% if compra.forma_pagamento == 'cartao_debito' %}selected{% endif %}>Cartão de Débito</option>
+                                        <option value="pix" {% if compra.forma_pagamento == 'pix' %}selected{% endif %}>PIX</option>
+                                        <option value="transferencia" {% if compra.forma_pagamento == 'transferencia' %}selected{% endif %}>Transferência</option>
+                                        <option value="boleto" {% if compra.forma_pagamento == 'boleto' %}selected{% endif %}>Boleto</option>
+                                        <option value="cheque" {% if compra.forma_pagamento == 'cheque' %}selected{% endif %}>Cheque</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <option value="pendente" {% if compra.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                                        <option value="aprovada" {% if compra.status == 'aprovada' %}selected{% endif %}>Aprovada</option>
+                                        <option value="rejeitada" {% if compra.status == 'rejeitada' %}selected{% endif %}>Rejeitada</option>
+                                        <option value="finalizada" {% if compra.status == 'finalizada' %}selected{% endif %}>Finalizada</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3" 
+                                      maxlength="500">{{ compra.descricao or '' }}</textarea>
+                            <div class="form-text">Máximo 500 caracteres</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="observacoes" class="form-label">Observações</label>
+                            <textarea class="form-control" id="observacoes" name="observacoes" rows="3" 
+                                      maxlength="1000">{{ compra.observacoes or '' }}</textarea>
+                            <div class="form-text">Máximo 1000 caracteres</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Itens da Compra -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Itens da Compra</h5>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="adicionarItem()">
+                            <i class="fas fa-plus"></i> Adicionar Item
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="itens-container">
+                            {% for item in compra.itens %}
+                            <div class="item-row border rounded p-3 mb-3" data-index="{{ loop.index0 }}">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Material</label>
+                                        <select class="form-select" name="itens[{{ loop.index0 }}][material_id]">
+                                            <option value="">Selecione um material</option>
+                                            {% for material in materiais %}
+                                            <option value="{{ material.id }}" {% if material.id == item.material_id %}selected{% endif %}>
+                                                {{ material.nome }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Descrição</label>
+                                        <input type="text" class="form-control" name="itens[{{ loop.index0 }}][descricao]" 
+                                               value="{{ item.descricao or '' }}" maxlength="200">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Quantidade</label>
+                                        <input type="number" class="form-control item-quantidade" 
+                                               name="itens[{{ loop.index0 }}][quantidade]" 
+                                               value="{{ item.quantidade }}" min="1" step="1" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Valor Unit.</label>
+                                        <input type="number" class="form-control item-valor" 
+                                               name="itens[{{ loop.index0 }}][valor_unitario]" 
+                                               value="{{ item.valor_unitario }}" min="0" step="0.01" required>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="button" class="btn btn-danger btn-sm d-block" onclick="removerItem(this)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="itens[{{ loop.index0 }}][id]" value="{{ item.id }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="text-end mt-3">
+                            <strong>Total Calculado: R$ <span id="total-calculado">0,00</span></strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-md-4">
+                <!-- Resumo -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Resumo</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h6 class="mb-0" id="total-itens">{{ compra.itens|length }}</h6>
+                                <small class="text-muted">Itens</small>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="mb-0">{{ compra.documentos|length }}</h6>
+                                <small class="text-muted">Documentos</small>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                            <a href="{{ url_for('compra_routes.detalhes_compra', compra_id=compra.id) }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações Adicionais -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Informações</h5>
+                    </div>
+                    <div class="card-body">
+                        <small class="text-muted">
+                            <strong>Criado em:</strong><br>
+                            {{ compra.data_criacao.strftime('%d/%m/%Y %H:%M') }}<br><br>
+                            
+                            <strong>Criado por:</strong><br>
+                            {{ compra.usuario.nome if compra.usuario else 'Sistema' }}<br><br>
+                            
+                            {% if compra.data_atualizacao %}
+                            <strong>Última atualização:</strong><br>
+                            {{ compra.data_atualizacao.strftime('%d/%m/%Y %H:%M') }}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Template para novos itens -->
+<template id="item-template">
+    <div class="item-row border rounded p-3 mb-3" data-index="__INDEX__">
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label">Material</label>
+                <select class="form-select" name="itens[__INDEX__][material_id]">
+                    <option value="">Selecione um material</option>
+                    {% for material in materiais %}
+                    <option value="{{ material.id }}">{{ material.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Descrição</label>
+                <input type="text" class="form-control" name="itens[__INDEX__][descricao]" maxlength="200">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Quantidade</label>
+                <input type="number" class="form-control item-quantidade" name="itens[__INDEX__][quantidade]" 
+                       min="1" step="1" value="1" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Valor Unit.</label>
+                <input type="number" class="form-control item-valor" name="itens[__INDEX__][valor_unitario]" 
+                       min="0" step="0.01" value="0.00" required>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <button type="button" class="btn btn-danger btn-sm d-block" onclick="removerItem(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+let itemIndex = {{ compra.itens|length }};
+
+// Máscara para CNPJ
+document.getElementById('cnpj_fornecedor').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+    value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+    value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+    value = value.replace(/(\d{4})(\d)/, '$1-$2');
+    e.target.value = value;
+});
+
+// Adicionar novo item
+function adicionarItem() {
+    const template = document.getElementById('item-template');
+    const container = document.getElementById('itens-container');
+    
+    let html = template.innerHTML.replace(/__INDEX__/g, itemIndex);
+    
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    container.appendChild(div.firstElementChild);
+    
+    itemIndex++;
+    atualizarTotais();
+}
+
+// Remover item
+function removerItem(button) {
+    if (confirm('Tem certeza que deseja remover este item?')) {
+        button.closest('.item-row').remove();
+        atualizarTotais();
+    }
+}
+
+// Atualizar totais
+function atualizarTotais() {
+    const itens = document.querySelectorAll('.item-row');
+    let total = 0;
+    
+    itens.forEach(item => {
+        const quantidade = parseFloat(item.querySelector('.item-quantidade').value) || 0;
+        const valor = parseFloat(item.querySelector('.item-valor').value) || 0;
+        total += quantidade * valor;
+    });
+    
+    document.getElementById('total-calculado').textContent = total.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    
+    document.getElementById('total-itens').textContent = itens.length;
+    
+    // Atualizar valor total do formulário
+    document.getElementById('valor_total').value = total.toFixed(2);
+}
+
+// Event listeners para cálculo automático
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('item-quantidade') || e.target.classList.contains('item-valor')) {
+        atualizarTotais();
+    }
+});
+
+// Validação do formulário
+document.getElementById('formEditarCompra').addEventListener('submit', function(e) {
+    const itens = document.querySelectorAll('.item-row');
+    
+    if (itens.length === 0) {
+        e.preventDefault();
+        alert('Adicione pelo menos um item à compra.');
+        return false;
+    }
+    
+    // Validar se todos os itens têm quantidade e valor
+    let itemsValidos = true;
+    itens.forEach(item => {
+        const quantidade = item.querySelector('.item-quantidade').value;
+        const valor = item.querySelector('.item-valor').value;
+        
+        if (!quantidade || !valor || quantidade <= 0 || valor < 0) {
+            itemsValidos = false;
+        }
+    });
+    
+    if (!itemsValidos) {
+        e.preventDefault();
+        alert('Todos os itens devem ter quantidade e valor válidos.');
+        return false;
+    }
+});
+
+// Calcular totais na inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    atualizarTotais();
+});
+
+// Auto-submit do formulário quando necessário
+function autoSubmit() {
+    const form = document.getElementById('formEditarCompra');
+    if (form.checkValidity()) {
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

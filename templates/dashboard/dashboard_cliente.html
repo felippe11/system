@@ -172,6 +172,47 @@
             </div>
           </div>
 
+          <!-- Alertas Orçamentários -->
+          <div id="alertas-orcamentarios" class="mb-4" style="display: none;">
+            <!-- Alertas Críticos -->
+            <div id="alertas-criticos" class="mb-3" style="display: none;">
+              <h6 class="text-danger fw-bold mb-2">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>Alertas Críticos
+              </h6>
+              <div id="lista-alertas-criticos"></div>
+            </div>
+
+            <!-- Avisos -->
+            <div id="alertas-avisos" class="mb-3" style="display: none;">
+              <h6 class="text-warning fw-bold mb-2">
+                <i class="bi bi-exclamation-triangle me-2"></i>Avisos
+              </h6>
+              <div id="lista-alertas-avisos"></div>
+            </div>
+
+            <!-- Informativos -->
+            <div id="alertas-informativos" class="mb-3" style="display: none;">
+              <h6 class="text-info fw-bold mb-2">
+                <i class="bi bi-info-circle me-2"></i>Informativos
+              </h6>
+              <div id="lista-alertas-informativos"></div>
+            </div>
+          </div>
+
+          <!-- Resumo Orçamentário -->
+          <div id="resumo-orcamentario" class="card shadow mb-4" style="display: none;">
+            <div class="card-header">
+              <h5 class="m-0 fw-bold">
+                <i class="bi bi-cash-stack me-2"></i>Controle Orçamentário
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="row g-3" id="cards-orcamento">
+                <!-- Cards de orçamento serão inseridos aqui via JavaScript -->
+              </div>
+            </div>
+          </div>
+
           <!-- Detalhes das oficinas com tabela e gráficos -->
 <div class="card shadow">
   <div class="card-header">
@@ -493,6 +534,39 @@
               <a href="/revisor/processos" class="btn btn-primary w-100">
                 <i class="bi bi-person-lines-fill me-2"></i> Configurar
               </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gestão de Compras -->
+        <div class="col-lg-6 col-xl-3">
+          <div class="card h-100 shadow-sm hover-shadow border-0">
+            <div class="card-body">
+              <div class="text-success mb-3">
+                <i class="bi bi-cart-check fs-1"></i>
+              </div>
+              <h5 class="card-title fw-bold">Gestão de Compras</h5>
+              <p class="card-text text-muted">Gerencie documentos fiscais e relatórios cronológicos</p>
+            </div>
+            <div class="card-footer bg-white border-0 pt-0">
+              <div class="d-flex flex-column gap-2">
+                <div class="d-flex gap-2">
+                  <a href="{{ url_for('compra_routes.dashboard_cronologico') }}" class="btn btn-sm btn-success flex-grow-1">
+                    <i class="bi bi-graph-up me-1"></i> Dashboard
+                  </a>
+                  <a href="{{ url_for('compra_routes.upload_documento') }}" class="btn btn-sm btn-outline-success flex-grow-1">
+                    <i class="bi bi-upload me-1"></i> Upload
+                  </a>
+                </div>
+                <div class="d-flex gap-2">
+                  <a href="{{ url_for('aprovacao.listar_aprovacoes_pendentes') }}" class="btn btn-sm btn-warning flex-grow-1">
+                    <i class="bi bi-check-circle me-1"></i> Aprovações
+                  </a>
+                  <a href="{{ url_for('aprovacao.gerenciar_niveis') }}" class="btn btn-sm btn-outline-warning flex-grow-1">
+                    <i class="bi bi-layers me-1"></i> Níveis
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2256,6 +2330,205 @@
   // Carregar histórico inicial quando a aba for ativada
   document.getElementById('tab-cert-historico').addEventListener('shown.bs.tab', function() {
     aplicarFiltrosHistorico();
+  });
+
+  // ====================================
+  // ALERTAS ORÇAMENTÁRIOS
+  // ====================================
+
+  function carregarAlertasOrcamentarios() {
+    fetch('/api/alertas-orcamento')
+      .then(response => response.json())
+      .then(data => {
+        if (data.orcamento_configurado) {
+          exibirAlertas(data);
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao carregar alertas orçamentários:', error);
+      });
+  }
+
+  function carregarResumoOrcamentario() {
+    fetch('/api/resumo-orcamentario')
+      .then(response => response.json())
+      .then(data => {
+        if (data.configurado) {
+          exibirResumoOrcamentario(data);
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao carregar resumo orçamentário:', error);
+      });
+  }
+
+  function exibirAlertas(alertas) {
+    const containerAlertas = document.getElementById('alertas-orcamentarios');
+    
+    // Exibir alertas críticos
+    if (alertas.criticos.length > 0) {
+      const containerCriticos = document.getElementById('alertas-criticos');
+      const listaCriticos = document.getElementById('lista-alertas-criticos');
+      
+      listaCriticos.innerHTML = alertas.criticos.map(alerta => `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <i class="bi bi-${alerta.icone} me-2"></i>
+          <strong>${alerta.titulo}</strong><br>
+          ${alerta.mensagem}<br>
+          <small class="text-muted">
+            Gasto: R$ ${alerta.valor_gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})} 
+            (${alerta.percentual.toFixed(1)}%)
+          </small>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `).join('');
+      
+      containerCriticos.style.display = 'block';
+    }
+
+    // Exibir avisos
+    if (alertas.avisos.length > 0) {
+      const containerAvisos = document.getElementById('alertas-avisos');
+      const listaAvisos = document.getElementById('lista-alertas-avisos');
+      
+      listaAvisos.innerHTML = alertas.avisos.map(alerta => `
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+          <i class="bi bi-${alerta.icone} me-2"></i>
+          <strong>${alerta.titulo}</strong><br>
+          ${alerta.mensagem}<br>
+          <small class="text-muted">
+            Gasto: R$ ${alerta.valor_gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})} 
+            (${alerta.percentual.toFixed(1)}%)
+          </small>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `).join('');
+      
+      containerAvisos.style.display = 'block';
+    }
+
+    // Exibir informativos
+    if (alertas.informativos.length > 0) {
+      const containerInformativos = document.getElementById('alertas-informativos');
+      const listaInformativos = document.getElementById('lista-alertas-informativos');
+      
+      listaInformativos.innerHTML = alertas.informativos.map(alerta => `
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+          <i class="bi bi-${alerta.icone} me-2"></i>
+          <strong>${alerta.titulo}</strong><br>
+          ${alerta.mensagem}<br>
+          <small class="text-muted">
+            Gasto: R$ ${alerta.valor_gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})} 
+            (${alerta.percentual.toFixed(1)}%)
+          </small>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `).join('');
+      
+      containerInformativos.style.display = 'block';
+    }
+
+    // Mostrar container se houver alertas
+    if (alertas.total_alertas > 0) {
+      containerAlertas.style.display = 'block';
+    }
+  }
+
+  function exibirResumoOrcamentario(resumo) {
+    const containerResumo = document.getElementById('resumo-orcamentario');
+    const cardsOrcamento = document.getElementById('cards-orcamento');
+    
+    const corProgressoTotal = resumo.total.percentual >= 90 ? 'danger' : 
+                             resumo.total.percentual >= 70 ? 'warning' : 'success';
+    const corProgressoCusteio = resumo.custeio.percentual >= 90 ? 'danger' : 
+                               resumo.custeio.percentual >= 70 ? 'warning' : 'success';
+    const corProgressoCapital = resumo.capital.percentual >= 90 ? 'danger' : 
+                               resumo.capital.percentual >= 70 ? 'warning' : 'success';
+    
+    cardsOrcamento.innerHTML = `
+      <!-- Orçamento Total -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">
+              <i class="bi bi-cash-stack me-1"></i>Orçamento Total
+            </h6>
+            <h4 class="card-title text-${corProgressoTotal}">
+              R$ ${resumo.total.gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </h4>
+            <p class="card-text small text-muted mb-2">
+              de R$ ${resumo.total.disponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </p>
+            <div class="progress mb-2" style="height: 8px;">
+              <div class="progress-bar bg-${corProgressoTotal}" 
+                   style="width: ${resumo.total.percentual}%"></div>
+            </div>
+            <small class="text-muted">
+              ${resumo.total.percentual.toFixed(1)}% utilizado • 
+              R$ ${resumo.total.restante.toLocaleString('pt-BR', {minimumFractionDigits: 2})} restante
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orçamento de Custeio -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">
+              <i class="bi bi-receipt me-1"></i>Custeio
+            </h6>
+            <h4 class="card-title text-${corProgressoCusteio}">
+              R$ ${resumo.custeio.gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </h4>
+            <p class="card-text small text-muted mb-2">
+              de R$ ${resumo.custeio.disponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </p>
+            <div class="progress mb-2" style="height: 8px;">
+              <div class="progress-bar bg-${corProgressoCusteio}" 
+                   style="width: ${resumo.custeio.percentual}%"></div>
+            </div>
+            <small class="text-muted">
+              ${resumo.custeio.percentual.toFixed(1)}% utilizado • 
+              R$ ${resumo.custeio.restante.toLocaleString('pt-BR', {minimumFractionDigits: 2})} restante
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orçamento de Capital -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">
+              <i class="bi bi-building me-1"></i>Capital
+            </h6>
+            <h4 class="card-title text-${corProgressoCapital}">
+              R$ ${resumo.capital.gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </h4>
+            <p class="card-text small text-muted mb-2">
+              de R$ ${resumo.capital.disponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </p>
+            <div class="progress mb-2" style="height: 8px;">
+              <div class="progress-bar bg-${corProgressoCapital}" 
+                   style="width: ${resumo.capital.percentual}%"></div>
+            </div>
+            <small class="text-muted">
+              ${resumo.capital.percentual.toFixed(1)}% utilizado • 
+              R$ ${resumo.capital.restante.toLocaleString('pt-BR', {minimumFractionDigits: 2})} restante
+            </small>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    containerResumo.style.display = 'block';
+  }
+
+  // Carregar alertas e resumo orçamentário quando a página carregar
+  document.addEventListener('DOMContentLoaded', function() {
+    carregarAlertasOrcamentarios();
+    carregarResumoOrcamentario();
   });
 
   // Configuração do Limite Máximo de Revisores

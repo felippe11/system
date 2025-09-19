@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint
 
 # Cria o Blueprint principal
@@ -23,7 +25,6 @@ def register_routes(app):
     try:
         from . import pdf_routes  # noqa: F401
     except Exception as e:  # pragma: no cover - optional deps
-        import logging
         logging.getLogger(__name__).info("pdf_routes disabled: %s", e)
     from .dashboard_participante import dashboard_participante_routes
     from .dashboard_professor import dashboard_professor_routes
@@ -64,10 +65,17 @@ def register_routes(app):
     from .static_page_routes import static_page_routes
     from .monitor_routes import monitor_routes
     from .material_routes import material_routes
+    from .compra_routes import compra_routes
+    from .aprovacao_routes import aprovacao_routes
+    from .orcamento_routes import orcamento_bp
     from .ai_routes import ai_bp
     from .validacao_routes import validacao_bp
     from .declaracao_routes import declaracao_bp
-    from .editor_routes import editor_bp
+    try:
+        from .editor_routes import editor_bp
+    except ImportError as exc:  # pragma: no cover - optional module
+        editor_bp = None
+        logging.getLogger(__name__).info("editor_routes disabled: %s", exc)
 
     from .importar_trabalhos_routes import importar_trabalhos_routes
     
@@ -127,9 +135,14 @@ def register_routes(app):
     app.register_blueprint(peer_review_routes)
     app.register_blueprint(monitor_routes)
     app.register_blueprint(material_routes)
+    app.register_blueprint(compra_routes)
+    app.register_blueprint(aprovacao_routes)
+    app.register_blueprint(orcamento_bp)
     app.register_blueprint(ai_bp)
     app.register_blueprint(validacao_bp)
     app.register_blueprint(declaracao_bp)
+    if editor_bp:
+        app.register_blueprint(editor_bp)
 
     app.register_blueprint(importar_trabalhos_routes)
 

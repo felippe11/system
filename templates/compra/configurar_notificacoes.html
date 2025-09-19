@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Configurar Notificações - Sistema de Compras{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background-color: #f8f9fa;
+    }
+    
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .status-critico {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .status-atencao {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .status-ok {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .test-button {
+        margin: 5px;
+    }
+    
+    .alert-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .metric-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-bell"></i> Configurar Notificações</h2>
+                <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo de Alertas -->
+    <div class="alert-summary">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-number text-danger" id="orcamentos-criticos">-</div>
+                    <div class="metric-label">Orçamentos Críticos</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-number text-warning" id="compras-pendentes">-</div>
+                    <div class="metric-label">Compras Pendentes</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-number text-info" id="prestacoes-atrasadas">-</div>
+                    <div class="metric-label">Prestações Atrasadas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-number text-primary" id="total-alertas">-</div>
+                    <div class="metric-label">Total de Alertas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Configurações de Notificações -->
+        <div class="col-md-6">
+            <div class="notification-card">
+                <h4><i class="fas fa-cog"></i> Configurações</h4>
+                <p class="text-muted">Configure quando e como receber notificações do sistema.</p>
+                
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Verificação Automática</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="auto-check" checked>
+                            <label class="form-check-label" for="auto-check">
+                                Executar verificação automática de alertas
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Frequência de Verificação</label>
+                        <select class="form-control" id="frequencia">
+                            <option value="diaria">Diária</option>
+                            <option value="semanal">Semanal</option>
+                            <option value="mensal">Mensal</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tipos de Alerta</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="alert-orcamento" checked>
+                            <label class="form-check-label" for="alert-orcamento">
+                                Orçamento excedido ou próximo ao limite
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="alert-pendentes" checked>
+                            <label class="form-check-label" for="alert-pendentes">
+                                Compras pendentes há mais de 7 dias
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="alert-prestacoes" checked>
+                            <label class="form-check-label" for="alert-prestacoes">
+                                Prestações de contas em atraso
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Executar Verificação Manual
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Testes de Notificações -->
+        <div class="col-md-6">
+            <div class="notification-card">
+                <h4><i class="fas fa-flask"></i> Testar Notificações</h4>
+                <p class="text-muted">Envie emails de teste para verificar se as notificações estão funcionando.</p>
+                
+                <div class="mb-3">
+                    <button class="btn btn-danger test-button" onclick="testarNotificacao('orcamento_excedido')">
+                        <i class="fas fa-exclamation-triangle"></i> Orçamento Excedido
+                    </button>
+                    <button class="btn btn-warning test-button" onclick="testarNotificacao('orcamento_proximo_limite')">
+                        <i class="fas fa-exclamation"></i> Próximo ao Limite
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <button class="btn btn-info test-button" onclick="testarNotificacao('compras_pendentes')">
+                        <i class="fas fa-clock"></i> Compras Pendentes
+                    </button>
+                    <button class="btn btn-secondary test-button" onclick="testarNotificacao('prestacoes_atrasadas')">
+                        <i class="fas fa-file-alt"></i> Prestações Atrasadas
+                    </button>
+                </div>
+                
+                <div id="teste-resultado" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Detalhado dos Orçamentos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="notification-card">
+                <h4><i class="fas fa-chart-pie"></i> Status dos Orçamentos</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped" id="tabela-orcamentos">
+                        <thead>
+                            <tr>
+                                <th>Polo</th>
+                                <th>Orçamento Total</th>
+                                <th>Valor Gasto</th>
+                                <th>Percentual Usado</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados carregados via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    carregarStatusNotificacoes();
+});
+
+function carregarStatusNotificacoes() {
+    fetch('/compras/api/notificacoes/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const status = data.status;
+                
+                // Atualizar métricas
+                document.getElementById('orcamentos-criticos').textContent = status.orcamentos_criticos.length;
+                document.getElementById('compras-pendentes').textContent = status.compras_pendentes;
+                document.getElementById('prestacoes-atrasadas').textContent = status.prestacoes_atrasadas;
+                document.getElementById('total-alertas').textContent = status.total_alertas;
+                
+                // Atualizar tabela de orçamentos
+                const tbody = document.querySelector('#tabela-orcamentos tbody');
+                tbody.innerHTML = '';
+                
+                if (status.orcamentos_criticos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhum orçamento crítico encontrado</td></tr>';
+                } else {
+                    status.orcamentos_criticos.forEach(orcamento => {
+                        const statusClass = orcamento.status === 'excedido' ? 'status-critico' : 'status-atencao';
+                        const statusText = orcamento.status === 'excedido' ? 'EXCEDIDO' : 'PRÓXIMO AO LIMITE';
+                        
+                        const row = `
+                            <tr>
+                                <td>${orcamento.polo_nome}</td>
+                                <td>R$ ${orcamento.valor_total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                                <td>R$ ${orcamento.total_gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                                <td>${orcamento.percentual_usado}%</td>
+                                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar status das notificações:', error);
+        });
+}
+
+function testarNotificacao(tipo) {
+    const resultadoDiv = document.getElementById('teste-resultado');
+    resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Enviando teste...</div>';
+    
+    fetch('/compras/notificacoes/testar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            tipo_teste: tipo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultadoDiv.innerHTML = `<div class="alert alert-success"><i class="fas fa-check"></i> ${data.message}</div>`;
+        } else {
+            resultadoDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times"></i> ${data.message}</div>`;
+        }
+        
+        // Limpar mensagem após 5 segundos
+        setTimeout(() => {
+            resultadoDiv.innerHTML = '';
+        }, 5000);
+    })
+    .catch(error => {
+        console.error('Erro ao testar notificação:', error);
+        resultadoDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times"></i> Erro ao enviar teste</div>';
+    });
+}
+
+// Atualizar status a cada 30 segundos
+setInterval(carregarStatusNotificacoes, 30000);
+</script>
+{% endblock %}

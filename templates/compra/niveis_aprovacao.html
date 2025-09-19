@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Níveis de Aprovação{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/aprovacao.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-layer-group text-primary"></i> Níveis de Aprovação</h2>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" onclick="abrirModalNivel()">
+                        <i class="fas fa-plus"></i> Novo Nível
+                    </button>
+                    <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+
+            <!-- Lista de Níveis -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Níveis Configurados</h5>
+                </div>
+                <div class="card-body">
+                    {% if niveis %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Ordem</th>
+                                        <th>Nome</th>
+                                        <th>Descrição</th>
+                                        <th>Valor Mínimo</th>
+                                        <th>Valor Máximo</th>
+                                        <th>Obrigatório</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for nivel in niveis %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-primary">{{ nivel.ordem }}</span>
+                                        </td>
+                                        <td><strong>{{ nivel.nome }}</strong></td>
+                                        <td>{{ nivel.descricao or '-' }}</td>
+                                        <td>R$ {{ "%.2f"|format(nivel.valor_minimo) }}</td>
+                                        <td>
+                                            {% if nivel.valor_maximo %}
+                                                R$ {{ "%.2f"|format(nivel.valor_maximo) }}
+                                            {% else %}
+                                                <span class="text-muted">Sem limite</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if nivel.obrigatorio %}
+                                                <span class="badge bg-success">Sim</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Não</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        onclick="editarNivel({{ nivel.to_dict()|tojson }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="excluirNivel({{ nivel.id }}, '{{ nivel.nome }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-layer-group fa-3x text-muted mb-3"></i>
+                            <h4>Nenhum nível configurado</h4>
+                            <p class="text-muted">Configure os níveis de aprovação para suas compras.</p>
+                            <button class="btn btn-primary" onclick="abrirModalNivel()">
+                                <i class="fas fa-plus"></i> Criar Primeiro Nível
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Nível -->
+<div class="modal fade" id="modalNivel" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNivelTitle">Novo Nível de Aprovação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNivel">
+                    <input type="hidden" id="nivelId">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="nomeNivel" class="form-label">Nome *</label>
+                                <input type="text" class="form-control" id="nomeNivel" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ordemNivel" class="form-label">Ordem *</label>
+                                <input type="number" class="form-control" id="ordemNivel" min="1" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descricaoNivel" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricaoNivel" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="valorMinimoNivel" class="form-label">Valor Mínimo *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="number" class="form-control" id="valorMinimoNivel" 
+                                           step="0.01" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="valorMaximoNivel" class="form-label">Valor Máximo</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="number" class="form-control" id="valorMaximoNivel" 
+                                           step="0.01" min="0">
+                                </div>
+                                <div class="form-text">Deixe em branco para sem limite</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="obrigatorioNivel" checked>
+                            <label class="form-check-label" for="obrigatorioNivel">
+                                Nível obrigatório
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarNivel()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let modalNivel;
+
+function abrirModalNivel(nivel = null) {
+    document.getElementById('formNivel').reset();
+    document.getElementById('nivelId').value = '';
+    
+    if (nivel) {
+        document.getElementById('modalNivelTitle').textContent = 'Editar Nível de Aprovação';
+        document.getElementById('nivelId').value = nivel.id;
+        document.getElementById('nomeNivel').value = nivel.nome;
+        document.getElementById('descricaoNivel').value = nivel.descricao || '';
+        document.getElementById('ordemNivel').value = nivel.ordem;
+        document.getElementById('valorMinimoNivel').value = nivel.valor_minimo;
+        document.getElementById('valorMaximoNivel').value = nivel.valor_maximo || '';
+        document.getElementById('obrigatorioNivel').checked = nivel.obrigatorio;
+    } else {
+        document.getElementById('modalNivelTitle').textContent = 'Novo Nível de Aprovação';
+        document.getElementById('obrigatorioNivel').checked = true;
+    }
+    
+    modalNivel = new bootstrap.Modal(document.getElementById('modalNivel'));
+    modalNivel.show();
+}
+
+function editarNivel(nivel) {
+    abrirModalNivel(nivel);
+}
+
+function salvarNivel() {
+    const form = document.getElementById('formNivel');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const nivelId = document.getElementById('nivelId').value;
+    const dados = {
+        nome: document.getElementById('nomeNivel').value,
+        descricao: document.getElementById('descricaoNivel').value,
+        ordem: parseInt(document.getElementById('ordemNivel').value),
+        valor_minimo: parseFloat(document.getElementById('valorMinimoNivel').value),
+        valor_maximo: document.getElementById('valorMaximoNivel').value ? 
+                     parseFloat(document.getElementById('valorMaximoNivel').value) : null,
+        obrigatorio: document.getElementById('obrigatorioNivel').checked
+    };
+    
+    const url = nivelId ? `/api/niveis-aprovacao/${nivelId}` : '/api/niveis-aprovacao';
+    const method = nivelId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            modalNivel.hide();
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar nível');
+    });
+}
+
+function excluirNivel(nivelId, nomeNivel) {
+    if (!confirm(`Tem certeza que deseja excluir o nível "${nomeNivel}"?`)) {
+        return;
+    }
+    
+    fetch(`/api/niveis-aprovacao/${nivelId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao excluir nível');
+    });
+}
+</script>
+{% endblock %}

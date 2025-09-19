@@ -1,0 +1,589 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Alterações Orçamentárias{% endblock %}
+
+{% block extra_css %}
+<style>
+    .historico-card {
+        border-left: 4px solid #007bff;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .historico-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .historico-card.criacao {
+        border-left-color: #28a745;
+    }
+    
+    .historico-card.edicao {
+        border-left-color: #ffc107;
+    }
+    
+    .historico-card.ativacao {
+        border-left-color: #17a2b8;
+    }
+    
+    .historico-card.desativacao {
+        border-left-color: #dc3545;
+    }
+    
+    .valor-variacao.positiva {
+        color: #28a745;
+        font-weight: bold;
+    }
+    
+    .valor-variacao.negativa {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    
+    .badge-tipo {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .filtros-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+    
+    .estatisticas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .estatistica-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    .estatistica-numero {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .estatistica-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 1rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #dee2e6;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -1.5rem;
+        top: 0.5rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #007bff;
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px #dee2e6;
+    }
+    
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-history"></i> Histórico de Alterações Orçamentárias</h2>
+                <div>
+                    <div class="dropdown me-2">
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                            <li><a class="dropdown-item" href="#" onclick="exportarHistorico('excel')">
+                                <i class="fas fa-file-excel"></i> Excel
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportarHistorico('pdf')">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a></li>
+                        </ul>
+                    </div>
+                    <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card filtros-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-filter"></i> Filtros
+                    </h5>
+                    <form id="filtros-form">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="data_inicio" class="form-label">Data Início</label>
+                                <input type="date" class="form-control" id="data_inicio" name="data_inicio">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="data_fim" class="form-label">Data Fim</label>
+                                <input type="date" class="form-control" id="data_fim" name="data_fim">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="tipo_alteracao" class="form-label">Tipo de Alteração</label>
+                                <select class="form-select" id="tipo_alteracao" name="tipo_alteracao">
+                                    <option value="">Todos</option>
+                                    <option value="criacao">Criação</option>
+                                    <option value="edicao">Edição</option>
+                                    <option value="ativacao">Ativação</option>
+                                    <option value="desativacao">Desativação</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="polo_id" class="form-label">Polo</label>
+                                <select class="form-select" id="polo_id" name="polo_id">
+                                    <option value="">Todos os Polos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="button" class="btn btn-light" onclick="aplicarFiltros()">
+                                    <i class="fas fa-search"></i> Aplicar Filtros
+                                </button>
+                                <button type="button" class="btn btn-outline-light" onclick="limparFiltros()">
+                                    <i class="fas fa-times"></i> Limpar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="estatisticas-grid" id="estatisticas-container">
+        <!-- Estatísticas serão carregadas via JavaScript -->
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-spinner" id="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+        <p class="mt-2">Carregando histórico...</p>
+    </div>
+
+    <!-- Histórico -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Histórico de Alterações
+                        <span class="badge bg-primary ms-2" id="total-registros">0</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline" id="historico-container">
+                        <!-- Histórico será carregado via JavaScript -->
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-outline-primary" id="carregar-mais" onclick="carregarMaisHistorico()" style="display: none;">
+                            <i class="fas fa-plus"></i> Carregar Mais
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes -->
+<div class="modal fade" id="modalDetalhes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes da Alteração</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modal-detalhes-content">
+                <!-- Conteúdo será carregado via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let paginaAtual = 1;
+let totalPaginas = 1;
+let filtrosAtuais = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    carregarPolos();
+    carregarEstatisticas();
+    carregarHistorico();
+    
+    // Configurar datas padrão (último mês)
+    const hoje = new Date();
+    const umMesAtras = new Date(hoje.getFullYear(), hoje.getMonth() - 1, hoje.getDate());
+    
+    document.getElementById('data_inicio').value = umMesAtras.toISOString().split('T')[0];
+    document.getElementById('data_fim').value = hoje.toISOString().split('T')[0];
+});
+
+async function carregarPolos() {
+    try {
+        const response = await fetch('/api/polos');
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('polo_id');
+            data.polos.forEach(polo => {
+                const option = document.createElement('option');
+                option.value = polo.id;
+                option.textContent = polo.nome;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar polos:', error);
+    }
+}
+
+async function carregarEstatisticas() {
+    try {
+        const params = new URLSearchParams(filtrosAtuais);
+        const response = await fetch(`/api/historico-orcamento/estatisticas?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderizarEstatisticas(data.estatisticas);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+    }
+}
+
+function renderizarEstatisticas(stats) {
+    const container = document.getElementById('estatisticas-container');
+    
+    container.innerHTML = `
+        <div class="estatistica-card">
+            <div class="estatistica-numero text-primary">${stats.total_alteracoes}</div>
+            <div class="estatistica-label">Total de Alterações</div>
+        </div>
+        <div class="estatistica-card">
+            <div class="estatistica-numero text-success">R$ ${stats.variacao_total_positiva.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+            <div class="estatistica-label">Aumentos de Orçamento</div>
+        </div>
+        <div class="estatistica-card">
+            <div class="estatistica-numero text-danger">R$ ${Math.abs(stats.variacao_total_negativa).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+            <div class="estatistica-label">Reduções de Orçamento</div>
+        </div>
+        <div class="estatistica-card">
+            <div class="estatistica-numero text-info">${stats.tipos_alteracao.length}</div>
+            <div class="estatistica-label">Tipos de Alteração</div>
+        </div>
+    `;
+}
+
+async function carregarHistorico(pagina = 1) {
+    const loading = document.getElementById('loading');
+    const container = document.getElementById('historico-container');
+    
+    if (pagina === 1) {
+        loading.style.display = 'block';
+        container.innerHTML = '';
+    }
+    
+    try {
+        const params = new URLSearchParams({
+            ...filtrosAtuais,
+            pagina: pagina,
+            limite: 20
+        });
+        
+        const response = await fetch(`/api/historico-orcamento?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            if (pagina === 1) {
+                container.innerHTML = '';
+            }
+            
+            data.historico.forEach(item => {
+                container.appendChild(criarItemHistorico(item));
+            });
+            
+            paginaAtual = pagina;
+            totalPaginas = data.total_paginas || 1;
+            
+            document.getElementById('total-registros').textContent = data.total || 0;
+            document.getElementById('carregar-mais').style.display = 
+                paginaAtual < totalPaginas ? 'block' : 'none';
+        }
+    } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+        mostrarErro('Erro ao carregar histórico de alterações');
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+function criarItemHistorico(item) {
+    const div = document.createElement('div');
+    div.className = `timeline-item historico-card card ${item.tipo_alteracao}`;
+    
+    const badgeClass = {
+        'criacao': 'bg-success',
+        'edicao': 'bg-warning',
+        'ativacao': 'bg-info',
+        'desativacao': 'bg-danger'
+    }[item.tipo_alteracao] || 'bg-primary';
+    
+    const icone = {
+        'criacao': 'fa-plus',
+        'edicao': 'fa-edit',
+        'ativacao': 'fa-check',
+        'desativacao': 'fa-times'
+    }[item.tipo_alteracao] || 'fa-info';
+    
+    let variacaoHtml = '';
+    if (item.tipo_alteracao === 'edicao' && item.variacao_total !== 0) {
+        const classe = item.variacao_total > 0 ? 'positiva' : 'negativa';
+        const sinal = item.variacao_total > 0 ? '+' : '';
+        variacaoHtml = `
+            <div class="valor-variacao ${classe}">
+                ${sinal}R$ ${Math.abs(item.variacao_total).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                (${item.variacao_percentual_total > 0 ? '+' : ''}${item.variacao_percentual_total.toFixed(1)}%)
+            </div>
+        `;
+    }
+    
+    div.innerHTML = `
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge badge-tipo ${badgeClass}">
+                        <i class="fas ${icone}"></i> ${item.tipo_alteracao.toUpperCase()}
+                    </span>
+                    <small class="text-muted ms-2">
+                        ${new Date(item.data_alteracao).toLocaleString('pt-BR')}
+                    </small>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="verDetalhes(${item.id})">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+            
+            <h6 class="card-title">Orçamento ID: ${item.orcamento_id}</h6>
+            <p class="card-text">
+                <strong>Usuário:</strong> ${item.usuario_nome || 'Sistema'}<br>
+                <strong>Motivo:</strong> ${item.motivo || 'Não informado'}
+            </p>
+            
+            ${variacaoHtml}
+            
+            <div class="row mt-2">
+                <div class="col-4">
+                    <small class="text-muted">Valor Total</small><br>
+                    <strong>R$ ${item.valor_total_novo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted">Custeio</small><br>
+                    <strong>R$ ${item.valor_custeio_novo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted">Capital</small><br>
+                    <strong>R$ ${item.valor_capital_novo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return div;
+}
+
+function aplicarFiltros() {
+    filtrosAtuais = {
+        data_inicio: document.getElementById('data_inicio').value,
+        data_fim: document.getElementById('data_fim').value,
+        tipo_alteracao: document.getElementById('tipo_alteracao').value,
+        polo_id: document.getElementById('polo_id').value
+    };
+    
+    // Remover valores vazios
+    Object.keys(filtrosAtuais).forEach(key => {
+        if (!filtrosAtuais[key]) {
+            delete filtrosAtuais[key];
+        }
+    });
+    
+    carregarEstatisticas();
+    carregarHistorico(1);
+}
+
+function limparFiltros() {
+    document.getElementById('filtros-form').reset();
+    filtrosAtuais = {};
+    carregarEstatisticas();
+    carregarHistorico(1);
+}
+
+function carregarMaisHistorico() {
+    if (paginaAtual < totalPaginas) {
+        carregarHistorico(paginaAtual + 1);
+    }
+}
+
+async function verDetalhes(historicoId) {
+    try {
+        const response = await fetch(`/api/historico-orcamento/${historicoId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const item = data.historico;
+            const modalContent = document.getElementById('modal-detalhes-content');
+            
+            modalContent.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Informações Gerais</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>ID:</strong></td><td>${item.id}</td></tr>
+                            <tr><td><strong>Orçamento ID:</strong></td><td>${item.orcamento_id}</td></tr>
+                            <tr><td><strong>Tipo:</strong></td><td>${item.tipo_alteracao}</td></tr>
+                            <tr><td><strong>Usuário:</strong></td><td>${item.usuario_nome || 'Sistema'}</td></tr>
+                            <tr><td><strong>Data:</strong></td><td>${new Date(item.data_alteracao).toLocaleString('pt-BR')}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Valores</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Total Anterior:</strong></td>
+                                <td>R$ ${(item.valor_total_anterior || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Novo:</strong></td>
+                                <td>R$ ${item.valor_total_novo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Variação:</strong></td>
+                                <td class="${item.variacao_total > 0 ? 'text-success' : 'text-danger'}">
+                                    ${item.variacao_total > 0 ? '+' : ''}R$ ${Math.abs(item.variacao_total).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                ${item.motivo ? `
+                <div class="mt-3">
+                    <h6>Motivo</h6>
+                    <p class="text-muted">${item.motivo}</p>
+                </div>
+                ` : ''}
+                
+                ${item.observacoes ? `
+                <div class="mt-3">
+                    <h6>Observações</h6>
+                    <p class="text-muted">${item.observacoes}</p>
+                </div>
+                ` : ''}
+            `;
+            
+            new bootstrap.Modal(document.getElementById('modalDetalhes')).show();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar detalhes:', error);
+        mostrarErro('Erro ao carregar detalhes da alteração');
+    }
+}
+
+function exportarHistorico(formato) {
+    try {
+        // Obter os valores dos filtros atuais
+        const form = document.getElementById('filtros-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        
+        // Adicionar parâmetros dos filtros
+        for (let [key, value] of formData.entries()) {
+            if (value) {
+                params.append(key, value);
+            }
+        }
+        
+        // Construir URL de exportação
+        const baseUrl = formato === 'excel' ? 
+            '{{ url_for("orcamento_routes.exportar_historico_excel") }}' : 
+            '{{ url_for("orcamento_routes.exportar_historico_pdf") }}';
+        
+        const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
+        
+        // Abrir em nova janela para download
+        window.open(url, '_blank');
+        
+        mostrarSucesso('Exportação iniciada!');
+    } catch (error) {
+        console.error('Erro ao exportar:', error);
+        mostrarErro('Erro ao exportar histórico');
+    }
+}
+
+function mostrarSucesso(mensagem) {
+    // Implementar notificação de sucesso
+    alert(mensagem);
+}
+
+function mostrarErro(mensagem) {
+    // Implementar notificação de erro
+    alert(mensagem);
+}
+</script>
+{% endblock %}

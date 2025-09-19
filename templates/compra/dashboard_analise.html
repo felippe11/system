@@ -1,0 +1,732 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de Análise de Gastos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        transition: transform 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .metric-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .metric-label {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .metric-change {
+        font-size: 0.9rem;
+        margin-top: 10px;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .chart-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #2c3e50;
+    }
+    
+    .filter-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .trend-up {
+        color: #28a745;
+    }
+    
+    .trend-down {
+        color: #dc3545;
+    }
+    
+    .trend-neutral {
+        color: #6c757d;
+    }
+    
+    .polo-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border-left: 4px solid #007bff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .progress-custom {
+        height: 8px;
+        border-radius: 4px;
+    }
+    
+    .top-fornecedor {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border-left: 3px solid #17a2b8;
+    }
+    
+    .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">📊 Dashboard de Análise de Gastos</h2>
+                    <p class="text-muted mb-0">Análise detalhada de compras e orçamentos</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary me-2" onclick="atualizarDashboard()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                    <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-card">
+        <div class="row">
+            <div class="col-md-3">
+                <label for="periodo-select" class="form-label">Período</label>
+                <select class="form-select" id="periodo-select" onchange="aplicarFiltros()">
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="90">Últimos 3 meses</option>
+                    <option value="180">Últimos 6 meses</option>
+                    <option value="365" selected>Último ano</option>
+                    <option value="custom">Personalizado</option>
+                </select>
+            </div>
+            <div class="col-md-3" id="data-inicio-container" style="display: none;">
+                <label for="data-inicio" class="form-label">Data Início</label>
+                <input type="date" class="form-control" id="data-inicio" onchange="aplicarFiltros()">
+            </div>
+            <div class="col-md-3" id="data-fim-container" style="display: none;">
+                <label for="data-fim" class="form-label">Data Fim</label>
+                <input type="date" class="form-control" id="data-fim" onchange="aplicarFiltros()">
+            </div>
+            <div class="col-md-3">
+                <label for="polo-select" class="form-label">Polo</label>
+                <select class="form-select" id="polo-select" onchange="aplicarFiltros()">
+                    <option value="">Todos os Polos</option>
+                    <!-- Opções carregadas via JavaScript -->
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="categoria-select" class="form-label">Categoria</label>
+                <select class="form-select" id="categoria-select" onchange="aplicarFiltros()">
+                    <option value="">Todas as Categorias</option>
+                    <!-- Opções carregadas via JavaScript -->
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas Principais -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-number" id="total-gastos">R$ 0,00</div>
+                <div class="metric-label">Total de Gastos</div>
+                <div class="metric-change" id="variacao-gastos">
+                    <i class="fas fa-arrow-up"></i> +0% vs período anterior
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-number" id="total-compras">0</div>
+                <div class="metric-label">Total de Compras</div>
+                <div class="metric-change" id="variacao-compras">
+                    <i class="fas fa-arrow-up"></i> +0% vs período anterior
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-number" id="ticket-medio">R$ 0,00</div>
+                <div class="metric-label">Ticket Médio</div>
+                <div class="metric-change" id="variacao-ticket">
+                    <i class="fas fa-arrow-up"></i> +0% vs período anterior
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-number" id="economia-gerada">R$ 0,00</div>
+                <div class="metric-label">Economia Gerada</div>
+                <div class="metric-change" id="variacao-economia">
+                    <i class="fas fa-arrow-up"></i> +0% vs período anterior
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos Principais -->
+    <div class="row">
+        <!-- Evolução Temporal -->
+        <div class="col-md-8">
+            <div class="chart-container">
+                <div class="chart-title">Evolução dos Gastos</div>
+                <canvas id="grafico-evolucao" height="100"></canvas>
+            </div>
+        </div>
+        
+        <!-- Distribuição por Status -->
+        <div class="col-md-4">
+            <div class="chart-container">
+                <div class="chart-title">Distribuição por Status</div>
+                <canvas id="grafico-status" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Gastos por Categoria -->
+        <div class="col-md-6">
+            <div class="chart-container">
+                <div class="chart-title">Gastos por Categoria</div>
+                <canvas id="grafico-categorias" height="150"></canvas>
+            </div>
+        </div>
+        
+        <!-- Gastos por Polo -->
+        <div class="col-md-6">
+            <div class="chart-container">
+                <div class="chart-title">Gastos por Polo</div>
+                <canvas id="grafico-polos" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Análises Detalhadas -->
+    <div class="row">
+        <!-- Top Fornecedores -->
+        <div class="col-md-6">
+            <div class="chart-container">
+                <div class="chart-title">Top 10 Fornecedores</div>
+                <div id="top-fornecedores">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Análise por Polo -->
+        <div class="col-md-6">
+            <div class="chart-container">
+                <div class="chart-title">Análise Orçamentária por Polo</div>
+                <div id="analise-polos">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tendências e Insights -->
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <div class="chart-title">Insights e Tendências</div>
+                <div id="insights-container">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+
+<script>
+// Variáveis globais para os gráficos
+let graficoEvolucao, graficoStatus, graficoCategorias, graficoPolos;
+
+// Configurações de cores
+const cores = {
+    primaria: '#667eea',
+    secundaria: '#764ba2',
+    sucesso: '#28a745',
+    aviso: '#ffc107',
+    perigo: '#dc3545',
+    info: '#17a2b8'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarDashboard();
+});
+
+function inicializarDashboard() {
+    carregarFiltros();
+    carregarDados();
+    
+    // Configurar mudança de período
+    document.getElementById('periodo-select').addEventListener('change', function() {
+        const periodo = this.value;
+        const dataInicioContainer = document.getElementById('data-inicio-container');
+        const dataFimContainer = document.getElementById('data-fim-container');
+        
+        if (periodo === 'custom') {
+            dataInicioContainer.style.display = 'block';
+            dataFimContainer.style.display = 'block';
+        } else {
+            dataInicioContainer.style.display = 'none';
+            dataFimContainer.style.display = 'none';
+        }
+    });
+}
+
+function carregarFiltros() {
+    // Carregar polos
+    fetch('/compras/api/polos')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('polo-select');
+            data.polos.forEach(polo => {
+                const option = document.createElement('option');
+                option.value = polo.id;
+                option.textContent = polo.nome;
+                select.appendChild(option);
+            });
+        });
+    
+    // Carregar categorias
+    fetch('/compras/api/categorias')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('categoria-select');
+            data.categorias.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.id;
+                option.textContent = categoria.nome;
+                select.appendChild(option);
+            });
+        });
+}
+
+function aplicarFiltros() {
+    carregarDados();
+}
+
+function carregarDados() {
+    const filtros = obterFiltros();
+    
+    // Carregar métricas principais
+    carregarMetricas(filtros);
+    
+    // Carregar gráficos
+    carregarGraficoEvolucao(filtros);
+    carregarGraficoStatus(filtros);
+    carregarGraficoCategorias(filtros);
+    carregarGraficoPolos(filtros);
+    
+    // Carregar análises detalhadas
+    carregarTopFornecedores(filtros);
+    carregarAnalisePolos(filtros);
+    carregarInsights(filtros);
+}
+
+function obterFiltros() {
+    const periodo = document.getElementById('periodo-select').value;
+    const polo = document.getElementById('polo-select').value;
+    const categoria = document.getElementById('categoria-select').value;
+    
+    let dataInicio, dataFim;
+    
+    if (periodo === 'custom') {
+        dataInicio = document.getElementById('data-inicio').value;
+        dataFim = document.getElementById('data-fim').value;
+    } else {
+        const hoje = new Date();
+        dataFim = hoje.toISOString().split('T')[0];
+        const diasAtras = new Date(hoje.getTime() - (parseInt(periodo) * 24 * 60 * 60 * 1000));
+        dataInicio = diasAtras.toISOString().split('T')[0];
+    }
+    
+    return {
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        polo_id: polo,
+        categoria_id: categoria
+    };
+}
+
+function carregarMetricas(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/metricas?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const metricas = data.metricas;
+                
+                // Atualizar valores
+                document.getElementById('total-gastos').textContent = 
+                    `R$ ${metricas.total_gastos.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                document.getElementById('total-compras').textContent = metricas.total_compras;
+                document.getElementById('ticket-medio').textContent = 
+                    `R$ ${metricas.ticket_medio.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                document.getElementById('economia-gerada').textContent = 
+                    `R$ ${metricas.economia_gerada.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                
+                // Atualizar variações
+                atualizarVariacao('variacao-gastos', metricas.variacao_gastos);
+                atualizarVariacao('variacao-compras', metricas.variacao_compras);
+                atualizarVariacao('variacao-ticket', metricas.variacao_ticket);
+                atualizarVariacao('variacao-economia', metricas.variacao_economia);
+            }
+        })
+        .catch(error => console.error('Erro ao carregar métricas:', error));
+}
+
+function atualizarVariacao(elementId, variacao) {
+    const elemento = document.getElementById(elementId);
+    const icone = variacao >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+    const classe = variacao >= 0 ? 'trend-up' : 'trend-down';
+    const sinal = variacao >= 0 ? '+' : '';
+    
+    elemento.innerHTML = `<i class="fas ${icone}"></i> ${sinal}${variacao.toFixed(1)}% vs período anterior`;
+    elemento.className = `metric-change ${classe}`;
+}
+
+function carregarGraficoEvolucao(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/evolucao?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ctx = document.getElementById('grafico-evolucao').getContext('2d');
+                
+                if (graficoEvolucao) {
+                    graficoEvolucao.destroy();
+                }
+                
+                graficoEvolucao = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Gastos (R$)',
+                            data: data.valores,
+                            borderColor: cores.primaria,
+                            backgroundColor: cores.primaria + '20',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'R$ ' + value.toLocaleString('pt-BR');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar gráfico de evolução:', error));
+}
+
+function carregarGraficoStatus(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/status?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ctx = document.getElementById('grafico-status').getContext('2d');
+                
+                if (graficoStatus) {
+                    graficoStatus.destroy();
+                }
+                
+                graficoStatus = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.valores,
+                            backgroundColor: [cores.sucesso, cores.aviso, cores.perigo, cores.info]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar gráfico de status:', error));
+}
+
+function carregarGraficoCategorias(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/categorias?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ctx = document.getElementById('grafico-categorias').getContext('2d');
+                
+                if (graficoCategorias) {
+                    graficoCategorias.destroy();
+                }
+                
+                graficoCategorias = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Gastos (R$)',
+                            data: data.valores,
+                            backgroundColor: cores.secundaria
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'R$ ' + value.toLocaleString('pt-BR');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar gráfico de categorias:', error));
+}
+
+function carregarGraficoPolos(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/polos?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ctx = document.getElementById('grafico-polos').getContext('2d');
+                
+                if (graficoPolos) {
+                    graficoPolos.destroy();
+                }
+                
+                graficoPolos = new Chart(ctx, {
+                    type: 'horizontalBar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Gastos (R$)',
+                            data: data.valores,
+                            backgroundColor: cores.info
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'R$ ' + value.toLocaleString('pt-BR');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar gráfico de polos:', error));
+}
+
+function carregarTopFornecedores(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/fornecedores?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const container = document.getElementById('top-fornecedores');
+                container.innerHTML = '';
+                
+                data.fornecedores.forEach((fornecedor, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'top-fornecedor';
+                    div.innerHTML = `
+                        <div>
+                            <strong>#${index + 1} ${fornecedor.nome}</strong>
+                            <div class="text-muted">${fornecedor.total_compras} compras</div>
+                        </div>
+                        <div class="text-end">
+                            <strong>R$ ${fornecedor.valor_total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar top fornecedores:', error));
+}
+
+function carregarAnalisePolos(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/analise-polos?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const container = document.getElementById('analise-polos');
+                container.innerHTML = '';
+                
+                data.polos.forEach(polo => {
+                    const percentualUsado = polo.orcamento_total > 0 ? 
+                        (polo.valor_gasto / polo.orcamento_total) * 100 : 0;
+                    
+                    const corBarra = percentualUsado >= 100 ? 'bg-danger' : 
+                                   percentualUsado >= 90 ? 'bg-warning' : 'bg-success';
+                    
+                    const div = document.createElement('div');
+                    div.className = 'polo-card';
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">${polo.nome}</h6>
+                            <span class="badge ${percentualUsado >= 100 ? 'bg-danger' : percentualUsado >= 90 ? 'bg-warning' : 'bg-success'}">
+                                ${percentualUsado.toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="progress progress-custom mb-2">
+                            <div class="progress-bar ${corBarra}" style="width: ${Math.min(percentualUsado, 100)}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted">
+                            <small>Gasto: R$ ${polo.valor_gasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</small>
+                            <small>Orçamento: R$ ${polo.orcamento_total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</small>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar análise de polos:', error));
+}
+
+function carregarInsights(filtros) {
+    const params = new URLSearchParams(filtros);
+    
+    fetch(`/compras/api/dashboard/insights?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const container = document.getElementById('insights-container');
+                container.innerHTML = '';
+                
+                data.insights.forEach(insight => {
+                    const div = document.createElement('div');
+                    div.className = `alert alert-${insight.tipo} d-flex align-items-center`;
+                    div.innerHTML = `
+                        <i class="fas ${insight.icone} me-3"></i>
+                        <div>
+                            <strong>${insight.titulo}</strong><br>
+                            ${insight.descricao}
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar insights:', error));
+}
+
+function atualizarDashboard() {
+    carregarDados();
+}
+</script>
+{% endblock %}

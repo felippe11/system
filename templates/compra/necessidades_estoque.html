@@ -1,0 +1,575 @@
+{% extends "base.html" %}
+
+{% block title %}Necessidades de Estoque{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box">
+                <h4 class="page-title">
+                    <i class="mdi mdi-package-variant-closed me-2"></i>
+                    Necessidades de Estoque
+                </h4>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard_routes.dashboard_cliente') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('compra_routes.gerenciar_compras') }}">Compras</a></li>
+                        <li class="breadcrumb-item active">Necessidades de Estoque</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-md-4">
+                            <label for="filtro-polo" class="form-label">Polo</label>
+                            <select class="form-select" id="filtro-polo">
+                                <option value="">Todos os polos</option>
+                                {% for polo in polos %}
+                                <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filtro-status" class="form-label">Status do Estoque</label>
+                            <select class="form-select" id="filtro-status">
+                                <option value="">Todos</option>
+                                <option value="esgotado">Esgotado</option>
+                                <option value="baixo">Estoque Baixo</option>
+                                <option value="normal">Estoque Normal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-primary" onclick="carregarRelatorio()">
+                                <i class="mdi mdi-magnify me-1"></i>Atualizar Relatório
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="abrirModalCompra()" disabled id="btn-gerar-compra">
+                                <i class="mdi mdi-cart-plus me-1"></i>Gerar Compra
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo -->
+    <div class="row mb-3" id="resumo-container" style="display: none;">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-danger" id="total-esgotados">0</h3>
+                    <p class="text-muted mb-0">Materiais Esgotados</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning" id="total-baixo">0</h3>
+                    <p class="text-muted mb-0">Estoque Baixo</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success" id="total-normal">0</h3>
+                    <p class="text-muted mb-0">Estoque Normal</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary" id="valor-necessario">R$ 0,00</h3>
+                    <p class="text-muted mb-0">Valor Necessário</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Necessidades -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="mdi mdi-format-list-bulleted me-2"></i>
+                        Materiais com Necessidade de Reposição
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tabela-necessidades">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                                    </th>
+                                    <th>Material</th>
+                                    <th>Polo</th>
+                                    <th>Atual</th>
+                                    <th>Mínimo</th>
+                                    <th>Necessário</th>
+                                    <th>Preço Unit.</th>
+                                    <th>Valor Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-necessidades">
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        <i class="mdi mdi-information-outline me-2"></i>
+                                        Clique em "Atualizar Relatório" para carregar os dados
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Gerar Compra -->
+<div class="modal fade" id="modalGerarCompra" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="mdi mdi-cart-plus me-2"></i>
+                    Gerar Compra por Necessidades
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-gerar-compra">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="fornecedor-compra" class="form-label">Fornecedor</label>
+                            <input type="text" class="form-control" id="fornecedor-compra" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tipo-gasto-compra" class="form-label">Tipo de Gasto</label>
+                            <select class="form-select" id="tipo-gasto-compra" required>
+                                <option value="custeio">Custeio</option>
+                                <option value="capital">Capital</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label class="form-label">Itens Selecionados</label>
+                            <div id="itens-selecionados" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Itens serão carregados via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>Total de Itens:</strong> <span id="total-itens-compra">0</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <strong>Valor Total:</strong> R$ <span id="valor-total-compra">0,00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Verificação de Orçamento -->
+                    <div id="verificacao-orcamento" class="mt-3" style="display: none;">
+                        <!-- Será preenchido via JavaScript -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="gerarCompra()">
+                    <i class="mdi mdi-check me-1"></i>Gerar Compra
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Compra Gerada -->
+<div class="modal fade" id="modalCompraGerada" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="mdi mdi-check-circle text-success me-2"></i>
+                    Compra Gerada com Sucesso
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="conteudo-compra-gerada">
+                <!-- Conteúdo será carregado via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="redirecionarParaCompras()">
+                    <i class="mdi mdi-eye me-1"></i>Ver Compras
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let relatorioAtual = null;
+let itensSelecionados = [];
+
+// Carregar relatório de necessidades
+function carregarRelatorio() {
+    const poloId = document.getElementById('filtro-polo').value;
+    const status = document.getElementById('filtro-status').value;
+    
+    // Mostrar loading
+    document.getElementById('tbody-necessidades').innerHTML = `
+        <tr>
+            <td colspan="9" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <div class="mt-2">Carregando relatório...</div>
+            </td>
+        </tr>
+    `;
+    
+    const url = `/compras/api/relatorio-necessidades${poloId ? '?polo_id=' + poloId : ''}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                relatorioAtual = data.relatorio;
+                renderizarRelatorio(status);
+                atualizarResumo();
+            } else {
+                mostrarErro('Erro ao carregar relatório: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarErro('Erro ao carregar relatório');
+        });
+}
+
+// Renderizar relatório na tabela
+function renderizarRelatorio(filtroStatus = '') {
+    if (!relatorioAtual) return;
+    
+    let itens = relatorioAtual.itens_necessarios;
+    
+    // Aplicar filtro de status
+    if (filtroStatus) {
+        itens = itens.filter(item => item.status === filtroStatus);
+    }
+    
+    const tbody = document.getElementById('tbody-necessidades');
+    
+    if (itens.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                    <i class="mdi mdi-information-outline me-2"></i>
+                    Nenhum material com necessidade de reposição encontrado
+                </td>
+            </tr>
+        `;
+        document.getElementById('btn-gerar-compra').disabled = true;
+        return;
+    }
+    
+    tbody.innerHTML = itens.map(item => `
+        <tr>
+            <td>
+                <input type="checkbox" class="item-checkbox" value="${item.material}" 
+                       data-item='${JSON.stringify(item)}' onchange="atualizarSelecao()">
+            </td>
+            <td>
+                <strong>${item.material}</strong>
+                <br><small class="text-muted">${item.polo}</small>
+            </td>
+            <td>${item.polo}</td>
+            <td>
+                <span class="badge ${item.quantidade_atual <= 0 ? 'bg-danger' : 'bg-warning'}">
+                    ${item.quantidade_atual} ${item.unidade}
+                </span>
+            </td>
+            <td>${item.quantidade_minima} ${item.unidade}</td>
+            <td>
+                <strong class="text-primary">${item.quantidade_necessaria} ${item.unidade}</strong>
+            </td>
+            <td>R$ ${item.preco_unitario.toFixed(2)}</td>
+            <td>
+                <strong class="text-success">R$ ${item.valor_necessario.toFixed(2)}</strong>
+            </td>
+            <td>
+                <span class="badge ${getStatusBadgeClass(item.status)}">
+                    ${getStatusText(item.status)}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('btn-gerar-compra').disabled = false;
+}
+
+// Atualizar resumo
+function atualizarResumo() {
+    if (!relatorioAtual) return;
+    
+    const resumo = relatorioAtual.resumo;
+    
+    document.getElementById('total-esgotados').textContent = resumo.materiais_esgotados;
+    document.getElementById('total-baixo').textContent = resumo.materiais_estoque_baixo;
+    document.getElementById('total-normal').textContent = resumo.materiais_estoque_normal;
+    document.getElementById('valor-necessario').textContent = 'R$ ' + resumo.valor_total_necessario.toFixed(2);
+    
+    document.getElementById('resumo-container').style.display = 'block';
+}
+
+// Funções auxiliares para status
+function getStatusBadgeClass(status) {
+    switch (status) {
+        case 'esgotado': return 'bg-danger';
+        case 'baixo': return 'bg-warning';
+        case 'normal': return 'bg-success';
+        default: return 'bg-secondary';
+    }
+}
+
+function getStatusText(status) {
+    switch (status) {
+        case 'esgotado': return 'Esgotado';
+        case 'baixo': return 'Estoque Baixo';
+        case 'normal': return 'Normal';
+        default: return 'Indefinido';
+    }
+}
+
+// Gerenciar seleção de itens
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    atualizarSelecao();
+}
+
+function atualizarSelecao() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    itensSelecionados = Array.from(checkboxes).map(cb => JSON.parse(cb.dataset.item));
+    
+    const totalItens = itensSelecionados.length;
+    const valorTotal = itensSelecionados.reduce((sum, item) => sum + item.valor_necessario, 0);
+    
+    document.getElementById('btn-gerar-compra').disabled = totalItens === 0;
+}
+
+// Abrir modal de gerar compra
+function abrirModalCompra() {
+    if (itensSelecionados.length === 0) {
+        alert('Selecione pelo menos um item para gerar a compra.');
+        return;
+    }
+    
+    // Atualizar informações no modal
+    document.getElementById('total-itens-compra').textContent = itensSelecionados.length;
+    const valorTotal = itensSelecionados.reduce((sum, item) => sum + item.valor_necessario, 0);
+    document.getElementById('valor-total-compra').textContent = valorTotal.toFixed(2);
+    
+    // Renderizar itens selecionados
+    const container = document.getElementById('itens-selecionados');
+    container.innerHTML = itensSelecionados.map(item => `
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div>
+                <strong>${item.material}</strong>
+                <br><small class="text-muted">${item.polo} - ${item.quantidade_necessaria} ${item.unidade}</small>
+            </div>
+            <div class="text-end">
+                <div>R$ ${item.preco_unitario.toFixed(2)} / ${item.unidade}</div>
+                <strong class="text-success">R$ ${item.valor_necessario.toFixed(2)}</strong>
+            </div>
+        </div>
+    `).join('');
+    
+    // Verificar orçamento
+    verificarOrcamento(valorTotal);
+    
+    new bootstrap.Modal(document.getElementById('modalGerarCompra')).show();
+}
+
+// Verificar disponibilidade orçamentária
+function verificarOrcamento(valorCompra) {
+    const tipoGasto = document.getElementById('tipo-gasto-compra').value;
+    
+    fetch('/compras/api/verificar-orcamento', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            valor_compra: valorCompra,
+            tipo_gasto: tipoGasto
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('verificacao-orcamento');
+        
+        if (data.disponivel) {
+            container.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="mdi mdi-check-circle me-2"></i>
+                    <strong>Orçamento Disponível</strong><br>
+                    Valor disponível: R$ ${data.valor_disponivel.toFixed(2)}<br>
+                    Após compra: ${data.percentual_apos_compra.toFixed(1)}% do orçamento utilizado
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="mdi mdi-alert-circle me-2"></i>
+                    <strong>Orçamento Insuficiente</strong><br>
+                    ${data.motivo || 'Valor da compra excede o orçamento disponível'}<br>
+                    Valor disponível: R$ ${data.valor_disponivel ? data.valor_disponivel.toFixed(2) : '0,00'}
+                </div>
+            `;
+        }
+        
+        container.style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Erro ao verificar orçamento:', error);
+    });
+}
+
+// Gerar compra
+function gerarCompra() {
+    const fornecedor = document.getElementById('fornecedor-compra').value;
+    const tipoGasto = document.getElementById('tipo-gasto-compra').value;
+    const poloId = document.getElementById('filtro-polo').value;
+    
+    if (!fornecedor.trim()) {
+        alert('Informe o fornecedor.');
+        return;
+    }
+    
+    fetch('/compras/api/gerar-compra-necessidades', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            polo_id: poloId || null,
+            fornecedor: fornecedor,
+            tipo_gasto: tipoGasto
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarCompraSucesso(data);
+            bootstrap.Modal.getInstance(document.getElementById('modalGerarCompra')).hide();
+        } else {
+            alert('Erro ao gerar compra: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao gerar compra');
+    });
+}
+
+// Mostrar modal de compra gerada com sucesso
+function mostrarCompraSucesso(data) {
+    const compra = data.compra_sugerida;
+    
+    const conteudo = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Informações da Compra</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Número:</strong></td><td>${compra.numero_compra}</td></tr>
+                    <tr><td><strong>Fornecedor:</strong></td><td>${compra.fornecedor}</td></tr>
+                    <tr><td><strong>Tipo de Gasto:</strong></td><td>${compra.tipo_gasto}</td></tr>
+                    <tr><td><strong>Total de Itens:</strong></td><td>${data.total_itens}</td></tr>
+                    <tr><td><strong>Valor Total:</strong></td><td>R$ ${data.valor_total_estimado.toFixed(2)}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Itens da Compra</h6>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    ${compra.itens.map(item => `
+                        <div class="border-bottom py-1">
+                            <small><strong>${item.material_nome}</strong><br>
+                            ${item.quantidade} ${item.unidade} × R$ ${item.preco_unitario.toFixed(2)} = R$ ${item.valor_total.toFixed(2)}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('conteudo-compra-gerada').innerHTML = conteudo;
+    new bootstrap.Modal(document.getElementById('modalCompraGerada')).show();
+}
+
+// Redirecionar para página de compras
+function redirecionarParaCompras() {
+    window.location.href = '{{ url_for("compra_routes.gerenciar_compras") }}';
+}
+
+// Mostrar erro
+function mostrarErro(mensagem) {
+    document.getElementById('tbody-necessidades').innerHTML = `
+        <tr>
+            <td colspan="9" class="text-center text-danger py-4">
+                <i class="mdi mdi-alert-circle me-2"></i>
+                ${mensagem}
+            </td>
+        </tr>
+    `;
+}
+
+// Event listeners
+document.getElementById('filtro-status').addEventListener('change', function() {
+    if (relatorioAtual) {
+        renderizarRelatorio(this.value);
+    }
+});
+
+document.getElementById('tipo-gasto-compra').addEventListener('change', function() {
+    const valorTotal = itensSelecionados.reduce((sum, item) => sum + item.valor_necessario, 0);
+    verificarOrcamento(valorTotal);
+});
+
+// Carregar relatório inicial
+document.addEventListener('DOMContentLoaded', function() {
+    carregarRelatorio();
+});
+</script>
+{% endblock %}

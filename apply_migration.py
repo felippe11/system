@@ -25,6 +25,6 @@ try:
         print("Migrações aplicadas com sucesso!")
         
 except Exception as e:
-    print(f"Erro ao aplicar migrações: {e}")
+    print(f"Erro ao aplicar migracoes: {e}")
     import traceback
     traceback.print_exc()
