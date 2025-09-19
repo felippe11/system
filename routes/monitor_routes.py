@@ -1057,8 +1057,8 @@ def atribuir_monitor():
         db.session.commit()
         
         # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
-        from routes.agendamento_routes import NotificacaoAgendamento
-        NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
+        from routes.agendamento_routes import NotificacaoAgendamentoService
+        NotificacaoAgendamentoService.notificar_monitor_alunos_pcd(agendamento)
         
         return jsonify({
             'success': True, 
@@ -1634,8 +1634,8 @@ def distribuir_automaticamente():
                     pass
                 
                 # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
-                from routes.agendamento_routes import NotificacaoAgendamento
-                NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
+                from routes.agendamento_routes import NotificacaoAgendamentoService
+                NotificacaoAgendamentoService.notificar_monitor_alunos_pcd(agendamento)
             else:
                 current_app.logger.warning(
                     "Nenhum monitor disponível para o agendamento %s",
