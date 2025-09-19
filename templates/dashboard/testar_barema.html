@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Testar Barema - {{ categoria }} - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>
+                        Testar Barema: {{ categoria }}
+                    </h4>
+                    <a href="{{ url_for('dashboard_routes.gerenciar_baremas', evento_id=evento.id) }}" 
+                       class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Evento:</strong> {{ evento.nome }}<br>
+                                <strong>Categoria:</strong> {{ categoria }}<br>
+                                <strong>Barema:</strong> {{ barema.nome }}
+                                {% if barema.descricao %}
+                                <br><strong>Descrição:</strong> {{ barema.descricao }}
+                                {% endif %}
+                            </div>
+
+                            <form method="POST" id="testeBaremaForm">
+                                <div class="row">
+                                    {% for criterio_nome, criterio_data in barema.criterios.items() %}
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card border-left-primary">
+                                            <div class="card-body">
+                                                <h6 class="card-title text-primary">
+                                                    {{ criterio_nome }}
+                                                    <span class="badge badge-secondary ms-2">Máx: {{ criterio_data.max }}</span>
+                                                </h6>
+                                                {% if criterio_data.descricao %}
+                                                <p class="card-text text-muted small mb-3">{{ criterio_data.descricao }}</p>
+                                                {% endif %}
+                                                
+                                                <div class="form-group">
+                                                    <label for="criterio_{{ criterio_nome }}" class="form-label">
+                                                        Pontuação (0 - {{ criterio_data.max }})
+                                                    </label>
+                                                    <input type="number" 
+                                                           class="form-control criterio-input" 
+                                                           id="criterio_{{ criterio_nome }}" 
+                                                           name="criterio_{{ criterio_nome }}"
+                                                           min="0" 
+                                                           max="{{ criterio_data.max }}" 
+                                                           step="0.1" 
+                                                           value="0"
+                                                           data-max="{{ criterio_data.max }}"
+                                                           required>
+                                                    <div class="invalid-feedback">
+                                                        Valor deve estar entre 0 e {{ criterio_data.max }}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="progress mt-2" style="height: 8px;">
+                                                    <div class="progress-bar bg-primary" 
+                                                         id="progress_{{ criterio_nome }}" 
+                                                         role="progressbar" 
+                                                         style="width: 0%" 
+                                                         aria-valuenow="0" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="{{ criterio_data.max }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center mt-4">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fas fa-check me-2"></i>Concluir Teste
+                                    </button>
+                                    <button type="button" class="btn btn-warning" onclick="resetForm()">
+                                        <i class="fas fa-undo me-2"></i>Resetar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card bg-light sticky-top" style="top: 20px;">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-calculator me-2"></i>Resumo da Avaliação
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <h6>Total de Pontos:</h6>
+                                        <div class="display-4 text-primary" id="totalPontos">0</div>
+                                        <small class="text-muted">de <span id="maxTotal">{{ barema.criterios.values() | map(attribute='max') | sum }}</span> pontos</small>
+                                    </div>
+                                    
+                                    <div class="progress mb-3" style="height: 20px;">
+                                        <div class="progress-bar bg-success" 
+                                             id="progressTotal" 
+                                             role="progressbar" 
+                                             style="width: 0%" 
+                                             aria-valuenow="0" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ barema.criterios.values() | map(attribute='max') | sum }}">
+                                            <span id="percentualTotal">0%</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="criteria-summary">
+                                        <h6 class="mb-2">Detalhes por Critério:</h6>
+                                        {% for criterio_nome, criterio_data in barema.criterios.items() %}
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small class="text-truncate me-2" title="{{ criterio_nome }}">{{ criterio_nome }}</small>
+                                            <span class="badge badge-outline-primary" id="badge_{{ criterio_nome }}">0/{{ criterio_data.max }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary {
+    border-left: 4px solid #4e73df !important;
+}
+
+.criterio-input:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.badge-outline-primary {
+    color: #4e73df;
+    border: 1px solid #4e73df;
+    background-color: transparent;
+}
+
+.criteria-summary {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.sticky-top {
+    position: sticky;
+    top: 20px;
+    z-index: 1020;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const criterioInputs = document.querySelectorAll('.criterio-input');
+    const totalPontosElement = document.getElementById('totalPontos');
+    const progressTotalElement = document.getElementById('progressTotal');
+    const percentualTotalElement = document.getElementById('percentualTotal');
+    const maxTotal = parseFloat(document.getElementById('maxTotal').textContent);
+    
+    function updateCalculations() {
+        let totalPontos = 0;
+        
+        criterioInputs.forEach(function(input) {
+            const value = parseFloat(input.value) || 0;
+            const max = parseFloat(input.dataset.max);
+            const criterioNome = input.name.replace('criterio_', '');
+            
+            // Atualizar progress bar individual
+            const progressBar = document.getElementById('progress_' + criterioNome);
+            const percentage = (value / max) * 100;
+            progressBar.style.width = percentage + '%';
+            progressBar.setAttribute('aria-valuenow', value);
+            
+            // Atualizar badge no resumo
+            const badge = document.getElementById('badge_' + criterioNome);
+            if (badge) {
+                badge.textContent = value + '/' + max;
+            }
+            
+            totalPontos += value;
+        });
+        
+        // Atualizar total
+        totalPontosElement.textContent = totalPontos.toFixed(1);
+        
+        // Atualizar progress bar total
+        const percentualTotal = (totalPontos / maxTotal) * 100;
+        progressTotalElement.style.width = percentualTotal + '%';
+        progressTotalElement.setAttribute('aria-valuenow', totalPontos);
+        percentualTotalElement.textContent = percentualTotal.toFixed(1) + '%';
+        
+        // Mudar cor da barra baseado na porcentagem
+        progressTotalElement.className = 'progress-bar ';
+        if (percentualTotal < 30) {
+            progressTotalElement.classList.add('bg-danger');
+        } else if (percentualTotal < 70) {
+            progressTotalElement.classList.add('bg-warning');
+        } else {
+            progressTotalElement.classList.add('bg-success');
+        }
+    }
+    
+    // Adicionar event listeners
+    criterioInputs.forEach(function(input) {
+        input.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            const max = parseFloat(this.dataset.max);
+            
+            // Validação em tempo real
+            if (value < 0 || value > max) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+            
+            updateCalculations();
+        });
+    });
+    
+    // Validação do formulário
+    document.getElementById('testeBaremaForm').addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        criterioInputs.forEach(function(input) {
+            const value = parseFloat(input.value);
+            const max = parseFloat(input.dataset.max);
+            
+            if (isNaN(value) || value < 0 || value > max) {
+                input.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Por favor, corrija os valores inválidos antes de continuar.');
+        }
+    });
+    
+    // Inicializar cálculos
+    updateCalculations();
+});
+
+function resetForm() {
+    const criterioInputs = document.querySelectorAll('.criterio-input');
+    criterioInputs.forEach(function(input) {
+        input.value = 0;
+        input.classList.remove('is-invalid');
+    });
+    
+    // Trigger update
+    criterioInputs[0].dispatchEvent(new Event('input'));
+}
+</script>
+{% endblock %}

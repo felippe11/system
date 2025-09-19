@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}{% if barema %}Editar{% else %}Criar{% endif %} Barema - {{ categoria }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-{% if barema %}edit{% else %}plus{% endif %} me-2"></i>
+                        {% if barema %}Editar{% else %}Criar{% endif %} Barema - {{ categoria }}
+                    </h4>
+                    <a href="{{ url_for('dashboard_routes.gerenciar_baremas', evento_id=evento.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Configure os critérios de avaliação específicos para a categoria <strong>{{ categoria }}</strong>.
+                        Cada critério deve ter uma pontuação máxima definida.
+                    </div>
+
+                    <form method="POST" id="formBarema">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="nome" class="form-label">Nome do Barema</label>
+                                <input type="text" class="form-control" id="nome" name="nome" 
+                                       value="{{ barema.nome if barema else 'Barema - ' + categoria }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="descricao" class="form-label">Descrição (Opcional)</label>
+                                <input type="text" class="form-control" id="descricao" name="descricao" 
+                                       value="{{ barema.descricao if barema else '' }}" 
+                                       placeholder="Descrição do barema...">
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-list me-2"></i>
+                                    Critérios de Avaliação
+                                </h5>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="adicionarCriterio()">
+                                    <i class="fas fa-plus me-1"></i>Adicionar Critério
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="criterios-container">
+                                    {% if barema and barema.criterios %}
+                                        {% for nome_criterio, dados_criterio in barema.criterios.items() %}
+                                        <div class="criterio-item border rounded p-3 mb-3">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Nome do Critério</label>
+                                                    <input type="text" class="form-control" name="criterio_{{ loop.index0 }}_nome" 
+                                                           value="{{ nome_criterio }}" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Pontuação Máxima</label>
+                                                    <input type="number" class="form-control" name="criterio_{{ loop.index0 }}_max" 
+                                                           value="{{ dados_criterio.max }}" min="0" step="0.1" required>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Descrição (Opcional)</label>
+                                                    <input type="text" class="form-control" name="criterio_{{ loop.index0 }}_descricao" 
+                                                           value="{{ dados_criterio.descricao or '' }}" 
+                                                           placeholder="Descrição do critério...">
+                                                </div>
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="removerCriterio(this)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <!-- Critérios padrão se não houver barema existente -->
+                                        <div class="criterio-item border rounded p-3 mb-3">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Nome do Critério</label>
+                                                    <input type="text" class="form-control" name="criterio_0_nome" 
+                                                           value="Relevância e Inovação" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Pontuação Máxima</label>
+                                                    <input type="number" class="form-control" name="criterio_0_max" 
+                                                           value="10" min="0" step="0.1" required>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Descrição (Opcional)</label>
+                                                    <input type="text" class="form-control" name="criterio_0_descricao" 
+                                                           value="Avalia a relevância e grau de inovação do trabalho" 
+                                                           placeholder="Descrição do critério...">
+                                                </div>
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="removerCriterio(this)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="criterio-item border rounded p-3 mb-3">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Nome do Critério</label>
+                                                    <input type="text" class="form-control" name="criterio_1_nome" 
+                                                           value="Qualidade Técnica" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Pontuação Máxima</label>
+                                                    <input type="number" class="form-control" name="criterio_1_max" 
+                                                           value="10" min="0" step="0.1" required>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Descrição (Opcional)</label>
+                                                    <input type="text" class="form-control" name="criterio_1_descricao" 
+                                                           value="Avalia a qualidade técnica e metodológica" 
+                                                           placeholder="Descrição do critério...">
+                                                </div>
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="removerCriterio(this)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div id="criterios-vazio" class="text-center text-muted" style="display: none;">
+                                    <i class="fas fa-clipboard-list fa-3x mb-3"></i>
+                                    <p>Nenhum critério adicionado. Clique em "Adicionar Critério" para começar.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <div>
+                                <span class="text-muted">Total de Critérios: <span id="total-criterios">0</span></span><br>
+                                <span class="text-muted">Pontuação Máxima Total: <span id="pontuacao-total">0</span></span>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save me-1"></i>
+                                    {% if barema %}Atualizar{% else %}Criar{% endif %} Barema
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let criterioIndex = {{ (barema.criterios|length if barema and barema.criterios else 2) }};
+
+function adicionarCriterio() {
+    const container = document.getElementById('criterios-container');
+    const criterioHtml = `
+        <div class="criterio-item border rounded p-3 mb-3">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">Nome do Critério</label>
+                    <input type="text" class="form-control" name="criterio_${criterioIndex}_nome" 
+                           placeholder="Ex: Clareza da Apresentação" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Pontuação Máxima</label>
+                    <input type="number" class="form-control" name="criterio_${criterioIndex}_max" 
+                           value="10" min="0" step="0.1" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Descrição (Opcional)</label>
+                    <input type="text" class="form-control" name="criterio_${criterioIndex}_descricao" 
+                           placeholder="Descrição do critério...">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removerCriterio(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', criterioHtml);
+    criterioIndex++;
+    atualizarContadores();
+}
+
+function removerCriterio(button) {
+    const criterioItem = button.closest('.criterio-item');
+    criterioItem.remove();
+    atualizarContadores();
+}
+
+function atualizarContadores() {
+    const criterios = document.querySelectorAll('.criterio-item');
+    const totalCriterios = criterios.length;
+    
+    let pontuacaoTotal = 0;
+    criterios.forEach(criterio => {
+        const inputMax = criterio.querySelector('input[name$="_max"]');
+        if (inputMax && inputMax.value) {
+            pontuacaoTotal += parseFloat(inputMax.value) || 0;
+        }
+    });
+    
+    document.getElementById('total-criterios').textContent = totalCriterios;
+    document.getElementById('pontuacao-total').textContent = pontuacaoTotal.toFixed(1);
+    
+    // Mostrar/ocultar mensagem de vazio
+    const containerVazio = document.getElementById('criterios-vazio');
+    if (totalCriterios === 0) {
+        containerVazio.style.display = 'block';
+    } else {
+        containerVazio.style.display = 'none';
+    }
+}
+
+// Atualizar contadores quando os valores mudarem
+document.addEventListener('input', function(e) {
+    if (e.target.name && e.target.name.includes('_max')) {
+        atualizarContadores();
+    }
+});
+
+// Inicializar contadores
+document.addEventListener('DOMContentLoaded', function() {
+    atualizarContadores();
+});
+</script>
+{% endblock %}

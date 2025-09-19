@@ -44,6 +44,7 @@ from models import (
     EventoBarema,
     ProcessoBarema,
     ProcessoBaremaRequisito,
+    RespostaFormulario,
     RevisorCandidatura,
     RevisorCandidaturaEtapa,
     RevisorEtapa,
@@ -53,6 +54,7 @@ from models import (
     Review,
     Usuario,
 )
+from models.review import CategoriaBarema
 from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
 import utils.revisor_helpers as rh
@@ -679,6 +681,7 @@ def progress(codigo: str):
                     "distribution_date": assignment.distribution_date,
                     "days_left": days_left,
                     "id": assignment.id,
+                    "submission_id": resposta.trabalho_id,
                 }
                 trabalhos_designados.append(trabalho)
 
@@ -1033,33 +1036,85 @@ def view_candidatura(cand_id: int):
 # -----------------------------------------------------------------------------
 # AVALIAÇÃO DE TRABALHOS
 # -----------------------------------------------------------------------------
-@revisor_routes.route("/revisor/avaliar/<int:submission_id>", methods=["GET", "POST"])
+def get_categoria_trabalho(resposta_formulario):
+    """Obtém a categoria do trabalho a partir das respostas dos campos."""
+    for resposta_campo in resposta_formulario.respostas_campos:
+        if resposta_campo.campo.nome.lower() == 'categoria':
+            return resposta_campo.valor
+    return None
 
-@login_required
+@revisor_routes.route("/revisor/avaliar/<int:submission_id>", methods=["GET", "POST"])
 def avaliar(submission_id: int):
     """Permite ao revisor atribuir notas a uma submissão com base no barema."""
     submission = Submission.query.get_or_404(submission_id)
-    # Buscar assignment através da resposta de formulário
-    assignment = (
-        Assignment.query
-        .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
-        .filter(
-            RespostaFormulario.trabalho_id == submission.id,
-            Assignment.reviewer_id == current_user.id
+    
+    # Se o usuário não estiver autenticado, permitir acesso apenas para visualização
+    if not current_user.is_authenticated:
+        # Buscar assignment através da resposta de formulário (sem filtro de reviewer_id)
+        assignment = (
+            Assignment.query
+            .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+            .filter(RespostaFormulario.trabalho_id == submission.id)
+            .first()
         )
-        .first()
-    )
-    if not assignment:
-        flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        if not assignment:
+            flash("Nenhum revisor atribuído para este trabalho!", "warning")
+            return redirect(url_for("evento_routes.home"))
+    else:
+        # Buscar assignment através da resposta de formulário
+        assignment = (
+            Assignment.query
+            .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+            .filter(
+                RespostaFormulario.trabalho_id == submission.id,
+                Assignment.reviewer_id == current_user.id
+            )
+            .first()
+        )
+        if not assignment:
+            flash("Acesso negado!", "danger")
+            return redirect(url_for(endpoints.DASHBOARD))
 
-    barema = EventoBarema.query.filter_by(evento_id=submission.evento_id).first()
-    review = Review.query.filter_by(
-        submission_id=submission.id, reviewer_id=current_user.id
-    ).first()
+    # Buscar a resposta_formulario relacionada ao trabalho
+    resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=submission.id).first()
+    
+    # Obter a categoria do trabalho
+    categoria_trabalho = None
+    if resposta_formulario:
+        categoria_trabalho = get_categoria_trabalho(resposta_formulario)
+    
+    # Buscar barema específico da categoria primeiro
+    barema_categoria = None
+    if categoria_trabalho:
+        barema_categoria = CategoriaBarema.query.filter_by(
+            evento_id=submission.evento_id,
+            categoria=categoria_trabalho
+        ).first()
+    
+    # Fallback para barema geral do evento se não houver barema específico
+    barema_geral = EventoBarema.query.filter_by(evento_id=submission.evento_id).first()
+    
+    if not barema_categoria and not barema_geral:
+        flash("Barema não encontrado para este evento.", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    # Usar barema específico se disponível, senão usar o geral
+    barema = barema_categoria if barema_categoria else barema_geral
+    
+    # Buscar review apenas se o usuário estiver autenticado
+    review = None
+    if current_user.is_authenticated:
+        review = Review.query.filter_by(
+            submission_id=submission.id, reviewer_id=current_user.id
+        ).first()
 
 
     if request.method == "POST" and barema:
+        # Apenas usuários autenticados podem submeter avaliações
+        if not current_user.is_authenticated:
+            flash("Você precisa estar logado para submeter uma avaliação!", "warning")
+            return redirect(url_for("auth_routes.login"))
+            
         scores: Dict[str, int] = {}
 
         for requisito, faixa in barema.requisitos.items():
@@ -1256,3 +1311,56 @@ def get_formulario_campos(formulario_id: int) -> Any:
     } for campo in formulario.campos]
     
     return jsonify({"success": True, "campos": campos})
+
+
+@revisor_routes.route("/revisor/iniciar_revisao/<int:trabalho_id>", methods=["GET"])
+def iniciar_revisao(trabalho_id: int):
+    """Inicia a revisão de um trabalho redirecionando para o barema apropriado."""
+    import logging
+    from models.event import RespostaFormulario
+    from models.review import RevisorCandidatura
+    
+    logging.info(f"[DEBUG] Rota iniciar_revisao chamada para trabalho_id: {trabalho_id}")
+    logging.info(f"[DEBUG] Usuário atual: {'Autenticado' if current_user.is_authenticated else 'Não autenticado'}")
+    
+    # Buscar o trabalho
+    submission = Submission.query.get_or_404(trabalho_id)
+    logging.info(f"[DEBUG] Trabalho encontrado: {submission.id}")
+    
+    # Verificar se existe um assignment para este trabalho
+    assignment = (
+        Assignment.query
+        .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+        .filter(RespostaFormulario.trabalho_id == submission.id)
+        .first()
+    )
+    
+    if not assignment:
+        flash("Nenhum revisor atribuído para este trabalho!", "warning")
+        return redirect(url_for("evento_routes.home"))
+    
+    # Buscar a resposta_formulario relacionada ao trabalho
+    resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=submission.id).first()
+    
+    # Obter a categoria do trabalho
+    categoria = None
+    if resposta_formulario:
+        categoria = get_categoria_trabalho(resposta_formulario)
+    
+    # Buscar barema específico da categoria primeiro
+    barema_categoria = None
+    if categoria:
+        barema_categoria = CategoriaBarema.query.filter_by(
+            evento_id=submission.evento_id,
+            categoria=categoria
+        ).first()
+    
+    # Fallback para barema geral do evento se não houver barema específico
+    barema_geral = EventoBarema.query.filter_by(evento_id=submission.evento_id).first()
+    
+    if not barema_categoria and not barema_geral:
+        flash("Barema não encontrado para este evento.", "danger")
+        return redirect(url_for("evento_routes.home"))
+    
+    # Redirecionar para a avaliação
+    return redirect(url_for("revisor_routes.avaliar", submission_id=submission.id))

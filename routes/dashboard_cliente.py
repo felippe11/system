@@ -781,3 +781,166 @@ def update_reviewer_application(app_id):
     if request.is_json:
         return {'success': True}
     return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+@dashboard_routes.route('/gerenciar_baremas/<int:evento_id>')
+@login_required
+def gerenciar_baremas(evento_id):
+    """Página para gerenciar baremas por categoria de um evento."""
+    if current_user.tipo not in ('cliente', 'admin'):
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+    
+    # Buscar categorias disponíveis do formulário de trabalhos
+    categorias = []
+    try:
+        from models.formulario import CampoFormulario
+        campo_categoria = CampoFormulario.query.filter_by(
+            nome='Categoria',
+            formulario_id=9  # Formulário de Trabalhos
+        ).first()
+        if campo_categoria and campo_categoria.opcoes:
+            categorias = [opt.strip() for opt in campo_categoria.opcoes.split(',')]
+    except ImportError:
+        categorias = ['Prática Educacional', 'Pesquisa Inovadora', 'Produto Inovador']
+    
+    # Buscar baremas existentes para este evento
+    from models.review import CategoriaBarema
+    baremas_existentes = CategoriaBarema.query.filter_by(evento_id=evento_id).all()
+    
+    return render_template('dashboard/gerenciar_baremas.html', 
+                         evento=evento, 
+                         categorias=categorias,
+                         baremas_existentes=baremas_existentes)
+
+@dashboard_routes.route('/criar_barema/<int:evento_id>/<categoria>', methods=['GET', 'POST'])
+@login_required
+def criar_editar_barema(evento_id, categoria):
+    """Criar ou editar barema para uma categoria específica."""
+    if current_user.tipo not in ('cliente', 'admin'):
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+    
+    from models.review import CategoriaBarema
+    barema = CategoriaBarema.query.filter_by(
+        evento_id=evento_id, 
+        categoria=categoria
+    ).first()
+    
+    if request.method == 'POST':
+        nome = request.form.get('nome', f'Barema - {categoria}')
+        descricao = request.form.get('descricao', '')
+        
+        # Processar critérios do formulário
+        criterios = {}
+        i = 0
+        while f'criterio_{i}_nome' in request.form:
+            criterio_nome = request.form.get(f'criterio_{i}_nome')
+            criterio_max = request.form.get(f'criterio_{i}_max', type=float)
+            criterio_descricao = request.form.get(f'criterio_{i}_descricao', '')
+            
+            if criterio_nome and criterio_max:
+                criterios[criterio_nome] = {
+                    'max': criterio_max,
+                    'descricao': criterio_descricao
+                }
+            i += 1
+        
+        if not barema:
+            barema = CategoriaBarema(
+                evento_id=evento_id,
+                categoria=categoria,
+                nome=nome,
+                descricao=descricao,
+                criterios=criterios
+            )
+            db.session.add(barema)
+        else:
+            barema.nome = nome
+            barema.descricao = descricao
+            barema.criterios = criterios
+        
+        db.session.commit()
+        flash(f'Barema para categoria "{categoria}" salvo com sucesso!', 'success')
+        return redirect(url_for('dashboard_routes.gerenciar_baremas', evento_id=evento_id))
+    
+    return render_template('dashboard/criar_editar_barema.html', 
+                         evento=evento, 
+                         categoria=categoria,
+                         barema=barema)
+
+@dashboard_routes.route('/deletar_barema/<int:barema_id>', methods=['POST'])
+@login_required
+def deletar_barema(barema_id):
+    """Deletar um barema específico."""
+    if current_user.tipo not in ('cliente', 'admin'):
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    from models.review import CategoriaBarema
+    barema = CategoriaBarema.query.get_or_404(barema_id)
+    
+    # Verificar se o barema pertence a um evento do cliente
+    evento = Evento.query.filter_by(id=barema.evento_id, cliente_id=current_user.id).first_or_404()
+    
+    categoria = barema.categoria
+    db.session.delete(barema)
+    db.session.commit()
+    
+    flash(f'Barema da categoria "{categoria}" deletado com sucesso!', 'success')
+    return redirect(url_for('dashboard_routes.gerenciar_baremas', evento_id=evento.id))
+
+@dashboard_routes.route('/testar_barema/<int:evento_id>/<categoria>', methods=['GET', 'POST'])
+@login_required
+def testar_barema(evento_id, categoria):
+    """Testar um barema como formulário de avaliação."""
+    if current_user.tipo not in ('cliente', 'admin'):
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+    
+    from models.review import CategoriaBarema
+    barema = CategoriaBarema.query.filter_by(
+        evento_id=evento_id, 
+        categoria=categoria
+    ).first()
+    
+    if not barema:
+        flash(f'Barema não encontrado para a categoria "{categoria}".', 'warning')
+        return redirect(url_for('dashboard_routes.gerenciar_baremas', evento_id=evento_id))
+    
+    if request.method == 'POST':
+        # Processar pontuações do formulário de teste
+        pontuacoes = {}
+        total_pontos = 0
+        
+        for criterio_nome, criterio_data in barema.criterios.items():
+            pontuacao = request.form.get(f'criterio_{criterio_nome}', type=float)
+            if pontuacao is not None:
+                # Validar se a pontuação está dentro do limite
+                max_pontos = criterio_data.get('max', 10)
+                if 0 <= pontuacao <= max_pontos:
+                    pontuacoes[criterio_nome] = pontuacao
+                    total_pontos += pontuacao
+                else:
+                    flash(f'Pontuação para "{criterio_nome}" deve estar entre 0 e {max_pontos}.', 'warning')
+                    return redirect(url_for('dashboard_routes.testar_barema', evento_id=evento_id, categoria=categoria))
+        
+        # Salvar resultado do teste (opcional - pode ser usado para análise)
+        from models.review import TesteBarema
+        teste = TesteBarema(
+            barema_id=barema.id,
+            usuario_id=current_user.id,
+            pontuacoes=pontuacoes,
+            total_pontos=total_pontos
+        )
+        db.session.add(teste)
+        db.session.commit()
+        
+        flash(f'Teste do barema concluído! Total de pontos: {total_pontos}', 'success')
+        return redirect(url_for('dashboard_routes.gerenciar_baremas', evento_id=evento_id))
+    
+    return render_template('dashboard/testar_barema.html', 
+                         evento=evento, 
+                         categoria=categoria,
+                         barema=barema)

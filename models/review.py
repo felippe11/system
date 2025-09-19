@@ -483,3 +483,62 @@ class ProcessoBaremaRequisito(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ProcessoBaremaRequisito id={self.id} barema={self.barema_id}>"
+
+
+class CategoriaBarema(db.Model):
+    """Barema personalizado por categoria de trabalho."""
+
+    __tablename__ = "categoria_barema"
+    __table_args__ = {"extend_existing": True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
+    categoria = db.Column(db.String(255), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    criterios = db.Column(db.JSON, nullable=False)  # {"criterio1": {"nome": "...", "descricao": "...", "pontuacao_max": 10}, ...}
+    ativo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # relationships
+    evento = db.relationship("Evento", backref=db.backref("categoria_baremas", lazy=True))
+
+    def __repr__(self) -> str:
+        return f"<CategoriaBarema id={self.id} evento={self.evento_id} categoria={self.categoria}>"
+
+    def get_total_pontuacao_maxima(self):
+        """Retorna a pontuação máxima total do barema."""
+        if not self.criterios:
+            return 0
+        return sum(criterio.get('pontuacao_max', 0) for criterio in self.criterios.values())
+
+    @classmethod
+    def get_barema_por_categoria(cls, evento_id, categoria):
+        """Busca barema específico para uma categoria em um evento."""
+        return cls.query.filter_by(
+            evento_id=evento_id,
+            categoria=categoria,
+            ativo=True
+        ).first()
+
+
+class TesteBarema(db.Model):
+    """Armazena resultados de testes de baremas."""
+
+    __tablename__ = "teste_barema"
+    __table_args__ = {"extend_existing": True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    barema_id = db.Column(db.Integer, db.ForeignKey("categoria_barema.id"), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    pontuacoes = db.Column(db.JSON, nullable=False)  # {"criterio1": 8.5, "criterio2": 9.0, ...}
+    total_pontos = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    # relationships
+    barema = db.relationship("CategoriaBarema", backref=db.backref("testes", lazy=True))
+    usuario = db.relationship("Usuario", backref=db.backref("testes_barema", lazy=True))
+
+    def __repr__(self) -> str:
+        return f"<TesteBarema id={self.id} barema={self.barema_id} usuario={self.usuario_id}>"

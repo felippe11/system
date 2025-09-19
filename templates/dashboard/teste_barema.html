@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Testar Barema - {{ barema.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Testar Barema: {{ barema.nome }}</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('dashboard_cliente.gerenciar_baremas', evento_id=barema.evento_id) }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Categoria:</strong> {{ barema.categoria }}<br>
+                                {% if barema.descricao %}
+                                <strong>Descrição:</strong> {{ barema.descricao }}
+                                {% endif %}
+                            </div>
+                            
+                            <form method="POST" id="testeBaremaForm">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h4>Critérios de Avaliação</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        {% for criterio_key, criterio in barema.criterios.items() %}
+                                        <div class="form-group mb-4">
+                                            <label class="form-label">
+                                                <strong>{{ criterio.nome }}</strong>
+                                                <span class="text-muted">(0 - {{ criterio.pontuacao_max }} pontos)</span>
+                                            </label>
+                                            {% if criterio.descricao %}
+                                            <p class="text-muted small">{{ criterio.descricao }}</p>
+                                            {% endif %}
+                                            
+                                            <div class="row align-items-center">
+                                                <div class="col-md-8">
+                                                    <input type="range" 
+                                                           class="form-range" 
+                                                           name="{{ criterio_key }}" 
+                                                           id="range_{{ criterio_key }}"
+                                                           min="0" 
+                                                           max="{{ criterio.pontuacao_max }}" 
+                                                           step="0.1" 
+                                                           value="0"
+                                                           oninput="updateScore('{{ criterio_key }}', this.value, {{ criterio.pontuacao_max }})">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="number" 
+                                                           class="form-control" 
+                                                           id="score_{{ criterio_key }}"
+                                                           min="0" 
+                                                           max="{{ criterio.pontuacao_max }}" 
+                                                           step="0.1" 
+                                                           value="0"
+                                                           onchange="updateRange('{{ criterio_key }}', this.value)">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Salvar Teste
+                                    </button>
+                                    <a href="{{ url_for('dashboard_cliente.gerenciar_baremas', evento_id=barema.evento_id) }}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card bg-light sticky-top" style="top: 20px;">
+                                <div class="card-header">
+                                    <h5>Resumo da Avaliação</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <strong>Total de Pontos:</strong>
+                                        <span id="totalScore" class="badge badge-primary badge-lg">0</span>
+                                        <span class="text-muted">/ {{ barema.get_total_pontuacao_maxima() }}</span>
+                                    </div>
+                                    
+                                    <div class="progress mb-3">
+                                        <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    
+                                    <div id="scoreBreakdown">
+                                        <h6>Detalhamento:</h6>
+                                        {% for criterio_key, criterio in barema.criterios.items() %}
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-truncate" title="{{ criterio.nome }}">{{ criterio.nome[:20] }}{% if criterio.nome|length > 20 %}...{% endif %}</span>
+                                            <span id="breakdown_{{ criterio_key }}">0/{{ criterio.pontuacao_max }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateScore(criterioKey, value, maxValue) {
+    // Atualiza o input number
+    document.getElementById('score_' + criterioKey).value = value;
+    
+    // Atualiza o breakdown
+    document.getElementById('breakdown_' + criterioKey).textContent = value + '/' + maxValue;
+    
+    // Recalcula o total
+    calculateTotal();
+}
+
+function updateRange(criterioKey, value) {
+    // Atualiza o range
+    document.getElementById('range_' + criterioKey).value = value;
+    
+    // Atualiza o breakdown
+    const maxValue = document.getElementById('range_' + criterioKey).max;
+    document.getElementById('breakdown_' + criterioKey).textContent = value + '/' + maxValue;
+    
+    // Recalcula o total
+    calculateTotal();
+}
+
+function calculateTotal() {
+    let total = 0;
+    const maxTotal = {{ barema.get_total_pontuacao_maxima() }};
+    
+    // Soma todos os scores
+    {% for criterio_key, criterio in barema.criterios.items() %}
+    const score_{{ criterio_key }} = parseFloat(document.getElementById('score_{{ criterio_key }}').value) || 0;
+    total += score_{{ criterio_key }};
+    {% endfor %}
+    
+    // Atualiza o display do total
+    document.getElementById('totalScore').textContent = total.toFixed(1);
+    
+    // Atualiza a barra de progresso
+    const percentage = (total / maxTotal) * 100;
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = percentage + '%';
+    progressBar.setAttribute('aria-valuenow', percentage);
+    
+    // Muda a cor da barra baseado na porcentagem
+    progressBar.className = 'progress-bar';
+    if (percentage >= 80) {
+        progressBar.classList.add('bg-success');
+    } else if (percentage >= 60) {
+        progressBar.classList.add('bg-warning');
+    } else {
+        progressBar.classList.add('bg-danger');
+    }
+}
+
+// Inicializa o cálculo quando a página carrega
+document.addEventListener('DOMContentLoaded', function() {
+    calculateTotal();
+});
+</script>
+{% endblock %}
