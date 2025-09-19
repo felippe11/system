@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Configuração de Relatório - Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3">Nova Configuração de Relatório</h1>
+                    <a href="#" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Configuração do Relatório</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="configuracaoForm" method="POST" class="needs-validation" novalidate>
+                            <!-- TOKEN CSRF AGORA ESTÁ OCULTO -->
+                            <input type="hidden" name="csrf_token" value="IjY4NzAyY2ZiYTgwMDQyMDMyZGY5M2FlMDJmOWVjMTVhOTZlMmU3MDki.aM3QqA.ON2OdBT78O-ELN7BjFAhvLucy-c">
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nome" class="form-label">Nome da Configuração *</label>
+                                        <input type="text" class="form-control" id="nome" name="nome" required>
+                                        <div class="invalid-feedback">
+                                            Por favor, informe o nome da configuração.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="tipo_periodo" class="form-label">Tipo de Período *</label>
+                                        <select class="form-select" id="tipo_periodo" name="tipo_periodo" required>
+                                            <option value="">Selecione o tipo</option>
+                                            <option value="diario">Diário</option>
+                                            <option value="semanal">Semanal</option>
+                                            <option value="mensal">Mensal</option>
+                                            <option value="personalizado">Personalizado</option>
+                                        </select>
+                                        <div class="invalid-feedback">
+                                            Por favor, selecione o tipo de período.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="descricao" class="form-label">Descrição</label>
+                                <textarea class="form-control" id="descricao" name="descricao" rows="3" placeholder="Descreva o propósito deste relatório..."></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="obrigatorio" name="obrigatorio">
+                                        <label class="form-check-label" for="obrigatorio">
+                                            Relatório obrigatório
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="ativo" name="ativo" checked>
+                                        <label class="form-check-label" for="ativo">
+                                            Configuração ativa
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <h6 class="mb-3">Campos do Relatório</h6>
+                            <div id="campos-container">
+                                <div class="campo-item border rounded p-3 mb-3">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Nome do Campo *</label>
+                                            <input type="text" class="form-control" name="campo_nome[]" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Tipo *</label>
+                                            <select class="form-select" name="campo_tipo[]" required>
+                                                <option value="">Selecione</option>
+                                                <option value="texto">Texto</option>
+                                                <option value="numero">Número</option>
+                                                <option value="data">Data</option>
+                                                <option value="selecao">Seleção</option>
+                                                <option value="texto_longo">Texto Longo</option>
+                                                <option value="arquivo">Arquivo</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Obrigatório</label>
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input" type="checkbox" name="campo_obrigatorio[]">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="button" class="btn btn-outline-danger btn-sm d-block" onclick="removerCampo(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-outline-primary mb-3" onclick="adicionarCampo()">
+                                <i class="fas fa-plus"></i> Adicionar Campo
+                            </button>
+
+                            <hr>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="#" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Salvar Configuração
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Informações</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Token CSRF Oculto!</strong><br>
+                            O token de segurança agora está incluído como um campo hidden no formulário e não aparece visualmente na página.
+                        </div>
+                        
+                        <h6>Sobre os Relatórios:</h6>
+                        <ul class="small">
+                            <li>Configure campos personalizados para coleta de dados</li>
+                            <li>Defina a periodicidade dos relatórios</li>
+                            <li>Marque como obrigatório se necessário</li>
+                            <li>Os formadores receberão notificações automáticas</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function adicionarCampo() {
+            const container = document.getElementById('campos-container');
+            const novoCampo = container.children[0].cloneNode(true);
+            
+            // Limpar valores dos inputs
+            novoCampo.querySelectorAll('input, select').forEach(input => {
+                if (input.type === 'checkbox') {
+                    input.checked = false;
+                } else {
+                    input.value = '';
+                }
+            });
+            
+            container.appendChild(novoCampo);
+        }
+
+        function removerCampo(button) {
+            const container = document.getElementById('campos-container');
+            if (container.children.length > 1) {
+                button.closest('.campo-item').remove();
+            } else {
+                alert('Deve haver pelo menos um campo no relatório.');
+            }
+        }
+
+        // Validação do formulário
+        document.getElementById('configuracaoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (this.checkValidity()) {
+                alert('Formulário válido! O token CSRF está sendo enviado de forma oculta.');
+            } else {
+                this.classList.add('was-validated');
+            }
+        });
+    </script>
+</body>
+</html>

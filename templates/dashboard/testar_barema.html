@@ -32,34 +32,36 @@
 
                             <form method="POST" id="testeBaremaForm">
                                 <div class="row">
-                                    {% for criterio_nome, criterio_data in barema.criterios.items() %}
+                                    {% for criterio_nome, criterio_data in requisitos.items() %}
+                                    {% set max_val = criterio_data.get('max', 0) %}
+                                    {% set descricao = criterio_data.get('descricao') %}
                                     <div class="col-md-6 mb-4">
                                         <div class="card border-left-primary">
                                             <div class="card-body">
                                                 <h6 class="card-title text-primary">
                                                     {{ criterio_nome }}
-                                                    <span class="badge badge-secondary ms-2">Máx: {{ criterio_data.max }}</span>
+                                                    <span class="badge badge-secondary ms-2">Máx: {{ max_val }}</span>
                                                 </h6>
-                                                {% if criterio_data.descricao %}
-                                                <p class="card-text text-muted small mb-3">{{ criterio_data.descricao }}</p>
+                                                {% if descricao %}
+                                                <p class="card-text text-muted small mb-3">{{ descricao }}</p>
                                                 {% endif %}
                                                 
                                                 <div class="form-group">
                                                     <label for="criterio_{{ criterio_nome }}" class="form-label">
-                                                        Pontuação (0 - {{ criterio_data.max }})
+                                                        Pontuação (0 - {{ max_val }})
                                                     </label>
                                                     <input type="number" 
                                                            class="form-control criterio-input" 
                                                            id="criterio_{{ criterio_nome }}" 
                                                            name="criterio_{{ criterio_nome }}"
                                                            min="0" 
-                                                           max="{{ criterio_data.max }}" 
+                                                           max="{{ max_val }}" 
                                                            step="0.1" 
                                                            value="0"
-                                                           data-max="{{ criterio_data.max }}"
+                                                           data-max="{{ max_val }}"
                                                            required>
                                                     <div class="invalid-feedback">
-                                                        Valor deve estar entre 0 e {{ criterio_data.max }}
+                                                        Valor deve estar entre 0 e {{ max_val }}
                                                     </div>
                                                 </div>
                                                 
@@ -70,7 +72,7 @@
                                                          style="width: 0%" 
                                                          aria-valuenow="0" 
                                                          aria-valuemin="0" 
-                                                         aria-valuemax="{{ criterio_data.max }}">
+                                                         aria-valuemax="{{ max_val }}">
                                                     </div>
                                                 </div>
                                             </div>
@@ -101,7 +103,7 @@
                                     <div class="mb-3">
                                         <h6>Total de Pontos:</h6>
                                         <div class="display-4 text-primary" id="totalPontos">0</div>
-                                        <small class="text-muted">de <span id="maxTotal">{{ barema.criterios.values() | map(attribute='max') | sum }}</span> pontos</small>
+                                        <small class="text-muted">de <span id="maxTotal">{{ total_max }}</span> pontos</small>
                                     </div>
                                     
                                     <div class="progress mb-3" style="height: 20px;">
@@ -111,17 +113,17 @@
                                              style="width: 0%" 
                                              aria-valuenow="0" 
                                              aria-valuemin="0" 
-                                             aria-valuemax="{{ barema.criterios.values() | map(attribute='max') | sum }}">
+                                             aria-valuemax="{{ total_max }}">
                                             <span id="percentualTotal">0%</span>
                                         </div>
                                     </div>
                                     
                                     <div class="criteria-summary">
                                         <h6 class="mb-2">Detalhes por Critério:</h6>
-                                        {% for criterio_nome, criterio_data in barema.criterios.items() %}
+                                        {% for criterio_nome, criterio_data in requisitos.items() %}
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <small class="text-truncate me-2" title="{{ criterio_nome }}">{{ criterio_nome }}</small>
-                                            <span class="badge badge-outline-primary" id="badge_{{ criterio_nome }}">0/{{ criterio_data.max }}</span>
+                                            <span class="badge badge-outline-primary" id="badge_{{ criterio_nome }}">0/{{ criterio_data.get('max', 0) }}</span>
                                         </div>
                                         {% endfor %}
                                     </div>

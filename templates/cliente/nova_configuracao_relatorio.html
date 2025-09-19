@@ -22,31 +22,38 @@
                     <h5 class="mb-0">Configuração do Relatório</h5>
                 </div>
                 <div class="card-body">
-                    <form id="configForm">
+                    <form id="configuracaoForm" method="POST" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="nome">Nome do Relatório *</label>
+                                <div class="mb-3">
+                                    <label for="nome" class="form-label">Nome da Configuração *</label>
                                     <input type="text" class="form-control" id="nome" name="nome" required>
+                                    <div class="invalid-feedback">
+                                        Por favor, informe o nome da configuração.
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="tipo">Tipo de Relatório *</label>
-                                    <select class="form-control" id="tipo" name="tipo" required>
-                                        <option value="">Selecione o tipo</option>
-                                        <option value="atividade">Por Atividade</option>
+                                <div class="mb-3">
+                                    <label for="tipo_periodo" class="form-label">Tipo de Período *</label>
+                                    <select class="form-select" id="tipo_periodo" name="tipo_periodo" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="diario">Diário</option>
+                                        <option value="semanal">Semanal</option>
                                         <option value="mensal">Mensal</option>
-                                        <option value="trimestral">Trimestral</option>
-                                        <option value="anual">Anual</option>
+                                        <option value="personalizado">Personalizado</option>
                                     </select>
+                                    <div class="invalid-feedback">
+                                        Por favor, selecione o tipo de período.
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="form-group">
-                            <label for="descricao">Descrição</label>
-                            <textarea class="form-control" id="descricao" name="descricao" rows="3" placeholder="Descreva o objetivo e conteúdo deste relatório"></textarea>
+                        
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3" placeholder="Descreva o propósito desta configuração de relatório..."></textarea>
                         </div>
 
                         <div class="row">
@@ -92,8 +99,8 @@
                 <button type="button" class="btn btn-success" onclick="salvarConfiguracao()">
                     <i class="fas fa-save"></i> Salvar Configuração
                 </button>
-                <a href="{{ url_for('formador_relatorio_routes.configuracoes') }}" class="btn btn-secondary ml-2">
-                    Cancelar
+                <a href="{{ url_for('cliente_formador_routes.listar_configuracoes_relatorio') }}" class="btn btn-secondary ml-2">
+                    <i class="fas fa-times"></i> Cancelar
                 </a>
             </div>
         </div>
@@ -238,89 +245,127 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 let campos = [];
 let campoEditandoIndex = -1;
 
-// Mostrar/ocultar frequência baseado no tipo
-document.getElementById('tipo').addEventListener('change', function() {
-    const frequenciaGroup = document.getElementById('frequenciaGroup');
-    const valor = this.value;
-    
-    if (valor === 'mensal' || valor === 'trimestral' || valor === 'anual') {
-        frequenciaGroup.style.display = 'block';
-        
-        // Definir valores padrão
-        const frequenciaInput = document.getElementById('frequencia_dias');
-        if (valor === 'mensal') frequenciaInput.value = 30;
-        else if (valor === 'trimestral') frequenciaInput.value = 90;
-        else if (valor === 'anual') frequenciaInput.value = 365;
-    } else {
-        frequenciaGroup.style.display = 'none';
+// Aguardar o DOM estar carregado
+document.addEventListener('DOMContentLoaded', function() {
+    // Mostrar/ocultar frequência baseado no tipo
+    const tipoSelect = document.getElementById('tipo');
+    if (tipoSelect) {
+        tipoSelect.addEventListener('change', function() {
+            const frequenciaGroup = document.getElementById('frequenciaGroup');
+            const valor = this.value;
+            
+            if (valor === 'mensal' || valor === 'trimestral' || valor === 'anual') {
+                frequenciaGroup.style.display = 'block';
+                
+                // Definir valores padrão
+                const frequenciaInput = document.getElementById('frequencia_dias');
+                if (valor === 'mensal') frequenciaInput.value = 30;
+                else if (valor === 'trimestral') frequenciaInput.value = 90;
+                else if (valor === 'anual') frequenciaInput.value = 365;
+            } else {
+                frequenciaGroup.style.display = 'none';
+            }
+        });
     }
-});
 
-// Mostrar/ocultar opções baseado no tipo de campo
-document.getElementById('campo_tipo').addEventListener('change', function() {
-    const opcoesGroup = document.getElementById('opcoesGroup');
-    const valor = this.value;
-    
-    if (valor === 'selecao' || valor === 'multipla_escolha') {
-        opcoesGroup.style.display = 'block';
-    } else {
-        opcoesGroup.style.display = 'none';
+    // Mostrar/ocultar opções baseado no tipo de campo
+    const campoTipoSelect = document.getElementById('campo_tipo');
+    if (campoTipoSelect) {
+        campoTipoSelect.addEventListener('change', function() {
+            const opcoesGroup = document.getElementById('opcoesGroup');
+            const valor = this.value;
+            
+            if (valor === 'selecao' || valor === 'multipla_escolha') {
+                opcoesGroup.style.display = 'block';
+            } else {
+                opcoesGroup.style.display = 'none';
+            }
+        });
     }
 });
 
 function adicionarCampo() {
-    // Limpar formulário
-    document.getElementById('campoForm').reset();
-    campoEditandoIndex = -1;
-    
-    // Mostrar modal usando Bootstrap 5
-    const modal = new bootstrap.Modal(document.getElementById('campoModal'));
-    modal.show();
+    try {
+        // Limpar formulário
+        const campoForm = document.getElementById('campoForm');
+        if (campoForm) {
+            campoForm.reset();
+        }
+        campoEditandoIndex = -1;
+        
+        // Mostrar modal usando Bootstrap 5
+        const modalElement = document.getElementById('campoModal');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        } else {
+            console.error('Modal campoModal não encontrado');
+            alert('Erro: Modal não encontrado. Verifique se a página foi carregada corretamente.');
+        }
+    } catch (error) {
+        console.error('Erro ao abrir modal:', error);
+        alert('Erro ao abrir o formulário de campo. Verifique o console para mais detalhes.');
+    }
 }
 
 function confirmarCampo() {
-    const form = document.getElementById('campoForm');
-    
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-    
-    const campo = {
-        nome: document.getElementById('campo_nome').value,
-        label: document.getElementById('campo_label').value,
-        tipo: document.getElementById('campo_tipo').value,
-        ordem: parseInt(document.getElementById('campo_ordem').value) || 0,
-        placeholder: document.getElementById('campo_placeholder').value,
-        obrigatorio: document.getElementById('campo_obrigatorio').checked,
-        opcoes: []
-    };
-    
-    // Processar opções se necessário
-    const tipoComOpcoes = ['selecao', 'multipla_escolha'];
-    if (tipoComOpcoes.includes(campo.tipo)) {
-        const opcoesText = document.getElementById('campo_opcoes').value;
-        campo.opcoes = opcoesText.split('\n').filter(op => op.trim()).map(op => op.trim());
+    try {
+        const form = document.getElementById('campoForm');
         
-        if (campo.opcoes.length === 0) {
-            alert('Por favor, adicione pelo menos uma opção.');
+        if (!form || !form.checkValidity()) {
+            if (form) form.reportValidity();
             return;
         }
+        
+        const campo = {
+            nome: document.getElementById('campo_nome').value,
+            label: document.getElementById('campo_label').value,
+            tipo: document.getElementById('campo_tipo').value,
+            ordem: parseInt(document.getElementById('campo_ordem').value) || 0,
+            placeholder: document.getElementById('campo_placeholder').value,
+            obrigatorio: document.getElementById('campo_obrigatorio').checked,
+            opcoes: []
+        };
+        
+        // Processar opções se necessário
+        const tipoComOpcoes = ['selecao', 'multipla_escolha'];
+        if (tipoComOpcoes.includes(campo.tipo)) {
+            const opcoesText = document.getElementById('campo_opcoes').value;
+            campo.opcoes = opcoesText.split('\n').filter(op => op.trim()).map(op => op.trim());
+            
+            if (campo.opcoes.length === 0) {
+                alert('Por favor, adicione pelo menos uma opção.');
+                return;
+            }
+        }
+        
+        if (campoEditandoIndex >= 0) {
+            campos[campoEditandoIndex] = campo;
+        } else {
+            campos.push(campo);
+        }
+        
+        atualizarListaCampos();
+        
+        // Fechar modal
+        const modalElement = document.getElementById('campoModal');
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao confirmar campo:', error);
+        alert('Erro ao adicionar campo. Verifique o console para mais detalhes.');
     }
-    
-    if (campoEditandoIndex >= 0) {
-        campos[campoEditandoIndex] = campo;
-    } else {
-        campos.push(campo);
-    }
-    
-    atualizarListaCampos();
-    const modal = bootstrap.Modal.getInstance(document.getElementById('campoModal'));
-    modal.hide();
 }
 
 function atualizarListaCampos() {
@@ -360,26 +405,48 @@ function atualizarListaCampos() {
 }
 
 function editarCampo(index) {
-    const campo = campos[index];
-    campoEditandoIndex = index;
-    
-    // Preencher formulário
-    document.getElementById('campo_nome').value = campo.nome;
-    document.getElementById('campo_label').value = campo.label;
-    document.getElementById('campo_tipo').value = campo.tipo;
-    document.getElementById('campo_ordem').value = campo.ordem;
-    document.getElementById('campo_placeholder').value = campo.placeholder || '';
-    document.getElementById('campo_obrigatorio').checked = campo.obrigatorio;
-    
-    // Mostrar opções se necessário
-    const tipoComOpcoes = ['selecao', 'multipla_escolha'];
-    if (tipoComOpcoes.includes(campo.tipo)) {
-        document.getElementById('opcoesGroup').style.display = 'block';
-        document.getElementById('campo_opcoes').value = campo.opcoes.join('\n');
+    try {
+        const campo = campos[index];
+        if (!campo) {
+            console.error('Campo não encontrado no índice:', index);
+            return;
+        }
+        
+        campoEditandoIndex = index;
+        
+        // Preencher formulário
+        const nomeInput = document.getElementById('campo_nome');
+        const labelInput = document.getElementById('campo_label');
+        const tipoSelect = document.getElementById('campo_tipo');
+        const ordemInput = document.getElementById('campo_ordem');
+        const placeholderInput = document.getElementById('campo_placeholder');
+        const obrigatorioCheck = document.getElementById('campo_obrigatorio');
+        
+        if (nomeInput) nomeInput.value = campo.nome;
+        if (labelInput) labelInput.value = campo.label;
+        if (tipoSelect) tipoSelect.value = campo.tipo;
+        if (ordemInput) ordemInput.value = campo.ordem;
+        if (placeholderInput) placeholderInput.value = campo.placeholder || '';
+        if (obrigatorioCheck) obrigatorioCheck.checked = campo.obrigatorio;
+        
+        // Mostrar opções se necessário
+        const tipoComOpcoes = ['selecao', 'multipla_escolha'];
+        if (tipoComOpcoes.includes(campo.tipo)) {
+            const opcoesGroup = document.getElementById('opcoesGroup');
+            const opcoesInput = document.getElementById('campo_opcoes');
+            if (opcoesGroup) opcoesGroup.style.display = 'block';
+            if (opcoesInput) opcoesInput.value = campo.opcoes.join('\n');
+        }
+        
+        const modalElement = document.getElementById('campoModal');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    } catch (error) {
+        console.error('Erro ao editar campo:', error);
+        alert('Erro ao editar campo. Verifique o console para mais detalhes.');
     }
-    
-    const modal = new bootstrap.Modal(document.getElementById('campoModal'));
-    modal.show();
 }
 
 function removerCampo(index) {
@@ -390,47 +457,72 @@ function removerCampo(index) {
 }
 
 function salvarConfiguracao() {
-    const form = document.getElementById('configForm');
-    
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-    
-    if (campos.length === 0) {
-        alert('Adicione pelo menos um campo ao relatório.');
-        return;
-    }
-    
-    const dados = {
-        nome: document.getElementById('nome').value,
-        descricao: document.getElementById('descricao').value,
-        tipo: document.getElementById('tipo').value,
-        obrigatorio: document.getElementById('obrigatorio').checked,
-        frequencia_dias: document.getElementById('frequencia_dias').value || null,
-        campos: campos
-    };
-    
-    fetch('{{ url_for("formador_relatorio_routes.nova_configuracao") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dados)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Configuração criada com sucesso!');
-            window.location.href = '{{ url_for("formador_relatorio_routes.configuracoes") }}';
-        } else {
-            alert('Erro: ' + data.message);
+    try {
+        if (campos.length === 0) {
+            alert('Adicione pelo menos um campo ao relatório.');
+            return;
         }
-    })
-    .catch(error => {
-        console.error('Erro:', error);
-        alert('Erro ao salvar configuração.');
-    });
+        
+        const form = document.getElementById('configuracaoForm');
+        if (!form) {
+            console.error('Formulário não encontrado');
+            return;
+        }
+        
+        // Validar campos obrigatórios
+        const nome = document.getElementById('nome');
+        const tipoPeriodo = document.getElementById('tipo_periodo');
+        
+        if (!nome || !nome.value.trim()) {
+            alert('Por favor, informe o nome da configuração.');
+            if (nome) nome.focus();
+            return;
+        }
+        
+        if (!tipoPeriodo || !tipoPeriodo.value) {
+            alert('Por favor, selecione o tipo de período.');
+            if (tipoPeriodo) tipoPeriodo.focus();
+            return;
+        }
+        
+        // Adicionar campos como inputs hidden ao formulário
+        // Primeiro, remover campos existentes para evitar duplicação
+        const existingFields = form.querySelectorAll('input[name^="campo_"]');
+        existingFields.forEach(field => field.remove());
+        
+        // Adicionar os campos atuais
+        campos.forEach((campo, index) => {
+            // Nome do campo
+            const nomeInput = document.createElement('input');
+            nomeInput.type = 'hidden';
+            nomeInput.name = 'campo_nome[]';
+            nomeInput.value = campo.nome;
+            form.appendChild(nomeInput);
+            
+            // Tipo do campo
+            const tipoInput = document.createElement('input');
+            tipoInput.type = 'hidden';
+            tipoInput.name = 'campo_tipo[]';
+            tipoInput.value = campo.tipo;
+            form.appendChild(tipoInput);
+            
+            // Obrigatório
+            if (campo.obrigatorio) {
+                const obrigatorioInput = document.createElement('input');
+                obrigatorioInput.type = 'hidden';
+                obrigatorioInput.name = 'campo_obrigatorio[]';
+                obrigatorioInput.value = index.toString();
+                form.appendChild(obrigatorioInput);
+            }
+        });
+        
+        // Enviar o formulário
+        form.submit();
+        
+    } catch (error) {
+        console.error('Erro ao salvar configuração:', error);
+        alert('Erro ao salvar configuração. Verifique o console para mais detalhes.');
+    }
 }
 </script>
 {% endblock %}
