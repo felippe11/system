@@ -8,6 +8,7 @@ da perspectiva de participantes.
 
 from __future__ import annotations
 from utils import endpoints
+from utils.barema import normalize_barema_requisitos
 
 import os
 import uuid
@@ -1100,6 +1101,7 @@ def avaliar(submission_id: int):
     
     # Usar barema específico se disponível, senão usar o geral
     barema = barema_categoria if barema_categoria else barema_geral
+    requisitos = normalize_barema_requisitos(barema)
     
     # Buscar review apenas se o usuário estiver autenticado
     review = None
@@ -1114,10 +1116,10 @@ def avaliar(submission_id: int):
         if not current_user.is_authenticated:
             flash("Você precisa estar logado para submeter uma avaliação!", "warning")
             return redirect(url_for("auth_routes.login"))
-            
+
         scores: Dict[str, int] = {}
 
-        for requisito, faixa in barema.requisitos.items():
+        for requisito, faixa in requisitos.items():
             nota_raw = request.form.get(requisito)
             if nota_raw:
                 nota = int(nota_raw)
@@ -1132,6 +1134,7 @@ def avaliar(submission_id: int):
                         "revisor/avaliacao.html",
                         submission=submission,
                         barema=barema,
+                        requisitos=requisitos,
                         review=review,
                     )
                 scores[requisito] = nota
@@ -1148,7 +1151,11 @@ def avaliar(submission_id: int):
         return redirect(url_for("revisor_routes.avaliar", submission_id=submission.id))
 
     return render_template(
-        "revisor/avaliacao.html", submission=submission, barema=barema, review=review
+        "revisor/avaliacao.html",
+        submission=submission,
+        barema=barema,
+        review=review,
+        requisitos=requisitos,
     )
 
 
