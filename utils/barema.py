@@ -109,6 +109,7 @@ def normalize_barema_requisitos(barema: Any) -> Dict[str, Dict[str, Any]]:
                     ("min", "pontuacao_min", "pontuacaoMin"),
                     0,
                 )
+
             else:
                 max_val = _coerce_number(data, None)
             if max_val is None:

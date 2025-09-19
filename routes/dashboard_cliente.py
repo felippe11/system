@@ -12,6 +12,7 @@ from flask_login import login_required, current_user
 from extensions import db
 import logging
 from utils import endpoints
+from utils.barema import normalize_barema_requisitos
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import func, and_, or_
@@ -839,10 +840,12 @@ def criar_editar_barema(evento_id, categoria):
             criterio_nome = request.form.get(f'criterio_{i}_nome')
             criterio_max = request.form.get(f'criterio_{i}_max', type=float)
             criterio_descricao = request.form.get(f'criterio_{i}_descricao', '')
-            
+
             if criterio_nome and criterio_max:
                 criterios[criterio_nome] = {
-                    'max': criterio_max,
+                    'nome': criterio_nome,
+                    'pontuacao_max': criterio_max,
+                    'pontuacao_min': 0,
                     'descricao': criterio_descricao
                 }
             i += 1
@@ -909,21 +912,29 @@ def testar_barema(evento_id, categoria):
         flash(f'Barema não encontrado para a categoria "{categoria}".', 'warning')
         return redirect(url_for('dashboard_routes.gerenciar_baremas', evento_id=evento_id))
     
+    requisitos = normalize_barema_requisitos(barema)
+    if not requisitos:
+        flash('Barema sem critérios configurados para teste.', 'warning')
+        return redirect(url_for('dashboard_routes.gerenciar_baremas', evento_id=evento_id))
+
     if request.method == 'POST':
         # Processar pontuações do formulário de teste
         pontuacoes = {}
         total_pontos = 0
-        
-        for criterio_nome, criterio_data in barema.criterios.items():
+
+        for criterio_nome, criterio_data in requisitos.items():
             pontuacao = request.form.get(f'criterio_{criterio_nome}', type=float)
             if pontuacao is not None:
                 # Validar se a pontuação está dentro do limite
-                max_pontos = criterio_data.get('max', 10)
+                max_pontos = criterio_data.get('max', 0) or 0
                 if 0 <= pontuacao <= max_pontos:
                     pontuacoes[criterio_nome] = pontuacao
                     total_pontos += pontuacao
                 else:
-                    flash(f'Pontuação para "{criterio_nome}" deve estar entre 0 e {max_pontos}.', 'warning')
+                    flash(
+                        f'Pontuação para "{criterio_nome}" deve estar entre 0 e {max_pontos}.',
+                        'warning'
+                    )
                     return redirect(url_for('dashboard_routes.testar_barema', evento_id=evento_id, categoria=categoria))
         
         # Salvar resultado do teste (opcional - pode ser usado para análise)
@@ -940,7 +951,13 @@ def testar_barema(evento_id, categoria):
         flash(f'Teste do barema concluído! Total de pontos: {total_pontos}', 'success')
         return redirect(url_for('dashboard_routes.gerenciar_baremas', evento_id=evento_id))
     
-    return render_template('dashboard/testar_barema.html', 
-                         evento=evento, 
-                         categoria=categoria,
-                         barema=barema)
+    total_max = sum((dados.get('max') or 0) for dados in requisitos.values())
+
+    return render_template(
+        'dashboard/testar_barema.html',
+        evento=evento,
+        categoria=categoria,
+        barema=barema,
+        requisitos=requisitos,
+        total_max=total_max
+    )
