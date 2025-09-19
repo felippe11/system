@@ -79,7 +79,7 @@ def app(monkeypatch):
         )
         campo_categoria = CampoFormulario(
             formulario=formulario,
-            nome="Categoria",
+            nome="Categoria do Trabalho",
             tipo="text",
             obrigatorio=True,
         )
@@ -99,6 +99,13 @@ def app(monkeypatch):
         )
         db.session.add(resposta_sem_categoria)
         db.session.flush()
+
+        resposta_sem_categoria_campo = RespostaCampo(
+            resposta_formulario_id=resposta_sem_categoria.id,
+            campo_id=campo_categoria.id,
+            valor="   ",
+        )
+        db.session.add(resposta_sem_categoria_campo)
 
         resposta = RespostaFormulario(
             formulario_id=formulario.id,
@@ -138,7 +145,12 @@ def app(monkeypatch):
                 },
             },
         )
-        db.session.add_all([resposta_campo, assignment, review, barema])
+        db.session.add_all([
+            resposta_campo,
+            assignment,
+            review,
+            barema,
+        ])
         db.session.flush()
 
         assignment_check = (
@@ -162,16 +174,18 @@ def app(monkeypatch):
 
         globals()["revisor_routes"] = revisor_routes_module
         globals()["peer_review_routes"] = peer_review_routes_module
-        monkeypatch.setattr(
-            peer_review_routes_module,
-            "RespostaCampo",
-            RespostaCampo,
-        )
-        monkeypatch.setattr(
-            peer_review_routes_module,
-            "CampoFormulario",
-            CampoFormulario,
-        )
+        if hasattr(peer_review_routes_module, "RespostaCampo"):
+            monkeypatch.setattr(
+                peer_review_routes_module,
+                "RespostaCampo",
+                RespostaCampo,
+            )
+        if hasattr(peer_review_routes_module, "CampoFormulario"):
+            monkeypatch.setattr(
+                peer_review_routes_module,
+                "CampoFormulario",
+                CampoFormulario,
+            )
 
         class _AssignmentQueryWrapper:
             def __init__(self, query):
@@ -231,9 +245,10 @@ def test_revisor_categoria_barema_get(app):
         assert respostas[0].id == assignment_db.resposta_formulario_id
         assert respostas[0].respostas_campos == []
         assert any(
-            resposta_campo.campo.nome.lower() == "categoria"
+            "categoria" in resposta_campo.campo.nome.lower()
             for resposta_campo in respostas[1].respostas_campos
         )
+        assert revisor_routes.get_categoria_trabalho(respostas[1]) == "Poster"
 
     with app.test_request_context(f"/revisor/avaliar/{submission.id}", method="GET"):
         login_user(reviewer)
