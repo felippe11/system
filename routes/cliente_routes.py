@@ -174,6 +174,15 @@ def excluir_cliente(cliente_id):
             ProfessorBloqueado,
             PasswordResetToken,
         )
+        from models.material import (
+            Polo,
+            Material,
+            MovimentacaoMaterial,
+            MonitorPolo,
+            FormadorPolo,
+            MaterialDisponivel,
+            SolicitacaoMaterialFormador,
+        )
 
         # ===============================
         # 1️⃣ PARTICIPANTES
@@ -366,6 +375,32 @@ def excluir_cliente(cliente_id):
             Pagamento.usuario_id.in_(usuario_ids)
         ).delete(synchronize_session=False)
         # Pagamentos dos eventos já foram removidos dentro do loop acima
+
+        # ===============================
+        # 5️⃣.1️⃣ POLOS E MATERIAIS
+        # ===============================
+        polos = Polo.query.filter_by(cliente_id=cliente.id).all()
+        for polo in polos:
+            MonitorPolo.query.filter_by(polo_id=polo.id).delete(synchronize_session=False)
+            FormadorPolo.query.filter_by(polo_id=polo.id).delete(synchronize_session=False)
+
+            materiais_ids = [m.id for m in Material.query.filter_by(polo_id=polo.id).all()]
+            if materiais_ids:
+                MovimentacaoMaterial.query.filter(
+                    MovimentacaoMaterial.material_id.in_(materiais_ids)
+                ).delete(synchronize_session=False)
+                Material.query.filter(Material.id.in_(materiais_ids)).delete(
+                    synchronize_session=False
+                )
+
+            db.session.delete(polo)
+
+        SolicitacaoMaterialFormador.query.filter_by(cliente_id=cliente.id).delete(
+            synchronize_session=False
+        )
+        MaterialDisponivel.query.filter_by(cliente_id=cliente.id).delete(
+            synchronize_session=False
+        )
 
         # ===============================
         # 6️⃣ EXCLUI O CLIENTE
