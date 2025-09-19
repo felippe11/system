@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Compra{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">🛒 Nova Compra</h2>
+                    <p class="text-muted mb-0">Registrar nova compra de materiais</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Dados da Compra</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ csrf_token() }}
+                        
+                        <!-- Informações Básicas -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label for="polo_id" class="form-label">Polo (Opcional)</label>
+                                <select name="polo_id" id="polo_id" class="form-select">
+                                    <option value="">Selecione um polo (opcional)</option>
+                                    {% for polo in polos %}
+                                    <option value="{{ polo.id }}" {% if request.form.get('polo_id') == polo.id|string %}selected{% endif %}>
+                                        {{ polo.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="data_compra" class="form-label">Data da Compra *</label>
+                                <input type="date" name="data_compra" id="data_compra" class="form-control" 
+                                       value="{{ request.form.get('data_compra', '') }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="tipo_gasto" class="form-label">Tipo de Gasto *</label>
+                                <select name="tipo_gasto" id="tipo_gasto" class="form-select" required>
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="custeio" {% if request.form.get('tipo_gasto') == 'custeio' %}selected{% endif %}>Custeio</option>
+                                    <option value="capital" {% if request.form.get('tipo_gasto') == 'capital' %}selected{% endif %}>Capital</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="fornecedor" class="form-label">Fornecedor *</label>
+                                <input type="text" name="fornecedor" id="fornecedor" class="form-control" 
+                                       placeholder="Nome do fornecedor" 
+                                       value="{{ request.form.get('fornecedor', '') }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="cnpj_fornecedor" class="form-label">CNPJ do Fornecedor</label>
+                                <input type="text" name="cnpj_fornecedor" id="cnpj_fornecedor" class="form-control" 
+                                       placeholder="00.000.000/0000-00" 
+                                       value="{{ request.form.get('cnpj_fornecedor', '') }}">
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label for="descricao" class="form-label">Descrição da Compra *</label>
+                                <textarea name="descricao" id="descricao" class="form-control" rows="3" 
+                                          placeholder="Descreva os materiais comprados..." required>{{ request.form.get('descricao', '') }}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="valor_total" class="form-label">Valor Total *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="number" name="valor_total" id="valor_total" class="form-control" 
+                                           step="0.01" min="0" placeholder="0,00" 
+                                           value="{{ request.form.get('valor_total', '') }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="forma_pagamento" class="form-label">Forma de Pagamento</label>
+                                <select name="forma_pagamento" id="forma_pagamento" class="form-select">
+                                    <option value="">Selecione</option>
+                                    <option value="dinheiro" {% if request.form.get('forma_pagamento') == 'dinheiro' %}selected{% endif %}>Dinheiro</option>
+                                    <option value="cartao_credito" {% if request.form.get('forma_pagamento') == 'cartao_credito' %}selected{% endif %}>Cartão de Crédito</option>
+                                    <option value="cartao_debito" {% if request.form.get('forma_pagamento') == 'cartao_debito' %}selected{% endif %}>Cartão de Débito</option>
+                                    <option value="pix" {% if request.form.get('forma_pagamento') == 'pix' %}selected{% endif %}>PIX</option>
+                                    <option value="transferencia" {% if request.form.get('forma_pagamento') == 'transferencia' %}selected{% endif %}>Transferência</option>
+                                    <option value="boleto" {% if request.form.get('forma_pagamento') == 'boleto' %}selected{% endif %}>Boleto</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Itens da Compra -->
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Itens da Compra</h6>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="adicionarItem()">
+                                    <i class="fas fa-plus"></i> Adicionar Item
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="itens-container">
+                                    <!-- Items serão adicionados dinamicamente -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Observações -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label for="observacoes" class="form-label">Observações</label>
+                                <textarea name="observacoes" id="observacoes" class="form-control" rows="3" 
+                                          placeholder="Observações adicionais...">{{ request.form.get('observacoes', '') }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-end">
+                                    <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary me-2">
+                                        Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Salvar Compra
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let itemCounter = 0;
+
+function adicionarItem() {
+    itemCounter++;
+    const container = document.getElementById('itens-container');
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'row mb-3 item-row';
+    itemDiv.id = `item-${itemCounter}`;
+    
+    itemDiv.innerHTML = `
+        <div class="col-md-4">
+            <label class="form-label">Material</label>
+            <select name="itens[${itemCounter}][material_id]" class="form-select">
+                <option value="">Selecione um material</option>
+                {% for material in materiais %}
+                <option value="{{ material.id }}">{{ material.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Quantidade</label>
+            <input type="number" name="itens[${itemCounter}][quantidade]" class="form-control" 
+                   min="1" step="1" placeholder="1">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Valor Unitário</label>
+            <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="itens[${itemCounter}][valor_unitario]" class="form-control" 
+                       step="0.01" min="0" placeholder="0,00">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Descrição</label>
+            <input type="text" name="itens[${itemCounter}][descricao]" class="form-control" 
+                   placeholder="Descrição do item">
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${itemCounter})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(itemDiv);
+}
+
+function removerItem(id) {
+    const item = document.getElementById(`item-${id}`);
+    if (item) {
+        item.remove();
+    }
+}
+
+// Adicionar pelo menos um item ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    adicionarItem();
+    
+    // Máscara para CNPJ
+    const cnpjInput = document.getElementById('cnpj_fornecedor');
+    cnpjInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+        value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        value = value.replace(/(\d{4})(\d)/, '$1-$2');
+        e.target.value = value;
+    });
+});
+</script>
+{% endblock %}

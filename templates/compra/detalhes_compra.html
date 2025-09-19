@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes da Compra #{{ compra.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">🛒 Detalhes da Compra #{{ compra.id }}</h2>
+                    <p class="text-muted mb-0">{{ compra.fornecedor }} - {{ compra.data_compra.strftime('%d/%m/%Y') }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('compra_routes.prestacao_contas', compra_id=compra.id) }}" class="btn btn-info me-2">
+                        <i class="fas fa-file-invoice-dollar"></i> Prestação de Contas
+                    </a>
+                    <a href="{{ url_for('compra_routes.editar_compra', compra_id=compra.id) }}" class="btn btn-warning me-2">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações Principais -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações da Compra</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>ID:</strong></td>
+                                    <td>{{ compra.id }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Data:</strong></td>
+                                    <td>{{ compra.data_compra.strftime('%d/%m/%Y') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Polo:</strong></td>
+                                    <td>{{ compra.polo.nome }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fornecedor:</strong></td>
+                                    <td>{{ compra.fornecedor }}</td>
+                                </tr>
+                                {% if compra.cnpj_fornecedor %}
+                                <tr>
+                                    <td><strong>CNPJ:</strong></td>
+                                    <td>{{ compra.cnpj_fornecedor }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Valor Total:</strong></td>
+                                    <td class="text-success"><strong>R$ {{ compra.valor_total|number_format(2, ',', '.') }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        {% if compra.status == 'pendente' %}
+                                            <span class="badge bg-warning">Pendente</span>
+                                        {% elif compra.status == 'aprovada' %}
+                                            <span class="badge bg-success">Aprovada</span>
+                                        {% elif compra.status == 'rejeitada' %}
+                                            <span class="badge bg-danger">Rejeitada</span>
+                                        {% elif compra.status == 'finalizada' %}
+                                            <span class="badge bg-info">Finalizada</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if compra.forma_pagamento %}
+                                <tr>
+                                    <td><strong>Forma de Pagamento:</strong></td>
+                                    <td>{{ compra.forma_pagamento|title }}</td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td><strong>Criado em:</strong></td>
+                                    <td>{{ compra.data_criacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Criado por:</strong></td>
+                                    <td>{{ compra.usuario.nome if compra.usuario else 'Sistema' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    {% if compra.descricao %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Descrição:</h6>
+                            <p class="text-muted">{{ compra.descricao }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if compra.observacoes %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Observações:</h6>
+                            <p class="text-muted">{{ compra.observacoes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Status da Prestação de Contas -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Status da Prestação</h5>
+                </div>
+                <div class="card-body">
+                    {% if compra.prestacao_contas %}
+                    <div class="text-center">
+                        {% if compra.prestacao_contas.status == 'aprovada' %}
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h6 class="text-success">Prestação Aprovada</h6>
+                            <p class="text-muted small">Aprovada em {{ compra.prestacao_contas.data_aprovacao.strftime('%d/%m/%Y') if compra.prestacao_contas.data_aprovacao else 'N/A' }}</p>
+                        {% elif compra.prestacao_contas.status == 'rejeitada' %}
+                            <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                            <h6 class="text-danger">Prestação Rejeitada</h6>
+                            <p class="text-muted small">Rejeitada em {{ compra.prestacao_contas.data_aprovacao.strftime('%d/%m/%Y') if compra.prestacao_contas.data_aprovacao else 'N/A' }}</p>
+                        {% else %}
+                            <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                            <h6 class="text-warning">Aguardando Aprovação</h6>
+                            <p class="text-muted small">Enviada em {{ compra.prestacao_contas.data_envio.strftime('%d/%m/%Y') }}</p>
+                        {% endif %}
+                        
+                        {% if compra.prestacao_contas.feedback_aprovacao %}
+                        <div class="mt-3">
+                            <h6>Feedback:</h6>
+                            <p class="text-muted small">{{ compra.prestacao_contas.feedback_aprovacao }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="text-center">
+                        <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">Prestação Pendente</h6>
+                        <p class="text-muted small">Documentos fiscais ainda não foram enviados</p>
+                        <a href="{{ url_for('compra_routes.prestacao_contas', compra_id=compra.id) }}" class="btn btn-primary btn-sm">
+                            Enviar Documentos
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h6 class="mb-0">{{ compra.documentos|length }}</h6>
+                            <small class="text-muted">Documentos</small>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="mb-0">{{ compra.itens|length }}</h6>
+                            <small class="text-muted">Itens</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Itens da Compra -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Itens da Compra</h5>
+                </div>
+                <div class="card-body">
+                    {% if compra.itens %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Descrição</th>
+                                    <th>Quantidade</th>
+                                    <th>Valor Unitário</th>
+                                    <th>Valor Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in compra.itens %}
+                                <tr>
+                                    <td>
+                                        {% if item.material %}
+                                            {{ item.material.nome }}
+                                        {% else %}
+                                            <span class="text-muted">Material não especificado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.descricao or '-' }}</td>
+                                    <td>{{ item.quantidade }}</td>
+                                    <td>R$ {{ item.valor_unitario|number_format(2, ',', '.') }}</td>
+                                    <td>R$ {{ (item.quantidade * item.valor_unitario)|number_format(2, ',', '.') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <th colspan="4">Total Geral:</th>
+                                    <th>R$ {{ compra.valor_total|number_format(2, ',', '.') }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">Nenhum item cadastrado</h6>
+                        <p class="text-muted">Esta compra não possui itens detalhados.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentos Fiscais -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Documentos Fiscais</h5>
+                    <a href="{{ url_for('compra_routes.prestacao_contas', compra_id=compra.id) }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus"></i> Adicionar Documento
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if compra.documentos %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Número</th>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th>Upload</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in compra.documentos %}
+                                <tr>
+                                    <td>
+                                        {% if doc.tipo == 'nota_fiscal' %}
+                                            <i class="fas fa-file-invoice text-primary"></i> Nota Fiscal
+                                        {% elif doc.tipo == 'cupom_fiscal' %}
+                                            <i class="fas fa-receipt text-success"></i> Cupom Fiscal
+                                        {% elif doc.tipo == 'recibo' %}
+                                            <i class="fas fa-file-alt text-info"></i> Recibo
+                                        {% elif doc.tipo == 'comprovante_pagamento' %}
+                                            <i class="fas fa-credit-card text-warning"></i> Comprovante
+                                        {% elif doc.tipo == 'orcamento' %}
+                                            <i class="fas fa-calculator text-secondary"></i> Orçamento
+                                        {% else %}
+                                            <i class="fas fa-file text-muted"></i> Outros
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ doc.numero_documento or '-' }}</td>
+                                    <td>{{ doc.data_documento.strftime('%d/%m/%Y') if doc.data_documento else '-' }}</td>
+                                    <td>
+                                        {% if doc.valor %}
+                                            R$ {{ doc.valor|number_format(2, ',', '.') }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if doc.status == 'pendente' %}
+                                            <span class="badge bg-warning">Pendente</span>
+                                        {% elif doc.status == 'aprovado' %}
+                                            <span class="badge bg-success">Aprovado</span>
+                                        {% elif doc.status == 'rejeitado' %}
+                                            <span class="badge bg-danger">Rejeitado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ doc.data_upload.strftime('%d/%m/%Y %H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('compra_routes.visualizar_documento', documento_id=doc.id) }}" 
+                                               class="btn btn-sm btn-outline-info" target="_blank" title="Visualizar">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('compra_routes.download_documento', documento_id=doc.id) }}" 
+                                               class="btn btn-sm btn-outline-primary" title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">Nenhum documento enviado</h6>
+                        <p class="text-muted">Faça o upload dos documentos fiscais para completar a prestação de contas.</p>
+                        <a href="{{ url_for('compra_routes.prestacao_contas', compra_id=compra.id) }}" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Enviar Documentos
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Histórico de Alterações -->
+    {% if compra.historico_alteracoes %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Histórico de Alterações</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for alteracao in compra.historico_alteracoes %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h6 class="timeline-title">{{ alteracao.acao }}</h6>
+                                <p class="timeline-text">{{ alteracao.descricao }}</p>
+                                <small class="text-muted">
+                                    {{ alteracao.data.strftime('%d/%m/%Y %H:%M') }} - 
+                                    {{ alteracao.usuario.nome if alteracao.usuario else 'Sistema' }}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -35px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #007bff;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #007bff;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: -31px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.timeline-title {
+    margin-bottom: 5px;
+    color: #495057;
+}
+
+.timeline-text {
+    margin-bottom: 5px;
+    color: #6c757d;
+}
+</style>
+{% endblock %}

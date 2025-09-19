@@ -60,6 +60,9 @@ class Usuario(db.Model, UserMixin):
     mfa_enabled = db.Column(db.Boolean, default=False)
     mfa_secret = db.Column(db.String(32), nullable=True)
     ativo = db.Column(db.Boolean, default=True)
+    
+    # Campo para permissões de aprovação de compras
+    pode_aprovar_compras = db.Column(db.Boolean, default=False)
 
     def verificar_senha(self, senha):
         return check_password_hash(self.senha, senha)
@@ -204,15 +207,15 @@ class MonitorCadastroLink(db.Model):
         db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4())
     )
     expires_at = db.Column(db.DateTime, nullable=False)
-    used = db.Column(db.Boolean, default=False)
+    usage_count = db.Column(db.Integer, nullable=False, default=0)
 
     cliente = db.relationship(
         "Cliente", backref=db.backref("monitor_cadastro_links", lazy=True)
     )
 
     def is_valid(self):
-        """Retorna True se o link não foi usado e ainda não expirou."""
-        return (not self.used) and datetime.utcnow() < self.expires_at
+        """Retorna True se o link ainda não expirou."""
+        return datetime.utcnow() < self.expires_at
 
 
 class Monitor(db.Model, UserMixin):

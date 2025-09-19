@@ -35,6 +35,7 @@ from models import (
     HorarioVisitacao,
 )
 from extensions import db, csrf
+from sqlalchemy import or_
 
 monitor_routes = Blueprint(
     'monitor_routes',
@@ -127,7 +128,7 @@ def monitor_inscricao_submit(token):
         cliente_id=link.cliente_id,
     )
     db.session.add(monitor)
-    link.used = True
+    link.usage_count = (link.usage_count or 0) + 1
     db.session.commit()
 
     login_user(monitor)
@@ -1024,7 +1025,10 @@ def distribuicao_manual():
         monitores_query = Monitor.query.filter_by(ativo=True)
         if current_user.tipo == "cliente":
             monitores_query = monitores_query.filter(
-                Monitor.cliente_id == current_user.id
+                or_(
+                    Monitor.cliente_id == current_user.id,
+                    Monitor.cliente_id.is_(None),
+                )
             )
         monitores_ativos = monitores_query.order_by(Monitor.nome_completo).all()
 
@@ -1048,7 +1052,10 @@ def distribuicao_manual():
         if current_user.tipo == "cliente":
             agendamentos_atribuidos_query = agendamentos_atribuidos_query.filter(
                 AgendamentoVisita.cliente_id == current_user.id,
-                Monitor.cliente_id == current_user.id
+                or_(
+                    Monitor.cliente_id == current_user.id,
+                    Monitor.cliente_id.is_(None),
+                ),
             )
 
         agendamentos_atribuidos = (
@@ -1087,9 +1094,11 @@ def atribuir_monitor():
         monitor = Monitor.query.get_or_404(monitor_id)
 
         if current_user.tipo == "cliente":
-            if (
-                agendamento.cliente_id != current_user.id
-                or monitor.cliente_id != current_user.id
+            if agendamento.cliente_id != current_user.id:
+                return jsonify({'success': False, 'message': 'Acesso negado'})
+            if not (
+                monitor.cliente_id == current_user.id
+                or monitor.cliente_id is None
             ):
                 return jsonify({'success': False, 'message': 'Acesso negado'})
 
@@ -1511,7 +1520,10 @@ def distribuicao_automatica():
     monitores_query = Monitor.query.filter_by(ativo=True)
     if current_user.tipo == 'cliente':
         monitores_query = monitores_query.filter(
-            Monitor.cliente_id == current_user.id
+            or_(
+                Monitor.cliente_id == current_user.id,
+                Monitor.cliente_id.is_(None),
+            )
         )
     monitores_ativos = monitores_query.count()
     
@@ -1584,7 +1596,10 @@ def distribuir_automaticamente():
         monitores_query = Monitor.query.filter_by(ativo=True)
         if current_user.tipo == 'cliente':
             monitores_query = monitores_query.filter(
-                Monitor.cliente_id == current_user.id
+                or_(
+                    Monitor.cliente_id == current_user.id,
+                    Monitor.cliente_id.is_(None),
+                )
             )
         monitores_ativos = monitores_query.all()
         agendamentos_ativos_query = db.session.query(
@@ -1593,7 +1608,10 @@ def distribuir_automaticamente():
         ).filter(MonitorAgendamento.status == 'ativo')
         if current_user.tipo == 'cliente':
             agendamentos_ativos_query = agendamentos_ativos_query.join(Monitor).filter(
-                Monitor.cliente_id == current_user.id
+                or_(
+                    Monitor.cliente_id == current_user.id,
+                    Monitor.cliente_id.is_(None),
+                )
             )
         agendamentos_ativos = dict(
             agendamentos_ativos_query.group_by(MonitorAgendamento.monitor_id).all()

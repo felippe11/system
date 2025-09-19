@@ -1,0 +1,718 @@
+{% extends "base.html" %}
+
+{% block title %}Upload de Documentos Fiscais{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="bi bi-upload text-success me-2"></i>
+                        Upload de Documentos Fiscais
+                    </h2>
+                    <p class="text-muted mb-0">Envie documentos fiscais com validação automática</p>
+                </div>
+                <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar ao Dashboard
+                </a>
+            </div>
+
+            <!-- Alertas -->
+            <div id="alertContainer"></div>
+
+            <!-- Card de Upload -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-cloud-upload me-2"></i>
+                                Enviar Documento Fiscal
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if compras %}
+                            <form id="uploadForm" enctype="multipart/form-data">
+                                <!-- Seleção de Compra -->
+                                <div class="mb-3">
+                                    <label for="compra_id" class="form-label">
+                                        <i class="bi bi-cart me-1"></i>
+                                        Selecionar Compra *
+                                    </label>
+                                    <select class="form-select" id="compra_id" name="compra_id" required>
+                                        <option value="">Escolha uma compra...</option>
+                                        {% for compra in compras %}
+                                        <option value="{{ compra.id }}" 
+                                                data-valor="{{ compra.valor_total }}"
+                                                data-fornecedor="{{ compra.fornecedor }}"
+                                                data-numero="{{ compra.numero }}">
+                                            #{{ compra.numero }} - {{ compra.fornecedor }} - R$ {{ "%.2f"|format(compra.valor_total) }}
+                                            ({{ compra.data_criacao.strftime('%d/%m/%Y') }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div id="compraInfo" class="form-text" style="display: none;"></div>
+                                </div>
+
+                                <!-- Tipo de Documento -->
+                                <div class="mb-3">
+                                    <label for="tipo_documento" class="form-label">
+                                        <i class="bi bi-file-earmark me-1"></i>
+                                        Tipo de Documento *
+                                    </label>
+                                    <select class="form-select" id="tipo_documento" name="tipo_documento" required>
+                                        <option value="">Selecione o tipo...</option>
+                                        <option value="nota_fiscal">Nota Fiscal</option>
+                                        <option value="nota_fiscal_eletronica">Nota Fiscal Eletrônica (NFe)</option>
+                                        <option value="cupom_fiscal">Cupom Fiscal</option>
+                                        <option value="recibo">Recibo</option>
+                                        <option value="comprovante_pagamento">Comprovante de Pagamento</option>
+                                        <option value="boleto">Boleto Bancário</option>
+                                        <option value="outros">Outros</option>
+                                    </select>
+                                    <div id="tipoInfo" class="form-text" style="display: none;"></div>
+                                </div>
+
+                                <!-- Upload de Arquivo -->
+                                <div class="mb-3">
+                                    <label for="arquivo" class="form-label">
+                                        <i class="bi bi-paperclip me-1"></i>
+                                        Arquivo *
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="file" class="form-control" id="arquivo" name="arquivo" 
+                                               accept=".pdf,.jpg,.jpeg,.png,.xml,.zip,.rar" required>
+                                        <button type="button" class="btn btn-outline-secondary" id="previewBtn" 
+                                                style="display: none;" onclick="previewFile()">
+                                            <i class="bi bi-eye"></i> Visualizar
+                                        </button>
+                                    </div>
+                                    <div class="form-text">
+                                        Formatos aceitos: PDF, JPG, PNG, XML, ZIP, RAR (máx. 16MB)
+                                    </div>
+                                    <div id="fileInfo" class="mt-2" style="display: none;"></div>
+                                    <div id="validationInfo" class="mt-2" style="display: none;"></div>
+                                </div>
+
+                                <!-- Dados Extraídos (aparece após upload) -->
+                                <div id="dadosExtraidos" class="card mt-3" style="display: none;">
+                                    <div class="card-header">
+                                        <h6><i class="bi bi-robot me-1"></i> Dados Extraídos Automaticamente</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row" id="dadosContent"></div>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="confirmarDados">
+                                            <label class="form-check-label" for="confirmarDados">
+                                                Confirmo que os dados extraídos estão corretos
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Campos Manuais -->
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="numero_documento" class="form-label">
+                                                <i class="bi bi-hash"></i> Número do Documento
+                                            </label>
+                                            <input type="text" class="form-control" id="numero_documento" 
+                                                   name="numero_documento" placeholder="Ex: 12345">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="valor_documento" class="form-label">
+                                                <i class="bi bi-currency-dollar"></i> Valor do Documento
+                                            </label>
+                                            <input type="number" class="form-control" id="valor_documento" 
+                                                   name="valor_documento" step="0.01" placeholder="0,00">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="data_emissao" class="form-label">
+                                                <i class="bi bi-calendar"></i> Data de Emissão
+                                            </label>
+                                            <input type="date" class="form-control" id="data_emissao" name="data_emissao">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="chave_acesso" class="form-label">
+                                                <i class="bi bi-key"></i> Chave de Acesso (NFe)
+                                            </label>
+                                            <input type="text" class="form-control" id="chave_acesso" 
+                                                   name="chave_acesso" placeholder="44 dígitos" maxlength="44">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Observações -->
+                                <div class="mb-3">
+                                    <label for="observacoes" class="form-label">
+                                        <i class="bi bi-chat-text me-1"></i>
+                                        Observações (opcional)
+                                    </label>
+                                    <textarea class="form-control" id="observacoes" name="observacoes" 
+                                              rows="3" placeholder="Adicione observações sobre o documento..."></textarea>
+                                </div>
+
+                                <!-- Progress Bar -->
+                                <div id="uploadProgress" class="mb-3" style="display: none;">
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted">Processando documento...</small>
+                                </div>
+
+                                <!-- Botões -->
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-success flex-grow-1" id="submitBtn">
+                                        <i class="bi bi-upload me-2"></i>
+                                        Enviar Documento
+                                    </button>
+                                    <button type="button" class="btn btn-info" id="validarBtn" 
+                                            style="display: none;" onclick="validarDocumento()">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Validar
+                                    </button>
+                                    <button type="reset" class="btn btn-outline-secondary">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>
+                                        Limpar
+                                    </button>
+                                </div>
+                            </form>
+                            {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-cart-x text-muted" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3 text-muted">Nenhuma compra encontrada</h5>
+                                <p class="text-muted">Você precisa criar uma compra antes de enviar documentos.</p>
+                                <a href="{{ url_for('compra_routes.nova_compra') }}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-2"></i>
+                                    Criar Nova Compra
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar com Instruções e Status -->
+                <div class="col-lg-4">
+                    <!-- Card de Instruções -->
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Instruções para Upload
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <h6>Tipos de Documento:</h6>
+                            <ul class="list-unstyled small">
+                                <li><strong>Nota Fiscal:</strong> Documento fiscal tradicional</li>
+                                <li><strong>NFe:</strong> Nota Fiscal Eletrônica (XML preferencial)</li>
+                                <li><strong>Cupom Fiscal:</strong> Comprovante de venda</li>
+                                <li><strong>Recibo:</strong> Comprovante de pagamento</li>
+                                <li><strong>Comprovante:</strong> Documento de transferência</li>
+                                <li><strong>Boleto:</strong> Documento bancário</li>
+                            </ul>
+                            
+                            <h6 class="mt-3">Dicas de Qualidade:</h6>
+                            <ul class="list-unstyled small">
+                                <li>• Escaneie em alta resolução (300 DPI)</li>
+                                <li>• Para NFe, sempre use o arquivo XML</li>
+                                <li>• Certifique-se que o texto está legível</li>
+                                <li>• Evite sombras e reflexos</li>
+                                <li>• Mantenha os originais guardados</li>
+                            </ul>
+
+                            <h6 class="mt-3">Validação Automática:</h6>
+                            <ul class="list-unstyled small">
+                                <li>• Extração automática de dados</li>
+                                <li>• Verificação de integridade</li>
+                                <li>• Validação de formato</li>
+                                <li>• Score de qualidade</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Card de Status -->
+                    <div class="card mt-3" id="statusCard" style="display: none;">
+                        <div class="card-header">
+                            <h6><i class="bi bi-graph-up me-1"></i> Status da Validação</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="statusContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Visualização do Documento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="previewContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-success mb-3" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mb-0" id="loadingText">Processando documento...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadForm');
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+    
+    // Configurações de tipos de documento
+    const tiposDocumento = {
+        'nota_fiscal': {
+            nome: 'Nota Fiscal',
+            extensoes_preferenciais: ['pdf', 'xml'],
+            descricao: 'Documento fiscal tradicional'
+        },
+        'nota_fiscal_eletronica': {
+            nome: 'Nota Fiscal Eletrônica (NFe)',
+            extensoes_preferenciais: ['xml'],
+            descricao: 'Arquivo XML da NFe é obrigatório'
+        },
+        'cupom_fiscal': {
+            nome: 'Cupom Fiscal',
+            extensoes_preferenciais: ['pdf', 'jpg', 'jpeg', 'png'],
+            descricao: 'Comprovante de venda no varejo'
+        },
+        'recibo': {
+            nome: 'Recibo',
+            extensoes_preferenciais: ['pdf', 'jpg', 'jpeg', 'png'],
+            descricao: 'Comprovante de pagamento'
+        },
+        'comprovante_pagamento': {
+            nome: 'Comprovante de Pagamento',
+            extensoes_preferenciais: ['pdf', 'jpg', 'jpeg', 'png'],
+            descricao: 'Documento de transferência bancária'
+        },
+        'boleto': {
+            nome: 'Boleto Bancário',
+            extensoes_preferenciais: ['pdf'],
+            descricao: 'Documento bancário de cobrança'
+        },
+        'outros': {
+            nome: 'Outros Documentos',
+            extensoes_preferenciais: ['pdf', 'jpg', 'jpeg', 'png'],
+            descricao: 'Outros tipos de documentos fiscais'
+        }
+    };
+
+    // Event listeners
+    document.getElementById('compra_id').addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        const info = document.getElementById('compraInfo');
+        
+        if (this.value) {
+            const valor = option.dataset.valor;
+            const fornecedor = option.dataset.fornecedor;
+            const numero = option.dataset.numero;
+            
+            info.innerHTML = `<strong>Compra #${numero}</strong> - ${fornecedor} - Valor: R$ ${parseFloat(valor).toFixed(2)}`;
+            info.style.display = 'block';
+        } else {
+            info.style.display = 'none';
+        }
+    });
+
+    document.getElementById('tipo_documento').addEventListener('change', function() {
+        const tipo = tiposDocumento[this.value];
+        const info = document.getElementById('tipoInfo');
+        
+        if (tipo) {
+            info.innerHTML = `<strong>${tipo.nome}:</strong> ${tipo.descricao}<br>
+                             <small>Formatos preferenciais: ${tipo.extensoes_preferenciais.join(', ').toUpperCase()}</small>`;
+            info.style.display = 'block';
+            
+            // Mostrar/ocultar campo chave de acesso
+            const chaveField = document.getElementById('chave_acesso').closest('.mb-3');
+            if (this.value === 'nota_fiscal_eletronica') {
+                chaveField.style.display = 'block';
+            } else {
+                chaveField.style.display = 'none';
+            }
+        } else {
+            info.style.display = 'none';
+        }
+    });
+
+    document.getElementById('arquivo').addEventListener('change', function() {
+        const file = this.files[0];
+        const fileInfo = document.getElementById('fileInfo');
+        const previewBtn = document.getElementById('previewBtn');
+        const validarBtn = document.getElementById('validarBtn');
+        
+        if (file) {
+            // Mostrar informações do arquivo
+            const size = (file.size / 1024 / 1024).toFixed(2);
+            const extension = file.name.split('.').pop().toLowerCase();
+            
+            fileInfo.innerHTML = `
+                <div class="alert alert-info">
+                    <strong>Arquivo selecionado:</strong> ${file.name}<br>
+                    <strong>Tamanho:</strong> ${size} MB<br>
+                    <strong>Tipo:</strong> ${file.type || 'Não identificado'}
+                </div>
+            `;
+            fileInfo.style.display = 'block';
+            
+            // Mostrar botão de preview para imagens e PDFs
+            if (['jpg', 'jpeg', 'png', 'pdf'].includes(extension)) {
+                previewBtn.style.display = 'block';
+            } else {
+                previewBtn.style.display = 'none';
+            }
+            
+            // Mostrar botão de validação
+            validarBtn.style.display = 'block';
+            
+            // Validar arquivo
+            validarArquivo(file);
+        } else {
+            fileInfo.style.display = 'none';
+            previewBtn.style.display = 'none';
+            validarBtn.style.display = 'none';
+        }
+    });
+
+    function validarArquivo(file) {
+        const validationInfo = document.getElementById('validationInfo');
+        const warnings = [];
+        const errors = [];
+        
+        // Verificar tamanho
+        if (file.size > 16 * 1024 * 1024) {
+            errors.push('Arquivo muito grande (máx. 16MB)');
+        }
+        
+        // Verificar extensão
+        const extension = file.name.split('.').pop().toLowerCase();
+        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'xml', 'zip', 'rar'];
+        
+        if (!allowedExtensions.includes(extension)) {
+            errors.push(`Extensão ${extension} não permitida`);
+        }
+        
+        // Verificar compatibilidade com tipo de documento
+        const tipoDocumento = document.getElementById('tipo_documento').value;
+        if (tipoDocumento && tiposDocumento[tipoDocumento]) {
+            const extensoesPreferenciais = tiposDocumento[tipoDocumento].extensoes_preferenciais;
+            if (!extensoesPreferenciais.includes(extension)) {
+                warnings.push(`Extensão ${extension} não é preferencial para ${tiposDocumento[tipoDocumento].nome}`);
+            }
+        }
+        
+        // Mostrar resultados
+        let html = '';
+        if (errors.length > 0) {
+            html += `<div class="alert alert-danger"><strong>Erros:</strong><ul class="mb-0">`;
+            errors.forEach(error => html += `<li>${error}</li>`);
+            html += `</ul></div>`;
+        }
+        
+        if (warnings.length > 0) {
+            html += `<div class="alert alert-warning"><strong>Avisos:</strong><ul class="mb-0">`;
+            warnings.forEach(warning => html += `<li>${warning}</li>`);
+            html += `</ul></div>`;
+        }
+        
+        if (errors.length === 0 && warnings.length === 0) {
+            html = `<div class="alert alert-success">Arquivo válido e compatível!</div>`;
+        }
+        
+        validationInfo.innerHTML = html;
+        validationInfo.style.display = 'block';
+        
+        // Desabilitar submit se houver erros
+        document.getElementById('submitBtn').disabled = errors.length > 0;
+    }
+
+    function previewFile() {
+        const file = document.getElementById('arquivo').files[0];
+        if (!file) return;
+        
+        const extension = file.name.split('.').pop().toLowerCase();
+        const previewContent = document.getElementById('previewContent');
+        
+        if (['jpg', 'jpeg', 'png'].includes(extension)) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewContent.innerHTML = `<img src="${e.target.result}" class="img-fluid" style="max-height: 500px;">`;
+                previewModal.show();
+            };
+            reader.readAsDataURL(file);
+        } else if (extension === 'pdf') {
+            previewContent.innerHTML = `
+                <p>Visualização de PDF não disponível no navegador.</p>
+                <p><strong>Arquivo:</strong> ${file.name}</p>
+                <p><strong>Tamanho:</strong> ${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            `;
+            previewModal.show();
+        }
+    }
+
+    function validarDocumento() {
+        const file = document.getElementById('arquivo').files[0];
+        const tipoDocumento = document.getElementById('tipo_documento').value;
+        
+        if (!file || !tipoDocumento) {
+            showAlert('Selecione um arquivo e tipo de documento primeiro.', 'warning');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('arquivo', file);
+        formData.append('tipo_documento', tipoDocumento);
+        formData.append('validar_apenas', 'true');
+        
+        document.getElementById('loadingText').textContent = 'Validando documento...';
+        loadingModal.show();
+        
+        fetch('/api/documentos/validar', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingModal.hide();
+            
+            if (data.success) {
+                mostrarDadosExtraidos(data.dados_extraidos, data.validacao);
+                mostrarStatusValidacao(data.validacao);
+            } else {
+                showAlert('Erro na validação: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            loadingModal.hide();
+            console.error('Erro:', error);
+            showAlert('Erro ao validar documento.', 'danger');
+        });
+    }
+
+    function mostrarDadosExtraidos(dados, validacao) {
+        const dadosContent = document.getElementById('dadosContent');
+        const dadosCard = document.getElementById('dadosExtraidos');
+        
+        let html = '';
+        
+        if (dados.numero_documento) {
+            html += `<div class="col-md-6"><strong>Número:</strong> ${dados.numero_documento}</div>`;
+            document.getElementById('numero_documento').value = dados.numero_documento;
+        }
+        
+        if (dados.valor_documento) {
+            html += `<div class="col-md-6"><strong>Valor:</strong> R$ ${dados.valor_documento.toFixed(2)}</div>`;
+            document.getElementById('valor_documento').value = dados.valor_documento;
+        }
+        
+        if (dados.data_emissao) {
+            const data = new Date(dados.data_emissao);
+            const dataFormatada = data.toISOString().split('T')[0];
+            html += `<div class="col-md-6"><strong>Data Emissão:</strong> ${data.toLocaleDateString('pt-BR')}</div>`;
+            document.getElementById('data_emissao').value = dataFormatada;
+        }
+        
+        if (dados.chave_acesso) {
+            html += `<div class="col-md-12"><strong>Chave de Acesso:</strong> ${dados.chave_acesso}</div>`;
+            document.getElementById('chave_acesso').value = dados.chave_acesso;
+        }
+        
+        if (dados.emitente) {
+            html += `<div class="col-md-12"><strong>Emitente:</strong> ${dados.emitente}</div>`;
+        }
+        
+        if (html) {
+            dadosContent.innerHTML = html;
+            dadosCard.style.display = 'block';
+        }
+    }
+
+    function mostrarStatusValidacao(validacao) {
+        const statusCard = document.getElementById('statusCard');
+        const statusContent = document.getElementById('statusContent');
+        
+        let html = `
+            <div class="mb-2">
+                <strong>Score de Qualidade:</strong>
+                <div class="progress mt-1">
+                    <div class="progress-bar ${validacao.score_qualidade >= 80 ? 'bg-success' : validacao.score_qualidade >= 60 ? 'bg-warning' : 'bg-danger'}" 
+                         style="width: ${validacao.score_qualidade}%">${validacao.score_qualidade}%</div>
+                </div>
+            </div>
+        `;
+        
+        if (validacao.warnings && validacao.warnings.length > 0) {
+            html += `<div class="alert alert-warning py-2"><strong>Avisos:</strong><ul class="mb-0 small">`;
+            validacao.warnings.forEach(warning => html += `<li>${warning}</li>`);
+            html += `</ul></div>`;
+        }
+        
+        if (validacao.erros && validacao.erros.length > 0) {
+            html += `<div class="alert alert-danger py-2"><strong>Erros:</strong><ul class="mb-0 small">`;
+            validacao.erros.forEach(erro => html += `<li>${erro}</li>`);
+            html += `</ul></div>`;
+        }
+        
+        if (validacao.valido) {
+            html += `<div class="alert alert-success py-2 small">Documento válido!</div>`;
+        }
+        
+        statusContent.innerHTML = html;
+        statusCard.style.display = 'block';
+    }
+
+    function showAlert(message, type) {
+        const alertContainer = document.getElementById('alertContainer');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        alertContainer.appendChild(alert);
+        
+        // Auto-remove após 5 segundos
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+
+    // Submit do formulário
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const compraId = document.getElementById('compra_id').value;
+            const arquivo = document.getElementById('arquivo').files[0];
+            const tipoDocumento = document.getElementById('tipo_documento').value;
+            const observacoes = document.getElementById('observacoes').value;
+            
+            if (!compraId || !arquivo || !tipoDocumento) {
+                showAlert('Por favor, preencha todos os campos obrigatórios.', 'warning');
+                return;
+            }
+            
+            // Verificar tamanho do arquivo (16MB)
+            if (arquivo.size > 16 * 1024 * 1024) {
+                showAlert('O arquivo é muito grande. O tamanho máximo é 16MB.', 'danger');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('arquivo', arquivo);
+            formData.append('tipo_documento', tipoDocumento);
+            formData.append('observacoes', observacoes);
+            formData.append('numero_documento', document.getElementById('numero_documento').value);
+            formData.append('valor_documento', document.getElementById('valor_documento').value);
+            formData.append('data_emissao', document.getElementById('data_emissao').value);
+            formData.append('chave_acesso', document.getElementById('chave_acesso').value);
+            
+            document.getElementById('loadingText').textContent = 'Enviando documento...';
+            loadingModal.show();
+            
+            // Simular progresso
+            const progressBar = document.querySelector('#uploadProgress .progress-bar');
+            const uploadProgressDiv = document.getElementById('uploadProgress');
+            uploadProgressDiv.style.display = 'block';
+            
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = progress + '%';
+            }, 200);
+            
+            fetch(`/api/compras/${compraId}/documentos`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    loadingModal.hide();
+                    uploadProgressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                    
+                    if (data.success) {
+                        showAlert('Documento enviado com sucesso!', 'success');
+                        uploadForm.reset();
+                        document.getElementById('dadosExtraidos').style.display = 'none';
+                        document.getElementById('statusCard').style.display = 'none';
+                        document.getElementById('fileInfo').style.display = 'none';
+                        document.getElementById('validationInfo').style.display = 'none';
+                        document.getElementById('previewBtn').style.display = 'none';
+                        document.getElementById('validarBtn').style.display = 'none';
+                        
+                        if (data.warnings && data.warnings.length > 0) {
+                            showAlert('Documento enviado com avisos: ' + data.warnings.join(', '), 'warning');
+                        }
+                    } else {
+                        showAlert('Erro ao enviar documento: ' + data.error, 'danger');
+                    }
+                }, 500);
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                loadingModal.hide();
+                uploadProgressDiv.style.display = 'none';
+                console.error('Erro:', error);
+                showAlert('Erro ao enviar documento. Tente novamente.', 'danger');
+            });
+        });
+    }
+
+    // Tornar funções globais
+    window.previewFile = previewFile;
+    window.validarDocumento = validarDocumento;
+});
+</script>
+{% endblock %}

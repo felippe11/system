@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Aprovações de Compras{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/aprovacao.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-check-circle text-primary"></i> Aprovações de Compras</h2>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" onclick="location.reload()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                    <a href="{{ url_for('compra_routes.gerenciar_compras') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+
+            <!-- Estatísticas -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">{{ total_pendentes }}</h4>
+                                    <p class="card-text">Pendentes</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-clock fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Aprovações Pendentes -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Aprovações Pendentes</h5>
+                </div>
+                <div class="card-body">
+                    {% if aprovacoes_pendentes %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Compra</th>
+                                        <th>Fornecedor</th>
+                                        <th>Valor</th>
+                                        <th>Nível</th>
+                                        <th>Data Solicitação</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for aprovacao in aprovacoes_pendentes %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ aprovacao.compra.numero_compra }}</strong><br>
+                                            <small class="text-muted">{{ aprovacao.compra.descricao[:50] }}...</small>
+                                        </td>
+                                        <td>{{ aprovacao.compra.fornecedor }}</td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                R$ {{ "%.2f"|format(aprovacao.compra.valor_total) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                {{ aprovacao.nivel_aprovacao.nome }}
+                                            </span>
+                                        </td>
+                                        <td>{{ aprovacao.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-success" 
+                                                        onclick="abrirModalAprovacao({{ aprovacao.id }}, 'aprovar')">
+                                                    <i class="fas fa-check"></i> Aprovar
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" 
+                                                        onclick="abrirModalAprovacao({{ aprovacao.id }}, 'rejeitar')">
+                                                    <i class="fas fa-times"></i> Rejeitar
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-info" 
+                                                        onclick="verDetalhesCompra({{ aprovacao.compra.id }})">
+                                                    <i class="fas fa-eye"></i> Detalhes
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h4>Nenhuma aprovação pendente</h4>
+                            <p class="text-muted">Todas as compras foram processadas.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Aprovação/Rejeição -->
+<div class="modal fade" id="modalAprovacao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAprovacaoTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAprovacao">
+                    <input type="hidden" id="aprovacaoId">
+                    <input type="hidden" id="acaoAprovacao">
+                    
+                    <div class="mb-3">
+                        <label for="comentarioAprovacao" class="form-label">Comentário</label>
+                        <textarea class="form-control" id="comentarioAprovacao" rows="3" 
+                                  placeholder="Digite um comentário sobre sua decisão..."></textarea>
+                        <div class="form-text">
+                            <span id="comentarioObrigatorio" style="display: none;" class="text-danger">
+                                * Comentário obrigatório para rejeição
+                            </span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn" id="btnConfirmarAprovacao" onclick="confirmarAprovacao()">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes da Compra -->
+<div class="modal fade" id="modalDetalhesCompra" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes da Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalhesCompraContent">
+                <!-- Conteúdo carregado dinamicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalAprovacao(aprovacaoId, acao) {
+    document.getElementById('aprovacaoId').value = aprovacaoId;
+    document.getElementById('acaoAprovacao').value = acao;
+    document.getElementById('comentarioAprovacao').value = '';
+    
+    const modal = document.getElementById('modalAprovacao');
+    const title = document.getElementById('modalAprovacaoTitle');
+    const btn = document.getElementById('btnConfirmarAprovacao');
+    const comentarioObrigatorio = document.getElementById('comentarioObrigatorio');
+    
+    if (acao === 'aprovar') {
+        title.textContent = 'Aprovar Compra';
+        btn.textContent = 'Aprovar';
+        btn.className = 'btn btn-success';
+        comentarioObrigatorio.style.display = 'none';
+    } else {
+        title.textContent = 'Rejeitar Compra';
+        btn.textContent = 'Rejeitar';
+        btn.className = 'btn btn-danger';
+        comentarioObrigatorio.style.display = 'block';
+    }
+    
+    new bootstrap.Modal(modal).show();
+}
+
+function confirmarAprovacao() {
+    const aprovacaoId = document.getElementById('aprovacaoId').value;
+    const acao = document.getElementById('acaoAprovacao').value;
+    const comentario = document.getElementById('comentarioAprovacao').value;
+    
+    // Validar comentário obrigatório para rejeição
+    if (acao === 'rejeitar' && !comentario.trim()) {
+        alert('Comentário é obrigatório para rejeição');
+        return;
+    }
+    
+    const url = `/api/aprovacoes/${aprovacaoId}/${acao}`;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            comentario: comentario
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalAprovacao')).hide();
+            location.reload(); // Recarregar a página para atualizar a lista
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao processar aprovação');
+    });
+}
+
+function verDetalhesCompra(compraId) {
+    // Carregar detalhes da compra via AJAX
+    fetch(`/api/compras/${compraId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const compra = data.compra;
+            const content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Informações Gerais</h6>
+                        <p><strong>Número:</strong> ${compra.numero_compra}</p>
+                        <p><strong>Fornecedor:</strong> ${compra.fornecedor}</p>
+                        <p><strong>CNPJ:</strong> ${compra.cnpj_fornecedor || 'N/A'}</p>
+                        <p><strong>Valor Total:</strong> R$ ${compra.valor_total.toFixed(2)}</p>
+                        <p><strong>Tipo de Gasto:</strong> ${compra.tipo_gasto}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Datas</h6>
+                        <p><strong>Data da Compra:</strong> ${new Date(compra.data_compra).toLocaleDateString('pt-BR')}</p>
+                        <p><strong>Entrega Prevista:</strong> ${compra.data_entrega_prevista ? new Date(compra.data_entrega_prevista).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-info">${compra.status}</span></p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Descrição</h6>
+                        <p>${compra.descricao || 'Sem descrição'}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Justificativa</h6>
+                        <p>${compra.justificativa || 'Sem justificativa'}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('detalhesCompraContent').innerHTML = content;
+            new bootstrap.Modal(document.getElementById('modalDetalhesCompra')).show();
+        } else {
+            alert('Erro ao carregar detalhes da compra');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao carregar detalhes da compra');
+    });
+}
+</script>
+{% endblock %}

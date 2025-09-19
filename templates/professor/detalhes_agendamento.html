@@ -63,7 +63,28 @@
       <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
       <p><strong>Nível de Ensino:</strong> {{ agendamento.nivel_ensino }}</p>
       <p><strong>Status do Agendamento:</strong> {{ agendamento.status }}</p>
-      
+
+      {% set email = agendamento.professor.email if agendamento.professor and agendamento.professor.email else agendamento.responsavel_email %}
+      {% if email %}
+        <p><strong>E-mail:</strong> {{ email }}</p>
+      {% endif %}
+
+      {% if agendamento.responsavel_whatsapp %}
+        {% set whatsapp_display = agendamento.responsavel_whatsapp %}
+        {% set whatsapp_number = agendamento.responsavel_whatsapp
+          |replace('(', '')
+          |replace(')', '')
+          |replace('-', '')
+          |replace(' ', '')
+          |replace('+', '') %}
+        <p>
+          <strong>WhatsApp:</strong>
+          <a href="https://api.whatsapp.com/send?phone={{ whatsapp_number }}" target="_blank" rel="noopener">
+            {{ whatsapp_display }}
+          </a>
+        </p>
+      {% endif %}
+
       {% if agendamento.salas_selecionadas %}
         <p><strong>Salas Selecionadas:</strong> {{ agendamento.salas_selecionadas }}</p>
       {% endif %}

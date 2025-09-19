@@ -30,27 +30,74 @@ def dashboard():
 
     if tipo == "admin":
         return redirect(url_for(endpoints.DASHBOARD_ADMIN))
-
     elif tipo == "cliente":
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
-
     elif tipo == "participante":
         return redirect(
             url_for("dashboard_participante_routes.dashboard_participante")
         )
-
     elif tipo == "ministrante":
         return redirect(
             url_for("formador_routes.dashboard_formador")
         )
-
     elif tipo == "professor":
         return redirect(url_for("dashboard_professor.dashboard_professor"))
-
     elif tipo == "superadmin":
         return redirect(url_for(endpoints.DASHBOARD_SUPERADMIN))
 
     abort(403)
+
+
+@dashboard_routes.route('/api/alertas-orcamento')
+@login_required
+def api_alertas_orcamento():
+    """API para obter alertas orçamentários do cliente."""
+    from services.alerta_orcamento_service import AlertaOrcamentoService
+    
+    if current_user.tipo != 'cliente':
+        return jsonify({'error': 'Acesso negado'}), 403
+    
+    ano = request.args.get('ano', type=int)
+    alertas = AlertaOrcamentoService.obter_alertas_cliente(current_user.id, ano)
+    
+    return jsonify(alertas)
+
+
+@dashboard_routes.route('/api/resumo-orcamentario')
+@login_required
+def api_resumo_orcamentario():
+    """API para obter resumo orçamentário do cliente."""
+    from services.alerta_orcamento_service import AlertaOrcamentoService
+    
+    if current_user.tipo != 'cliente':
+        return jsonify({'error': 'Acesso negado'}), 403
+    
+    ano = request.args.get('ano', type=int)
+    resumo = AlertaOrcamentoService.obter_resumo_orcamentario(current_user.id, ano)
+    
+    return jsonify(resumo)
+
+
+@dashboard_routes.route('/api/verificar-disponibilidade-orcamentaria')
+@login_required
+def api_verificar_disponibilidade():
+    """API para verificar disponibilidade orçamentária."""
+    from services.alerta_orcamento_service import AlertaOrcamentoService
+    
+    if current_user.tipo != 'cliente':
+        return jsonify({'error': 'Acesso negado'}), 403
+    
+    valor = request.args.get('valor', type=float)
+    tipo_gasto = request.args.get('tipo_gasto', 'total')
+    
+    if not valor:
+        return jsonify({'error': 'Valor é obrigatório'}), 400
+    
+    resultado = AlertaOrcamentoService.verificar_disponibilidade_orcamentaria(
+        current_user.id, valor, tipo_gasto
+    )
+    
+    return jsonify(resultado)
 
 @dashboard_routes.route("/dashboard_admin")
 @login_required

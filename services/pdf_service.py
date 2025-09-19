@@ -4493,3 +4493,247 @@ def formatar_brasilia(dt):
         dt = dt.replace(tzinfo=pytz.utc)
     brasilia = pytz.timezone("America/Sao_Paulo")
     return dt.astimezone(brasilia).strftime('%d/%m/%Y %H:%M:%S')
+
+@_profile
+def gerar_relatorio_necessidades(relatorio_dados, pdf_path=None):
+    """Generate a PDF summarizing material needs for purchase planning."""
+    from datetime import datetime
+    from flask import send_file
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+    import os
+    import tempfile
+
+    if not relatorio_dados:
+        raise ValueError("relatorio_dados is required")
+
+    if isinstance(relatorio_dados, dict) and "relatorio" in relatorio_dados:
+        relatorio = relatorio_dados.get("relatorio") or {}
+    else:
+        relatorio = relatorio_dados or {}
+
+    resumo = relatorio.get("resumo", {}) or {}
+    itens = relatorio.get("itens_necessarios", []) or []
+
+    if pdf_path:
+        target_path = pdf_path
+    else:
+        filename = (
+            "relatorio_necessidades_"
+            f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+        target_path = os.path.join(tempfile.gettempdir(), filename)
+
+    doc = SimpleDocTemplate(
+        target_path,
+        pagesize=A4,
+        leftMargin=1.8 * cm,
+        rightMargin=1.8 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+        title="Relatorio de Necessidades",
+    )
+
+    styles = getSampleStyleSheet()
+    styles.add(
+        ParagraphStyle(
+            name="NeedsTitle",
+            parent=styles["Title"],
+            fontSize=16,
+            textColor=colors.HexColor("#1E88E5"),
+            alignment=1,
+            spaceAfter=14,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="NeedsLabel",
+            parent=styles["Normal"],
+            fontSize=10,
+            textColor=colors.HexColor("#5A5A5A"),
+            spaceAfter=4,
+        )
+    )
+
+    story = [
+        Paragraph(
+            "Relatorio de Necessidades de Materiais",
+            styles["NeedsTitle"],
+        ),
+        Paragraph(
+            f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            styles["NeedsLabel"],
+        ),
+        Spacer(1, 12),
+    ]
+
+    resumo_rows = [
+        [
+            "Total de materiais monitorados",
+            str(resumo.get("total_materiais", 0)),
+        ],
+        [
+            "Materiais esgotados",
+            str(resumo.get("materiais_esgotados", 0)),
+        ],
+        [
+            "Materiais com estoque baixo",
+            str(resumo.get("materiais_estoque_baixo", 0)),
+        ],
+        [
+            "Materiais com estoque normal",
+            str(resumo.get("materiais_estoque_normal", 0)),
+        ],
+        [
+            "Itens priorizados",
+            str(resumo.get("total_itens_necessarios", 0)),
+        ],
+        [
+            "Valor necessario",
+            resumo.get("valor_total_necessario", 0),
+        ],
+    ]
+
+    def format_currency(value):
+        try:
+            return "R$ " + (
+                f"{float(value):,.2f}"
+                .replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
+        except (TypeError, ValueError):
+            return "R$ 0,00"
+
+    resumo_rows[-1][1] = format_currency(resumo_rows[-1][1])
+
+    resumo_table = Table(resumo_rows, colWidths=[9.2 * cm, 5.0 * cm])
+    resumo_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E3F2FD")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0D47A1")),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F5F5F5")],
+                ),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#BBDEFB")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
+
+    story.extend([resumo_table, Spacer(1, 18)])
+
+    story.append(
+        Paragraph(
+            "Itens priorizados para reposicao",
+            styles["Heading2"],
+        )
+    )
+    story.append(Spacer(1, 10))
+
+    def format_number(value):
+        try:
+            number = float(value)
+            return f"{number:,.0f}".replace(",", ".")
+        except (TypeError, ValueError):
+            return "-"
+
+    itens_rows = [
+        [
+            "Material",
+            "Polo",
+            "Qtd atual",
+            "Qtd minima",
+            "Necessario",
+            "Preco unitario",
+            "Valor necessario",
+        ]
+    ]
+
+    for item in itens:
+        itens_rows.append(
+            [
+                item.get("material", "-"),
+                item.get("polo", "-"),
+                format_number(item.get("quantidade_atual")),
+                format_number(item.get("quantidade_minima")),
+                format_number(item.get("quantidade_necessaria")),
+                format_currency(item.get("preco_unitario")),
+                format_currency(item.get("valor_necessario")),
+            ]
+        )
+
+    if len(itens_rows) > 1:
+        itens_table = Table(
+            itens_rows,
+            colWidths=[
+                4.5 * cm,
+                3.0 * cm,
+                2.1 * cm,
+                2.1 * cm,
+                2.3 * cm,
+                2.7 * cm,
+                3.0 * cm,
+            ],
+            repeatRows=1,
+        )
+        itens_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E88E5")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 9),
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                    (
+                        "GRID",
+                        (0, 0),
+                        (-1, -1),
+                        0.25,
+                        colors.HexColor("#B0BEC5"),
+                    ),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.white, colors.HexColor("#F1F5F9")],
+                    ),
+                    ("ALIGN", (2, 1), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ]
+            )
+        )
+        story.append(itens_table)
+    else:
+        story.append(
+            Paragraph(
+                "Nenhum item com necessidade de reposicao no momento.",
+                styles["Normal"],
+            )
+        )
+
+    doc.build(story)
+
+    if pdf_path:
+        return target_path
+
+    return send_file(
+        target_path,
+        as_attachment=True,
+        download_name=os.path.basename(target_path),
+    )

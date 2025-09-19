@@ -27,7 +27,12 @@ from models.event import (
 
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
+    monkeypatch.setattr(
+        'models.formulario.ensure_formulario_trabalhos',
+        lambda: None,
+    )
+
     app = create_app()
     login_manager.session_protection = None
     app.config['TESTING'] = True
@@ -93,7 +98,7 @@ def app():
             nome_completo='Monitor1',
             curso='C',
             carga_horaria_disponibilidade=10,
-            dias_disponibilidade='segunda',
+            dias_disponibilidade='segunda,terca,quarta,quinta,sexta,sabado,domingo',
             turnos_disponibilidade='manha',
             email='m1@test',
             telefone_whatsapp='1',
@@ -104,14 +109,25 @@ def app():
             nome_completo='Monitor2',
             curso='C',
             carga_horaria_disponibilidade=10,
-            dias_disponibilidade='segunda',
+            dias_disponibilidade='segunda,terca,quarta,quinta,sexta,sabado,domingo',
             turnos_disponibilidade='manha',
             email='m2@test',
             telefone_whatsapp='2',
             codigo_acesso='BBB222',
             cliente_id=cliente2.id,
         )
-        db.session.add_all([monitor1, monitor2])
+        monitor_global = Monitor(
+            nome_completo='MonitorGlobal',
+            curso='C',
+            carga_horaria_disponibilidade=10,
+            dias_disponibilidade='segunda,terca,quarta,quinta,sexta,sabado,domingo',
+            turnos_disponibilidade='manha',
+            email='mg@test',
+            telefone_whatsapp='3',
+            codigo_acesso='CCC333',
+            cliente_id=None,
+        )
+        db.session.add_all([monitor1, monitor2, monitor_global])
         db.session.commit()
 
         ag1_sem = AgendamentoVisita(
@@ -195,9 +211,49 @@ def test_client_sees_only_own_data(client, app):
 
         assert b'Monitor1' in resp.data
         assert b'Monitor2' not in resp.data
+        assert b'MonitorGlobal' in resp.data
 
         for d in c1_dates:
             assert d.encode() in resp.data
         for d in c2_dates:
             assert d.encode() not in resp.data
+
+
+def test_client_can_assign_global_monitor(client, app):
+    with app.app_context():
+        cliente1 = Cliente.query.filter_by(email='c1@test').first()
+        global_monitor = Monitor.query.filter_by(cliente_id=None).first()
+        agendamento_sem_monitor = None
+        agendamentos_cliente = AgendamentoVisita.query.filter_by(
+            cliente_id=cliente1.id
+        ).all()
+        for agendamento in agendamentos_cliente:
+            if not MonitorAgendamento.query.filter_by(
+                agendamento_id=agendamento.id
+            ).first():
+                agendamento_sem_monitor = agendamento
+                break
+        assert agendamento_sem_monitor is not None
+
+    with client:
+        login_client_session(client, cliente1.id)
+        resp = client.post(
+            '/atribuir-monitor',
+            data={
+                'agendamento_id': agendamento_sem_monitor.id,
+                'monitor_id': global_monitor.id,
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['success'] is True
+
+    with app.app_context():
+        assert (
+            MonitorAgendamento.query.filter_by(
+                monitor_id=global_monitor.id,
+                agendamento_id=agendamento_sem_monitor.id,
+            ).count()
+            == 1
+        )
 
