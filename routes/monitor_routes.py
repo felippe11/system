@@ -202,7 +202,10 @@ def dashboard():
     hoje = datetime.now().date()
     agendamentos_hoje = (
         db.session.query(AgendamentoVisita)
-        .join(MonitorAgendamento, MonitorAgendamento.agendamento_id == AgendamentoVisita.id)
+        .join(
+            MonitorAgendamento,
+            MonitorAgendamento.agendamento_id == AgendamentoVisita.id,
+        )
         .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
         .filter(
             MonitorAgendamento.monitor_id == monitor_id,
@@ -211,16 +214,50 @@ def dashboard():
         )
         .all()
     )
-    
+
+    # Buscar próximos agendamentos futuros
+    agendamentos_proximos = (
+        db.session.query(AgendamentoVisita)
+        .join(
+            MonitorAgendamento,
+            MonitorAgendamento.agendamento_id == AgendamentoVisita.id,
+        )
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .filter(
+            MonitorAgendamento.monitor_id == monitor_id,
+            MonitorAgendamento.status == 'ativo',
+            HorarioVisitacao.data > hoje,
+        )
+        .order_by(
+            HorarioVisitacao.data.asc(),
+            HorarioVisitacao.horario_inicio.asc(),
+        )
+        .all()
+    )
+
     # Estatísticas do dia
     total_agendamentos = len(agendamentos_hoje)
-    total_alunos = sum([ag.quantidade_alunos for ag in agendamentos_hoje])
-    
-    return render_template('monitor/dashboard.html', 
-                         monitor=monitor,
-                         agendamentos_hoje=agendamentos_hoje,
-                         total_agendamentos=total_agendamentos,
-                         total_alunos=total_alunos)
+    total_alunos_hoje = sum([ag.quantidade_alunos for ag in agendamentos_hoje])
+    presencas_registradas = (
+        db.session.query(db.func.count(PresencaAluno.id))
+        .filter(
+            PresencaAluno.monitor_id == monitor_id,
+            PresencaAluno.presente.is_(True),
+            db.func.date(PresencaAluno.data_registro) == hoje,
+        )
+        .scalar()
+        or 0
+    )
+
+    return render_template(
+        'monitor/dashboard.html',
+        monitor=monitor,
+        agendamentos_hoje=agendamentos_hoje,
+        agendamentos_proximos=agendamentos_proximos,
+        total_agendamentos=total_agendamentos,
+        total_alunos_hoje=total_alunos_hoje,
+        presencas_registradas=presencas_registradas,
+    )
 
 # =======================================
 # Visualização de Agendamentos
