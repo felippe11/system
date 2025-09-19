@@ -120,14 +120,13 @@ def app(monkeypatch):
             categoria="Poster",
             nome="Barema Poster",
             criterios={
-                "clareza": {
-                    "nome": "Clareza",
+                "Clareza": {
                     "descricao": "Avalia clareza da apresentação",
-                    "pontuacao_max": 5,
+                    "max": 5,
                 },
                 "Impacto": {
-                    "pontuacao_min": 2,
-                    "pontuacao_max": 10,
+                    "min": 2,
+                    "max": 10,
                 },
             },
         )
