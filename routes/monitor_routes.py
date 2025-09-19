@@ -128,7 +128,7 @@ def monitor_inscricao_submit(token):
         cliente_id=link.cliente_id,
     )
     db.session.add(monitor)
-    link.used = True
+    link.usage_count = (link.usage_count or 0) + 1
     db.session.commit()
 
     login_user(monitor)
