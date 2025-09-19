@@ -140,48 +140,53 @@
             </h6>
             
             <div class="criterios-container">
-              {% if barema and barema.requisitos %}
-                {% for requisito, faixa in barema.requisitos.items() %}
+              {% if requisitos %}
+                {% for requisito, faixa in requisitos.items() %}
+                {% set min_val = faixa.get('min', 0) %}
+                {% set max_val = faixa.get('max', 0) %}
                 <div class="criterio-item mb-4 p-3 border rounded bg-light">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <label class="form-label fw-bold mb-0">{{ requisito }}</label>
-                    <span class="badge bg-info">{{ faixa['min'] }} - {{ faixa['max'] }}</span>
+                    <span class="badge bg-info">{{ min_val }} - {{ max_val }}</span>
                   </div>
-                  
+                  {% if faixa.get('descricao') %}
+                  <p class="text-muted small mb-3">{{ faixa.get('descricao') }}</p>
+                  {% endif %}
+
                   <div class="nota-input-container">
                     <div class="row align-items-center">
                       <div class="col-8">
-                        <input type="range" 
-                               class="form-range nota-slider" 
+                        <input type="range"
+                               class="form-range nota-slider"
                                id="slider_{{ loop.index }}"
-                               min="{{ faixa['min'] }}" 
-                               max="{{ faixa['max'] }}" 
-                               step="0.1" 
-                               value="{{ faixa['min'] }}">
+                               min="{{ min_val }}"
+                               max="{{ max_val }}"
+                               step="0.1"
+                               value="{{ review.scores[requisito] if review and review.scores else min_val }}">
                       </div>
                       <div class="col-4">
                         <div class="input-group input-group-sm">
-                          <input type="number" 
-                                 name="{{ requisito }}" 
+                          <input type="number"
+                                 name="{{ requisito }}"
                                  id="nota_{{ loop.index }}"
-                                 class="form-control nota-input" 
-                                 min="{{ faixa['min'] }}" 
-                                 max="{{ faixa['max'] }}" 
-                                 step="0.1" 
-                                 value="{{ review.scores[requisito] if review and review.scores else faixa['min'] }}"
+                                 class="form-control nota-input"
+                                 min="{{ min_val }}"
+                                 max="{{ max_val }}"
+                                 step="0.1"
+                                 value="{{ review.scores[requisito] if review and review.scores else min_val }}"
                                  required>
-                          <span class="input-group-text">/ {{ faixa['max'] }}</span>
+                          <span class="input-group-text">/ {{ max_val }}</span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <!-- Indicadores visuais -->
                     <div class="d-flex justify-content-between mt-2">
-                      <small class="text-muted">{{ faixa['min'] }}</small>
+                      <small class="text-muted">{{ min_val }}</small>
                       <small class="text-success fw-bold nota-display" id="display_{{ loop.index }}">
-                        {{ review.scores[requisito] if review and review.scores else faixa['min'] }}
+                        {{ review.scores[requisito] if review and review.scores else min_val }}
                       </small>
-                      <small class="text-muted">{{ faixa['max'] }}</small>
+                      <small class="text-muted">{{ max_val }}</small>
                     </div>
                   </div>
                 </div>
@@ -233,7 +238,7 @@
           </div>
           
           <!-- Resumo da pontuação -->
-          {% if barema and barema.requisitos %}
+          {% if requisitos %}
           <div class="mb-4">
             <div class="card bg-primary text-white">
               <div class="card-body py-3">
