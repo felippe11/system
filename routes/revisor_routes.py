@@ -10,6 +10,7 @@ from __future__ import annotations
 from utils import endpoints
 from utils.barema import normalize_barema_requisitos
 
+import json
 import os
 import uuid
 from datetime import date, datetime
@@ -1039,9 +1040,39 @@ def view_candidatura(cand_id: int):
 # -----------------------------------------------------------------------------
 def get_categoria_trabalho(resposta_formulario):
     """Obtém a categoria do trabalho a partir das respostas dos campos."""
+    if not resposta_formulario:
+        return None
+
     for resposta_campo in resposta_formulario.respostas_campos:
-        if resposta_campo.campo.nome.lower() == 'categoria':
-            return resposta_campo.valor
+        campo_nome = (getattr(resposta_campo.campo, "nome", "") or "").strip().lower()
+        if "categoria" not in campo_nome:
+            continue
+
+        raw_valor = resposta_campo.valor
+        if raw_valor is None:
+            continue
+
+        if isinstance(raw_valor, str):
+            valor = raw_valor.strip()
+            if not valor:
+                continue
+
+            # Algumas respostas chegam serializadas como listas JSON (ex.: "[\"Categoria\"]").
+            if valor.startswith("[") and valor.endswith("]"):
+                try:
+                    parsed = json.loads(valor)
+                except (TypeError, ValueError):
+                    parsed = None
+                else:
+                    if isinstance(parsed, list) and parsed:
+                        valor = str(parsed[0]).strip()
+
+            return valor
+
+        # Se o valor já vier como lista (ex.: seleção múltipla), pegar o primeiro item.
+        if isinstance(raw_valor, list) and raw_valor:
+            return str(raw_valor[0]).strip()
+
     return None
 
 @revisor_routes.route("/revisor/avaliar/<int:submission_id>", methods=["GET", "POST"])
