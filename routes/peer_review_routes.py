@@ -31,8 +31,6 @@ from models import (
     CategoriaBarema,
     EventoBarema,
     RespostaFormulario,
-    RespostaCampo,
-    CampoFormulario,
 )
 
 import uuid
@@ -761,29 +759,30 @@ def create_review():
 # ---------------------------------------------------------------------------
 def get_categoria_trabalho_peer_review(submission):
     """Obtém a categoria do trabalho a partir das respostas do formulário.
-    
+
     Args:
         submission: Objeto Submission
-        
+
     Returns:
         str: Nome da categoria ou None se não encontrada
     """
     try:
-        categoria_resposta = (
-            RespostaCampo.query
-            .join(RespostaFormulario)
-            .join(CampoFormulario)
-            .filter(
-                RespostaFormulario.trabalho_id == submission.id,
-                RespostaFormulario.evento_id == submission.evento_id,
-                CampoFormulario.nome.ilike('%categoria%')
+        from routes.revisor_routes import get_categoria_trabalho
+
+        respostas_formulario = (
+            RespostaFormulario.query
+            .filter_by(
+                trabalho_id=submission.id,
+                evento_id=submission.evento_id,
             )
             .order_by(RespostaFormulario.id)
-            .first()
+            .all()
         )
 
-        if categoria_resposta and categoria_resposta.valor:
-            return categoria_resposta.valor.strip()
+        for resposta_formulario in respostas_formulario:
+            categoria = get_categoria_trabalho(resposta_formulario)
+            if categoria:
+                return categoria
 
         return None
     except Exception as e:
