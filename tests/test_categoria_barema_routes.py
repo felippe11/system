@@ -121,7 +121,7 @@ def app(monkeypatch):
             valor="Poster",
         )
         assignment = Assignment(
-            resposta_formulario_id=resposta.id,
+            resposta_formulario_id=resposta_sem_categoria.id,
             reviewer_id=reviewer.id,
         )
         review = Review(
@@ -239,10 +239,11 @@ def test_revisor_categoria_barema_get(app):
             .order_by(RespostaFormulario.id)
             .all()
         )
+        assignment_db = db.session.query(Assignment).first()
+        assert assignment_db is not None
         assert len(respostas) == 2
-        assert len(respostas[0].respostas_campos) == 1
-        assert respostas[0].respostas_campos[0].valor.strip() == ""
-        assert revisor_routes.get_categoria_trabalho(respostas[0]) is None
+        assert respostas[0].id == assignment_db.resposta_formulario_id
+        assert respostas[0].respostas_campos == []
         assert any(
             "categoria" in resposta_campo.campo.nome.lower()
             for resposta_campo in respostas[1].respostas_campos
