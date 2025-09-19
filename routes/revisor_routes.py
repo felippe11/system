@@ -1043,35 +1043,55 @@ def get_categoria_trabalho(resposta_formulario):
     if not resposta_formulario:
         return None
 
-    for resposta_campo in resposta_formulario.respostas_campos:
-        campo_nome = (getattr(resposta_campo.campo, "nome", "") or "").strip().lower()
-        if "categoria" not in campo_nome:
-            continue
-
-        raw_valor = resposta_campo.valor
+    def _normalizar_valor_categoria(raw_valor):
+        """Extrai uma string limpa a partir de diferentes formatos de resposta."""
         if raw_valor is None:
-            continue
+            return None
 
         if isinstance(raw_valor, str):
             valor = raw_valor.strip()
             if not valor:
-                continue
+                return None
 
-            # Algumas respostas chegam serializadas como listas JSON (ex.: "[\"Categoria\"]").
             if valor.startswith("[") and valor.endswith("]"):
                 try:
                     parsed = json.loads(valor)
                 except (TypeError, ValueError):
-                    parsed = None
-                else:
-                    if isinstance(parsed, list) and parsed:
-                        valor = str(parsed[0]).strip()
+                    return valor
+                normalizado = _normalizar_valor_categoria(parsed)
+                if normalizado:
+                    return normalizado
+                return None
 
             return valor
 
-        # Se o valor já vier como lista (ex.: seleção múltipla), pegar o primeiro item.
-        if isinstance(raw_valor, list) and raw_valor:
-            return str(raw_valor[0]).strip()
+        if isinstance(raw_valor, list):
+            for item in raw_valor:
+                normalizado = _normalizar_valor_categoria(item)
+                if normalizado:
+                    return normalizado
+            return None
+
+        if isinstance(raw_valor, dict):
+            for chave in ("value", "label", "nome"):
+                if chave in raw_valor:
+                    normalizado = _normalizar_valor_categoria(raw_valor[chave])
+                    if normalizado:
+                        return normalizado
+            return None
+
+        valor = str(raw_valor).strip()
+        return valor or None
+
+    for resposta_campo in resposta_formulario.respostas_campos:
+        campo = getattr(resposta_campo, "campo", None)
+        campo_nome = str(getattr(campo, "nome", "") or "").strip().lower()
+        if "categoria" not in campo_nome:
+            continue
+
+        valor_normalizado = _normalizar_valor_categoria(resposta_campo.valor)
+        if valor_normalizado:
+            return valor_normalizado
 
     return None
 
