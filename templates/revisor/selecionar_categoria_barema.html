@@ -18,9 +18,17 @@
                         <h5>Trabalho a ser avaliado:</h5>
                         <div class="alert alert-info">
                             <strong>{{ trabalho.title }}</strong>
-                            {% if trabalho.author %}
-                                <br><small class="text-muted">Autor: {{ trabalho.author }}</small>
-                            {% endif %}
+                                <p class="mb-0"><strong>Categoria:</strong> 
+                                    {% if categoria == 'Prática Educacional' %}
+                                        <span class="badge badge-primary">{{ categoria }}</span>
+                                    {% elif categoria == 'Pesquisa Inovadora' %}
+                                        <span class="badge badge-success">{{ categoria }}</span>
+                                    {% elif categoria == 'Produto Inovador' %}
+                                        <span class="badge badge-warning">{{ categoria }}</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">{{ categoria }}</span>
+                                    {% endif %}
+                                </p>
                         </div>
                     </div>
 

@@ -78,9 +78,10 @@ def submeter_trabalho():
             return redirect(url_for("trabalho_routes.submeter_trabalho"))
 
         evento = Evento.query.get(evento_id)
-        if not evento or not evento.submissao_aberta:
-            flash("Submissão encerrada para seu evento.", "danger")
+        if not evento:
+            flash("Evento não encontrado.", "danger")
             return redirect(url_for("trabalho_routes.submeter_trabalho"))
+        # Submissão sempre permitida - validação removida
 
         resposta_formulario = RespostaFormulario(
             formulario_id=formulario.id, usuario_id=current_user.id
@@ -317,17 +318,25 @@ def novo_trabalho():
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
     
     if request.method == "POST":
+        current_app.logger.info(f"POST recebido para novo trabalho - Usuário: {current_user.id} ({current_user.nome})")
+        current_app.logger.info(f"Dados do formulário: {dict(request.form)}")
+        
         # Validar evento selecionado
         evento_id = request.form.get('evento_id')
+        current_app.logger.info(f"Evento ID recebido: {evento_id}")
         if not evento_id:
+            current_app.logger.warning("Evento não selecionado")
             flash("Por favor, selecione um evento.", "warning")
             return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
         
         # Verificar se o evento pertence ao cliente
+        current_app.logger.info(f"Verificando evento {evento_id} para cliente {current_user.id}")
         evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
         if not evento:
+            current_app.logger.error(f"Evento {evento_id} não encontrado ou não pertence ao cliente {current_user.id}")
             flash("Evento inválido.", "danger")
             return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
+        current_app.logger.info(f"Evento válido encontrado: {evento.nome}")
         
         # Primeiro, processar campos do formulário para obter título
         titulo = None
@@ -351,12 +360,21 @@ def novo_trabalho():
         titulo = titulo or "Trabalho sem título"
         
         try:
+            # Log detalhado para debug
+            current_app.logger.info(f"Tentando criar submissão - Título: {titulo}, Autor: {current_user.id}, Evento: {evento_id}")
+            current_app.logger.info(f"Campos processados: {campos_valores}")
+            
+            # Permitir múltiplos trabalhos por usuário no mesmo evento
+            current_app.logger.info(f"Criando nova submissão para usuário {current_user.id} no evento {evento_id}")
+            
             # Criar submissão usando o serviço
             submission = SubmissionService.create_submission(
                 title=titulo,
                 author_id=current_user.id,
                 evento_id=int(evento_id)
             )
+            
+            current_app.logger.info(f"Submissão criada com sucesso - ID: {submission.id}")
             
             # Criar nova resposta do formulário vinculada à submissão
             resposta_formulario = RespostaFormulario(
@@ -368,6 +386,8 @@ def novo_trabalho():
             db.session.add(resposta_formulario)
             db.session.flush()
             
+            current_app.logger.info(f"RespostaFormulario criada - ID: {resposta_formulario.id}")
+            
             # Criar respostas dos campos
             for campo_id, valor in campos_valores.items():
                 resposta_campo = RespostaCampoFormulario(
@@ -378,17 +398,20 @@ def novo_trabalho():
                 db.session.add(resposta_campo)
             
             db.session.commit()
+            current_app.logger.info("Trabalho cadastrado com sucesso no banco de dados")
             flash("Trabalho cadastrado com sucesso!", "success")
             return redirect(url_for("trabalho_routes.listar_trabalhos"))
             
         except ValueError as e:
             db.session.rollback()
+            current_app.logger.error(f"Erro de validação ao cadastrar trabalho: {e}")
             flash(str(e), "warning")
             return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Erro inesperado ao cadastrar trabalho: {e}", exc_info=True)
             flash("Erro ao cadastrar trabalho. Tente novamente.", "danger")
-            current_app.logger.error(f"Erro ao cadastrar trabalho: {e}")
+            return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
     
     return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
 

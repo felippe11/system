@@ -638,20 +638,30 @@ def progress(codigo: str):
                     db.joinedload(Assignment.reviewer)
                 )
                 .filter_by(reviewer_id=revisor_user.id)
-                # Garantir que apenas assignments distribuídos sejam mostrados
-                .filter(Assignment.distribution_date.isnot(None))
             )
             
-            # Filtrar por evento se disponível
+            # Filtrar por evento se disponível e se há respostas com evento_id válido
             if evento_id:
                 from models.event import RespostaFormulario
-
-                query = (
-                    query.join(
-                        RespostaFormulario,
-                        Assignment.resposta_formulario_id == RespostaFormulario.id,
-                    ).filter(RespostaFormulario.evento_id == evento_id)
+                
+                # Verificar se existem respostas com este evento_id
+                respostas_com_evento = (
+                    RespostaFormulario.query
+                    .join(Assignment, Assignment.resposta_formulario_id == RespostaFormulario.id)
+                    .filter(
+                        Assignment.reviewer_id == revisor_user.id,
+                        RespostaFormulario.evento_id == evento_id
+                    ).count()
                 )
+                
+                # Só filtrar por evento se existirem respostas com evento_id válido
+                if respostas_com_evento > 0:
+                    query = (
+                        query.join(
+                            RespostaFormulario,
+                            Assignment.resposta_formulario_id == RespostaFormulario.id,
+                        ).filter(RespostaFormulario.evento_id == evento_id)
+                    )
 
             assignments = query.all()
 
@@ -1528,6 +1538,9 @@ def selecionar_categoria_barema(trabalho_id):
             if candidatura:
                 codigo_candidatura = candidatura.codigo
         
+        # Obter a categoria do trabalho usando a função existente
+        categoria_trabalho = resolve_categoria_trabalho(trabalho, assignment)
+        
         # Categorias disponíveis
         categorias = [
             "Prática Educacional",
@@ -1536,10 +1549,12 @@ def selecionar_categoria_barema(trabalho_id):
         ]
         
         logging.info(f"[DEBUG] Renderizando template com {len(categorias)} categorias")
+        logging.info(f"[DEBUG] Categoria do trabalho: {categoria_trabalho}")
         return render_template(
             "revisor/selecionar_categoria_barema.html",
             trabalho=trabalho,
             categorias=categorias,
+            categoria=categoria_trabalho,
             codigo_candidatura=codigo_candidatura
         )
     except Exception as e:
@@ -1555,6 +1570,7 @@ def avaliar_barema(trabalho_id, categoria):
     """Interface de avaliação baseada nos critérios do barema da categoria selecionada."""
     from models.review import Submission, CategoriaBarema, EventoBarema
     from models.avaliacao import AvaliacaoBarema, AvaliacaoCriterio
+    from models.event import RespostaFormulario
     
     # Verificar se o usuário é um revisor (comentado para permitir acesso via código)
     # if current_user.tipo not in ("revisor", "admin", "superadmin"):
@@ -1563,6 +1579,28 @@ def avaliar_barema(trabalho_id, categoria):
     
     # Buscar o trabalho
     trabalho = Submission.query.get_or_404(trabalho_id)
+    
+    # Buscar o assignment para obter o código da candidatura (definir no início)
+    assignment = (
+        Assignment.query
+        .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+        .filter(RespostaFormulario.trabalho_id == trabalho_id)
+        .first()
+    )
+    
+    codigo_candidatura = None
+    if assignment and assignment.reviewer:
+        # Buscar a candidatura do revisor
+        candidatura = RevisorCandidatura.query.filter_by(
+            email=assignment.reviewer.email
+        ).first()
+        if candidatura:
+            codigo_candidatura = candidatura.codigo
+    
+    # Resolver a categoria real do trabalho usando a função existente
+    categoria_real = resolve_categoria_trabalho(trabalho, assignment)
+    if not categoria_real:
+        categoria_real = categoria  # Fallback para o parâmetro da URL
     
     # Buscar o barema da categoria
     barema = CategoriaBarema.query.filter_by(
@@ -1605,6 +1643,19 @@ def avaliar_barema(trabalho_id, categoria):
         # Usar ID genérico para revisor quando não logado
         revisor_id = current_user.id if current_user.is_authenticated else 1
         
+        # Determinar o nome do revisor usando a mesma lógica da rota progress
+        nome_revisor = None
+        if assignment and assignment.reviewer:
+            candidatura = RevisorCandidatura.query.filter_by(
+                email=assignment.reviewer.email
+            ).first()
+            if candidatura:
+                nome_revisor = candidatura.nome
+                if candidatura.status == 'aprovado':
+                    revisor_user = Usuario.query.filter_by(email=candidatura.email).first()
+                    if revisor_user and revisor_user.nome:
+                        nome_revisor = revisor_user.nome
+        
         avaliacao = AvaliacaoBarema.query.filter_by(
             trabalho_id=trabalho_id,
             revisor_id=revisor_id,
@@ -1615,11 +1666,15 @@ def avaliar_barema(trabalho_id, categoria):
             avaliacao = AvaliacaoBarema(
                 trabalho_id=trabalho_id,
                 revisor_id=revisor_id,
+                nome_revisor=nome_revisor,
                 barema_id=barema.id,
-                categoria=categoria
+                categoria=categoria_real
             )
             db.session.add(avaliacao)
             db.session.flush()  # Para obter o ID
+        else:
+            # Atualizar o nome do revisor se a avaliação já existe
+            avaliacao.nome_revisor = nome_revisor
         
         # Salvar avaliações dos critérios
         for criterio in criterios:
@@ -1650,15 +1705,33 @@ def avaliar_barema(trabalho_id, categoria):
         avaliacao.nota_final = nota_final
         avaliacao.data_avaliacao = datetime.now()
         
+        # Atualizar o status do assignment para completed
+        if assignment:
+            assignment.completed = True
+        
         db.session.commit()
         
         flash("Avaliação salva com sucesso!", "success")
-        return redirect(url_for("revisor_routes.progress"))
+        return redirect(url_for("revisor_routes.progress", codigo=codigo_candidatura))
+    
+    # Buscar o pdf_url através da RespostaFormulario
+    pdf_url = None
+    
+    if assignment and assignment.resposta_formulario:
+        resposta = assignment.resposta_formulario
+        for resposta_campo in resposta.respostas_campos:
+            if resposta_campo.campo.tipo == 'url' and 'pdf' in resposta_campo.campo.nome.lower():
+                pdf_url = resposta_campo.valor
+                break
+    
+    # Adicionar pdf_url ao objeto trabalho para compatibilidade com o template
+    trabalho.pdf_url = pdf_url
     
     return render_template(
         "revisor/avaliar_barema.html",
         trabalho=trabalho,
         barema=barema,
         criterios=criterios,
-        categoria=categoria
+        categoria=categoria_real,
+        codigo_candidatura=codigo_candidatura
     )

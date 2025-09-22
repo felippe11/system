@@ -19,19 +19,13 @@ class SubmissionService:
                          abstract: str = None, area_id: int = None) -> Submission:
         """Cria uma nova submissão com validações."""
         
-        # Validar se já existe submissão do autor para o evento
-        existing = Submission.query.filter_by(
-            author_id=author_id, 
-            evento_id=evento_id
-        ).first()
+        # Permitir múltiplas submissões do mesmo usuário para o mesmo evento
+        # Validação de submissão única removida para permitir flexibilidade
         
-        if existing:
-            raise ValueError("Usuário já possui submissão para este evento")
-        
-        # Validar prazo de submissão
+        # Validar se evento existe
         evento = Evento.query.get(evento_id)
-        if not evento or not evento.submissao_aberta:
-            raise ValueError("Submissão encerrada para este evento")
+        if not evento:
+            raise ValueError("Evento não encontrado")
         
         # Validar tamanho do arquivo se fornecido
         if file_path:
@@ -42,6 +36,12 @@ class SubmissionService:
                 if file_size > max_size:
                     raise ValueError("Arquivo muito grande (máximo 50MB)")
         
+        # Gerar código de acesso e hash
+        import secrets
+        from werkzeug.security import generate_password_hash
+        access_code = secrets.token_urlsafe(8)  # Código de 8 caracteres
+        code_hash = generate_password_hash(access_code)
+        
         submission = Submission(
             title=title,
             author_id=author_id,
@@ -50,17 +50,18 @@ class SubmissionService:
             content=content,
             abstract=abstract,
             area_id=area_id,
-            status='submitted'
+            status='submitted',
+            code_hash=code_hash
         )
         
         db.session.add(submission)
         db.session.flush()
         
-        # Atribuir revisores automaticamente
-        try:
-            SubmissionService.auto_assign_reviewers(submission.id)
-        except Exception as e:
-            logger.warning(f"Erro na atribuição automática de revisores: {e}")
+        # Atribuir revisores automaticamente (temporariamente desabilitado)
+        # try:
+        #     SubmissionService.auto_assign_reviewers(submission.id)
+        # except Exception as e:
+        #     logger.warning(f"Erro na atribuição automática de revisores: {e}")
         
         db.session.commit()
         return submission
@@ -94,7 +95,7 @@ class SubmissionService:
         assignments = []
         for revisor in revisores[:num_revisores]:
             assignment = Assignment(
-                submission_id=submission_id,
+                resposta_formulario_id=submission_id,  # Corrigido: usar resposta_formulario_id
                 reviewer_id=revisor.id,
                 deadline=datetime.utcnow() + timedelta(days=prazo_dias)
             )

@@ -11,6 +11,7 @@ class AvaliacaoBarema(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     trabalho_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=False)
     revisor_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    nome_revisor = db.Column(db.String(255), nullable=True)  # Nome do revisor exibido na página
     barema_id = db.Column(db.Integer, nullable=False)  # Pode referenciar CategoriaBarema ou EventoBarema
     categoria = db.Column(db.String(255), nullable=False)
     nota_final = db.Column(db.Float, nullable=True)
