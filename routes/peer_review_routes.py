@@ -889,9 +889,17 @@ def review_form(locator):
             )
         review.submitted_at = review.finished_at
 
-        assignment = Assignment.query.filter_by(
-            submission_id=review.submission_id, reviewer_id=review.reviewer_id
-        ).first()
+        assignment = (
+            Assignment.query.join(
+                RespostaFormulario,
+                Assignment.resposta_formulario_id == RespostaFormulario.id,
+            )
+            .filter(
+                Assignment.reviewer_id == review.reviewer_id,
+                RespostaFormulario.trabalho_id == review.submission_id,
+            )
+            .first()
+        )
         if assignment:
             assignment.completed = True
 
