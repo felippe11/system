@@ -1199,6 +1199,11 @@ def avaliar(submission_id: int):
     # Usar barema específico se disponível, senão usar o geral
     barema = barema_categoria if barema_categoria else barema_geral
     requisitos = normalize_barema_requisitos(barema)
+    usando_barema_categoria = bool(barema_categoria and barema is barema_categoria)
+    barema_label = getattr(barema, "nome", None)
+    if not barema_label:
+        barema_label = "Barema da categoria" if usando_barema_categoria else "Barema geral do evento"
+    barema_descricao = getattr(barema, "descricao", None)
     
     # Buscar review apenas se o usuário estiver autenticado
     review = None
@@ -1214,12 +1219,26 @@ def avaliar(submission_id: int):
             flash("Você precisa estar logado para submeter uma avaliação!", "warning")
             return redirect(url_for("auth_routes.login"))
 
-        scores: Dict[str, int] = {}
+        scores: Dict[str, float] = {}
 
         for requisito, faixa in requisitos.items():
             nota_raw = request.form.get(requisito)
             if nota_raw:
-                nota = int(nota_raw)
+                try:
+                    nota = float(nota_raw)
+                except ValueError:
+                    flash(f"Nota inválida informada para {requisito}.", "danger")
+                    return render_template(
+                        "revisor/avaliacao.html",
+                        submission=submission,
+                        barema=barema,
+                        requisitos=requisitos,
+                        review=review,
+                        categoria_trabalho=categoria_trabalho,
+                        usando_barema_categoria=usando_barema_categoria,
+                        barema_label=barema_label,
+                        barema_descricao=barema_descricao,
+                    )
                 min_val = faixa.get("min", 0)
                 max_val = faixa.get("max")
                 if max_val is not None and (nota < min_val or nota > max_val):
@@ -1233,6 +1252,10 @@ def avaliar(submission_id: int):
                         barema=barema,
                         requisitos=requisitos,
                         review=review,
+                        categoria_trabalho=categoria_trabalho,
+                        usando_barema_categoria=usando_barema_categoria,
+                        barema_label=barema_label,
+                        barema_descricao=barema_descricao,
                     )
                 scores[requisito] = nota
 
@@ -1253,6 +1276,10 @@ def avaliar(submission_id: int):
         barema=barema,
         review=review,
         requisitos=requisitos,
+        categoria_trabalho=categoria_trabalho,
+        usando_barema_categoria=usando_barema_categoria,
+        barema_label=barema_label,
+        barema_descricao=barema_descricao,
     )
 
 

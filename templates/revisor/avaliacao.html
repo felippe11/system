@@ -46,15 +46,38 @@
         <form method="POST" id="avaliacaoForm">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           
-          {% if barema and barema.requisitos %}
+          {% if requisitos %}
             <div class="mb-4">
               <h6 class="text-primary mb-3">
                 <i class="bi bi-list-check me-2"></i>Critérios de Avaliação
               </h6>
+              {% if categoria_trabalho %}
+              <div class="alert alert-primary py-2">
+                <small class="mb-0"><strong>Categoria:</strong> {{ categoria_trabalho }}</small>
+              </div>
+              {% endif %}
+              {% if barema_label %}
+              <div class="alert alert-secondary py-2">
+                <small class="mb-0">
+                  <strong>Barema aplicado:</strong> {{ barema_label }}
+                  {% if usando_barema_categoria %}
+                    <span class="badge bg-success ms-2">Categoria</span>
+                  {% else %}
+                    <span class="badge bg-info text-dark ms-2">Evento</span>
+                  {% endif %}
+                </small>
+                {% if barema_descricao %}
+                  <p class="small text-muted mb-0 mt-2">{{ barema_descricao }}</p>
+                {% endif %}
+              </div>
+              {% endif %}
               
-              {% for requisito, faixa in barema.requisitos.items() %}
+              {% for requisito, faixa in requisitos.items() %}
               <div class="mb-4">
                 <label class="form-label fw-bold">{{ requisito }}</label>
+                {% if faixa.descricao %}
+                  <p class="text-muted small mb-2">{{ faixa.descricao }}</p>
+                {% endif %}
                 <div class="d-flex align-items-center mb-2">
                   <small class="text-muted me-2">{{ faixa['min'] }}</small>
                   <input
@@ -63,6 +86,7 @@
                     id="range_{{ loop.index }}"
                     min="{{ faixa['min'] }}"
                     max="{{ faixa['max'] }}"
+                    step="any"
                     value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else faixa['min'] }}"
                     oninput="updateNumberInput('{{ requisito }}', this.value)"
                   >
@@ -75,6 +99,7 @@
                   id="{{ requisito }}"
                   min="{{ faixa['min'] }}"
                   max="{{ faixa['max'] }}"
+                  step="any"
                   value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else faixa['min'] }}"
                   oninput="updateRangeInput('range_{{ loop.index }}', this.value)"
                   required
@@ -137,12 +162,12 @@ function calcularResumo() {
   
   inputs.forEach(input => {
     if (input.value && !isNaN(input.value)) {
-      total += parseInt(input.value);
+      total += parseFloat(input.value);
       count++;
     }
   });
   
-  document.getElementById('totalPontos').textContent = total;
+  document.getElementById('totalPontos').textContent = total.toFixed(2).replace(/\.00$/, '');
   document.getElementById('mediaPontos').textContent = count > 0 ? (total / count).toFixed(1) : '0.0';
 }
 
