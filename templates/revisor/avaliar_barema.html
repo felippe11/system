@@ -10,7 +10,7 @@
                 <div class="card-header">
                     <h4 class="mb-0">
                         <i class="fas fa-clipboard-check"></i>
-                        Avaliação por Barema - {{ categoria }}
+                        Avaliação por Barema
                     </h4>
                 </div>
                 <div class="card-body">
@@ -19,9 +19,7 @@
                         <div class="col-md-8">
                             <div class="alert alert-info">
                                 <h5 class="mb-2">{{ trabalho.title }}</h5>
-                                {% if trabalho.author %}
-                                    <p class="mb-1"><strong>Autor:</strong> {{ trabalho.author }}</p>
-                                {% endif %}
+
                                 <p class="mb-0"><strong>Categoria:</strong> 
                                     <span class="badge badge-primary">{{ categoria }}</span>
                                 </p>
@@ -29,10 +27,11 @@
                         </div>
                         <div class="col-md-4">
                             <div class="text-right">
-                                <a href="{{ url_for('revisor_routes.progress') }}/{{ trabalho.id }}/pdf" 
-                                   class="btn btn-outline-primary" target="_blank">
-                                    <i class="fas fa-file-pdf"></i> Ver PDF
-                                </a>
+                                {% if codigo_candidatura %}
+                                    <a href="{{ trabalho.pdf_url }}" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-file-earmark-pdf"></i> Ver PDF
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

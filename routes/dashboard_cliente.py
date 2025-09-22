@@ -15,15 +15,20 @@ from utils import endpoints
 from utils.barema import normalize_barema_requisitos
 
 logger = logging.getLogger(__name__)
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, desc
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
+import json
 from models import (
     Evento, Oficina, Inscricao, Checkin,
     ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
     EventoInscricaoTipo, Configuracao, ReviewerApplication,
     RevisorCandidatura, RevisorProcess, Formulario,
 )
+from models.avaliacao import AvaliacaoBarema, AvaliacaoCriterio
+from models.event import RespostaFormulario
+from models.review import Submission
+from routes.revisor_routes import resolve_categoria_trabalho
 
 # Modelos opcionais usados no dashboard de agendamentos. Em alguns ambientes
 # eles podem não estar disponíveis (por exemplo, em testes ou em instalações
@@ -960,4 +965,237 @@ def testar_barema(evento_id, categoria):
         barema=barema,
         requisitos=requisitos,
         total_max=total_max
+    )
+
+@dashboard_routes.route('/metricas_baremas')
+@login_required
+def metricas_baremas():
+    """Página de métricas das respostas dos baremas por trabalho/categoria."""
+    if current_user.tipo not in ('cliente', 'admin'):
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    # Filtros da requisição
+    categoria_filtro = request.args.get('categoria', '')
+    periodo_inicio = request.args.get('periodo_inicio', '')
+    periodo_fim = request.args.get('periodo_fim', '')
+    criterio_filtro = request.args.get('criterio', '')
+    
+    # Buscar todas as avaliações de baremas com joins necessários
+    avaliacoes_query = db.session.query(AvaliacaoBarema).join(
+        Submission, AvaliacaoBarema.trabalho_id == Submission.id
+    )
+    
+    # Filtrar por eventos do cliente
+    if current_user.tipo == 'cliente':
+        avaliacoes_query = avaliacoes_query.join(Evento, Submission.evento_id == Evento.id).filter(Evento.cliente_id == current_user.id)
+    
+    # Aplicar filtros se fornecidos
+    if categoria_filtro:
+        avaliacoes_query = avaliacoes_query.filter(AvaliacaoBarema.categoria == categoria_filtro)
+    
+    if periodo_inicio:
+        try:
+            data_inicio = datetime.strptime(periodo_inicio, '%Y-%m-%d')
+            avaliacoes_query = avaliacoes_query.filter(AvaliacaoBarema.data_avaliacao >= data_inicio)
+        except ValueError:
+            pass
+    
+    if periodo_fim:
+        try:
+            data_fim = datetime.strptime(periodo_fim, '%Y-%m-%d')
+            avaliacoes_query = avaliacoes_query.filter(AvaliacaoBarema.data_avaliacao <= data_fim)
+        except ValueError:
+            pass
+    
+    avaliacoes = avaliacoes_query.all()
+    
+    # Buscar todas as categorias existentes nas avaliações
+    categorias_existentes = db.session.query(AvaliacaoBarema.categoria).distinct().all()
+    categorias = [cat[0] for cat in categorias_existentes if cat[0]]
+    
+    # Adicionar categorias padrão se não existirem
+    categorias_padrao = ['Prática Educacional', 'Pesquisa Inovadora', 'Produto Inovador']
+    for cat in categorias_padrao:
+        if cat not in categorias:
+            categorias.append(cat)
+    
+    # Buscar todos os critérios de avaliação
+    from models.avaliacao import AvaliacaoCriterio
+    from models.review import CategoriaBarema
+    
+    criterios_query = db.session.query(AvaliacaoCriterio).join(
+        AvaliacaoBarema, AvaliacaoCriterio.avaliacao_id == AvaliacaoBarema.id
+    ).join(Submission, AvaliacaoBarema.trabalho_id == Submission.id)
+    
+    # Filtrar critérios por eventos do cliente
+    if current_user.tipo == 'cliente':
+        criterios_query = criterios_query.join(Evento, Submission.evento_id == Evento.id).filter(Evento.cliente_id == current_user.id)
+    
+    # Aplicar filtros aos critérios
+    if categoria_filtro:
+        criterios_query = criterios_query.filter(AvaliacaoBarema.categoria == categoria_filtro)
+    
+    if periodo_inicio:
+        try:
+            data_inicio = datetime.strptime(periodo_inicio, '%Y-%m-%d')
+            criterios_query = criterios_query.filter(AvaliacaoBarema.data_avaliacao >= data_inicio)
+        except ValueError:
+            pass
+    
+    if periodo_fim:
+        try:
+            data_fim = datetime.strptime(periodo_fim, '%Y-%m-%d')
+            criterios_query = criterios_query.filter(AvaliacaoBarema.data_avaliacao <= data_fim)
+        except ValueError:
+            pass
+    
+    criterios_avaliacoes = criterios_query.all()
+    
+    # Buscar baremas por categoria para obter os nomes dos critérios
+    baremas_por_categoria = {}
+    for categoria in categorias:
+        # Buscar eventos do cliente para esta categoria
+        eventos_cliente = []
+        if current_user.tipo == 'cliente':
+            eventos_cliente = db.session.query(Evento.id).filter(Evento.cliente_id == current_user.id).all()
+            eventos_cliente = [e[0] for e in eventos_cliente]
+        
+        if eventos_cliente:
+            barema_categoria = db.session.query(CategoriaBarema).filter(
+                CategoriaBarema.categoria == categoria,
+                CategoriaBarema.evento_id.in_(eventos_cliente),
+                CategoriaBarema.ativo == True
+            ).first()
+            
+            if barema_categoria and barema_categoria.criterios:
+                baremas_por_categoria[categoria] = barema_categoria.criterios
+    
+    # Obter lista de todos os critérios únicos
+    criterios_unicos = list(set([c.criterio_id for c in criterios_avaliacoes]))
+    criterios_unicos.sort()
+    
+    # Calcular estatísticas por categoria
+    estatisticas = {}
+    
+    for categoria in categorias:
+        avaliacoes_categoria = [av for av in avaliacoes if av.categoria == categoria]
+        
+        if avaliacoes_categoria:
+            notas = [av.nota_final for av in avaliacoes_categoria if av.nota_final is not None]
+            estatisticas[categoria] = {
+                'total_avaliacoes': len(avaliacoes_categoria),
+                'nota_media': round(sum(notas) / len(notas), 2) if notas else 0,
+                'nota_maxima': max(notas) if notas else 0,
+                'nota_minima': min(notas) if notas else 0,
+                'avaliacoes': avaliacoes_categoria[:10]  # Últimas 10 avaliações para a tabela
+            }
+        else:
+            estatisticas[categoria] = {
+                'total_avaliacoes': 0,
+                'nota_media': 0,
+                'nota_maxima': 0,
+                'nota_minima': 0,
+                'avaliacoes': []
+            }
+    
+    # Calcular estatísticas por critério organizadas por categoria
+    estatisticas_criterios_por_categoria = {}
+    
+    for categoria in categorias:
+        estatisticas_criterios_por_categoria[categoria] = {}
+        
+        # Obter critérios específicos desta categoria do barema
+        criterios_categoria = baremas_por_categoria.get(categoria, {})
+        
+        for criterio_key, criterio_dados in criterios_categoria.items():
+            # Buscar avaliações deste critério específico para esta categoria
+            criterios_do_criterio = [
+                c for c in criterios_avaliacoes 
+                if c.criterio_id == criterio_key and c.avaliacao.categoria == categoria
+            ]
+            
+            if criterios_do_criterio:
+                notas_criterio = [c.nota for c in criterios_do_criterio if c.nota is not None]
+                
+                estatisticas_criterios_por_categoria[categoria][criterio_key] = {
+                    'nome': criterio_dados.get('nome', criterio_key),
+                    'descricao': criterio_dados.get('descricao', ''),
+                    'pontuacao_max': criterio_dados.get('pontuacao_max', 10),
+                    'total_avaliacoes': len(criterios_do_criterio),
+                    'nota_media': round(sum(notas_criterio) / len(notas_criterio), 2) if notas_criterio else 0,
+                    'nota_maxima': max(notas_criterio) if notas_criterio else 0,
+                    'nota_minima': min(notas_criterio) if notas_criterio else 0,
+                    'distribuicao_notas': {
+                        '0-2': len([n for n in notas_criterio if 0 <= n <= 2]),
+                        '3-5': len([n for n in notas_criterio if 3 <= n <= 5]),
+                        '6-8': len([n for n in notas_criterio if 6 <= n <= 8]),
+                        '9-10': len([n for n in notas_criterio if 9 <= n <= 10])
+                    }
+                }
+            else:
+                # Critério sem avaliações
+                estatisticas_criterios_por_categoria[categoria][criterio_key] = {
+                    'nome': criterio_dados.get('nome', criterio_key),
+                    'descricao': criterio_dados.get('descricao', ''),
+                    'pontuacao_max': criterio_dados.get('pontuacao_max', 10),
+                    'total_avaliacoes': 0,
+                    'nota_media': 0,
+                    'nota_maxima': 0,
+                    'nota_minima': 0,
+                    'distribuicao_notas': {
+                        '0-2': 0,
+                        '3-5': 0,
+                        '6-8': 0,
+                        '9-10': 0
+                    }
+                }
+    
+    # Manter estatísticas gerais por critério para compatibilidade
+    estatisticas_criterios = {}
+    for criterio_id in criterios_unicos:
+        criterios_do_criterio = [c for c in criterios_avaliacoes if c.criterio_id == criterio_id]
+        
+        if criterios_do_criterio:
+            notas_criterio = [c.nota for c in criterios_do_criterio if c.nota is not None]
+            
+            estatisticas_criterios[criterio_id] = {
+                'total_avaliacoes': len(criterios_do_criterio),
+                'nota_media': round(sum(notas_criterio) / len(notas_criterio), 2) if notas_criterio else 0,
+                'nota_maxima': max(notas_criterio) if notas_criterio else 0,
+                'nota_minima': min(notas_criterio) if notas_criterio else 0,
+                'distribuicao_notas': {
+                    '0-2': len([n for n in notas_criterio if 0 <= n <= 2]),
+                    '3-5': len([n for n in notas_criterio if 3 <= n <= 5]),
+                    '6-8': len([n for n in notas_criterio if 6 <= n <= 8]),
+                    '9-10': len([n for n in notas_criterio if 9 <= n <= 10])
+                }
+            }
+    
+    # Dados para gráficos
+    dados_grafico = {
+        'categorias': list(estatisticas.keys()),
+        'total_avaliacoes': [estatisticas[cat]['total_avaliacoes'] for cat in categorias],
+        'notas_medias': [estatisticas[cat]['nota_media'] for cat in categorias]
+    }
+    
+    # Dados para gráficos de critérios
+    dados_grafico_criterios = {
+        'criterios': criterios_unicos,
+        'notas_medias_criterios': [estatisticas_criterios.get(c, {}).get('nota_media', 0) for c in criterios_unicos]
+    }
+    
+    return render_template(
+        'dashboard/metricas_baremas.html',
+        estatisticas=estatisticas,
+        estatisticas_criterios=estatisticas_criterios,
+        estatisticas_criterios_por_categoria=estatisticas_criterios_por_categoria,
+        baremas_por_categoria=baremas_por_categoria,
+        dados_grafico=dados_grafico,
+        dados_grafico_criterios=dados_grafico_criterios,
+        categorias=categorias,
+        criterios_unicos=criterios_unicos,
+        categoria_filtro=categoria_filtro,
+        criterio_filtro=criterio_filtro,
+        periodo_inicio=periodo_inicio,
+        periodo_fim=periodo_fim
     )

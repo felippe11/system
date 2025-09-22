@@ -767,7 +767,7 @@ class Evento(db.Model):
 
     habilitar_lotes = db.Column(db.Boolean, default=False)
 
-    submissao_aberta = db.Column(db.Boolean, default=False)
+
 
     cliente = db.relationship("Cliente", backref=db.backref("eventos", lazy=True))
     # Modificando o relacionamento para evitar conflito de backref

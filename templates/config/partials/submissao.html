@@ -31,19 +31,3 @@
         {% endfor %}
     </select>
 </div>
-{% if eventos %}
-<div class="mt-3">
-    <h6 class="mb-2 fw-semibold">Submissão por Evento</h6>
-    {% for evento in eventos %}
-    <div class="config-item d-flex justify-content-between align-items-center p-2 border-bottom">
-        <span>{{ evento.nome }}</span>
-        <button type="button"
-                class="btn btn-padrao btn-toggle btn-{{ 'success' if evento.submissao_aberta else 'danger' }}"
-                data-toggle-url="{{ url_for('config_cliente_routes.toggle_submissao_evento', evento_id=evento.id) }}"
-                data-label="{{ evento.nome }}">
-            {{ 'Ativo' if evento.submissao_aberta else 'Desativado' }}
-        </button>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}

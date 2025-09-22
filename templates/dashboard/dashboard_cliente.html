@@ -2062,10 +2062,13 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-6 d-flex align-items-end">
+          <div class="col-md-6 d-flex align-items-end gap-2">
             <button type="button" class="btn btn-primary" onclick="abrirGerenciamentoBaremas()">
               <i class="fas fa-cogs me-1"></i>Gerenciar Baremas
             </button>
+            <a href="{{ url_for('dashboard_routes.metricas_baremas') }}" class="btn btn-info">
+              <i class="fas fa-chart-bar me-1"></i>Métricas
+            </a>
           </div>
         </div>
         

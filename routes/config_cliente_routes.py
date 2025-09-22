@@ -901,22 +901,7 @@ def atualizar_revisao_config(evento_id):
     return jsonify({"success": True})
 
 
-@config_cliente_routes.route(
-    "/toggle_submissao_evento/<int:evento_id>", methods=["POST"]
-)
-@login_required
-def toggle_submissao_evento(evento_id):
-    if current_user.tipo != "cliente":
-        return jsonify({"success": False, "message": "Acesso negado"}), 403
 
-    evento = Evento.query.get_or_404(evento_id)
-    if evento.cliente_id != current_user.id:
-        return jsonify({"success": False, "message": "Acesso negado"}), 403
-
-    evento.submissao_aberta = not bool(evento.submissao_aberta)
-    db.session.commit()
-
-    return jsonify({"success": True, "value": evento.submissao_aberta})
 
 
 @config_cliente_routes.route(
