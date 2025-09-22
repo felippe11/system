@@ -8,8 +8,9 @@ from extensions import db
 from models.user import Ministrante, Cliente
 from models.formador import (
     TrilhaFormativa, CampoTrilhaFormativa, ConfiguracaoRelatorioFormador,
-    RespostaTrilhaFormativa, RelatorioFormador, ArquivoFormador
+    RespostaTrilhaFormativa, ArquivoFormador
 )
+from models.relatorio_config import RelatorioFormador
 from utils.auth import cliente_required
 from utils import endpoints
 

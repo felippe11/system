@@ -28,7 +28,7 @@ from extensions import db
 from models import (
     Formulario,
     RespostaFormulario,
-    RespostaCampo,
+    RespostaCampoFormulario,
     CampoFormulario,
     FormularioTemplate,
     CampoFormularioTemplate,
@@ -499,7 +499,7 @@ def preencher_formulario(formulario_id):
                 flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
                 return redirect(request.url)
 
-            resposta_campo = RespostaCampo(
+            resposta_campo = RespostaCampoFormulario(
                 resposta_formulario_id=resposta_formulario.id,
                 campo_id=campo.id,
                 valor=valor,
@@ -711,8 +711,8 @@ def get_resposta_file(filename):
 
     # Localiza registro de RespostaCampo correspondente
     resposta_campo = (
-        RespostaCampo.query.join(RespostaFormulario)
-        .filter(RespostaCampo.valor == caminho_arquivo)
+        RespostaCampoFormulario.query.join(RespostaFormulario)
+            .filter(RespostaCampoFormulario.valor == caminho_arquivo)
         .first()
     )
 
@@ -797,15 +797,13 @@ def excluir_formulario(formulario_id):
         )
 
         # 2️⃣ Exclui RespostaCampo
-        RespostaCampo.query.filter(
-            RespostaCampo.resposta_formulario_id.in_(
+        db.session.query(RespostaCampoFormulario).filter(
+            RespostaCampoFormulario.resposta_formulario_id.in_(
                 db.session.query(RespostaFormulario.id).filter_by(
                     formulario_id=formulario_id
                 )
             )
-        ).execution_options(confirm_deleted_rows=False).delete(
-            synchronize_session=False
-        )
+        ).delete(synchronize_session=False)
 
         # 3️⃣ Exclui RespostaFormulario
         RespostaFormulario.query.filter_by(formulario_id=formulario_id).delete()
@@ -1082,7 +1080,7 @@ def deletar_resposta(resposta_id):
         flash("Você não tem permissão para excluir esta resposta.", "danger")
         return redirect(url_for("formularios_routes.listar_respostas"))
 
-    # Remove arquivos associados e registros de RespostaCampo
+    # Remove arquivos associados e registros de RespostaCampoFormulario
     for resp_campo in list(resposta.respostas_campos):
         # Remove feedbacks vinculados ao campo antes da exclusão
         for feedback in list(resp_campo.feedbacks_campo):

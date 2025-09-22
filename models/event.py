@@ -525,7 +525,7 @@ class RespostaFormulario(db.Model):
     status_avaliacao = db.Column(db.String(50), nullable=True, default="Não Avaliada")
 
     respostas_campos = db.relationship(
-        "RespostaCampo",
+        "RespostaCampoFormulario",
         back_populates="resposta_formulario",
         cascade="all, delete-orphan",
     )
@@ -540,7 +540,7 @@ class RespostaFormulario(db.Model):
         return f"<RespostaFormulario ID {self.id} - Formulário {self.formulario_id} - Usuário {self.usuario_id}>"
 
 
-class RespostaCampo(db.Model):
+class RespostaCampoFormulario(db.Model):
     __tablename__ = "respostas_campo"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -561,7 +561,7 @@ class RespostaCampo(db.Model):
 
     def __repr__(self):
         return (
-            f"<RespostaCampo ID {self.id} - Campo {self.campo_id} - Valor {self.valor}>"
+            f"<RespostaCampoFormulario ID {self.id} - Campo {self.campo_id} - Valor {self.valor}>"
         )
 
 
@@ -702,7 +702,7 @@ class FeedbackCampo(db.Model):
 
     # Relacionamentos
     resposta_campo = db.relationship(
-        "RespostaCampo",
+        "RespostaCampoFormulario",
         backref=db.backref("feedbacks_campo", lazy=True, cascade="all, delete-orphan"),
     )
     ministrante = db.relationship(

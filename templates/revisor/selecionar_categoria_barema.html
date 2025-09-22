@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Selecionar Categoria do Barema{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clipboard-check"></i>
+                        Selecionar Categoria do Barema
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Trabalho a ser avaliado:</h5>
+                        <div class="alert alert-info">
+                            <strong>{{ trabalho.title }}</strong>
+                            {% if trabalho.author %}
+                                <br><small class="text-muted">Autor: {{ trabalho.author }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Selecione a categoria do barema para avaliação:</h5>
+                        <p class="text-muted">Escolha a categoria que melhor se adequa ao trabalho submetido.</p>
+                    </div>
+
+                    <div class="row">
+                        {% for categoria in categorias %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 categoria-card" style="cursor: pointer;" 
+                                 onclick="selecionarCategoria('{{ categoria }}')">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        {% if categoria == 'Prática Educacional' %}
+                                            <i class="fas fa-chalkboard-teacher fa-3x text-primary"></i>
+                                        {% elif categoria == 'Pesquisa Inovadora' %}
+                                            <i class="fas fa-microscope fa-3x text-success"></i>
+                                        {% elif categoria == 'Produto Inovador' %}
+                                            <i class="fas fa-lightbulb fa-3x text-warning"></i>
+                                        {% endif %}
+                                    </div>
+                                    <h6 class="card-title">{{ categoria }}</h6>
+                                    <p class="card-text small text-muted">
+                                        {% if categoria == 'Prática Educacional' %}
+                                            Trabalhos focados em metodologias e práticas educacionais
+                                        {% elif categoria == 'Pesquisa Inovadora' %}
+                                            Trabalhos de pesquisa científica e acadêmica
+                                        {% elif categoria == 'Produto Inovador' %}
+                                            Produtos, ferramentas ou soluções inovadoras
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-4">
+                        {% if codigo_candidatura %}
+                            <a href="{{ url_for('revisor_routes.progress', codigo=codigo_candidatura) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('evento_routes.home') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.categoria-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.categoria-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+.categoria-card:active {
+    transform: translateY(-2px);
+}
+</style>
+
+<script>
+function selecionarCategoria(categoria) {
+    // Confirmar seleção
+    if (confirm(`Deseja avaliar este trabalho usando o barema da categoria "${categoria}"?`)) {
+        // Redirecionar para a página de avaliação
+        window.location.href = `{{ url_for('revisor_routes.avaliar_barema', trabalho_id=trabalho.id, categoria='CATEGORIA_PLACEHOLDER') }}`.replace('CATEGORIA_PLACEHOLDER', encodeURIComponent(categoria));
+    }
+}
+</script>
+{% endblock %}

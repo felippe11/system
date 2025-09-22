@@ -46,41 +46,36 @@
         <form method="POST" id="avaliacaoForm">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           
-          {% if requisitos %}
+          {% if barema and barema.requisitos %}
             <div class="mb-4">
               <h6 class="text-primary mb-3">
                 <i class="bi bi-list-check me-2"></i>Critérios de Avaliação
               </h6>
-
-              {% for requisito, faixa in requisitos.items() %}
-              {% set min_val = faixa.get('min', 0) %}
-              {% set max_val = faixa.get('max', 0) %}
+              
+              {% for requisito, faixa in barema.requisitos.items() %}
               <div class="mb-4">
                 <label class="form-label fw-bold">{{ requisito }}</label>
-                {% if faixa.get('descricao') %}
-                <p class="text-muted small mb-2">{{ faixa.get('descricao') }}</p>
-                {% endif %}
                 <div class="d-flex align-items-center mb-2">
-                  <small class="text-muted me-2">{{ min_val }}</small>
+                  <small class="text-muted me-2">{{ faixa['min'] }}</small>
                   <input
                     type="range"
                     class="form-range flex-grow-1 mx-2"
                     id="range_{{ loop.index }}"
-                    min="{{ min_val }}"
-                    max="{{ max_val }}"
-                    value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else min_val }}"
+                    min="{{ faixa['min'] }}"
+                    max="{{ faixa['max'] }}"
+                    value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else faixa['min'] }}"
                     oninput="updateNumberInput('{{ requisito }}', this.value)"
                   >
-                  <small class="text-muted ms-2">{{ max_val }}</small>
+                  <small class="text-muted ms-2">{{ faixa['max'] }}</small>
                 </div>
                 <input
                   type="number"
                   class="form-control form-control-sm text-center"
                   name="{{ requisito }}"
                   id="{{ requisito }}"
-                  min="{{ min_val }}"
-                  max="{{ max_val }}"
-                  value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else min_val }}"
+                  min="{{ faixa['min'] }}"
+                  max="{{ faixa['max'] }}"
+                  value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else faixa['min'] }}"
                   oninput="updateRangeInput('range_{{ loop.index }}', this.value)"
                   required
                 >

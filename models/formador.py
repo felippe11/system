@@ -127,9 +127,9 @@ class ConfiguracaoRelatorioFormador(db.Model):
         return f"<ConfiguracaoRelatorioFormador {self.nome}>"
 
 
-class RelatorioFormador(db.Model):
-    """Relatórios enviados pelos formadores"""
-    __tablename__ = "relatorio_formador"
+class RelatorioFormadorLegacy(db.Model):
+    """Relatórios enviados pelos formadores (versão legada)"""
+    __tablename__ = "relatorio_formador_legacy"
     
     id = db.Column(db.Integer, primary_key=True)
     configuracao_id = db.Column(db.Integer, db.ForeignKey("configuracao_relatorio_formador.id"), nullable=False)
@@ -143,12 +143,12 @@ class RelatorioFormador(db.Model):
     data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # Relacionamentos
-    configuracao = db.relationship("ConfiguracaoRelatorioFormador", backref="relatorios")
-    formador = db.relationship("Ministrante", backref="relatorios")
-    atividade = db.relationship("Oficina", backref="relatorios_formador")
+    configuracao = db.relationship("ConfiguracaoRelatorioFormador", backref="relatorios_legacy")
+    formador = db.relationship("Ministrante", backref="relatorios_legacy")
+    atividade = db.relationship("Oficina", backref="relatorios_formador_legacy")
     
     def __repr__(self):
-        return f"<RelatorioFormador {self.formador.nome} - {self.configuracao.nome}>"
+        return f"<RelatorioFormadorLegacy {self.formador.nome} - {self.configuracao.nome}>"
 
 
 class ArquivoFormador(db.Model):

@@ -29,7 +29,7 @@ from models import (
     Usuario,
     WorkMetadata,
 )
-from models.event import RespostaCampo, RespostaFormulario
+from models.event import RespostaCampoFormulario, RespostaFormulario
 from models.review import Assignment
 from sqlalchemy import func
 from services.submission_service import SubmissionService
@@ -125,7 +125,7 @@ def submeter_trabalho():
                 flash(f"O campo '{campo.nome}' é obrigatório.", "warning")
                 return redirect(url_for("trabalho_routes.submeter_trabalho"))
 
-            resposta_campo = RespostaCampo(
+            resposta_campo = RespostaCampoFormulario(
                 resposta_formulario_id=resposta_formulario.id,
                 campo_id=campo.id,
                 valor=valor,
@@ -329,37 +329,62 @@ def novo_trabalho():
             flash("Evento inválido.", "danger")
             return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
         
-        # Criar nova resposta do formulário
-        resposta_formulario = RespostaFormulario(
-            formulario_id=formulario.id,
-            usuario_id=current_user.id,
-            evento_id=evento_id
-        )
-        db.session.add(resposta_formulario)
-        db.session.flush()
+        # Primeiro, processar campos do formulário para obter título
+        titulo = None
+        campos_valores = {}
         
-        # Processar campos do formulário
         for campo in formulario.campos:
             valor = request.form.get(f"campo_{campo.id}")
             
             # Validar campos obrigatórios
             if campo.obrigatorio and not valor:
-                db.session.rollback()
                 flash(f"O campo '{campo.nome}' é obrigatório.", "warning")
                 return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
             
-            # Criar resposta do campo
-            resposta_campo = RespostaCampo(
-                resposta_formulario_id=resposta_formulario.id,
-                campo_id=campo.id,
-                valor=valor or ''
-            )
-            db.session.add(resposta_campo)
+            campos_valores[campo.id] = valor or ''
+            
+            # Capturar título (primeiro campo de texto não vazio)
+            if not titulo and valor and campo.tipo in ['text', 'textarea']:
+                titulo = valor
+        
+        # Usar título padrão se não encontrado
+        titulo = titulo or "Trabalho sem título"
         
         try:
+            # Criar submissão usando o serviço
+            submission = SubmissionService.create_submission(
+                title=titulo,
+                author_id=current_user.id,
+                evento_id=int(evento_id)
+            )
+            
+            # Criar nova resposta do formulário vinculada à submissão
+            resposta_formulario = RespostaFormulario(
+                formulario_id=formulario.id,
+                usuario_id=current_user.id,
+                evento_id=evento_id,
+                trabalho_id=submission.id  # Vincular à submissão criada
+            )
+            db.session.add(resposta_formulario)
+            db.session.flush()
+            
+            # Criar respostas dos campos
+            for campo_id, valor in campos_valores.items():
+                resposta_campo = RespostaCampoFormulario(
+                    resposta_formulario_id=resposta_formulario.id,
+                    campo_id=campo_id,
+                    valor=valor
+                )
+                db.session.add(resposta_campo)
+            
             db.session.commit()
             flash("Trabalho cadastrado com sucesso!", "success")
             return redirect(url_for("trabalho_routes.listar_trabalhos"))
+            
+        except ValueError as e:
+            db.session.rollback()
+            flash(str(e), "warning")
+            return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
         except Exception as e:
             db.session.rollback()
             flash("Erro ao cadastrar trabalho. Tente novamente.", "danger")
@@ -431,7 +456,7 @@ def editar_trabalho(trabalho_id):
                                      formulario=formulario, resposta=resposta)
             
             # Buscar ou criar resposta do campo
-            resposta_campo = RespostaCampo.query.filter_by(
+            resposta_campo = RespostaCampoFormulario.query.filter_by(
                 resposta_formulario_id=resposta.id,
                 campo_id=campo.id
             ).first()
@@ -439,7 +464,7 @@ def editar_trabalho(trabalho_id):
             if resposta_campo:
                 resposta_campo.valor = valor or ''
             else:
-                resposta_campo = RespostaCampo(
+                resposta_campo = RespostaCampoFormulario(
                     resposta_formulario_id=resposta.id,
                     campo_id=campo.id,
                     valor=valor or ''
@@ -500,15 +525,22 @@ def excluir_trabalho(trabalho_id):
         return redirect(url_for("trabalho_routes.listar_trabalhos"))
     
     try:
-        # Excluir respostas dos campos primeiro
-        RespostaCampo.query.filter_by(resposta_formulario_id=resposta.id).delete()
+        # Importar Assignment se não estiver importado
+        from models.review import Assignment
+        
+        # Excluir assignments relacionados primeiro
+        Assignment.query.filter_by(resposta_formulario_id=resposta.id).delete()
+        
+        # Excluir respostas dos campos
+        RespostaCampoFormulario.query.filter_by(resposta_formulario_id=resposta.id).delete()
+        
         # Excluir resposta do formulário
         db.session.delete(resposta)
         db.session.commit()
         flash("Trabalho excluído com sucesso!", "success")
     except Exception as e:
         db.session.rollback()
-        flash("Erro ao excluir trabalho. Tente novamente.", "danger")
+        flash(f"Erro ao excluir trabalho: {str(e)}", "danger")
         current_app.logger.error(f"Erro ao excluir trabalho: {e}")
     
     return redirect(url_for("trabalho_routes.listar_trabalhos"))
