@@ -28,7 +28,7 @@ from models.event import (
     Formulario,
     CampoFormulario,
     RespostaFormulario,
-    RespostaCampo,
+    RespostaCampoFormulario,
 )
 from models.review import Submission, Assignment, Review, CategoriaBarema
 
@@ -100,13 +100,6 @@ def app(monkeypatch):
         db.session.add(resposta_sem_categoria)
         db.session.flush()
 
-        resposta_sem_categoria_campo = RespostaCampo(
-            resposta_formulario_id=resposta_sem_categoria.id,
-            campo_id=campo_categoria.id,
-            valor="   ",
-        )
-        db.session.add(resposta_sem_categoria_campo)
-
         resposta = RespostaFormulario(
             formulario_id=formulario.id,
             trabalho_id=submission.id,
@@ -115,7 +108,7 @@ def app(monkeypatch):
         db.session.add(resposta)
         db.session.flush()
 
-        resposta_campo = RespostaCampo(
+        resposta_campo = RespostaCampoFormulario(
             resposta_formulario_id=resposta.id,
             campo_id=campo_categoria.id,
             valor="Poster",
@@ -178,7 +171,7 @@ def app(monkeypatch):
             monkeypatch.setattr(
                 peer_review_routes_module,
                 "RespostaCampo",
-                RespostaCampo,
+                RespostaCampoFormulario,
             )
         if hasattr(peer_review_routes_module, "CampoFormulario"):
             monkeypatch.setattr(
