@@ -19,7 +19,7 @@ from models import (
     Inscricao,
     Usuario,
     CampoPersonalizadoCadastro,
-    RespostaCampo,
+    RespostaCampoFormulario,
     Checkin,   # mantidos para futuras rotas/uso
     Sorteio,   # mantidos para futuras rotas/uso
     EventoInscricaoTipo,
@@ -78,7 +78,7 @@ def exportar_participantes_evento():
         usuario = insc.usuario
         row = [usuario.nome, usuario.cpf, usuario.email, usuario.formacao]
         for campo in campos_custom:
-            resp = RespostaCampo.query.filter_by(
+            resp = RespostaCampoFormulario.query.filter_by(
                 resposta_formulario_id=usuario.id,
                 campo_id=campo.id
             ).first()

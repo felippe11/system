@@ -26,6 +26,26 @@ def _coerce_number(value: Any, default: float | int | None) -> float | int | Non
     return int(number) if number.is_integer() else number
 
 
+def _extract_numeric(
+    data: Dict[str, Any],
+    keys: tuple[str, ...],
+    default: float | int | None,
+) -> float | int | None:
+    """Return the first numeric value found for ``keys`` in ``data``.
+
+    The helper tries every key using :func:`_coerce_number` with ``None`` as the
+    fallback so that only successfully coerced values are returned. When no
+    value can be coerced the provided ``default`` is returned instead.
+    """
+
+    for key in keys:
+        if key in data:
+            result = _coerce_number(data.get(key), None)
+            if result is not None:
+                return result
+    return default
+
+
 def normalize_barema_requisitos(barema: Any) -> Dict[str, Dict[str, Any]]:
     """Return a normalized ``requisitos`` mapping for any barema instance.
 
@@ -79,19 +99,17 @@ def normalize_barema_requisitos(barema: Any) -> Dict[str, Dict[str, Any]]:
             if isinstance(data, dict):
                 label = data.get("nome") or label
                 descricao = data.get("descricao")
-                max_source = data.get("pontuacao_max")
-                if max_source is None:
-                    max_source = data.get("pontuacaoMax")
-                if max_source is None:
-                    max_source = data.get("max")
-                max_val = _coerce_number(max_source, None)
+                max_val = _extract_numeric(
+                    data,
+                    ("max", "pontuacao_max", "pontuacaoMax"),
+                    None,
+                )
+                min_val = _extract_numeric(
+                    data,
+                    ("min", "pontuacao_min", "pontuacaoMin"),
+                    0,
+                )
 
-                min_source = data.get("pontuacao_min")
-                if min_source is None:
-                    min_source = data.get("pontuacaoMin")
-                if min_source is None:
-                    min_source = data.get("min")
-                min_val = _coerce_number(min_source, 0) or 0
             else:
                 max_val = _coerce_number(data, None)
             if max_val is None:

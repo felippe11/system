@@ -38,7 +38,6 @@ from sqlalchemy.exc import ProgrammingError
 
 from models import (
     Assignment,
-    CampoFormulario,
     Cliente,
     ConfiguracaoCliente,
     Evento,
@@ -46,7 +45,6 @@ from models import (
     EventoBarema,
     ProcessoBarema,
     ProcessoBaremaRequisito,
-    RespostaFormulario,
     RevisorCandidatura,
     RevisorCandidaturaEtapa,
     RevisorEtapa,
@@ -56,6 +54,7 @@ from models import (
     Review,
     Usuario,
 )
+from models.event import CampoFormulario, RespostaCampoFormulario, RespostaFormulario
 from models.review import CategoriaBarema
 from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
@@ -674,8 +673,13 @@ def progress(codigo: str):
                     deadline_date = assignment.deadline.date() if hasattr(assignment.deadline, 'date') else assignment.deadline
                     days_left = (deadline_date - today).days
                 
+                # Buscar a submission real pelo trabalho_id
+                from models.review import Submission
+                submission = Submission.query.get(resposta.trabalho_id)
+                
                 trabalho = {
                     "titulo": campos.get("Título"),
+                    "categoria": campos.get("Categoria"),
                     "pdf_url": campos.get("URL do PDF"),
                     "data_submissao": resposta.data_submissao,
                     "assignment_deadline": assignment.deadline,
@@ -683,7 +687,7 @@ def progress(codigo: str):
                     "distribution_date": assignment.distribution_date,
                     "days_left": days_left,
                     "id": assignment.id,
-                    "submission_id": resposta.trabalho_id,
+                    "submission_id": submission.id if submission else None,
                 }
                 trabalhos_designados.append(trabalho)
 
@@ -1038,6 +1042,42 @@ def view_candidatura(cand_id: int):
 # -----------------------------------------------------------------------------
 # AVALIAÇÃO DE TRABALHOS
 # -----------------------------------------------------------------------------
+def _extract_categoria_valor(raw_valor):
+    """Normalize raw category values coming from form answers."""
+
+    if raw_valor is None:
+        return None
+
+    if isinstance(raw_valor, str):
+        valor = raw_valor.strip()
+        if not valor:
+            return None
+
+        if valor.startswith("[") and valor.endswith("]"):
+            try:
+                parsed = json.loads(valor)
+            except (TypeError, ValueError):
+                parsed = None
+            if isinstance(parsed, list):
+                for item in parsed:
+                    item_valor = str(item).strip()
+                    if item_valor:
+                        return item_valor
+                return None
+
+        return valor
+
+    if isinstance(raw_valor, list):
+        for item in raw_valor:
+            item_valor = str(item).strip()
+            if item_valor:
+                return item_valor
+        return None
+
+    valor = str(raw_valor).strip()
+    return valor or None
+
+
 def get_categoria_trabalho(resposta_formulario):
     """Obtém a categoria do trabalho a partir das respostas dos campos."""
     if not resposta_formulario:
@@ -1048,30 +1088,62 @@ def get_categoria_trabalho(resposta_formulario):
         if "categoria" not in campo_nome:
             continue
 
-        raw_valor = resposta_campo.valor
-        if raw_valor is None:
-            continue
-
-        if isinstance(raw_valor, str):
-            valor = raw_valor.strip()
-            if not valor:
-                continue
-
-            # Algumas respostas chegam serializadas como listas JSON (ex.: "[\"Categoria\"]").
-            if valor.startswith("[") and valor.endswith("]"):
-                try:
-                    parsed = json.loads(valor)
-                except (TypeError, ValueError):
-                    parsed = None
-                else:
-                    if isinstance(parsed, list) and parsed:
-                        valor = str(parsed[0]).strip()
-
+        valor = _extract_categoria_valor(resposta_campo.valor)
+        if valor:
             return valor
 
-        # Se o valor já vier como lista (ex.: seleção múltipla), pegar o primeiro item.
-        if isinstance(raw_valor, list) and raw_valor:
-            return str(raw_valor[0]).strip()
+    return None
+
+
+def resolve_categoria_trabalho(submission, assignment=None):
+    """Resolve a categoria do trabalho reutilizando a resposta do assignment.
+
+    Primeiro tenta extrair a categoria da resposta vinculada ao assignment.
+    Caso não encontre, faz uma busca abrangente em todas as respostas do
+    trabalho procurando campos cujo nome contenha "categoria".
+    """
+
+    resposta_formulario = None
+    if assignment is not None:
+        resposta_formulario = getattr(assignment, "resposta_formulario", None)
+        if (
+            resposta_formulario is None
+            and getattr(assignment, "resposta_formulario_id", None)
+        ):
+            resposta_formulario = RespostaFormulario.query.get(
+                assignment.resposta_formulario_id
+            )
+
+    categoria = None
+    if resposta_formulario:
+        categoria = get_categoria_trabalho(resposta_formulario)
+        if categoria:
+            return categoria
+
+    respostas_categoria = (
+        RespostaFormulario.query
+        .join(
+            RespostaCampoFormulario,
+        RespostaCampoFormulario.resposta_formulario_id == RespostaFormulario.id,
+    )
+    .join(CampoFormulario, RespostaCampoFormulario.campo_id == CampoFormulario.id)
+        .filter(
+            RespostaFormulario.trabalho_id == submission.id,
+            RespostaFormulario.evento_id == submission.evento_id,
+            CampoFormulario.nome.ilike("%categoria%"),
+        )
+        .order_by(RespostaFormulario.id)
+        .all()
+    )
+
+    vistos: set[int] = set()
+    for resposta in respostas_categoria:
+        if resposta.id in vistos:
+            continue
+        vistos.add(resposta.id)
+        categoria = get_categoria_trabalho(resposta)
+        if categoria:
+            return categoria
 
     return None
 
@@ -1107,13 +1179,7 @@ def avaliar(submission_id: int):
             flash("Acesso negado!", "danger")
             return redirect(url_for(endpoints.DASHBOARD))
 
-    # Buscar a resposta_formulario relacionada ao trabalho
-    resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=submission.id).first()
-    
-    # Obter a categoria do trabalho
-    categoria_trabalho = None
-    if resposta_formulario:
-        categoria_trabalho = get_categoria_trabalho(resposta_formulario)
+    categoria_trabalho = resolve_categoria_trabalho(submission, assignment)
     
     # Buscar barema específico da categoria primeiro
     barema_categoria = None
@@ -1377,13 +1443,7 @@ def iniciar_revisao(trabalho_id: int):
         flash("Nenhum revisor atribuído para este trabalho!", "warning")
         return redirect(url_for("evento_routes.home"))
     
-    # Buscar a resposta_formulario relacionada ao trabalho
-    resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=submission.id).first()
-    
-    # Obter a categoria do trabalho
-    categoria = None
-    if resposta_formulario:
-        categoria = get_categoria_trabalho(resposta_formulario)
+    categoria = resolve_categoria_trabalho(submission, assignment)
     
     # Buscar barema específico da categoria primeiro
     barema_categoria = None
@@ -1402,3 +1462,176 @@ def iniciar_revisao(trabalho_id: int):
     
     # Redirecionar para a avaliação
     return redirect(url_for("revisor_routes.avaliar", submission_id=submission.id))
+
+
+@revisor_routes.route("/revisor/selecionar_categoria_barema/<int:trabalho_id>", methods=["GET"])
+def selecionar_categoria_barema(trabalho_id):
+    """Permite ao revisor selecionar a categoria do barema para avaliação."""
+    import logging
+    logging.info(f"[DEBUG] Rota selecionar_categoria_barema chamada para trabalho_id: {trabalho_id}")
+    
+    from models.review import Submission
+    from models.event import RespostaFormulario
+    
+    # Verificar se o usuário é um revisor (comentado para permitir acesso via código)
+    # if current_user.tipo not in ("revisor", "admin", "superadmin"):
+    #     flash("Acesso negado!", "danger")
+    #     return redirect(url_for("evento_routes.home"))
+    
+    # Buscar o trabalho
+    logging.info(f"[DEBUG] Buscando trabalho com ID: {trabalho_id}")
+    try:
+        trabalho = Submission.query.get_or_404(trabalho_id)
+        logging.info(f"[DEBUG] Trabalho encontrado: {trabalho.title if trabalho else 'None'}")
+        
+        # Buscar o assignment para obter o código da candidatura
+        assignment = (
+            Assignment.query
+            .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+            .filter(RespostaFormulario.trabalho_id == trabalho_id)
+            .first()
+        )
+        
+        codigo_candidatura = None
+        if assignment and assignment.reviewer:
+            # Buscar a candidatura do revisor
+            candidatura = RevisorCandidatura.query.filter_by(
+                email=assignment.reviewer.email
+            ).first()
+            if candidatura:
+                codigo_candidatura = candidatura.codigo
+        
+        # Categorias disponíveis
+        categorias = [
+            "Prática Educacional",
+            "Pesquisa Inovadora", 
+            "Produto Inovador"
+        ]
+        
+        logging.info(f"[DEBUG] Renderizando template com {len(categorias)} categorias")
+        return render_template(
+            "revisor/selecionar_categoria_barema.html",
+            trabalho=trabalho,
+            categorias=categorias,
+            codigo_candidatura=codigo_candidatura
+        )
+    except Exception as e:
+        logging.error(f"[DEBUG] Erro na rota selecionar_categoria_barema: {str(e)}")
+        logging.error(f"[DEBUG] Tipo do erro: {type(e).__name__}")
+        import traceback
+        logging.error(f"[DEBUG] Traceback: {traceback.format_exc()}")
+        raise
+
+
+@revisor_routes.route("/revisor/avaliar_barema/<int:trabalho_id>/<categoria>", methods=["GET", "POST"])
+def avaliar_barema(trabalho_id, categoria):
+    """Interface de avaliação baseada nos critérios do barema da categoria selecionada."""
+    from models.review import Submission, CategoriaBarema, EventoBarema
+    from models.avaliacao import AvaliacaoBarema, AvaliacaoCriterio
+    
+    # Verificar se o usuário é um revisor (comentado para permitir acesso via código)
+    # if current_user.tipo not in ("revisor", "admin", "superadmin"):
+    #     flash("Acesso negado!", "danger")
+    #     return redirect(url_for("evento_routes.home"))
+    
+    # Buscar o trabalho
+    trabalho = Submission.query.get_or_404(trabalho_id)
+    
+    # Buscar o barema da categoria
+    barema = CategoriaBarema.query.filter_by(
+        evento_id=trabalho.evento_id,
+        categoria=categoria
+    ).first()
+    
+    # Se não houver barema específico, buscar barema geral
+    if not barema:
+        barema_geral = EventoBarema.query.filter_by(evento_id=trabalho.evento_id).first()
+        if barema_geral:
+            # Criar um objeto mock para compatibilidade
+            class BaremaMock:
+                def __init__(self, evento_barema):
+                    self.id = evento_barema.id
+                    self.nome = f"Barema Geral - {categoria}"
+                    self.criterios = evento_barema.requisitos or {}
+            barema = BaremaMock(barema_geral)
+    
+    if not barema:
+        flash(f"Barema não encontrado para a categoria '{categoria}'.", "danger")
+        return redirect(url_for("revisor_routes.selecionar_categoria_barema", trabalho_id=trabalho_id))
+    
+    # Processar critérios do barema (JSON)
+    criterios_dict = barema.criterios if hasattr(barema, 'criterios') else {}
+    criterios = []
+    for nome, detalhes in criterios_dict.items():
+        criterio = {
+            'id': nome,
+            'nome': detalhes.get('nome', nome) if isinstance(detalhes, dict) else nome,
+            'descricao': detalhes.get('descricao', '') if isinstance(detalhes, dict) else '',
+            'nota_maxima': detalhes.get('pontuacao_max', detalhes.get('max', 10)) if isinstance(detalhes, dict) else 10,
+            'peso': detalhes.get('peso', 1) if isinstance(detalhes, dict) else 1
+        }
+        criterios.append(criterio)
+    
+    if request.method == "POST":
+        # Processar avaliação
+        # Criar ou atualizar avaliação
+        # Usar ID genérico para revisor quando não logado
+        revisor_id = current_user.id if current_user.is_authenticated else 1
+        
+        avaliacao = AvaliacaoBarema.query.filter_by(
+            trabalho_id=trabalho_id,
+            revisor_id=revisor_id,
+            barema_id=barema.id
+        ).first()
+        
+        if not avaliacao:
+            avaliacao = AvaliacaoBarema(
+                trabalho_id=trabalho_id,
+                revisor_id=revisor_id,
+                barema_id=barema.id,
+                categoria=categoria
+            )
+            db.session.add(avaliacao)
+            db.session.flush()  # Para obter o ID
+        
+        # Salvar avaliações dos critérios
+        for criterio in criterios:
+            nota = request.form.get(f"criterio_{criterio['id']}")
+            observacao = request.form.get(f"observacao_{criterio['id']}", "")
+            
+            if nota:
+                # Verificar se já existe avaliação para este critério
+                avaliacao_criterio = AvaliacaoCriterio.query.filter_by(
+                    avaliacao_id=avaliacao.id,
+                    criterio_id=criterio['id']
+                ).first()
+                
+                if avaliacao_criterio:
+                    avaliacao_criterio.nota = float(nota)
+                    avaliacao_criterio.observacao = observacao
+                else:
+                    avaliacao_criterio = AvaliacaoCriterio(
+                        avaliacao_id=avaliacao.id,
+                        criterio_id=criterio['id'],
+                        nota=float(nota),
+                        observacao=observacao
+                    )
+                    db.session.add(avaliacao_criterio)
+        
+        # Calcular nota final
+        nota_final = sum(float(request.form.get(f"criterio_{c['id']}", 0)) for c in criterios)
+        avaliacao.nota_final = nota_final
+        avaliacao.data_avaliacao = datetime.now()
+        
+        db.session.commit()
+        
+        flash("Avaliação salva com sucesso!", "success")
+        return redirect(url_for("revisor_routes.progress"))
+    
+    return render_template(
+        "revisor/avaliar_barema.html",
+        trabalho=trabalho,
+        barema=barema,
+        criterios=criterios,
+        categoria=categoria
+    )

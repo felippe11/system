@@ -7,7 +7,8 @@ import os
 from werkzeug.utils import secure_filename
 
 from models.user import db
-from models.formador import ConfiguracaoRelatorioFormador as ConfiguracaoRelatorio, RelatorioFormador
+from models.formador import ConfiguracaoRelatorioFormador as ConfiguracaoRelatorio
+from models.relatorio_config import RelatorioFormador
 from utils.auth import cliente_required, ministrante_required, monitor_required
 
 formador_relatorio_routes = Blueprint('formador_relatorio_routes', __name__, url_prefix='/formador-relatorios')

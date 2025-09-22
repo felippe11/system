@@ -14,7 +14,7 @@ from models import (
     EventoInscricaoTipo,
     LoteTipoInscricao,
     CampoPersonalizadoCadastro,
-    RespostaCampo,
+    RespostaCampoFormulario,
     RespostaFormulario,
     Formulario,
     RegraInscricaoEvento,
@@ -365,7 +365,7 @@ def _salvar_campos_personalizados(user_id: int, cliente_id: int, form):
         if campo.obrigatorio and not valor:
             raise ValueError(f"O campo '{campo.nome}' é obrigatório.")
         db.session.add(
-            RespostaCampo(
+            RespostaCampoFormulario(
                 resposta_formulario_id=resposta_formulario.id,
                 campo_id=campo.id,
                 valor=valor,

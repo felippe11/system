@@ -157,7 +157,7 @@ def excluir_cliente(cliente_id):
             Patrocinador,
             RegraInscricaoEvento,
             RelatorioOficina,
-            RespostaCampo,
+            RespostaCampoFormulario,
             RespostaFormulario,
             FeedbackCampo,
             SalaVisitacao,
@@ -216,8 +216,8 @@ def excluir_cliente(cliente_id):
                     {"uid": usuario.id},
                 )
 
-                RespostaCampo.query.filter(
-                    RespostaCampo.resposta_formulario_id.in_(resposta_ids)
+                RespostaCampoFormulario.query.filter(
+            RespostaCampoFormulario.resposta_formulario_id.in_(resposta_ids)
                 ).delete(synchronize_session=False)
 
                 RespostaFormulario.query.filter_by(usuario_id=usuario.id).delete()

@@ -14,8 +14,9 @@ from flask import session
 from models.formador import (
     TrilhaFormativa, CampoTrilhaFormativa, RespostaTrilhaFormativa,
     SolicitacaoMaterial, MaterialAprovado, ConfiguracaoRelatorioFormador,
-    RelatorioFormador, ArquivoFormador, FormadorMonitor
+    ArquivoFormador, FormadorMonitor
 )
+from models.relatorio_config import RelatorioFormador
 from models.material import MaterialDisponivel, SolicitacaoMaterialFormador, Material, FormadorPolo
 from models import Oficina
 from utils.auth import ministrante_required

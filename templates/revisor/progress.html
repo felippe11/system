@@ -118,6 +118,7 @@
                     <thead>
                         <tr>
                             <th>Título do Trabalho</th>
+                            <th>Categoria</th>
                             <th>Data de Submissão</th>
                             <th>Prazo de Revisão</th>
                             <th>Status</th>
@@ -134,6 +135,13 @@
                                     <i class="bi bi-calendar-plus"></i> 
                                     Distribuído em: {{ trabalho.distribution_date.strftime('%d/%m/%Y às %H:%M') }}
                                 </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if trabalho.categoria %}
+                                    <span class="badge bg-info">{{ trabalho.categoria }}</span>
+                                {% else %}
+                                    <span class="text-muted">Não informado</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -191,16 +199,14 @@
                                     <a href="{{ trabalho.pdf_url }}" target="_blank" class="btn btn-sm btn-primary">
                                         <i class="bi bi-file-earmark-pdf"></i> Ver PDF
                                     </a>
-                                    {% if not trabalho.assignment_completed %}
-                                        {% if trabalho.submission_id %}
-                                            <a href="{{ url_for('revisor_routes.iniciar_revisao', trabalho_id=trabalho.submission_id) }}" class="btn btn-sm btn-success" title="Iniciar Revisão">
-                                                <i class="bi bi-play-circle"></i> Revisar
-                                            </a>
-                                        {% else %}
-                                            <span class="btn btn-sm btn-secondary disabled" title="Trabalho não disponível">
-                                                <i class="bi bi-exclamation-triangle"></i> Indisponível
-                                            </span>
-                                        {% endif %}
+                                    {% if trabalho.submission_id %}
+                                    <a href="{{ url_for('revisor_routes.selecionar_categoria_barema', trabalho_id=trabalho.submission_id) }}" class="btn btn-sm btn-success">
+                                        <i class="bi bi-clipboard-check"></i> Barema
+                                    </a>
+                                    {% else %}
+                                    <span class="btn btn-sm btn-secondary disabled" title="Trabalho sem ID de submissão">
+                                        <i class="bi bi-clipboard-x"></i> Barema Indisponível
+                                    </span>
                                     {% endif %}
                                 </div>
                             </td>

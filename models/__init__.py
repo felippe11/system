@@ -1,6 +1,7 @@
 from .user import *  # noqa: F401,F403
 from .event import *  # noqa: F401,F403
 from .review import *  # noqa: F401,F403
+from .avaliacao import *  # noqa: F401,F403
 from .certificado import *  # noqa: F401,F403
 from .submission_system import (
     SubmissionCategory,
