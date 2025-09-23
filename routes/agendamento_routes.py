@@ -1177,8 +1177,8 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
                 logger.warning("Falha ao registrar fonte %s: %s", filename, exc)
                 continue
             font_key = f"{family}{style}".lower()
-            if hasattr(pdf, "fonts") and font_key in pdf.fonts:
-                pdf.fonts[font_key]["ttffile"] = font_path
+            # Removido: pdf.fonts[font_key]["ttffile"] = font_path
+            # O FPDF já usa o caminho correto definido no add_font
     else:
         logger.debug("Instância de PDF não oferece suporte a add_font; usando fontes padrões.")
 
