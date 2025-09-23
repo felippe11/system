@@ -7,7 +7,11 @@ from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy import and_, or_
 from models import db, Compra, ItemCompra, Material, MovimentacaoMaterial, Polo
-from services.pdf_service import gerar_relatorio_necessidades
+
+try:  # Nem todos os ambientes precisam do relatório em PDF
+    from services.pdf_service import gerar_relatorio_necessidades
+except ImportError:  # pragma: no cover - fallback
+    gerar_relatorio_necessidades = None
 
 
 class IntegracaoComprasMateriais:

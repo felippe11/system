@@ -1,13 +1,18 @@
-from flask import Blueprint, send_file, flash, redirect, url_for, request
+from flask import Blueprint, send_file, flash, redirect, url_for, request, current_app
 from flask_login import login_required, current_user
 from io import BytesIO
 from utils import endpoints
 
 from openpyxl import Workbook
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
+
+try:  # Algumas instalações (como sandbox de testes) não incluem o ReportLab
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    REPORTLAB_AVAILABLE = True
+except ImportError:  # pragma: no cover - caminho de fallback
+    REPORTLAB_AVAILABLE = False
 from sqlalchemy import func
 from decimal import Decimal
 
@@ -86,23 +91,28 @@ def exportar_participantes_evento():
         dados.append(row)
 
     if formato == 'pdf':
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        styles = getSampleStyleSheet()
-        elementos = [Paragraph(f'Participantes - {evento.nome}', styles['Title']), Spacer(1, 12)]
-        tabela = Table([headers] + dados, repeatRows=1)
-        tabela.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#023E8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ]))
-        elementos.append(tabela)
-        doc.build(elementos)
-        buffer.seek(0)
-        nome = f'participantes_evento_{evento.id}.pdf'
-        return send_file(buffer, as_attachment=True, download_name=nome, mimetype='application/pdf')
+        if not REPORTLAB_AVAILABLE:
+            flash('Geração em PDF indisponível no momento; exportando em XLSX.', 'warning')
+            current_app.logger.warning('ReportLab não instalado; fallback para XLSX em exportar_participantes_evento.')
+            formato = 'xlsx'
+        else:
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4)
+            styles = getSampleStyleSheet()
+            elementos = [Paragraph(f'Participantes - {evento.nome}', styles['Title']), Spacer(1, 12)]
+            tabela = Table([headers] + dados, repeatRows=1)
+            tabela.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#023E8A')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ]))
+            elementos.append(tabela)
+            doc.build(elementos)
+            buffer.seek(0)
+            nome = f'participantes_evento_{evento.id}.pdf'
+            return send_file(buffer, as_attachment=True, download_name=nome, mimetype='application/pdf')
 
     # padrão XLSX
     output = BytesIO()
@@ -148,25 +158,30 @@ def exportar_financeiro():
     total = sum(float(r.preco) * r.quantidade for r in dados)
 
     if formato == 'pdf':
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        styles = getSampleStyleSheet()
-        elementos = [Paragraph('Relatório Financeiro', styles['Title']), Spacer(1, 12)]
-        tabela = Table([
-            ['Tipo', 'Quantidade', 'Valor Unitário']
-        ] + [[r.nome, str(r.quantidade), f'R$ {r.preco:.2f}'] for r in dados] + [['Total', '', f'R$ {total:.2f}']],
-            repeatRows=1
-        )
-        tabela.setStyle(TableStyle([
-            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#023E8A')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ]))
-        elementos.append(tabela)
-        doc.build(elementos)
-        buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name='financeiro.pdf', mimetype='application/pdf')
+        if not REPORTLAB_AVAILABLE:
+            flash('Geração em PDF indisponível no momento; exportando em XLSX.', 'warning')
+            current_app.logger.warning('ReportLab não instalado; fallback para XLSX em exportar_financeiro.')
+            formato = 'xlsx'
+        else:
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4)
+            styles = getSampleStyleSheet()
+            elementos = [Paragraph('Relatório Financeiro', styles['Title']), Spacer(1, 12)]
+            tabela = Table([
+                ['Tipo', 'Quantidade', 'Valor Unitário']
+            ] + [[r.nome, str(r.quantidade), f'R$ {r.preco:.2f}'] for r in dados] + [['Total', '', f'R$ {total:.2f}']],
+                repeatRows=1
+            )
+            tabela.setStyle(TableStyle([
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#023E8A')),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ]))
+            elementos.append(tabela)
+            doc.build(elementos)
+            buffer.seek(0)
+            return send_file(buffer, as_attachment=True, download_name='financeiro.pdf', mimetype='application/pdf')
 
     output = BytesIO()
     wb = Workbook()

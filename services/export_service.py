@@ -10,12 +10,22 @@ from typing import List, Dict, Any, Optional
 
 import pandas as pd
 from flask import current_app
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.pdfgen import canvas
+
+try:  # Algumas execuções (como ambientes de testes) não contam com ReportLab
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.pdfgen import canvas
+    REPORTLAB_AVAILABLE = True
+except ImportError:  # pragma: no cover - caminho de fallback
+    colors = letter = A4 = None
+    getSampleStyleSheet = ParagraphStyle = None
+    inch = 72  # valor padrão para evitar divisão por zero quando usado com fallback
+    SimpleDocTemplate = Table = TableStyle = Paragraph = Spacer = None
+    canvas = None
+    REPORTLAB_AVAILABLE = False
 
 from extensions import db
 from models.compra import Compra
@@ -155,10 +165,13 @@ class ExportService:
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"relatorio_compras_{timestamp}.pdf"
-        
+
         filepath = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/tmp'), filename)
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        
+
+        if not REPORTLAB_AVAILABLE:
+            raise RuntimeError('ReportLab não está disponível para geração de PDFs de compras.')
+
         # Criar documento PDF
         doc = SimpleDocTemplate(filepath, pagesize=A4)
         story = []
@@ -234,10 +247,13 @@ class ExportService:
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"relatorio_orcamentos_{timestamp}.pdf"
-        
+
         filepath = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/tmp'), filename)
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        
+
+        if not REPORTLAB_AVAILABLE:
+            raise RuntimeError('ReportLab não está disponível para geração de PDFs de orçamentos.')
+
         # Criar documento PDF
         doc = SimpleDocTemplate(filepath, pagesize=A4)
         story = []

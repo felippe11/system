@@ -1,15 +1,26 @@
 from flask import Blueprint
 placeholder_routes = Blueprint("placeholder_routes", __name__)
 
-from flask import send_file, current_app
-from PIL import Image, ImageDraw, ImageFont
+from flask import send_file, current_app, Response
 import io
+
+try:  # Pillow pode não estar instalado em todos os ambientes
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:  # pragma: no cover - caminho de fallback
+    Image = ImageDraw = ImageFont = None
 
 
 
 @placeholder_routes.route('/api/placeholder/<int:width>/<int:height>')
 def placeholder_image(width, height):
     try:
+        if Image is None:
+            return Response(
+                f"Placeholder {width}x{height}",
+                mimetype="text/plain",
+                status=200,
+            )
+
         # Crie uma imagem placeholder
         img = Image.new('RGB', (width, height), color=(200, 200, 200))
         d = ImageDraw.Draw(img)
@@ -43,5 +54,4 @@ def placeholder_image(width, height):
         img.save(img_io, 'JPEG', quality=70)
         img_io.seek(0)
         return send_file(img_io, mimetype='image/jpeg')
-
 

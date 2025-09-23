@@ -5,6 +5,7 @@ from flask import (
     redirect,
     url_for,
     flash,
+    abort,
     send_file,
     after_this_request,
     jsonify,
@@ -38,6 +39,7 @@ from models.event import ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 
 from services.declaracao_service import gerar_declaracao_personalizada
+from services import certificado_service
 
 from utils.auth import (
     login_required,
@@ -2494,10 +2496,19 @@ def gerar_declaracao_individual(evento_id, usuario_id):
         flash('Usuário não participou deste evento', 'error')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
-    # Buscar template individual ativo
-    template = DeclaracaoTemplate.query.filter_by(
-        cliente_id=current_user.id, ativo=True, tipo='individual'
-    ).first()
+    template_id = request.args.get('template_id', type=int)
+    template_query = DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id)
+
+    if template_id:
+        template = template_query.filter_by(id=template_id).first()
+        if not template:
+            flash('Template selecionado não encontrado', 'error')
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+        if template.tipo != 'individual':
+            flash('Template selecionado não é do tipo individual', 'error')
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+    else:
+        template = template_query.filter_by(ativo=True, tipo='individual').first()
 
     if not template:
         flash('Nenhum template de declaração individual encontrado', 'error')
@@ -2534,10 +2545,19 @@ def gerar_declaracoes_lote(evento_id):
         flash('Nenhum participante encontrado para este evento', 'warning')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
-    # Buscar template coletivo ativo
-    template = DeclaracaoTemplate.query.filter_by(
-        cliente_id=current_user.id, ativo=True, tipo='coletiva'
-    ).first()
+    template_id = request.args.get('template_id', type=int)
+    template_query = DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id)
+
+    if template_id:
+        template = template_query.filter_by(id=template_id).first()
+        if not template:
+            flash('Template selecionado não encontrado', 'error')
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+        if template.tipo != 'coletiva':
+            flash('Template selecionado não é do tipo coletivo', 'error')
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+    else:
+        template = template_query.filter_by(ativo=True, tipo='coletiva').first()
 
     if not template:
         flash('Nenhum template de declaração coletiva encontrado', 'error')
@@ -2604,20 +2624,38 @@ def preview_participantes(evento_id):
     return jsonify({'participantes': dados})
 
 
-@certificado_routes.route('/declaracoes/preview/<int:template_id>/<int:evento_id>')
+@certificado_routes.route('/declaracoes/preview/<template_ref>/<int:evento_id>')
 @login_required
 @require_permission('declaracoes.view')
-@require_resource_access('template', 'template_id', 'view')
-def preview_declaracao(template_id, evento_id):
+@require_resource_access('evento', 'evento_id', 'view')
+def preview_declaracao(template_ref, evento_id):
     """Visualizar preview de declaração."""
     from models.event import Evento
-    
-    template = DeclaracaoTemplate.query.filter_by(
-        id=template_id, cliente_id=current_user.id
-    ).first_or_404()
-    
+
     evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
-    
+
+    if template_ref == 'default':
+        template = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id,
+            ativo=True,
+            tipo='individual',
+        ).first()
+    else:
+        try:
+            template_id = int(template_ref)
+        except ValueError:
+            abort(404)
+        template = DeclaracaoTemplate.query.filter_by(
+            id=template_id,
+            cliente_id=current_user.id,
+        ).first()
+
+    if not template:
+        abort(404)
+
+    if template.tipo != 'individual':
+        abort(404)
+
     # Criar dados de exemplo
     class UsuarioExemplo:
         id = 0
@@ -2740,6 +2778,75 @@ def desabilitar_liberacao_declaracoes(evento_id):
     )
     db.session.commit()
     return jsonify({'success': True})
+
+
+def liberar_declaracoes_evento(evento_id, template_id=None):
+    """Libera declarações individuais para participantes do evento."""
+    evento = Evento.query.filter_by(
+        id=evento_id,
+        cliente_id=current_user.id,
+    ).first()
+    if not evento:
+        raise ValueError('Evento não encontrado para o cliente atual')
+
+    template_query = DeclaracaoTemplate.query.filter_by(
+        cliente_id=current_user.id,
+    )
+
+    template = None
+    if template_id:
+        template = template_query.filter_by(id=template_id).first()
+    else:
+        template = template_query.filter_by(ativo=True, tipo='individual').first()
+
+    if not template:
+        raise ValueError('Template de declaração não encontrado')
+
+    if template.tipo != 'individual':
+        raise ValueError('Template informado não é do tipo individual')
+
+    participantes_ids = [
+        row.usuario_id
+        for row in db.session.query(Checkin.usuario_id)
+        .filter(Checkin.evento_id == evento_id)
+        .distinct()
+        .all()
+    ]
+
+    if not participantes_ids:
+        raise ValueError('Nenhum participante elegível encontrado para o evento')
+
+    agora = datetime.utcnow()
+
+    for participante_id in participantes_ids:
+        declaracao = DeclaracaoComparecimento.query.filter_by(
+            evento_id=evento_id,
+            usuario_id=participante_id,
+        ).first()
+
+        if declaracao:
+            declaracao.template_id = template.id
+            declaracao.titulo = template.nome or 'Declaração de Comparecimento'
+            declaracao.conteudo = template.conteudo
+            declaracao.status = 'liberada'
+            declaracao.data_liberacao = agora
+            declaracao.liberado_por = current_user.id
+        else:
+            db.session.add(
+                DeclaracaoComparecimento(
+                    cliente_id=current_user.id,
+                    evento_id=evento_id,
+                    usuario_id=participante_id,
+                    template_id=template.id,
+                    titulo=template.nome or 'Declaração de Comparecimento',
+                    conteudo=template.conteudo,
+                    status='liberada',
+                    data_liberacao=agora,
+                    liberado_por=current_user.id,
+                )
+            )
+
+    db.session.commit()
 
 
 def verificar_participacao_evento(usuario_id, evento_id):

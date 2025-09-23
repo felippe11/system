@@ -35,7 +35,7 @@
                                     {% for agendamento in agendamentos_sem_monitor %}
                                     <tr>
                                         <td>{{ agendamento.horario.data_visita.strftime('%d/%m/%Y') }}</td>
-                                        <td>{{ agendamento.horario.hora_inicio.strftime('%H:%M') }} - {{ agendamento.horario.hora_fim.strftime('%H:%M') }}</td>
+                                        <td>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</td>
                                         <td>{{ agendamento.visitantes|length }} visitante(s)</td>
                                         <td>
                                             <span class="badge bg-warning">Sem Monitor</span>
@@ -81,7 +81,7 @@
                                     {% for agendamento in agendamentos_com_monitor %}
                                     <tr>
                                         <td>{{ agendamento.horario.data_visita.strftime('%d/%m/%Y') }}</td>
-                                        <td>{{ agendamento.horario.hora_inicio.strftime('%H:%M') }} - {{ agendamento.horario.hora_fim.strftime('%H:%M') }}</td>
+                                        <td>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</td>
                                         <td>
                                             {% if agendamento.monitor_agendamento %}
                                                 <span class="badge bg-info">{{ agendamento.monitor_agendamento[0].monitor.nome_completo }}</span>

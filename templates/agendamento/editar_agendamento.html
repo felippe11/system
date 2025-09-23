@@ -19,7 +19,7 @@
                   <option value="">Selecione um horário</option>
                   {% for horario in horarios %}
                     <option value="{{ horario.id }}" {% if horario.id == agendamento.horario_id %}selected{% endif %}>
-                      {{ horario.data.strftime('%d/%m/%Y') }} | {{ horario.hora_inicio }} - {{ horario.hora_fim }}
+                      {{ horario.data.strftime('%d/%m/%Y') }} | {{ horario.horario_inicio.strftime('%H:%M') }} - {{ horario.horario_fim.strftime('%H:%M') }}
                     </option>
                   {% endfor %}
                 </select>

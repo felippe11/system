@@ -3,8 +3,15 @@ from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import io
 import pandas as pd
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+
+try:  # Alguns ambientes de execução não contam com openpyxl completo
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    OPENPYXL_AVAILABLE = True
+except ImportError:  # pragma: no cover - fallback
+    Workbook = None
+    Font = PatternFill = Alignment = None
+    OPENPYXL_AVAILABLE = False
 
 from models.orcamento import Orcamento, HistoricoOrcamento
 from models.user import Usuario
@@ -203,6 +210,12 @@ def api_estatisticas_historico():
 def api_exportar_historico():
     """API para exportar histórico em Excel"""
     try:
+        if not OPENPYXL_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'Exportação XLSX indisponível: biblioteca openpyxl não instalada.'
+            }), 503
+
         # Parâmetros de filtro
         data_inicio = request.args.get('data_inicio')
         data_fim = request.args.get('data_fim')

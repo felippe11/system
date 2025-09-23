@@ -341,7 +341,12 @@ def can_access_resource(resource_type, resource_id, action='view'):
     if current_role == 'cliente':
         if resource_type in ['certificado', 'declaracao', 'template', 'evento']:
             # Verificar se o recurso pertence ao cliente
-            from models import Cliente, Evento, CertificadoTemplateAvancado
+            from models import (
+                Cliente,
+                Evento,
+                CertificadoTemplateAvancado,
+                DeclaracaoTemplate,
+            )
             
             if resource_type == 'evento':
                 evento = Evento.query.get(resource_id)
@@ -349,6 +354,8 @@ def can_access_resource(resource_type, resource_id, action='view'):
             
             elif resource_type == 'template':
                 template = CertificadoTemplateAvancado.query.get(resource_id)
+                if not template:
+                    template = DeclaracaoTemplate.query.get(resource_id)
                 return template and template.cliente_id == current_user.id
             
             # Para certificados e declarações, verificar através do evento

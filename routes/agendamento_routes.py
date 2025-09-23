@@ -1149,14 +1149,38 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     """
     pdf = FPDF()
     pdf.add_page()
-    
-        # Register fonts before setting them
-    font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
-    pdf.add_font("DejaVu", "", os.path.join(font_dir, "DejaVuSans.ttf"), uni=True)
-    pdf.add_font("DejaVu", "B", os.path.join(font_dir, "DejaVuSans-Bold.ttf"), uni=True)
-    pdf.add_font(
-        "DejaVu", "I", os.path.join(font_dir, "DejaVuSans-Oblique.ttf"), uni=True
-    )
+
+    font_dir = os.path.join(current_app.root_path, "fonts")
+    if not os.path.isdir(font_dir):
+        font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
+
+    fonts_registered = False
+    fonts_to_register = {
+        ("DejaVu", ""): "DejaVuSans.ttf",
+        ("DejaVu", "B"): "DejaVuSans-Bold.ttf",
+        ("DejaVu", "I"): "DejaVuSans-Oblique.ttf",
+    }
+    if hasattr(pdf, "add_font"):
+        for (family, style), filename in fonts_to_register.items():
+            font_path = os.path.join(font_dir, filename)
+            if not os.path.exists(font_path):
+                logger.warning(
+                    "Fonte %s não encontrada no diretório %s; mantendo fontes padrão.",
+                    filename,
+                    font_dir,
+                )
+                continue
+            try:
+                pdf.add_font(family, style, font_path, uni=True)
+                fonts_registered = True
+            except (RuntimeError, OSError) as exc:
+                logger.warning("Falha ao registrar fonte %s: %s", filename, exc)
+                continue
+            font_key = f"{family}{style}".lower()
+            if hasattr(pdf, "fonts") and font_key in pdf.fonts:
+                pdf.fonts[font_key]["ttffile"] = font_path
+    else:
+        logger.debug("Instância de PDF não oferece suporte a add_font; usando fontes padrões.")
 
     # Configurar fonte
     pdf.set_font("DejaVu", "B", 16)
@@ -4133,7 +4157,7 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                 data = [
                     agendamento.id,
                     horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
-                    f"{horario.hora_inicio.strftime('%H:%M')} - {horario.hora_fim.strftime('%H:%M')}" if horario and horario.hora_inicio and horario.hora_fim else 'N/A',
+                    f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
                     evento.nome if evento else 'N/A',
                     agendamento.escola_nome or 'N/A',
                     professor.nome if professor else agendamento.professor_nome or 'N/A',
@@ -4297,7 +4321,7 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                 agendamentos_data.append({
                     'ID': agendamento.id,
                     'Data da Visita': horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
-                    'Horário': f"{horario.hora_inicio.strftime('%H:%M')} - {horario.hora_fim.strftime('%H:%M')}" if horario and horario.hora_inicio and horario.hora_fim else 'N/A',
+                    'Horário': f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
                     'Evento': evento.nome if evento else 'N/A',
                     'Escola/Instituição': agendamento.escola_nome or 'N/A',
                     'Professor/Responsável': professor.nome if professor else agendamento.professor_nome or 'N/A',
