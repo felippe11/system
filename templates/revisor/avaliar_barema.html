@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {% extends "base.html" %}
 
 {% block title %}Avaliar Trabalho - {{ categoria }}{% endblock %}
@@ -231,4 +232,238 @@ document.getElementById('formAvaliacao').addEventListener('submit', function(e) 
     return true;
 });
 </script>
+=======
+{% extends "base.html" %}
+
+{% block title %}Avaliar Trabalho - {{ categoria }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clipboard-check"></i>
+                        Avaliação por Barema
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Informações do Trabalho -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="alert alert-info">
+                                <h5 class="mb-2">{{ trabalho.title }}</h5>
+
+                                <p class="mb-0"><strong>Categoria:</strong> 
+                                    <span class="badge badge-primary">{{ categoria }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-right">
+                                {% if codigo_candidatura %}
+                                    <a href="{{ trabalho.pdf_url }}" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-file-earmark-pdf"></i> Ver PDF
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulário de Avaliação -->
+                    <form method="POST" id="formAvaliacao">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-list-check"></i>
+                                    Critérios de Avaliação - {{ barema.nome if barema else categoria }}
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% if criterios %}
+                                    {% for criterio in criterios %}
+                                    <div class="criterio-item mb-4 p-3 border rounded">
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <h6 class="criterio-titulo">
+                                                    {{ criterio.nome }}
+                                                    {% if criterio.peso %}
+                                                        <small class="text-muted">(Peso: {{ criterio.peso }})</small>
+                                                    {% endif %}
+                                                </h6>
+                                                {% if criterio.descricao %}
+                                                    <p class="criterio-descricao text-muted mb-2">{{ criterio.descricao }}</p>
+                                                {% endif %}
+                                                {% if criterio.nota_maxima %}
+                                                    <small class="text-info">Nota máxima: {{ criterio.nota_maxima }}</small>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-group">
+                                                    <label for="criterio_{{ criterio.id }}">Nota:</label>
+                                                    <input type="number" 
+                                                           class="form-control" 
+                                                           id="criterio_{{ criterio.id }}" 
+                                                           name="criterio_{{ criterio.id }}"
+                                                           min="0" 
+                                                           max="{{ criterio.nota_maxima or 10 }}" 
+                                                           step="0.1"
+                                                           required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-12">
+                                                <div class="form-group">
+                                                    <label for="observacao_{{ criterio.id }}">Observações (opcional):</label>
+                                                    <textarea class="form-control" 
+                                                              id="observacao_{{ criterio.id }}" 
+                                                              name="observacao_{{ criterio.id }}"
+                                                              rows="2" 
+                                                              placeholder="Comentários sobre este critério..."></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Nenhum critério de avaliação encontrado para este barema.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if criterios %}
+                        <!-- Resumo da Avaliação -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-calculator"></i>
+                                    Resumo da Avaliação
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nota Final Calculada:</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="notaFinal" readonly>
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">pontos</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Total de Critérios:</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" value="{{ criterios|length }}" readonly>
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">critérios</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="mt-4 text-center">
+                            <a href="{{ url_for('revisor_routes.selecionar_categoria_barema', trabalho_id=trabalho.id) }}" 
+                               class="btn btn-secondary mr-2">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Salvar Avaliação
+                            </button>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.criterio-item {
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.criterio-item:hover {
+    background-color: #e9ecef;
+}
+
+.criterio-titulo {
+    color: #495057;
+    font-weight: 600;
+}
+
+.criterio-descricao {
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+#notaFinal {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+</style>
+
+<script>
+// Calcular nota final automaticamente
+function calcularNotaFinal() {
+    let total = 0;
+    const inputs = document.querySelectorAll('input[name^="criterio_"]');
+    
+    inputs.forEach(input => {
+        const valor = parseFloat(input.value) || 0;
+        total += valor;
+    });
+    
+    document.getElementById('notaFinal').value = total.toFixed(1);
+}
+
+// Adicionar event listeners para cálculo automático
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('input[name^="criterio_"]');
+    
+    inputs.forEach(input => {
+        input.addEventListener('input', calcularNotaFinal);
+        input.addEventListener('change', calcularNotaFinal);
+    });
+    
+    // Calcular nota inicial
+    calcularNotaFinal();
+});
+
+// Validação do formulário
+document.getElementById('formAvaliacao').addEventListener('submit', function(e) {
+    const inputs = document.querySelectorAll('input[name^="criterio_"]');
+    let temNotaVazia = false;
+    
+    inputs.forEach(input => {
+        if (!input.value || input.value === '') {
+            temNotaVazia = true;
+        }
+    });
+    
+    if (temNotaVazia) {
+        if (!confirm('Alguns critérios não foram avaliados. Deseja continuar mesmo assim?')) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    
+    return true;
+});
+</script>
+>>>>>>> c593328b09b311b97c969034b12baa1c351a90bd
 {% endblock %}

@@ -1,0 +1,1021 @@
+{% extends "base.html" %}
+
+{% block title %}Métricas dos Baremas{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    --light-bg: #f8fafc;
+    --card-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    --card-shadow-hover: 0 20px 40px rgba(0,0,0,0.12);
+    --border-radius: 16px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+.container-fluid {
+    background: transparent;
+}
+
+.metric-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card .card-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.metric-card .card-body {
+    padding: 2rem;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--primary-gradient);
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+}
+
+.metric-label {
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: var(--transition);
+}
+
+.badge-pratica { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+.badge-pesquisa { 
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+.badge-produto { 
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    color: white;
+}
+
+/* Estilos para seções de categoria */
+.categoria-section {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.categoria-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: var(--primary-gradient);
+}
+
+.categoria-section.pratica-educacional::before {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.categoria-section.pesquisa-inovadora::before {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.categoria-section.produto-inovador::before {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.categoria-section:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.categoria-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.categoria-title i {
+    font-size: 1.5em;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.criterio-card {
+    transition: var(--transition);
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+}
+
+.criterio-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.criterio-card .card-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.25rem;
+}
+
+.criterio-card .card-body {
+    padding: 1.5rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin: 2rem 0;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+}
+
+.filters-section {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: var(--transition);
+}
+
+.filters-section:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.form-select, .form-control {
+    border: 2px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+}
+
+.form-select:focus, .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+.btn {
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: var(--transition);
+    border: none;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-secondary {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(0,0,0,0.1);
+    color: #374151;
+    backdrop-filter: blur(5px);
+}
+
+.btn-outline-secondary:hover {
+    background: var(--dark-gradient);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.table-responsive {
+    max-height: 500px;
+    overflow-y: auto;
+    border-radius: var(--border-radius);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--card-shadow);
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: none;
+    padding: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #374151;
+}
+
+.table td {
+    padding: 1rem;
+    border: none;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-weight: 500;
+}
+
+.table tbody tr:hover {
+    background: rgba(102, 126, 234, 0.05);
+    transform: scale(1.01);
+    transition: var(--transition);
+}
+
+h1, h3, h4, h5 {
+    color: #1e293b;
+    font-weight: 700;
+}
+
+h1.h3 {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 2.5rem;
+}
+
+.badge {
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.badge.bg-danger { background: var(--danger-gradient) !important; }
+.badge.bg-warning { background: var(--warning-gradient) !important; color: white !important; }
+.badge.bg-info { background: var(--success-gradient) !important; }
+.badge.bg-success { background: var(--primary-gradient) !important; }
+
+/* Animações e efeitos especiais */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.metric-card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.metric-card:nth-child(1) { animation-delay: 0.1s; }
+.metric-card:nth-child(2) { animation-delay: 0.2s; }
+.metric-card:nth-child(3) { animation-delay: 0.3s; }
+
+.categoria-section {
+    animation: slideInLeft 0.8s ease-out;
+}
+
+.criterio-card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.criterio-card:nth-child(odd) { animation-delay: 0.1s; }
+.criterio-card:nth-child(even) { animation-delay: 0.2s; }
+
+.metric-value {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.category-badge:hover {
+    animation: pulse 0.6s ease-in-out;
+}
+
+.filters-section {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* Loading shimmer effect */
+.shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* Responsividade aprimorada */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 1rem;
+    }
+    
+    .metric-card {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .categoria-section {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .categoria-title {
+        font-size: 1.25rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    .categoria-title i {
+        font-size: 1.2em;
+        padding: 8px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    h1.h3 {
+        font-size: 2rem;
+        text-align: center;
+    }
+    
+    .filters-section {
+        padding: 1.5rem;
+    }
+    
+    .chart-container {
+        height: 300px;
+        margin: 1rem 0;
+        padding: 0.5rem;
+    }
+    
+    .criterio-card .card-header,
+    .criterio-card .card-body {
+        padding: 1rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .metric-value {
+        font-size: 1.75rem;
+    }
+    
+    .categoria-title {
+        font-size: 1.1rem;
+    }
+    
+    .btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.875rem;
+    }
+    
+    .form-select, .form-control {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.875rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+}
+
+/* Efeitos de hover aprimorados */
+.metric-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.metric-card:hover::after {
+    left: 100%;
+}
+
+/* Scroll suave */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Estilo para elementos focados */
+*:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Melhorias de acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Métricas dos Baremas</h1>
+                <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-section">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="categoria" class="form-label">Categoria</label>
+                <select name="categoria" id="categoria" class="form-select">
+                    <option value="">Todas as categorias</option>
+                    {% for categoria in categorias %}
+                    <option value="{{ categoria }}" {% if categoria_filtro == categoria %}selected{% endif %}>
+                        {{ categoria }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="criterio" class="form-label">Critério</label>
+                <select name="criterio" id="criterio" class="form-select">
+                    <option value="">Todos os critérios</option>
+                    {% for criterio in criterios_unicos %}
+                    <option value="{{ criterio }}" {% if criterio_filtro == criterio %}selected{% endif %}>
+                        {{ criterio }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="periodo_inicio" class="form-label">Data Início</label>
+                <input type="date" name="periodo_inicio" id="periodo_inicio" class="form-control" value="{{ periodo_inicio }}">
+            </div>
+            <div class="col-md-2">
+                <label for="periodo_fim" class="form-label">Data Fim</label>
+                <input type="date" name="periodo_fim" id="periodo_fim" class="form-control" value="{{ periodo_fim }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary d-block w-100">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Cards de Estatísticas por Categoria -->
+    <div class="row mb-4">
+        {% for categoria, stats in estatisticas.items() %}
+        <div class="col-md-4">
+            <div class="card metric-card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-0">{{ categoria }}</h5>
+                        <span class="category-badge 
+                            {% if categoria == 'Prática Educacional' %}badge-pratica
+                            {% elif categoria == 'Pesquisa Inovadora' %}badge-pesquisa
+                            {% elif categoria == 'Produto Inovador' %}badge-produto
+                            {% endif %}">
+                            {{ categoria.split()[0] }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="metric-value">{{ stats.total_avaliacoes }}</div>
+                            <div class="metric-label">Avaliações</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-value">{{ stats.nota_media }}</div>
+                            <div class="metric-label">Nota Média</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <small class="text-muted">Máxima: {{ stats.nota_maxima }}</small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Mínima: {{ stats.nota_minima }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Seção de Estatísticas por Critério -->
+    {% if estatisticas_criterios_por_categoria %}
+    <div class="metric-card mb-4">
+        <h4 class="mb-4"><i class="fas fa-chart-line"></i> Estatísticas por Critério de Avaliação</h4>
+        
+        {% for categoria, criterios_stats in estatisticas_criterios_por_categoria.items() %}
+             {% if criterios_stats %}
+             <div class="categoria-section 
+                 {% if categoria == 'Prática Educacional' %}pratica-educacional
+                 {% elif categoria == 'Pesquisa Inovadora' %}pesquisa-inovadora
+                 {% elif categoria == 'Produto Inovador' %}produto-inovador
+                 {% endif %}">
+                 <h5 class="categoria-title">
+                     <i class="fas fa-
+                         {% if categoria == 'Prática Educacional' %}chalkboard-teacher
+                         {% elif categoria == 'Pesquisa Inovadora' %}microscope
+                         {% elif categoria == 'Produto Inovador' %}lightbulb
+                         {% else %}clipboard-list
+                         {% endif %}"></i>
+                     {{ categoria }}
+                 </h5>
+                 
+                 <div class="row">
+                     {% for criterio_id, stats in criterios_stats.items() %}
+                     <div class="col-md-6 col-lg-4 mb-4">
+                         <div class="card criterio-card h-100">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0 text-truncate" title="{{ stats.nome }}">{{ stats.nome }}</h6>
+                                {% if stats.descricao %}
+                                <small class="text-muted">{{ stats.descricao }}</small>
+                                {% endif %}
+                                <small class="text-muted d-block">Pontuação máxima: {{ stats.pontuacao_max }}</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center mb-3">
+                                    <div class="col-6">
+                                        <div class="metric-value text-primary">{{ stats.total_avaliacoes }}</div>
+                                        <div class="metric-label">Avaliações</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="metric-value text-success">{{ stats.nota_media }}</div>
+                                        <div class="metric-label">Nota Média</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row text-center mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted">Máx: {{ stats.nota_maxima }}</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Mín: {{ stats.nota_minima }}</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- Distribuição de Notas -->
+                                <div class="mb-3">
+                                    <small class="text-muted d-block mb-2">Distribuição de Notas:</small>
+                                    <div class="row text-center">
+                                        <div class="col-3">
+                                            <div class="badge bg-danger">{{ stats.distribuicao_notas['0-2'] }}</div>
+                                            <div style="font-size: 0.7rem;">0-2</div>
+                                        </div>
+                                        <div class="col-3">
+                                            <div class="badge bg-warning">{{ stats.distribuicao_notas['3-5'] }}</div>
+                                            <div style="font-size: 0.7rem;">3-5</div>
+                                        </div>
+                                        <div class="col-3">
+                                            <div class="badge bg-info">{{ stats.distribuicao_notas['6-8'] }}</div>
+                                            <div style="font-size: 0.7rem;">6-8</div>
+                                        </div>
+                                        <div class="col-3">
+                                            <div class="badge bg-success">{{ stats.distribuicao_notas['9-10'] }}</div>
+                                            <div style="font-size: 0.7rem;">9-10</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="metric-card">
+                <h5 class="mb-3">Total de Avaliações por Categoria</h5>
+                <div class="chart-container">
+                    <canvas id="avaliacoesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="metric-card">
+                <h5 class="mb-3">Notas Médias por Categoria</h5>
+                <div class="chart-container">
+                    <canvas id="notasChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfico de Critérios -->
+    {% if estatisticas_criterios %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="metric-card">
+                <h5 class="mb-3">Notas Médias por Critério</h5>
+                <div class="chart-container">
+                    <canvas id="criteriosChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabela de Avaliações Recentes -->
+    <div class="metric-card">
+        <h5 class="mb-3">Avaliações Recentes</h5>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Trabalho</th>
+                        <th>Categoria</th>
+                        <th>Revisor</th>
+                        <th>Nota Final</th>
+                        <th>Data Avaliação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for categoria, stats in estatisticas.items() %}
+                        {% for avaliacao in stats.avaliacoes %}
+                        <tr>
+                            <td>
+                                {% if avaliacao.trabalho and avaliacao.trabalho.title %}
+                                    {{ avaliacao.trabalho.title }}
+                                {% else %}
+                                    Trabalho #{{ avaliacao.trabalho_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="category-badge 
+                                    {% if categoria == 'Prática Educacional' %}badge-pratica
+                                    {% elif categoria == 'Pesquisa Inovadora' %}badge-pesquisa
+                                    {% elif categoria == 'Produto Inovador' %}badge-produto
+                                    {% endif %}">
+                                    {{ categoria }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if avaliacao.nome_revisor %}
+                                    {{ avaliacao.nome_revisor }}
+                                {% elif avaliacao.revisor %}
+                                    {{ avaliacao.revisor.nome or avaliacao.revisor.email }}
+                                {% else %}
+                                    Revisor #{{ avaliacao.revisor_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ avaliacao.nota_final or 'N/A' }}</strong>
+                            </td>
+                            <td>
+                                {% if avaliacao.data_avaliacao %}
+                                    {{ avaliacao.data_avaliacao.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    
+                    {% if not (estatisticas['Prática Educacional'].avaliacoes or estatisticas['Pesquisa Inovadora'].avaliacoes or estatisticas['Produto Inovador'].avaliacoes) %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            Nenhuma avaliação encontrada com os filtros aplicados.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Dados dos gráficos vindos do backend
+const dadosGrafico = {{ dados_grafico | tojson }};
+
+// Configuração do gráfico de avaliações
+const ctxAvaliacoes = document.getElementById('avaliacoesChart').getContext('2d');
+new Chart(ctxAvaliacoes, {
+    type: 'bar',
+    data: {
+        labels: dadosGrafico.categorias,
+        datasets: [{
+            label: 'Total de Avaliações',
+            data: dadosGrafico.total_avaliacoes,
+            backgroundColor: [
+                'rgba(37, 99, 235, 0.8)',
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(251, 191, 36, 0.8)'
+            ],
+            borderColor: [
+                'rgba(37, 99, 235, 1)',
+                'rgba(34, 197, 94, 1)',
+                'rgba(251, 191, 36, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// Configuração do gráfico de notas médias
+const ctxNotas = document.getElementById('notasChart').getContext('2d');
+new Chart(ctxNotas, {
+    type: 'line',
+    data: {
+        labels: dadosGrafico.categorias,
+        datasets: [{
+            label: 'Nota Média',
+            data: dadosGrafico.notas_medias,
+            borderColor: 'rgba(37, 99, 235, 1)',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 10
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// Preparar dados para o gráfico de critérios
+        {% if estatisticas_criterios %}
+        const criteriosCtx = document.getElementById('criteriosChart').getContext('2d');
+        const criteriosData = {
+            labels: [{% for criterio_id in estatisticas_criterios.keys() %}'{{ criterio_id }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Nota Média por Critério',
+                data: [{% for stats in estatisticas_criterios.values() %}{{ stats.nota_media }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        };
+        {% endif %}
+        
+        // Funcionalidade de filtro por critério
+        const criterioFiltro = document.getElementById('criterio_filtro');
+        if (criterioFiltro) {
+            criterioFiltro.addEventListener('change', function() {
+                const criterioSelecionado = this.value;
+                
+                // Filtrar cards de critérios
+                const criterioCards = document.querySelectorAll('.col-md-6.col-lg-4');
+                criterioCards.forEach(card => {
+                    const criterioTitulo = card.querySelector('.card-header h6');
+                    if (criterioTitulo) {
+                        const criterioNome = criterioTitulo.textContent.trim();
+                        if (criterioSelecionado === '' || criterioNome === criterioSelecionado) {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    }
+                });
+                
+                // Atualizar gráfico de critérios se existir
+                {% if estatisticas_criterios %}
+                if (window.criteriosChart) {
+                    const chart = window.criteriosChart;
+                    const originalData = {
+                        labels: [{% for criterio_id in estatisticas_criterios.keys() %}'{{ criterio_id }}'{% if not loop.last %},{% endif %}{% endfor %}],
+                        data: [{% for stats in estatisticas_criterios.values() %}{{ stats.nota_media }}{% if not loop.last %},{% endif %}{% endfor %}]
+                    };
+                    
+                    if (criterioSelecionado === '') {
+                        // Mostrar todos os critérios
+                        chart.data.labels = originalData.labels;
+                        chart.data.datasets[0].data = originalData.data;
+                    } else {
+                        // Mostrar apenas o critério selecionado
+                        const index = originalData.labels.indexOf(criterioSelecionado);
+                        if (index !== -1) {
+                            chart.data.labels = [originalData.labels[index]];
+                            chart.data.datasets[0].data = [originalData.data[index]];
+                        }
+                    }
+                    chart.update();
+                }
+                {% endif %}
+            });
+        }
+        
+        // Armazenar referência do gráfico de critérios globalmente
+        {% if estatisticas_criterios %}
+        window.criteriosChart = new Chart(criteriosCtx, {
+            type: 'bar',
+            data: criteriosData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const criterioId = context.label;
+                                const stats = {{ estatisticas_criterios|tojson }}[criterioId];
+                                return [
+                                    'Total de avaliações: ' + stats.total_avaliacoes,
+                                    'Nota máxima: ' + stats.nota_maxima,
+                                    'Nota mínima: ' + stats.nota_minima
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+{% endblock %}
