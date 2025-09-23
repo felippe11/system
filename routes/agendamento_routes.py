@@ -3432,13 +3432,35 @@ def exportar_agendamentos():
                 'horario': '09:00 - 11:00',
                 'evento': 'Feira de Ciências 2025',
                 'escola': 'Escola Modelo',
+                'codigo_inep': '12345678',
+                'rede_ensino': 'Municipal',
+                'estado': 'SP',
+                'municipio': 'São Paulo',
+                'bairro': 'Centro',
                 'responsavel': 'João Silva',
                 'email': 'joao.silva@email.com',
                 'telefone': '(11) 98765-4321',
                 'turma': '5º Ano A',
                 'alunos': 25,
+                'nivel_ensino': 'Fundamental I',
                 'status': 'confirmado',
-                'data_criacao': '2025-02-15 14:30:22'
+                'data_criacao': '2025-02-15 14:30:22',
+                'data_cancelamento': '',
+                'motivo_recusa': '',
+                'checkin_realizado': 'Sim',
+                'data_checkin': '2025-03-20 09:15:00',
+                'responsavel_nome': 'João Silva',
+                'responsavel_cargo': 'Professor',
+                'responsavel_whatsapp': '(11) 98765-4321',
+                'responsavel_email': 'joao.silva@email.com',
+                'acompanhantes_nomes': 'Maria Santos, Pedro Oliveira',
+                'acompanhantes_qtd': 2,
+                'salas_selecionadas': 'Sala 1, Sala 2',
+                'compromisso_1': 'Sim',
+                'compromisso_2': 'Sim',
+                'compromisso_3': 'Não',
+                'compromisso_4': 'Sim',
+                'observacoes': 'Turma com alunos especiais'
             },
             {
                 'id': 2,
@@ -3446,13 +3468,35 @@ def exportar_agendamentos():
                 'horario': '14:00 - 16:00',
                 'evento': 'Feira de Ciências 2025',
                 'escola': 'Colégio Exemplo',
+                'codigo_inep': '87654321',
+                'rede_ensino': 'Estadual',
+                'estado': 'SP',
+                'municipio': 'São Paulo',
+                'bairro': 'Vila Madalena',
                 'responsavel': 'Maria Oliveira',
                 'email': 'maria.oliveira@email.com',
                 'telefone': '(11) 91234-5678',
                 'turma': '8º Ano B',
                 'alunos': 30,
+                'nivel_ensino': 'Fundamental II',
                 'status': 'confirmado',
-                'data_criacao': '2025-02-16 10:15:45'
+                'data_criacao': '2025-02-16 10:15:45',
+                'data_cancelamento': '',
+                'motivo_recusa': '',
+                'checkin_realizado': 'Não',
+                'data_checkin': '',
+                'responsavel_nome': 'Maria Oliveira',
+                'responsavel_cargo': 'Coordenadora',
+                'responsavel_whatsapp': '(11) 91234-5678',
+                'responsavel_email': 'maria.oliveira@email.com',
+                'acompanhantes_nomes': 'Ana Costa',
+                'acompanhantes_qtd': 1,
+                'salas_selecionadas': 'Sala 3',
+                'compromisso_1': 'Sim',
+                'compromisso_2': 'Não',
+                'compromisso_3': 'Sim',
+                'compromisso_4': 'Não',
+                'observacoes': ''
             },
             {
                 'id': 3,
@@ -3460,13 +3504,35 @@ def exportar_agendamentos():
                 'horario': '09:00 - 11:00',
                 'evento': 'Feira de Ciências 2025',
                 'escola': 'Instituto Educacional',
+                'codigo_inep': '11223344',
+                'rede_ensino': 'Privada',
+                'estado': 'SP',
+                'municipio': 'São Paulo',
+                'bairro': 'Jardins',
                 'responsavel': 'Carlos Santos',
                 'email': 'carlos.santos@email.com',
                 'telefone': '(11) 95555-1234',
                 'turma': '2º Ano EM',
                 'alunos': 35,
+                'nivel_ensino': 'Ensino Médio',
                 'status': 'cancelado',
-                'data_criacao': '2025-02-17 09:22:10'
+                'data_criacao': '2025-02-17 09:22:10',
+                'data_cancelamento': '2025-03-21 15:30:00',
+                'motivo_recusa': 'Problemas de transporte',
+                'checkin_realizado': 'Não',
+                'data_checkin': '',
+                'responsavel_nome': 'Carlos Santos',
+                'responsavel_cargo': 'Professor',
+                'responsavel_whatsapp': '(11) 95555-1234',
+                'responsavel_email': 'carlos.santos@email.com',
+                'acompanhantes_nomes': '',
+                'acompanhantes_qtd': 0,
+                'salas_selecionadas': 'Sala 4',
+                'compromisso_1': 'Não',
+                'compromisso_2': 'Não',
+                'compromisso_3': 'Não',
+                'compromisso_4': 'Não',
+                'observacoes': 'Cancelado por problemas de transporte'
             }
         ]
         
@@ -3480,8 +3546,13 @@ def exportar_agendamentos():
             writer = csv.writer(output)
             
             # Escrever cabeçalho
-            writer.writerow(['ID', 'Data', 'Horário', 'Evento', 'Escola', 'Responsável', 'Email', 
-                            'Telefone', 'Turma', 'Alunos', 'Status', 'Data de Criação'])
+            writer.writerow(['ID', 'Data', 'Horário', 'Evento', 'Escola', 'Código INEP', 'Rede de Ensino', 
+                            'Estado', 'Município', 'Bairro', 'Responsável', 'Email', 'Telefone', 'Turma', 
+                            'Alunos', 'Nível de Ensino', 'Status', 'Data de Criação', 'Data Cancelamento',
+                            'Motivo Recusa', 'Check-in Realizado', 'Data Check-in', 'Responsável Nome',
+                            'Responsável Cargo', 'Responsável WhatsApp', 'Responsável Email',
+                            'Acompanhantes Nomes', 'Quantidade Acompanhantes', 'Salas Selecionadas',
+                            'Compromisso 1', 'Compromisso 2', 'Compromisso 3', 'Compromisso 4', 'Observações'])
             
             # Escrever linhas de dados
             for agendamento in agendamentos_dados:
@@ -3491,13 +3562,35 @@ def exportar_agendamentos():
                     agendamento['horario'],
                     agendamento['evento'],
                     agendamento['escola'],
+                    agendamento['codigo_inep'],
+                    agendamento['rede_ensino'],
+                    agendamento['estado'],
+                    agendamento['municipio'],
+                    agendamento['bairro'],
                     agendamento['responsavel'],
                     agendamento['email'],
                     agendamento['telefone'],
                     agendamento['turma'],
                     agendamento['alunos'],
+                    agendamento['nivel_ensino'],
                     agendamento['status'],
-                    agendamento['data_criacao']
+                    agendamento['data_criacao'],
+                    agendamento['data_cancelamento'],
+                    agendamento['motivo_recusa'],
+                    agendamento['checkin_realizado'],
+                    agendamento['data_checkin'],
+                    agendamento['responsavel_nome'],
+                    agendamento['responsavel_cargo'],
+                    agendamento['responsavel_whatsapp'],
+                    agendamento['responsavel_email'],
+                    agendamento['acompanhantes_nomes'],
+                    agendamento['acompanhantes_qtd'],
+                    agendamento['salas_selecionadas'],
+                    agendamento['compromisso_1'],
+                    agendamento['compromisso_2'],
+                    agendamento['compromisso_3'],
+                    agendamento['compromisso_4'],
+                    agendamento['observacoes']
                 ])
             
             # Preparar a resposta
@@ -3556,8 +3649,13 @@ def exportar_agendamentos():
                 }
                 
                 # Definir cabeçalho
-                headers = ['ID', 'Data', 'Horário', 'Evento', 'Escola', 'Responsável', 'Email', 
-                          'Telefone', 'Turma', 'Alunos', 'Status', 'Data de Criação']
+                headers = ['ID', 'Data', 'Horário', 'Evento', 'Escola', 'Código INEP', 'Rede de Ensino', 
+                          'Estado', 'Município', 'Bairro', 'Responsável', 'Email', 'Telefone', 'Turma', 
+                          'Alunos', 'Nível de Ensino', 'Status', 'Data de Criação', 'Data Cancelamento',
+                          'Motivo Recusa', 'Check-in Realizado', 'Data Check-in', 'Responsável Nome',
+                          'Responsável Cargo', 'Responsável WhatsApp', 'Responsável Email',
+                          'Acompanhantes Nomes', 'Quantidade Acompanhantes', 'Salas Selecionadas',
+                          'Compromisso 1', 'Compromisso 2', 'Compromisso 3', 'Compromisso 4', 'Observações']
                 
                 # Escrever cabeçalho
                 for col, header in enumerate(headers):
@@ -3573,13 +3671,35 @@ def exportar_agendamentos():
                     worksheet.write(row, 2, agendamento['horario'], cell_format)
                     worksheet.write(row, 3, agendamento['evento'], cell_format)
                     worksheet.write(row, 4, agendamento['escola'], cell_format)
-                    worksheet.write(row, 5, agendamento['responsavel'], cell_format)
-                    worksheet.write(row, 6, agendamento['email'], cell_format)
-                    worksheet.write(row, 7, agendamento['telefone'], cell_format)
-                    worksheet.write(row, 8, agendamento['turma'], cell_format)
-                    worksheet.write(row, 9, agendamento['alunos'], cell_format)
-                    worksheet.write(row, 10, agendamento['status'], status_format)
-                    worksheet.write(row, 11, agendamento['data_criacao'], cell_format)
+                    worksheet.write(row, 5, agendamento['codigo_inep'], cell_format)
+                    worksheet.write(row, 6, agendamento['rede_ensino'], cell_format)
+                    worksheet.write(row, 7, agendamento['estado'], cell_format)
+                    worksheet.write(row, 8, agendamento['municipio'], cell_format)
+                    worksheet.write(row, 9, agendamento['bairro'], cell_format)
+                    worksheet.write(row, 10, agendamento['responsavel'], cell_format)
+                    worksheet.write(row, 11, agendamento['email'], cell_format)
+                    worksheet.write(row, 12, agendamento['telefone'], cell_format)
+                    worksheet.write(row, 13, agendamento['turma'], cell_format)
+                    worksheet.write(row, 14, agendamento['alunos'], cell_format)
+                    worksheet.write(row, 15, agendamento['nivel_ensino'], cell_format)
+                    worksheet.write(row, 16, agendamento['status'], status_format)
+                    worksheet.write(row, 17, agendamento['data_criacao'], cell_format)
+                    worksheet.write(row, 18, agendamento['data_cancelamento'], cell_format)
+                    worksheet.write(row, 19, agendamento['motivo_recusa'], cell_format)
+                    worksheet.write(row, 20, agendamento['checkin_realizado'], cell_format)
+                    worksheet.write(row, 21, agendamento['data_checkin'], cell_format)
+                    worksheet.write(row, 22, agendamento['responsavel_nome'], cell_format)
+                    worksheet.write(row, 23, agendamento['responsavel_cargo'], cell_format)
+                    worksheet.write(row, 24, agendamento['responsavel_whatsapp'], cell_format)
+                    worksheet.write(row, 25, agendamento['responsavel_email'], cell_format)
+                    worksheet.write(row, 26, agendamento['acompanhantes_nomes'], cell_format)
+                    worksheet.write(row, 27, agendamento['acompanhantes_qtd'], cell_format)
+                    worksheet.write(row, 28, agendamento['salas_selecionadas'], cell_format)
+                    worksheet.write(row, 29, agendamento['compromisso_1'], cell_format)
+                    worksheet.write(row, 30, agendamento['compromisso_2'], cell_format)
+                    worksheet.write(row, 31, agendamento['compromisso_3'], cell_format)
+                    worksheet.write(row, 32, agendamento['compromisso_4'], cell_format)
+                    worksheet.write(row, 33, agendamento['observacoes'], cell_format)
                 
                 # Ajustar largura das colunas automaticamente
                 for col, header in enumerate(headers):
@@ -4112,9 +4232,14 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
         # Cabeçalhos
         headers = [
             'ID', 'Data da Visita', 'Horário', 'Evento', 'Escola/Instituição',
-            'Professor/Responsável', 'E-mail', 'Telefone', 'Município', 'Bairro', 'Turma', 
-            'Quantidade de Alunos', 'Status', 'Data do Agendamento',
-            'Nível de Ensino', 'Tem Necessidades Especiais', 'Observações'
+            'Código INEP', 'Rede de Ensino', 'Estado', 'Município', 'Bairro',
+            'Professor/Responsável', 'E-mail', 'Telefone', 'Turma', 
+            'Quantidade de Alunos', 'Nível de Ensino', 'Status', 'Data do Agendamento',
+            'Data Cancelamento', 'Motivo Recusa', 'Check-in Realizado', 'Data Check-in',
+            'Responsável Nome', 'Responsável Cargo', 'Responsável WhatsApp', 'Responsável Email',
+            'Acompanhantes Nomes', 'Quantidade Acompanhantes', 'Salas Selecionadas',
+            'Compromisso 1', 'Compromisso 2', 'Compromisso 3', 'Compromisso 4',
+            'Tem Necessidades Especiais', 'Observações'
         ]
         
         for col, header in enumerate(headers, 1):
@@ -4160,16 +4285,34 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                     f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
                     evento.nome if evento else 'N/A',
                     agendamento.escola_nome or 'N/A',
+                    agendamento.escola_codigo_inep or 'N/A',
+                    agendamento.rede_ensino or 'N/A',
+                    agendamento.estado or 'N/A',
+                    municipio_agendamento,
+                    bairro_agendamento,
                     professor.nome if professor else agendamento.professor_nome or 'N/A',
                     professor.email if professor else agendamento.professor_email or 'N/A',
                     agendamento.professor_telefone or 'N/A',
-                    municipio_agendamento,
-                    bairro_agendamento,
                     agendamento.turma or 'N/A',
                     agendamento.quantidade_alunos or 0,
+                    nivel_ensino,
                     agendamento.status.title() if agendamento.status else 'N/A',
                     agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_agendamento else 'N/A',
-                    nivel_ensino,
+                    agendamento.data_cancelamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_cancelamento else 'N/A',
+                    agendamento.motivo_recusa or 'N/A',
+                    'Sim' if agendamento.checkin_realizado else 'Não',
+                    agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else 'N/A',
+                    agendamento.responsavel_nome or 'N/A',
+                    agendamento.responsavel_cargo or 'N/A',
+                    agendamento.responsavel_whatsapp or 'N/A',
+                    agendamento.responsavel_email or 'N/A',
+                    agendamento.acompanhantes_nomes or 'N/A',
+                    agendamento.acompanhantes_qtd or 0,
+                    agendamento.salas_selecionadas or 'N/A',
+                    'Sim' if agendamento.compromisso_1 else 'Não',
+                    'Sim' if agendamento.compromisso_2 else 'Não',
+                    'Sim' if agendamento.compromisso_3 else 'Não',
+                    'Sim' if agendamento.compromisso_4 else 'Não',
                     tem_necessidades,
                     agendamento.observacoes or ''
                 ]
@@ -4324,14 +4467,34 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                     'Horário': f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
                     'Evento': evento.nome if evento else 'N/A',
                     'Escola/Instituição': agendamento.escola_nome or 'N/A',
+                    'Código INEP': agendamento.escola_codigo_inep or 'N/A',
+                    'Rede de Ensino': agendamento.rede_ensino or 'N/A',
+                    'Estado': agendamento.estado or 'N/A',
+                    'Município': agendamento.municipio or 'N/A',
+                    'Bairro': agendamento.bairro or 'N/A',
                     'Professor/Responsável': professor.nome if professor else agendamento.professor_nome or 'N/A',
                     'E-mail': professor.email if professor else agendamento.professor_email or 'N/A',
                     'Telefone': agendamento.professor_telefone or 'N/A',
                     'Turma': agendamento.turma or 'N/A',
                     'Quantidade de Alunos': agendamento.quantidade_alunos or 0,
+                    'Nível de Ensino': nivel_ensino,
                     'Status': agendamento.status.title() if agendamento.status else 'N/A',
                     'Data do Agendamento': agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_agendamento else 'N/A',
-                    'Nível de Ensino': nivel_ensino,
+                    'Data Cancelamento': agendamento.data_cancelamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_cancelamento else 'N/A',
+                    'Motivo Recusa': agendamento.motivo_recusa or 'N/A',
+                    'Check-in Realizado': 'Sim' if agendamento.checkin_realizado else 'Não',
+                    'Data Check-in': agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else 'N/A',
+                    'Responsável Nome': agendamento.responsavel_nome or 'N/A',
+                    'Responsável Cargo': agendamento.responsavel_cargo or 'N/A',
+                    'Responsável WhatsApp': agendamento.responsavel_whatsapp or 'N/A',
+                    'Responsável Email': agendamento.responsavel_email or 'N/A',
+                    'Acompanhantes Nomes': agendamento.acompanhantes_nomes or 'N/A',
+                    'Quantidade Acompanhantes': agendamento.acompanhantes_qtd or 0,
+                    'Salas Selecionadas': agendamento.salas_selecionadas or 'N/A',
+                    'Compromisso 1': 'Sim' if agendamento.compromisso_1 else 'Não',
+                    'Compromisso 2': 'Sim' if agendamento.compromisso_2 else 'Não',
+                    'Compromisso 3': 'Sim' if agendamento.compromisso_3 else 'Não',
+                    'Compromisso 4': 'Sim' if agendamento.compromisso_4 else 'Não',
                     'Observações': agendamento.observacoes or ''
                 })
             except Exception as e:
