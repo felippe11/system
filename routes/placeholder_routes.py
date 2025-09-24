@@ -3,6 +3,7 @@ placeholder_routes = Blueprint("placeholder_routes", __name__)
 
 from flask import send_file, current_app, Response
 import io
+import os
 
 try:  # Pillow pode não estar instalado em todos os ambientes
     from PIL import Image, ImageDraw, ImageFont
@@ -30,9 +31,25 @@ def placeholder_image(width, height):
             font = ImageFont.truetype("arial.ttf", 30)
         except IOError:
             # Fallback para uma fonte que provavelmente existe no sistema
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
-            except IOError:
+            font = None
+            # Tenta encontrar o diretório de fontes em múltiplos locais
+            font_dirs = [
+                os.path.join(current_app.root_path, "fonts"),
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts"),
+                "fonts",
+                os.path.join(os.getcwd(), "fonts")
+            ]
+            
+            for font_dir in font_dirs:
+                font_path = os.path.join(font_dir, "DejaVuSans.ttf")
+                if os.path.exists(font_path):
+                    try:
+                        font = ImageFont.truetype(font_path, 30)
+                        break
+                    except IOError:
+                        continue
+            
+            if font is None:
                 # Se nenhuma fonte específica estiver disponível, use a fonte padrão
                 font = ImageFont.load_default()
         

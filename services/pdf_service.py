@@ -2563,19 +2563,35 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     
     # 2) Cria objeto PDF
     pdf = FPDF()
+    
+    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
+    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+    
+    def set_font_safe(style='', size=12):
+        """Define fonte Arial com fallback robusto"""
+        try:
+            pdf.set_font('Arial', style, size)
+        except Exception as e:
+            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
+            try:
+                pdf.set_font('Helvetica', style, size)
+            except Exception:
+                # Último recurso - fonte básica
+                pdf.set_font('Times', '', size)
+    
     pdf.add_page()
 
     # 3) -------------------------------
     #    SEÇÃO: Relatório de Agendamentos
     # 3.1) Título
-    pdf.set_font('Arial', 'B', 16)
+    set_font_safe('B', 16)
     pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
     
     # 3.2) Cabeçalho do evento
-    pdf.set_font('Arial', 'B', 12)
+    set_font_safe('B', 12)
     pdf.cell(190, 10, f'Evento: {evento.nome}', 0, 1)
     
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     if evento.data_inicio and evento.data_fim:
         pdf.cell(
             190, 10,
@@ -2588,7 +2604,7 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     pdf.cell(190, 10, f'Local: {evento.localizacao or "Não informado"}', 0, 1)
 
     # 3.3) Total de agendamentos
-    pdf.set_font('Arial', 'B', 12)
+    set_font_safe('B', 12)
     pdf.cell(190, 10, f'Total de agendamentos: {len(agendamentos)}', 0, 1)
     
     # 3.4) Resumo por status
@@ -2621,11 +2637,11 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     
     # 3.5) Listagem de agendamentos
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Listagem de Agendamentos', 0, 1, 'C')
     
     # Cabeçalho da tabela
-    pdf.set_font('Arial', 'B', 10)
+    set_font_safe('B', 10)
     pdf.cell(20, 10, 'ID', 1, 0, 'C')
     pdf.cell(30, 10, 'Data', 1, 0, 'C')
     pdf.cell(30, 10, 'Horário', 1, 0, 'C')
@@ -2633,7 +2649,7 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     pdf.cell(30, 10, 'Alunos', 1, 0, 'C')
     pdf.cell(30, 10, 'Status', 1, 1, 'C')
     
-    pdf.set_font('Arial', '', 9)
+    set_font_safe('', 9)
     for ag in agendamentos:
         h = ag.horario  # HorarioVisitacao
         escola_nome = ag.escola_nome
@@ -2661,7 +2677,7 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     
     # Rodapé do relatório
     pdf.ln(10)
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(
         190, 10,
         f'Relatório gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}',
@@ -2673,15 +2689,15 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     # Precisamos de nova página para não escrever em cima do relatório
     pdf.add_page()
 
-    pdf.set_font('Arial', 'B', 16)
+    set_font_safe('B', 16)
     pdf.cell(190, 10, 'Comprovante de Agendamento', 0, 1, 'C')
 
     # Informações do evento
-    pdf.set_font('Arial', 'B', 12)
+    set_font_safe('B', 12)
     pdf.cell(190, 10, f'Evento: {evento.nome}', 0, 1)
     
     # Informações do agendamento
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(190, 10, f'Cód. do Agendamento: #{agendamento.id}', 0, 1)
 
     if horario and horario.data:
@@ -2717,15 +2733,15 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
         pdf.cell(190, 10, 'Agendado em: --/--/---- --:--', 0, 1)
     
     # Status do agendamento
-    pdf.set_font('Arial', 'B', 12)
+    set_font_safe('B', 12)
     pdf.cell(190, 10, f'Status: {agendamento.status.upper()}', 0, 1)
     
     # Salas selecionadas
     if salas:
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.cell(190, 10, 'Salas selecionadas:', 0, 1)
-        pdf.set_font('Arial', '', 12)
+        set_font_safe('', 12)
         for sala in salas:
             pdf.cell(190, 10, f'- {sala.nome}', 0, 1)
     
@@ -2733,7 +2749,7 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     pdf.ln(5)
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(190, 10, 'Informações para Check-in:', 0, 1)
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     if agendamento.checkin_realizado and agendamento.data_checkin:
         pdf.cell(
             190, 10,
@@ -2808,14 +2824,30 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     """Gera um PDF completo de agendamentos com todas as informações detalhadas."""
 
     pdf = FPDF()
+    
+    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
+    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+    
+    def set_font_safe(style='', size=12):
+        """Define fonte Arial com fallback robusto"""
+        try:
+            pdf.set_font('Arial', style, size)
+        except Exception as e:
+            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
+            try:
+                pdf.set_font('Helvetica', style, size)
+            except Exception:
+                # Último recurso - fonte básica
+                pdf.set_font('Times', '', size)
+    
     pdf.add_page()
 
     # Título
-    pdf.set_font('Arial', 'B', 16)
+    set_font_safe('B', 16)
     pdf.cell(190, 10, f'Relatório Completo de Agendamentos - {evento.nome}', 0, 1, 'C')
 
     # Informações do evento
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(190, 10, f'Local: {evento.local}', 0, 1)
     periodo = (
         f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} '
@@ -2824,7 +2856,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.cell(190, 10, periodo, 0, 1)
 
     # Data e hora de geração
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(
         190,
         10,
@@ -2836,7 +2868,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
     # Estatísticas Gerais
     pdf.ln(5)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Estatísticas Gerais', 0, 1)
 
     confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
@@ -2899,24 +2931,24 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     # Estatísticas de PCD
     if tipos_pcd:
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.cell(190, 10, 'Distribuição por Tipo de Necessidade Especial:', 0, 1)
-        pdf.set_font('Arial', '', 10)
+        set_font_safe('', 10)
         for tipo, quantidade in tipos_pcd.items():
             pdf.cell(190, 8, f'• {tipo}: {quantidade} aluno(s)', 0, 1)
     
     # Materiais de apoio utilizados
     if materiais_apoio_utilizados:
         pdf.ln(3)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.cell(190, 10, 'Materiais de Apoio Utilizados:', 0, 1)
-        pdf.set_font('Arial', '', 10)
+        set_font_safe('', 10)
         for material in sorted(materiais_apoio_utilizados):
             pdf.cell(190, 8, f'• {material}', 0, 1)
 
     # Detalhes dos Agendamentos
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Detalhes dos Agendamentos', 0, 1)
 
     for i, agendamento in enumerate(agendamentos, 1):
@@ -2928,12 +2960,12 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         
         # Cabeçalho do agendamento
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.set_fill_color(230, 230, 230)
         pdf.cell(190, 8, f'Agendamento #{agendamento.id} - {agendamento.escola_nome}', 1, 1, 'L', True)
         
         # Informações básicas
-        pdf.set_font('Arial', '', 10)
+        set_font_safe('', 10)
         pdf.cell(95, 6, f'Data: {horario.data.strftime("%d/%m/%Y")}', 1, 0)
         pdf.cell(95, 6, f'Horário: {horario.horario_inicio.strftime("%H:%M")} às {horario.horario_fim.strftime("%H:%M")}', 1, 1)
         
@@ -2966,30 +2998,30 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         # Lista de alunos com detalhes
         if agendamento.alunos:
             pdf.ln(2)
-            pdf.set_font('Arial', 'B', 10)
+            set_font_safe('B', 10)
             pdf.cell(190, 6, 'Lista de Alunos:', 0, 1)
             
             # Cabeçalho da tabela de alunos
-            pdf.set_font('Arial', 'B', 8)
+            set_font_safe('B', 8)
             pdf.cell(50, 6, 'Nome', 1, 0, 'C')
             pdf.cell(20, 6, 'Presente', 1, 0, 'C')
             pdf.cell(40, 6, 'Tipo PCD', 1, 0, 'C')
             pdf.cell(40, 6, 'Descrição', 1, 0, 'C')
             pdf.cell(40, 6, 'Materiais de Apoio', 1, 1, 'C')
             
-            pdf.set_font('Arial', '', 7)
+            set_font_safe('', 7)
             for aluno in agendamento.alunos:
                 # Verificar se precisa de nova página
                 if pdf.get_y() > 270:
                     pdf.add_page()
                     # Repetir cabeçalho
-                    pdf.set_font('Arial', 'B', 8)
+                    set_font_safe('B', 8)
                     pdf.cell(50, 6, 'Nome', 1, 0, 'C')
                     pdf.cell(20, 6, 'Presente', 1, 0, 'C')
                     pdf.cell(40, 6, 'Tipo PCD', 1, 0, 'C')
                     pdf.cell(40, 6, 'Descrição', 1, 0, 'C')
                     pdf.cell(40, 6, 'Materiais de Apoio', 1, 1, 'C')
-                    pdf.set_font('Arial', '', 7)
+                    set_font_safe('', 7)
                 
                 nome = aluno.nome[:25] + '...' if len(aluno.nome) > 25 else aluno.nome
                 presente = 'Sim' if aluno.presente else 'Não'
