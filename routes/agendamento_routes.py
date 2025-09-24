@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db
-from services.mailjet_service import send_via_mailjet
+from services.email_service import send_email
 from services import pdf_service
 from mailjet_rest.client import ApiError
 import logging
@@ -194,7 +194,7 @@ class NotificacaoAgendamentoService:
                 logger.warning("Dados incompletos para envio de email")
                 return
                 
-            send_via_mailjet(to_email=dest, subject=subject, html=html)
+            send_email(to=dest, subject=subject, html=html)
             logger.info(f"Email enviado com sucesso para {dest}")
         except ApiError as exc:
             logger.exception("Erro da API Mailjet ao enviar email: %s", exc)
@@ -4391,6 +4391,136 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                     cell.border = border
                     if col_idx > 1:  # Números
                         cell.alignment = center_alignment
+        
+        # Aba 6: Detalhes Individuais dos Alunos
+        ws_alunos = wb.create_sheet("Detalhes dos Alunos")
+        
+        # Cabeçalhos para alunos
+        headers_alunos = [
+            'ID Aluno', 'Nome', 'CPF', 'Data Nascimento', 'Agendamento ID', 
+            'Data Visita', 'Horário', 'Evento', 'Escola', 'Professor',
+            'Presente', 'Data Check-in', 'Necessidades Especiais', 'Tipo Necessidade',
+            'Observações Aluno', 'Material Apoio', 'Responsável Legal'
+        ]
+        
+        for col, header in enumerate(headers_alunos, 1):
+            cell = ws_alunos.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_alignment
+            cell.border = border
+        
+        # Buscar todos os alunos dos agendamentos
+        from models import AlunoVisitante, NecessidadeEspecial
+        row_idx = 2
+        
+        for agendamento in agendamentos:
+            try:
+                # Buscar alunos deste agendamento
+                alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
+                
+                for aluno in alunos:
+                    # Buscar informações do agendamento
+                    horario = agendamento.horario
+                    evento = horario.evento if horario else None
+                    professor = agendamento.professor
+                    
+                    # Buscar necessidades especiais
+                    necessidade = NecessidadeEspecial.query.filter_by(aluno_id=aluno.id).first()
+                    
+                    # Buscar materiais de apoio (se existir relacionamento)
+                    materiais_apoio = []
+                    if hasattr(aluno, 'materiais_apoio'):
+                        materiais_apoio = [ma.nome for ma in aluno.materiais_apoio]
+                    
+                    data_aluno = [
+                        aluno.id,
+                        aluno.nome or 'N/A',
+                        aluno.cpf or 'N/A',
+                        aluno.data_nascimento.strftime('%d/%m/%Y') if aluno.data_nascimento else 'N/A',
+                        agendamento.id,
+                        horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
+                        f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
+                        evento.nome if evento else 'N/A',
+                        agendamento.escola_nome or 'N/A',
+                        professor.nome if professor else agendamento.professor_nome or 'N/A',
+                        'Sim' if aluno.presente else 'Não',
+                        aluno.data_checkin.strftime('%d/%m/%Y %H:%M') if aluno.data_checkin else 'N/A',
+                        'Sim' if necessidade else 'Não',
+                        necessidade.tipo_necessidade if necessidade else 'N/A',
+                        aluno.observacoes or '',
+                        ', '.join(materiais_apoio) if materiais_apoio else 'N/A',
+                        aluno.responsavel_legal or 'N/A'
+                    ]
+                    
+                    for col_idx, value in enumerate(data_aluno, 1):
+                        cell = ws_alunos.cell(row=row_idx, column=col_idx, value=value)
+                        cell.border = border
+                        if col_idx in [1, 4, 11]:  # IDs e presença
+                            cell.alignment = center_alignment
+                    
+                    row_idx += 1
+                    
+            except Exception as e:
+                logger.error(f"Erro ao processar alunos do agendamento {agendamento.id}: {e}")
+                continue
+        
+        # Aba 7: Estatísticas de Presença dos Alunos
+        ws_presenca = wb.create_sheet("Estatísticas de Presença")
+        
+        # Cabeçalhos
+        headers_presenca = [
+            'Agendamento ID', 'Data Visita', 'Evento', 'Escola', 'Professor',
+            'Total Alunos', 'Presentes', 'Ausentes', 'Taxa Presença (%)'
+        ]
+        
+        for col, header in enumerate(headers_presenca, 1):
+            cell = ws_presenca.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_alignment
+            cell.border = border
+        
+        # Calcular estatísticas de presença por agendamento
+        row_idx = 2
+        for agendamento in agendamentos:
+            try:
+                # Buscar alunos deste agendamento
+                alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
+                
+                total_alunos = len(alunos)
+                presentes = sum(1 for aluno in alunos if aluno.presente)
+                ausentes = total_alunos - presentes
+                taxa_presenca = (presentes / total_alunos * 100) if total_alunos > 0 else 0
+                
+                # Buscar informações do agendamento
+                horario = agendamento.horario
+                evento = horario.evento if horario else None
+                professor = agendamento.professor
+                
+                data_presenca = [
+                    agendamento.id,
+                    horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
+                    evento.nome if evento else 'N/A',
+                    agendamento.escola_nome or 'N/A',
+                    professor.nome if professor else agendamento.professor_nome or 'N/A',
+                    total_alunos,
+                    presentes,
+                    ausentes,
+                    f'{taxa_presenca:.1f}%'
+                ]
+                
+                for col_idx, value in enumerate(data_presenca, 1):
+                    cell = ws_presenca.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = border
+                    if col_idx in [1, 6, 7, 8, 9]:  # IDs e números
+                        cell.alignment = center_alignment
+                
+                row_idx += 1
+                
+            except Exception as e:
+                logger.error(f"Erro ao processar estatísticas de presença do agendamento {agendamento.id}: {e}")
+                continue
         
         # Ajustar largura das colunas em todas as abas
         for ws in wb.worksheets:

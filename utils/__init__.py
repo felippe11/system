@@ -447,7 +447,7 @@ def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_t
     como a recuperação de senha, garantindo que o texto exibido ao usuário seja
     adequado ao contexto.
     """
-    from services.mailjet_service import send_via_mailjet
+    from services.email_service import send_email
     from flask import render_template
 
     if corpo_html is None:
@@ -479,8 +479,8 @@ def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_t
 
     attachments = [anexo_path] if anexo_path else None
     try:
-        send_via_mailjet(
-            to_email=destinatario,
+        send_email(
+            to=destinatario,
             subject=assunto,
             text=corpo_texto,
             html=corpo_html,

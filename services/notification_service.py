@@ -12,7 +12,7 @@ from models.submission_system import (
 from models.review import Assignment, Submission
 from models.user import Usuario
 from models.event import Evento
-from services.mailjet_service import send_via_mailjet
+from services.email_service import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +52,8 @@ class NotificationService:
             sent_count = 0
             for admin in admins:
                 try:
-                    send_via_mailjet(
-                        to_email=admin.email,
+                    send_email(
+                        to=admin.email,
                         subject=subject,
                         html=html_content
                     )
@@ -186,8 +186,8 @@ class NotificationService:
             sent_count = 0
             for admin in admins:
                 try:
-                    send_via_mailjet(
-                        to_email=admin.email,
+                    send_email(
+                        to=admin.email,
                         subject=subject,
                         html=html_content
                     )
@@ -227,8 +227,8 @@ class NotificationService:
         html_template = self._get_reviewer_notification_template()
         html_content = html_template.render(**template_data)
         
-        send_via_mailjet(
-            to_email=reviewer.email,
+        send_email(
+            to=reviewer.email,
             subject=subject,
             html=html_content
         )
@@ -250,8 +250,8 @@ class NotificationService:
         html_template = self._get_deadline_reminder_template()
         html_content = html_template.render(**template_data)
         
-        send_via_mailjet(
-            to_email=reviewer.email,
+        send_email(
+            to=reviewer.email,
             subject=subject,
             html=html_content
         )

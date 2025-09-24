@@ -2,339 +2,278 @@
 
 ## Visão Geral
 
-O Sistema de Business Intelligence foi desenvolvido para fornecer análises avançadas, relatórios personalizados e dashboards interativos para o sistema de eventos e oficinas. Ele oferece insights estratégicos baseados em dados reais para tomada de decisão.
+O Sistema de Business Intelligence foi desenvolvido para fornecer análises avançadas e dashboards interativos para o sistema de eventos. Ele permite criar relatórios personalizados, dashboards com widgets arrastáveis e exportação em múltiplos formatos.
 
 ## Funcionalidades Principais
 
-### 📊 Dashboard Principal
-- **KPIs em Tempo Real**: Indicadores atualizados automaticamente
-- **Alertas Inteligentes**: Notificações baseadas em métricas configuráveis
-- **Dashboards Personalizados**: Criação de visões customizadas
-- **Análises Rápidas**: Acesso direto a análises específicas
+### 1. Dashboard Principal
+- **Localização**: `/bi/dashboard`
+- **Funcionalidade**: Visão geral com KPIs executivos e navegação rápida
+- **Recursos**:
+  - KPIs principais (inscrições, presença, receita, satisfação)
+  - 9 visões analíticas diferentes
+  - Filtros globais por período e evento
+  - Exportação em PDF, Excel, CSV
 
-### 📈 Relatórios Avançados
-- **Relatórios Executivos**: Visão estratégica para tomada de decisão
-- **Relatórios Operacionais**: Análise detalhada de processos
-- **Relatórios Financeiros**: Insights sobre receita e custos
-- **Relatórios de Qualidade**: Análise de satisfação e feedback
+### 2. Relatórios Avançados
+- **Localização**: `/bi/relatorios`
+- **Funcionalidade**: Criação e gerenciamento de relatórios personalizados
+- **Tipos de Relatório**:
+  - **Executivo**: Visão estratégica com KPIs principais
+  - **Operacional**: Análise de processos e eficiência
+  - **Financeiro**: Análise de receita, custos e indicadores
+  - **Qualidade**: Satisfação, feedback e NPS
 
-### 🎛️ Dashboards Personalizados
-- **Widgets Interativos**: Gráficos, tabelas, KPIs e mapas
-- **Layout Flexível**: Arrastar e soltar para organizar widgets
-- **Filtros Dinâmicos**: Aplicar filtros em tempo real
-- **Exportação**: Salvar dashboards em PDF, Excel, CSV ou JSON
+### 3. Dashboards Interativos
+- **Localização**: `/bi/dashboards`
+- **Funcionalidade**: Criação de dashboards com widgets arrastáveis
+- **Widgets Disponíveis**:
+  - **KPI Cards**: Valores únicos com comparação
+  - **Gráficos**: Linha, barras, pizza, donut
+  - **Tabelas**: Dados tabulares com filtros
+  - **Gauges**: Indicadores visuais
 
-### 📊 Análises Especializadas
-- **Análise de Tendências**: Evolução temporal dos dados
-- **Análise Geográfica**: Distribuição por localização
-- **Análise de Qualidade**: Satisfação e feedback dos participantes
-- **Análise Financeira**: Receita, custos e projeções
+### 4. Sistema de Cache
+- **Funcionalidade**: Cache inteligente para performance
+- **Configuração**: Expiração automática em 60 minutos
+- **Benefícios**: Redução de carga no banco de dados
 
-## Estrutura Técnica
+### 5. Alertas Inteligentes
+- **Funcionalidade**: Notificações baseadas em métricas
+- **Canais**: Email, Slack (configurável)
+- **Frequências**: Diário, semanal, mensal
 
-### Modelos de Dados
+## Estrutura de Arquivos
 
-#### RelatorioBI
-```python
-- id: Identificador único
-- nome: Nome do relatório
-- descricao: Descrição detalhada
-- tipo_relatorio: 'executivo', 'operacional', 'financeiro', 'qualidade'
-- cliente_id: Cliente proprietário
-- usuario_criador_id: Usuário que criou
-- filtros_aplicados: JSON com filtros
-- periodo_inicio/fim: Período de análise
-- dados_relatorio: JSON com dados
-- metricas_calculadas: JSON com métricas
-- status: 'ativo', 'arquivado', 'excluido'
+```
+models/
+├── relatorio_bi.py          # Modelos do BI
+services/
+├── bi_analytics_service.py  # Lógica de análise
+├── relatorio_export_service.py # Exportação
+routes/
+├── relatorio_bi_routes.py  # Rotas da API
+templates/relatorio_bi/
+├── base.html               # Template base
+├── dashboard_principal.html # Dashboard principal
+├── visualizar_relatorio.html # Visualização de relatórios
+├── criar_relatorio.html    # Criação de relatórios
+├── criar_dashboard.html    # Criação de dashboards
+├── visualizar_dashboard.html # Visualização de dashboards
+├── lista_relatorios.html  # Lista de relatórios
+├── lista_dashboards.html  # Lista de dashboards
+├── editar_relatorio.html   # Edição de relatórios
+└── editar_dashboard.html   # Edição de dashboards
 ```
 
-#### MetricaBI
-```python
-- id: Identificador único
-- nome: Nome da métrica
-- descricao: Descrição da métrica
-- categoria: 'vendas', 'participacao', 'qualidade', 'financeiro'
-- tipo_metrica: 'contador', 'percentual', 'monetario', 'tempo'
-- formula: SQL ou descrição da fórmula
-- cor: Cor hexadecimal para exibição
-- icone: Ícone FontAwesome
-- unidade: Unidade de medida
-```
+## Instalação e Configuração
 
-#### DashboardBI
-```python
-- id: Identificador único
-- nome: Nome do dashboard
-- descricao: Descrição do dashboard
-- cliente_id: Cliente proprietário
-- usuario_criador_id: Usuário que criou
-- layout_config: JSON com configuração do layout
-- widgets_config: JSON com configuração dos widgets
-- filtros_padrao: JSON com filtros padrão
-- publico: Se é público ou privado
-- usuarios_permitidos: JSON com IDs de usuários permitidos
-```
-
-### Serviços
-
-#### BIAnalyticsService
-- **calcular_kpis_executivos()**: Calcula KPIs principais
-- **gerar_analise_tendencias()**: Análise de tendências temporais
-- **gerar_analise_geografica()**: Análise por localização
-- **gerar_analise_qualidade()**: Análise de satisfação
-- **gerar_analise_financeira()**: Análise financeira
-- **gerar_relatorio_personalizado()**: Gera relatório customizado
-- **executar_alertas_bi()**: Executa verificação de alertas
-
-#### RelatorioExportService
-- **exportar_relatorio_pdf()**: Exporta para PDF
-- **exportar_relatorio_xlsx()**: Exporta para Excel
-- **exportar_relatorio_csv()**: Exporta para CSV
-- **exportar_relatorio_json()**: Exporta para JSON
-- **exportar_dashboard_pdf()**: Exporta dashboard para PDF
-
-### Rotas
-
-#### Dashboard e Relatórios
-- `GET /bi/dashboard` - Dashboard principal
-- `GET /bi/relatorios` - Lista de relatórios
-- `GET /bi/relatorios/novo` - Criar novo relatório
-- `GET /bi/relatorios/<id>` - Visualizar relatório
-- `POST /bi/relatorios/<id>/exportar` - Exportar relatório
-
-#### Dashboards Personalizados
-- `GET /bi/dashboards` - Lista de dashboards
-- `GET /bi/dashboards/novo` - Criar novo dashboard
-- `GET /bi/dashboards/<id>` - Visualizar dashboard
-- `POST /bi/dashboards/<id>/exportar` - Exportar dashboard
-
-#### Análises Especializadas
-- `GET /bi/analises/tendencias` - Análise de tendências
-- `GET /bi/analises/geografia` - Análise geográfica
-- `GET /bi/analises/qualidade` - Análise de qualidade
-- `GET /bi/analises/financeira` - Análise financeira
-
-#### APIs
-- `GET /api/bi/kpis` - KPIs em tempo real
-- `GET /api/bi/tendencias` - Dados de tendências
-- `GET /api/bi/alertas` - Alertas ativos
-- `GET /api/bi/metricas` - Métricas disponíveis
-- `GET /api/bi/widgets` - Widgets disponíveis
-
-## Configuração e Instalação
-
-### 1. Dependências
+### 1. Executar Migração
 ```bash
-pip install reportlab openpyxl pandas
-```
-
-### 2. Migração do Banco
-```bash
+flask db migrate -m "Add BI tables"
 flask db upgrade
 ```
 
-### 3. Inicialização do Sistema
+### 2. Popular Métricas Padrão
 ```bash
-python scripts/init_bi_system.py
+python scripts/popular_metricas_bi.py
 ```
 
-### 4. Registro das Rotas
+### 3. Configurar Rotas
+As rotas já estão registradas em `routes/__init__.py`:
 ```python
-from config.relatorio_bi_config import register_bi_routes
-register_bi_routes(app)
+from .relatorio_bi_routes import relatorio_bi_routes
+app.register_blueprint(relatorio_bi_routes)
 ```
 
 ## Uso do Sistema
 
-### Criando um Relatório
+### Acessando o BI
+1. No dashboard do cliente, aba "Criar Novo"
+2. Clique no card "Business Intelligence"
+3. Escolha entre:
+   - **Dashboard BI**: Visão geral
+   - **Relatórios**: Criação de relatórios
+   - **Dashboards**: Criação de dashboards
 
-1. **Acesse** `/bi/relatorios/novo`
-2. **Preencha** os dados básicos:
-   - Nome do relatório
-   - Descrição
-   - Tipo (executivo, operacional, financeiro, qualidade)
-   - Período de análise
-3. **Configure** os filtros desejados
-4. **Salve** o relatório
+### Criando um Relatório
+1. Acesse `/bi/relatorios/criar`
+2. Preencha as informações básicas
+3. Configure filtros avançados
+4. Use o preview para validar
+5. Salve o relatório
 
 ### Criando um Dashboard
-
-1. **Acesse** `/bi/dashboards/novo`
-2. **Configure** o layout arrastando widgets
-3. **Selecione** as métricas para cada widget
-4. **Personalize** cores e configurações
-5. **Salve** o dashboard
-
-### Configurando Alertas
-
-1. **Acesse** as configurações de métricas
-2. **Defina** condições de alerta:
-   - Tipo: limite, tendência, anomalia, meta
-   - Condição: maior, menor, igual, diferente
-   - Valor limite
-   - Período de verificação
-3. **Configure** usuários e canais de notificação
-4. **Ative** o alerta
+1. Acesse `/bi/dashboards/criar`
+2. Arraste widgets da paleta
+3. Configure cada widget
+4. Teste o layout
+5. Salve o dashboard
 
 ## Métricas Disponíveis
 
-### Participação
-- **Inscrições Totais**: Número total de inscrições
-- **Usuários Únicos**: Número de usuários únicos
-- **Taxa de Conversão**: Percentual de conversão
-- **Taxa de Presença**: Percentual de presença
+### Métricas Executivas
+- `inscricoes_totais`: Total de inscrições
+- `usuarios_unicos`: Usuários únicos
+- `checkins_total`: Total de check-ins
+- `taxa_presenca`: Taxa de presença
+- `receita_total`: Receita total
+- `ticket_medio`: Valor médio por inscrição
 
-### Financeiro
-- **Receita Total**: Valor total arrecadado
-- **Ticket Médio**: Valor médio por participante
-- **Taxa de Inadimplência**: Percentual de inadimplência
-- **Crescimento de Receita**: Variação percentual
+### Métricas de Qualidade
+- `satisfacao_media`: Nota média de satisfação
+- `nps_score`: Net Promoter Score
+- `certificados_gerados`: Certificados emitidos
 
-### Qualidade
-- **Satisfação Média**: Nota média de satisfação
-- **NPS**: Net Promoter Score
-- **Taxa de Recomendação**: Percentual que recomendaria
-- **Feedback Positivo**: Percentual de feedback positivo
+### Métricas Operacionais
+- `taxa_conversao`: Conversão de visitantes
+- `ocupacao_media`: Taxa de ocupação
+- `tempo_medio_checkin`: Tempo médio de check-in
 
-## Widgets Disponíveis
+## Visões Analíticas
 
-### Gráficos
-- **Linha**: Tendências temporais
-- **Barras**: Comparações categóricas
-- **Pizza**: Distribuições percentuais
-- **Donut**: Distribuições com centro vazio
-- **Gauge**: Indicadores de performance
+### 1. Visão Executiva
+- KPIs principais
+- Tendências mensais
+- Alertas importantes
+- Satisfação média
 
-### Tabelas
-- **Tabela Simples**: Dados tabulares
-- **Tabela com Filtros**: Dados filtráveis
-- **Tabela Pivot**: Dados agrupados
+### 2. Visão Funil
+- Conversão por etapa
+- Taxa de abandono
+- Pontos de melhoria
 
-### KPIs
-- **Card Simples**: Valor único
-- **Card com Comparação**: Valor com variação
-- **Card com Gráfico**: Valor com mini-gráfico
+### 3. Visão Ocupação
+- Capacidade por atividade
+- Gargalos identificados
+- Agenda otimizada
 
-### Mapas
-- **Mapa de Calor**: Densidade geográfica
-- **Mapa de Pontos**: Localizações específicas
-- **Mapa de Regiões**: Dados por região
+### 4. Visão Presença
+- Taxa de presença por atividade
+- Análise de faltas
+- Retenção de participantes
+
+### 5. Visão Qualidade
+- Distribuição de avaliações
+- NPS Score
+- Feedback qualitativo
+
+### 6. Visão Financeiro
+- Receita por período
+- Ticket médio
+- Crescimento mensal
+
+### 7. Visão Certificados
+- Emissão automática
+- Taxa de download
+- Tempo de processamento
+
+### 8. Visão Operação
+- Eficiência de processos
+- Segurança do sistema
+- Logs de auditoria
+
+### 9. Visão Diversidade
+- Inclusão e acessibilidade
+- Distribuição demográfica
+- ODS relacionados
+
+### 10. Visão Geografia
+- Análise por localização
+- Ranking de cidades
+- Satisfação regional
 
 ## Exportação
 
 ### Formatos Suportados
-- **PDF**: Relatórios profissionais
-- **Excel (XLSX)**: Dados tabulares editáveis
-- **CSV**: Dados para importação
-- **JSON**: Dados estruturados
+- **PDF**: Relatórios formatados com gráficos
+- **Excel (XLSX)**: Dados tabulares com formatação
+- **CSV**: Dados brutos para análise
+- **JSON**: Dados estruturados para APIs
 
 ### Configurações de Exportação
-- **Filtros**: Aplicar filtros específicos
-- **Período**: Definir período de exportação
-- **Formato**: Personalizar layout e cores
-- **Dados**: Selecionar métricas específicas
+- Incluir/excluir gráficos
+- Período personalizado
+- Filtros aplicados
+- Formatação profissional
 
 ## Performance e Cache
 
 ### Sistema de Cache
-- **Duração**: 1 hora por padrão
-- **Tipos**: KPIs, gráficos, tabelas
-- **Invalidação**: Automática por tempo
-- **Limpeza**: Automática de registros expirados
+- **Chave**: Hash dos filtros + tipo de relatório
+- **Expiração**: 60 minutos (configurável)
+- **Armazenamento**: Banco de dados
+- **Limpeza**: Automática por expiração
 
 ### Otimizações
-- **Índices**: Criados para consultas frequentes
-- **Agregações**: Cálculos pré-computados
-- **Paginação**: Dados paginados para grandes volumes
-- **Lazy Loading**: Carregamento sob demanda
+- Queries otimizadas com índices
+- Agregações pré-calculadas
+- Paginação de resultados
+- Lazy loading de widgets
 
 ## Segurança
 
 ### Controle de Acesso
-- **Permissões**: Baseadas em tipo de usuário
-- **Isolamento**: Dados por cliente
-- **Auditoria**: Log de todas as ações
-- **Validação**: Validação de entrada rigorosa
+- Autenticação obrigatória
+- Autorização por cliente
+- Dashboards públicos/privados
+- Links de compartilhamento com expiração
 
 ### Proteção de Dados
-- **Criptografia**: Dados sensíveis criptografados
-- **Backup**: Backup automático de configurações
-- **Versionamento**: Controle de versões de relatórios
-- **Retenção**: Política de retenção de dados
-
-## Monitoramento
-
-### Alertas do Sistema
-- **Performance**: Tempo de resposta
-- **Erros**: Falhas de processamento
-- **Capacidade**: Uso de recursos
-- **Segurança**: Tentativas de acesso
-
-### Métricas de Uso
-- **Relatórios**: Mais acessados
-- **Dashboards**: Mais utilizados
-- **Exportações**: Frequência de exportação
-- **Usuários**: Atividade por usuário
+- Sanitização de inputs
+- Validação de filtros
+- Logs de auditoria
+- Backup automático
 
 ## Troubleshooting
 
 ### Problemas Comuns
 
-#### Relatórios não carregam
-1. Verificar permissões do usuário
-2. Verificar se o cliente tem dados
-3. Verificar logs de erro
-4. Limpar cache do sistema
+#### 1. Erro de Importação
+```
+ImportError: No module named 'relatorio_bi_routes'
+```
+**Solução**: Verificar se o arquivo existe e está no path correto
 
-#### Gráficos não aparecem
-1. Verificar se Chart.js está carregado
-2. Verificar dados da métrica
-3. Verificar configuração do widget
-4. Verificar console do navegador
+#### 2. Erro de Banco de Dados
+```
+Table 'relatorio_bi' doesn't exist
+```
+**Solução**: Executar migração do banco de dados
 
-#### Exportação falha
-1. Verificar espaço em disco
-2. Verificar permissões de escrita
-3. Verificar tamanho dos dados
-4. Verificar logs de exportação
+#### 3. Cache Não Funcionando
+**Solução**: Verificar configuração de cache e limpar cache manualmente
 
-### Logs Importantes
-- **Aplicação**: `logs/app.log`
-- **Erros**: `logs/error.log`
-- **BI**: `logs/bi.log`
-- **Exportação**: `logs/export.log`
+#### 4. Widgets Não Carregam
+**Solução**: Verificar JavaScript e console do navegador
 
-## Roadmap
+### Logs e Debug
+- Logs em `logs/bi_system.log`
+- Debug mode: `DEBUG=True`
+- Console do navegador para erros JS
+
+## Roadmap Futuro
 
 ### Próximas Funcionalidades
-- **Machine Learning**: Análises preditivas
-- **Real-time**: Atualizações em tempo real
-- **Mobile**: App móvel para dashboards
-- **Integração**: APIs externas
+- [ ] Machine Learning para previsões
+- [ ] Integração com APIs externas
+- [ ] Relatórios agendados
+- [ ] Notificações push
+- [ ] Análise de sentimento
+- [ ] Comparação entre eventos
+- [ ] Benchmarking de mercado
 
-### Melhorias Planejadas
-- **Performance**: Otimizações de consulta
-- **UX**: Interface mais intuitiva
-- **Relatórios**: Mais tipos de relatório
-- **Alertas**: Mais tipos de alerta
+### Melhorias Técnicas
+- [ ] Cache Redis
+- [ ] Processamento assíncrono
+- [ ] API GraphQL
+- [ ] Microserviços
+- [ ] Containerização
 
 ## Suporte
 
-### Documentação
-- **API**: Documentação completa da API
-- **Guia do Usuário**: Manual passo a passo
-- **FAQ**: Perguntas frequentes
-- **Tutoriais**: Vídeos e exemplos
-
-### Contato
-- **Email**: suporte@empresa.com
-- **Chat**: Sistema de chat integrado
-- **Ticket**: Sistema de tickets
-- **Telefone**: (11) 99999-9999
-
----
-
-**Versão**: 1.0.0  
-**Última Atualização**: Janeiro 2024  
-**Autor**: Sistema de BI Team
+Para suporte técnico ou dúvidas sobre o sistema de BI:
+- Documentação: `/docs/SISTEMA_BI.md`
+- Logs: `logs/bi_system.log`
+- Issues: GitHub Issues
+- Email: suporte@empresa.com

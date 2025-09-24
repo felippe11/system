@@ -12,6 +12,7 @@ from models import (
     Cliente,
     Feedback,
     Usuario,
+    Evento,
 )
 from services.feedback_service import FeedbackService
 from extensions import db
@@ -29,7 +30,7 @@ def gerenciar_perguntas_oficina(oficina_id):
     # Verificar permissão
     if oficina.cliente_id != current_user.cliente_id:
         flash("Você não tem permissão para acessar esta oficina.", "error")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('feedback_routes.gerenciar_perguntas'))
     
     perguntas = FeedbackService.listar_perguntas(current_user.cliente_id, oficina_id)
     
@@ -47,7 +48,7 @@ def criar_pergunta(oficina_id):
     # Verificar permissão
     if oficina.cliente_id != current_user.cliente_id:
         flash("Você não tem permissão para acessar esta oficina.", "error")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('feedback_routes.gerenciar_perguntas'))
     
     if request.method == 'POST':
         try:
@@ -88,7 +89,7 @@ def editar_pergunta(pergunta_id):
     # Verificar permissão
     if pergunta.cliente_id != current_user.cliente_id:
         flash("Você não tem permissão para editar esta pergunta.", "error")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('feedback_routes.gerenciar_perguntas'))
     
     if request.method == 'POST':
         try:
@@ -221,7 +222,7 @@ def estatisticas_feedback(oficina_id):
     # Verificar permissão
     if oficina.cliente_id != current_user.cliente_id:
         flash("Você não tem permissão para acessar esta oficina.", "error")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('feedback_routes.gerenciar_perguntas'))
     
     estatisticas = FeedbackService.obter_estatisticas_feedback(oficina_id)
     respostas = FeedbackService.obter_respostas_oficina(oficina_id)
@@ -241,7 +242,7 @@ def gerar_qr_feedback(oficina_id):
     # Verificar permissão
     if oficina.cliente_id != current_user.cliente_id:
         flash("Você não tem permissão para acessar esta oficina.", "error")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('feedback_routes.gerenciar_perguntas'))
     
     # Obter inscritos da oficina
     inscritos = db.session.query(Usuario).join(Usuario.inscricoes).filter(
@@ -251,6 +252,97 @@ def gerar_qr_feedback(oficina_id):
     return render_template('feedback/gerar_qr.html', 
                          oficina=oficina, 
                          inscritos=inscritos)
+
+
+@feedback_routes.route('/feedback/qr-code-geral/<int:oficina_id>')
+@login_required
+def gerar_qr_code_geral(oficina_id):
+    """Gera QR Code geral para feedback de uma oficina."""
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Verificar permissão
+    if oficina.cliente_id != current_user.cliente_id:
+        flash("Você não tem permissão para acessar esta oficina.", "error")
+        return redirect(url_for('feedback_routes.gerenciar_perguntas'))
+    
+    try:
+        import qrcode
+        from io import BytesIO
+        from flask import Response
+        
+        # URL para o feedback da oficina
+        feedback_url = url_for('feedback_routes.feedback_oficina', oficina_id=oficina_id, _external=True)
+        
+        # Criar QR Code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(feedback_url)
+        qr.make(fit=True)
+        
+        # Gerar imagem
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Converter para bytes
+        img_io = BytesIO()
+        img.save(img_io, format='PNG')
+        img_io.seek(0)
+        
+        return Response(img_io.getvalue(), mimetype='image/png')
+        
+    except Exception as e:
+        flash(f"Erro ao gerar QR Code: {str(e)}", "error")
+        return redirect(url_for('feedback_routes.gerar_qr_feedback', oficina_id=oficina_id))
+
+
+@feedback_routes.route('/feedback/qr-code-individual/<int:usuario_id>/<int:oficina_id>')
+@login_required
+def gerar_qr_code_individual(usuario_id, oficina_id):
+    """Gera QR Code individual para feedback de um usuário específico."""
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Verificar permissão
+    if oficina.cliente_id != current_user.cliente_id:
+        flash("Você não tem permissão para acessar esta oficina.", "error")
+        return redirect(url_for('feedback_routes.gerenciar_perguntas'))
+    
+    try:
+        import qrcode
+        from io import BytesIO
+        from flask import Response
+        
+        # Criar sessão de feedback para o usuário
+        sessao = FeedbackService.criar_sessao_feedback(usuario_id, oficina_id)
+        
+        # URL para o feedback individual
+        feedback_url = url_for('feedback_routes.responder_feedback', token=sessao.token, _external=True)
+        
+        # Criar QR Code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=8,
+            border=4,
+        )
+        qr.add_data(feedback_url)
+        qr.make(fit=True)
+        
+        # Gerar imagem
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Converter para bytes
+        img_io = BytesIO()
+        img.save(img_io, format='PNG')
+        img_io.seek(0)
+        
+        return Response(img_io.getvalue(), mimetype='image/png')
+        
+    except Exception as e:
+        flash(f"Erro ao gerar QR Code individual: {str(e)}", "error")
+        return redirect(url_for('feedback_routes.gerar_qr_feedback', oficina_id=oficina_id))
 
 
 @feedback_routes.route('/feedback/gerar-sessao/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
@@ -293,9 +385,124 @@ def gerar_sessao_feedback(usuario_id, oficina_id):
 @login_required
 def gerenciar_perguntas():
     """Página principal para gerenciar perguntas de feedback."""
+    # Debug: Informações do usuário atual
+    print(f"DEBUG: Usuário atual: {current_user}")
+    print(f"DEBUG: ID do usuário: {current_user.id}")
+    print(f"DEBUG: Tipo do usuário: {current_user.tipo}")
+    print(f"DEBUG: Cliente ID: {current_user.cliente_id}")
+    
+    cliente_id = getattr(current_user, 'cliente_id', None)
+
+    # Identificar todos os clientes associados ao usuário
+    cliente_ids = set()
+
+    if cliente_id:
+        cliente_ids.add(cliente_id)
+
+    # Usuários do tipo Cliente (modelo Cliente) devem enxergar suas próprias oficinas
+    if isinstance(current_user, Cliente):
+        cliente_ids.add(getattr(current_user, 'id', None))
+
+    # Considerar associações via relacionamento muitos-para-muitos (usuario_clientes)
+    if hasattr(current_user, 'clientes'):
+        try:
+            associados = current_user.clientes
+            # InstrumentedList é iterável; usamos list() para garantir avaliação imediata
+            for cliente in list(associados):
+                cliente_ids.add(cliente.id)
+        except Exception as exc:
+            print(f"DEBUG: Erro ao carregar clientes associados: {exc}")
+
+    cliente_ids.discard(None)
+
+    print(f"DEBUG: Cliente IDs associados ao usuário: {cliente_ids}")
+
+    if not cliente_ids:
+        oficinas = []
+        eventos = []
+        print("DEBUG: Usuário sem clientes associados. Nenhuma oficina carregada.")
+    else:
+        oficinas = (
+            Oficina.query
+            .filter(Oficina.cliente_id.in_(list(cliente_ids)))
+            .order_by(Oficina.titulo.asc())
+            .all()
+        )
+        
+        eventos = (
+            Evento.query
+            .filter(Evento.cliente_id.in_(list(cliente_ids)))
+            .order_by(Evento.nome.asc())
+            .all()
+        )
+        
+        print(f"DEBUG: Total de oficinas encontradas: {len(oficinas)}")
+        print(f"DEBUG: Total de eventos encontrados: {len(eventos)}")
+        for oficina in oficinas:
+            print(
+                "DEBUG: Oficina - ID: {oficina.id}, "
+                f"Título: {oficina.titulo}, Cliente ID: {oficina.cliente_id}"
+            )
+    
+    return render_template('feedback/gerenciar_perguntas.html', oficinas=oficinas, eventos=eventos)
+
+
+@feedback_routes.route('/feedback/oficinas-por-evento/<int:evento_id>')
+@login_required
+def oficinas_por_evento(evento_id):
+    """Retorna oficinas de um evento específico."""
+    evento = Evento.query.get_or_404(evento_id)
+    
+    # Verificar permissão
+    if evento.cliente_id != current_user.cliente_id:
+        return jsonify({'error': 'Acesso negado'}), 403
+    
+    # Buscar oficinas do evento
+    oficinas = Oficina.query.filter_by(evento_id=evento_id).order_by(Oficina.titulo.asc()).all()
+    
+    oficinas_data = []
+    for oficina in oficinas:
+        oficinas_data.append({
+            'id': oficina.id,
+            'titulo': oficina.titulo,
+            'data_inicio': oficina.data_inicio.isoformat() if oficina.data_inicio else None,
+            'local': oficina.local
+        })
+    
+    return jsonify({'oficinas': oficinas_data})
+
+
+@feedback_routes.route('/feedback/debug-oficinas')
+@login_required
+def debug_oficinas():
+    """Rota de debug para verificar oficinas do cliente."""
     cliente_id = current_user.cliente_id
+    
+    # Buscar todas as oficinas do cliente
     oficinas = Oficina.query.filter_by(cliente_id=cliente_id).all()
-    return render_template('feedback/gerenciar_perguntas.html', oficinas=oficinas)
+    
+    # Buscar todas as oficinas (para comparação)
+    todas_oficinas = Oficina.query.all()
+    
+    # Informações de debug
+    debug_info = {
+        'cliente_id': cliente_id,
+        'usuario_tipo': current_user.tipo,
+        'total_oficinas': len(oficinas),
+        'oficinas_cliente': len(oficinas),
+        'total_geral': len(todas_oficinas),
+        'oficinas': [
+            {
+                'id': oficina.id,
+                'titulo': oficina.titulo,
+                'cliente_id': oficina.cliente_id,
+                'data_inicio': oficina.data_inicio.isoformat() if oficina.data_inicio else None
+            }
+            for oficina in oficinas
+        ]
+    }
+    
+    return jsonify(debug_info)
 
 
 @feedback_routes.route('/feedback/oficina/<int:oficina_id>')

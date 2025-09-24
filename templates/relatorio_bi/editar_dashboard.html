@@ -1,0 +1,1012 @@
+{% extends "relatorio_bi/base.html" %}
+
+{% set title = "Editar Dashboard" %}
+{% set subtitle = dashboard.nome %}
+
+{% block bi_content %}
+<!-- Formulário de Edição de Dashboard -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="bi-card">
+            <h4><i class="fas fa-edit"></i> Editar Dashboard</h4>
+            <p class="text-muted">Modifique as configurações do seu dashboard de Business Intelligence</p>
+            
+            <form method="POST" id="editarDashboardForm">
+                <!-- Informações Básicas -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5><i class="fas fa-info-circle"></i> Informações Básicas</h5>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">
+                                <i class="fas fa-tag"></i> Nome do Dashboard *
+                            </label>
+                            <input type="text" class="form-control" id="nome" name="nome" required
+                                   value="{{ dashboard.nome }}"
+                                   placeholder="Ex: Dashboard Executivo">
+                            <div class="form-text">Escolha um nome descritivo para identificar o dashboard</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="publico" class="form-label">
+                                <i class="fas fa-globe"></i> Visibilidade
+                            </label>
+                            <select class="form-select" id="publico" name="publico">
+                                <option value="false" {{ 'selected' if not dashboard.is_public }}>
+                                    Privado (apenas você)
+                                </option>
+                                <option value="true" {{ 'selected' if dashboard.is_public }}>
+                                    Público (todos os usuários)
+                                </option>
+                            </select>
+                            <div class="form-text">Dashboards públicos podem ser visualizados por outros usuários</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">
+                        <i class="fas fa-align-left"></i> Descrição
+                    </label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3"
+                              placeholder="Descreva o propósito e conteúdo deste dashboard...">{{ dashboard.descricao or '' }}</textarea>
+                    <div class="form-text">Uma descrição detalhada ajuda outros usuários a entender o dashboard</div>
+                </div>
+                
+                <!-- Configuração de Layout -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5><i class="fas fa-th-large"></i> Configuração de Layout</h5>
+                        <p class="text-muted">Arraste e organize os widgets para criar seu dashboard</p>
+                    </div>
+                </div>
+                
+                <!-- Área de Design do Dashboard -->
+                <div class="dashboard-designer">
+                    <div class="designer-toolbar mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="adicionarLinha()">
+                                    <i class="fas fa-plus"></i> Adicionar Linha
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparLayout()">
+                                    <i class="fas fa-trash"></i> Limpar
+                                </button>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="previewDashboard()">
+                                    <i class="fas fa-eye"></i> Preview
+                                </button>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoRefresh" 
+                                       {{ 'checked' if dashboard.refresh_interval and dashboard.refresh_interval > 0 }}>
+                                <label class="form-check-label" for="autoRefresh">
+                                    Atualização automática
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Área de Widgets Disponíveis -->
+                    <div class="widgets-palette mb-3">
+                        <h6><i class="fas fa-puzzle-piece"></i> Widgets Disponíveis</h6>
+                        <div class="row" id="widgets-palette">
+                            <!-- Widgets serão carregados via JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <!-- Área de Design -->
+                    <div class="design-area">
+                        <div class="design-canvas" id="design-canvas">
+                            <!-- Layout atual será carregado aqui -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Configurações Avançadas -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="accordion" id="configuracoesAvancadas">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingConfiguracoes">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#collapseConfiguracoes">
+                                        <i class="fas fa-cog"></i> Configurações Avançadas
+                                    </button>
+                                </h2>
+                                <div id="collapseConfiguracoes" class="accordion-collapse collapse" 
+                                     data-bs-parent="#configuracoesAvancadas">
+                                    <div class="accordion-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="refreshInterval" class="form-label">
+                                                        <i class="fas fa-sync"></i> Intervalo de Atualização (segundos)
+                                                    </label>
+                                                    <select class="form-select" id="refreshInterval" name="refreshInterval">
+                                                        <option value="30" {{ 'selected' if dashboard.refresh_interval == 30 }}>
+                                                            30 segundos
+                                                        </option>
+                                                        <option value="60" {{ 'selected' if dashboard.refresh_interval == 60 }}>
+                                                            1 minuto
+                                                        </option>
+                                                        <option value="300" {{ 'selected' if dashboard.refresh_interval == 300 }}>
+                                                            5 minutos
+                                                        </option>
+                                                        <option value="900" {{ 'selected' if dashboard.refresh_interval == 900 }}>
+                                                            15 minutos
+                                                        </option>
+                                                        <option value="0" {{ 'selected' if not dashboard.refresh_interval or dashboard.refresh_interval == 0 }}>
+                                                            Manual
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="theme" class="form-label">
+                                                        <i class="fas fa-palette"></i> Tema
+                                                    </label>
+                                                    <select class="form-select" id="theme" name="theme">
+                                                        <option value="light" {{ 'selected' if not dashboard.theme or dashboard.theme == 'light' }}>
+                                                            Claro
+                                                        </option>
+                                                        <option value="dark" {{ 'selected' if dashboard.theme == 'dark' }}>
+                                                            Escuro
+                                                        </option>
+                                                        <option value="auto" {{ 'selected' if dashboard.theme == 'auto' }}>
+                                                            Automático
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="filtrosPadrao" class="form-label">
+                                                <i class="fas fa-filter"></i> Filtros Padrão
+                                            </label>
+                                            <textarea class="form-control" id="filtrosPadrao" name="filtrosPadrao" rows="3"
+                                                      placeholder='{"evento_id": null, "periodo": "ultimo_mes"}'>{{ dashboard.filtros_padrao or '' }}</textarea>
+                                            <div class="form-text">Configure filtros padrão em formato JSON</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campos Ocultos para Dados -->
+                <input type="hidden" id="widgets_config" name="widgets">
+                <input type="hidden" id="layout_config" name="layout">
+                
+                <!-- Botões de Ação -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a href="{{ url_for('relatorio_bi_routes.lista_dashboards') }}" 
+                                   class="btn btn-secondary btn-custom me-2">
+                                    <i class="fas fa-arrow-left"></i> Cancelar
+                                </a>
+                                <a href="{{ url_for('relatorio_bi_routes.visualizar_dashboard', id=dashboard.id) }}" 
+                                   class="btn btn-outline-info btn-custom">
+                                    <i class="fas fa-eye"></i> Visualizar
+                                </a>
+                            </div>
+                            
+                            <div>
+                                <button type="button" class="btn btn-outline-primary btn-custom me-2" 
+                                        onclick="salvarRascunho()">
+                                    <i class="fas fa-save"></i> Salvar Rascunho
+                                </button>
+                                <button type="submit" class="btn btn-primary btn-custom">
+                                    <i class="fas fa-check"></i> Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Painel de Informações -->
+    <div class="col-md-4">
+        <div class="bi-card">
+            <h5><i class="fas fa-info-circle"></i> Informações do Dashboard</h5>
+            
+            <div class="mb-3">
+                <h6><i class="fas fa-calendar"></i> Datas</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-1">
+                        <strong>Criado:</strong> {{ dashboard.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </li>
+                    <li class="mb-1">
+                        <strong>Última atualização:</strong> {{ dashboard.updated_at.strftime('%d/%m/%Y %H:%M') }}
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6><i class="fas fa-chart-bar"></i> Estatísticas</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-1">
+                        <strong>Widgets:</strong> {{ dashboard.widgets|length }}
+                    </li>
+                    <li class="mb-1">
+                        <strong>Visibilidade:</strong> 
+                        <span class="badge bg-{{ 'success' if dashboard.is_public else 'warning' }}">
+                            {{ 'Público' if dashboard.is_public else 'Privado' }}
+                        </span>
+                    </li>
+                    <li class="mb-1">
+                        <strong>Atualização:</strong> 
+                        {% if dashboard.refresh_interval and dashboard.refresh_interval > 0 %}
+                            {{ dashboard.refresh_interval }}s
+                        {% else %}
+                            Manual
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6><i class="fas fa-puzzle-piece"></i> Widgets Configurados</h6>
+                {% if dashboard.widgets %}
+                    <div class="widgets-list">
+                        {% for widget in dashboard.widgets %}
+                            <div class="widget-item-info">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ widget.titulo }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ widget.tipo_visualizacao|replace('_', ' ')|title }}</small>
+                                    </div>
+                                    <div class="widget-actions">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="configurarWidget({{ widget.id }})">
+                                            <i class="fas fa-cog"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removerWidget({{ widget.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Nenhum widget configurado</p>
+                {% endif %}
+            </div>
+            
+            <div class="alert alert-info">
+                <h6><i class="fas fa-lightbulb"></i> Dicas</h6>
+                <ul class="mb-0">
+                    <li>Organize widgets por importância</li>
+                    <li>Use cores consistentes</li>
+                    <li>Teste a responsividade</li>
+                    <li>Evite sobrecarga visual</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Ações Rápidas -->
+        <div class="bi-card mt-3">
+            <h5><i class="fas fa-bolt"></i> Ações Rápidas</h5>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="duplicarDashboard()">
+                    <i class="fas fa-copy"></i> Duplicar Dashboard
+                </button>
+                
+                <button class="btn btn-outline-success btn-sm" onclick="exportarDashboard()">
+                    <i class="fas fa-download"></i> Exportar Dashboard
+                </button>
+                
+                <button class="btn btn-outline-info btn-sm" onclick="compartilharDashboard()">
+                    <i class="fas fa-share"></i> Compartilhar
+                </button>
+                
+                <button class="btn btn-outline-warning btn-sm" onclick="resetarLayout()">
+                    <i class="fas fa-undo"></i> Resetar Layout
+                </button>
+            </div>
+        </div>
+        
+        <!-- Histórico de Alterações -->
+        <div class="bi-card mt-3">
+            <h5><i class="fas fa-history"></i> Histórico</h5>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-primary"></div>
+                    <div class="timeline-content">
+                        <h6>Dashboard criado</h6>
+                        <small class="text-muted">{{ dashboard.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+                
+                {% if dashboard.updated_at != dashboard.created_at %}
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-success"></div>
+                    <div class="timeline-content">
+                        <h6>Última atualização</h6>
+                        <small class="text-muted">{{ dashboard.updated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% for widget in dashboard.widgets[:3] %}
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-info"></div>
+                    <div class="timeline-content">
+                        <h6>Widget: {{ widget.titulo }}</h6>
+                        <small class="text-muted">{{ widget.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye"></i> Preview do Dashboard
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <!-- Preview será gerado aqui -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarDashboardComPreview()">
+                    <i class="fas fa-check"></i> Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// Variáveis globais
+let widgetsDisponiveis = [];
+let layoutAtual = {{ dashboard.layout_json | tojson if dashboard.layout_json else '{"rows": []}' }};
+let widgetsConfig = {{ dashboard.widgets | tojson if dashboard.widgets else '{}' }};
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    carregarWidgetsDisponiveis();
+    inicializarDragAndDrop();
+    renderizarCanvas();
+});
+
+// Carregar widgets disponíveis
+function carregarWidgetsDisponiveis() {
+    fetch(`${BI_CONFIG.apiBaseUrl}/widgets`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                widgetsDisponiveis = data.widgets;
+                renderizarPaletaWidgets();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar widgets:', error);
+        });
+}
+
+// Renderizar paleta de widgets
+function renderizarPaletaWidgets() {
+    const container = document.getElementById('widgets-palette');
+    
+    const widgetsPorTipo = {
+        'kpi_card': { titulo: 'KPI Card', icone: 'fas fa-tachometer-alt', cor: '#007bff' },
+        'grafico_linha': { titulo: 'Gráfico de Linha', icone: 'fas fa-chart-line', cor: '#28a745' },
+        'grafico_barras': { titulo: 'Gráfico de Barras', icone: 'fas fa-chart-bar', cor: '#ffc107' },
+        'grafico_pizza': { titulo: 'Gráfico de Pizza', icone: 'fas fa-chart-pie', cor: '#dc3545' },
+        'tabela': { titulo: 'Tabela', icone: 'fas fa-table', cor: '#17a2b8' },
+        'gauge': { titulo: 'Gauge', icone: 'fas fa-tachometer-alt', cor: '#6f42c1' }
+    };
+    
+    container.innerHTML = Object.entries(widgetsPorTipo).map(([tipo, info]) => `
+        <div class="col-md-4 mb-2">
+            <div class="widget-item draggable" draggable="true" data-widget-type="${tipo}">
+                <div class="d-flex align-items-center">
+                    <i class="${info.icone} fa-2x me-3" style="color: ${info.cor}"></i>
+                    <div>
+                        <h6 class="mb-0">${info.titulo}</h6>
+                        <small class="text-muted">Arraste para o canvas</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Inicializar drag and drop
+function inicializarDragAndDrop() {
+    const canvas = document.getElementById('design-canvas');
+    
+    // Permitir drop
+    canvas.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        canvas.classList.add('drag-over');
+    });
+    
+    canvas.addEventListener('dragleave', function(e) {
+        canvas.classList.remove('drag-over');
+    });
+    
+    canvas.addEventListener('drop', function(e) {
+        e.preventDefault();
+        canvas.classList.remove('drag-over');
+        
+        const widgetType = e.dataTransfer.getData('text/plain');
+        adicionarWidgetAoCanvas(widgetType);
+    });
+    
+    // Configurar drag dos widgets
+    document.addEventListener('dragstart', function(e) {
+        if (e.target.classList.contains('draggable')) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.widgetType);
+        }
+    });
+}
+
+// Adicionar widget ao canvas
+function adicionarWidgetAoCanvas(tipo) {
+    const canvas = document.getElementById('design-canvas');
+    
+    // Remover estado vazio se existir
+    const emptyState = canvas.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    // Criar nova linha se não existir
+    if (layoutAtual.rows.length === 0) {
+        adicionarLinha();
+    }
+    
+    // Adicionar widget à primeira linha
+    const primeiraLinha = layoutAtual.rows[0];
+    const widgetId = `widget_${Date.now()}`;
+    
+    // Configurar widget
+    widgetsConfig[widgetId] = {
+        tipo: tipo,
+        titulo: `Novo ${tipo.replace('_', ' ')}`,
+        metrica: null,
+        configuracao: {}
+    };
+    
+    // Adicionar à linha
+    if (!primeiraLinha.widgets) {
+        primeiraLinha.widgets = [];
+    }
+    primeiraLinha.widgets.push(widgetId);
+    
+    renderizarCanvas();
+}
+
+// Adicionar linha
+function adicionarLinha() {
+    const linhaId = `row_${Date.now()}`;
+    layoutAtual.rows.push({
+        id: linhaId,
+        widgets: []
+    });
+    renderizarCanvas();
+}
+
+// Renderizar canvas
+function renderizarCanvas() {
+    const canvas = document.getElementById('design-canvas');
+    
+    if (layoutAtual.rows.length === 0) {
+        canvas.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-th-large fa-3x text-muted"></i>
+                <h5 class="mt-3">Dashboard Vazio</h5>
+                <p class="text-muted">Arraste widgets da paleta para começar a criar seu dashboard</p>
+            </div>
+        `;
+        return;
+    }
+    
+    canvas.innerHTML = layoutAtual.rows.map(linha => `
+        <div class="dashboard-row mb-3" data-row-id="${linha.id}">
+            <div class="row">
+                ${linha.widgets ? linha.widgets.map(widgetId => {
+                    const widget = widgetsConfig[widgetId];
+                    return `
+                        <div class="col-md-4 mb-3">
+                            <div class="widget-preview" data-widget-id="${widgetId}">
+                                <div class="widget-header">
+                                    <h6>${widget.titulo}</h6>
+                                    <div class="widget-actions">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="configurarWidget('${widgetId}')">
+                                            <i class="fas fa-cog"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removerWidget('${widgetId}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="widget-content">
+                                    ${renderizarPreviewWidget(widget)}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('') : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Renderizar preview do widget
+function renderizarPreviewWidget(widget) {
+    switch (widget.tipo) {
+        case 'kpi_card':
+            return `
+                <div class="kpi-preview">
+                    <div class="kpi-value">1,250</div>
+                    <div class="kpi-label">Valor</div>
+                </div>
+            `;
+        case 'grafico_linha':
+            return `
+                <div class="chart-preview">
+                    <canvas width="200" height="100"></canvas>
+                </div>
+            `;
+        case 'grafico_barras':
+            return `
+                <div class="chart-preview">
+                    <div class="bar-chart-preview">
+                        <div class="bar" style="height: 60%"></div>
+                        <div class="bar" style="height: 80%"></div>
+                        <div class="bar" style="height: 40%"></div>
+                    </div>
+                </div>
+            `;
+        case 'grafico_pizza':
+            return `
+                <div class="chart-preview">
+                    <div class="pie-chart-preview"></div>
+                </div>
+            `;
+        case 'tabela':
+            return `
+                <div class="table-preview">
+                    <table class="table table-sm">
+                        <tr><td>Item 1</td><td>100</td></tr>
+                        <tr><td>Item 2</td><td>200</td></tr>
+                    </table>
+                </div>
+            `;
+        case 'gauge':
+            return `
+                <div class="gauge-preview">
+                    <div class="gauge-circle">75%</div>
+                </div>
+            `;
+        default:
+            return '<div class="text-muted">Preview não disponível</div>';
+    }
+}
+
+// Configurar widget
+function configurarWidget(widgetId) {
+    const widget = widgetsConfig[widgetId];
+    
+    // Implementar modal de configuração
+    mostrarNotificacao('Configuração de widget em desenvolvimento', 'info');
+}
+
+// Remover widget
+function removerWidget(widgetId) {
+    if (confirm('Tem certeza que deseja remover este widget?')) {
+        delete widgetsConfig[widgetId];
+        
+        // Remover das linhas
+        layoutAtual.rows.forEach(linha => {
+            if (linha.widgets) {
+                linha.widgets = linha.widgets.filter(id => id !== widgetId);
+            }
+        });
+        
+        renderizarCanvas();
+    }
+}
+
+// Limpar layout
+function limparLayout() {
+    if (confirm('Tem certeza que deseja limpar todo o layout?')) {
+        layoutAtual = { rows: [] };
+        widgetsConfig = {};
+        renderizarCanvas();
+    }
+}
+
+// Preview do dashboard
+function previewDashboard() {
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const content = document.getElementById('previewContent');
+    
+    content.innerHTML = `
+        <div class="dashboard-preview">
+            <h4>${document.getElementById('nome').value || 'Dashboard'}</h4>
+            ${layoutAtual.rows.map(linha => `
+                <div class="row mb-3">
+                    ${linha.widgets ? linha.widgets.map(widgetId => {
+                        const widget = widgetsConfig[widgetId];
+                        return `
+                            <div class="col-md-4">
+                                <div class="widget-preview-full">
+                                    <h6>${widget.titulo}</h6>
+                                    ${renderizarPreviewWidget(widget)}
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : ''}
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    modal.show();
+}
+
+// Salvar rascunho
+function salvarRascunho() {
+    // Implementar salvamento de rascunho
+    mostrarNotificacao('Rascunho salvo!', 'success');
+}
+
+// Salvar dashboard com preview
+function salvarDashboardComPreview() {
+    document.getElementById('editarDashboardForm').submit();
+}
+
+// Duplicar dashboard
+function duplicarDashboard() {
+    mostrarNotificacao('Duplicando dashboard...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/{{ dashboard.id }}/duplicar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarNotificacao('Dashboard duplicado com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.href = `${BI_CONFIG.baseUrl}/dashboards/${data.dashboard_id}/editar`;
+            }, 1500);
+        } else {
+            mostrarNotificacao('Erro ao duplicar dashboard: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao duplicar dashboard', 'error');
+    });
+}
+
+// Exportar dashboard
+function exportarDashboard() {
+    mostrarNotificacao('Exportando dashboard...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/{{ dashboard.id }}/exportar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dashboard_{{ dashboard.id }}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        mostrarNotificacao('Dashboard exportado com sucesso!', 'success');
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao exportar dashboard', 'error');
+    });
+}
+
+// Compartilhar dashboard
+function compartilharDashboard() {
+    mostrarNotificacao('Gerando link de compartilhamento...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/{{ dashboard.id }}/compartilhar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Copiar link para clipboard
+            navigator.clipboard.writeText(data.link).then(() => {
+                mostrarNotificacao('Link copiado para a área de transferência!', 'success');
+            }).catch(() => {
+                mostrarNotificacao('Link gerado: ' + data.link, 'info');
+            });
+        } else {
+            mostrarNotificacao('Erro ao gerar link: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao compartilhar dashboard', 'error');
+    });
+}
+
+// Resetar layout
+function resetarLayout() {
+    if (confirm('Tem certeza que deseja resetar o layout? Esta ação não pode ser desfeita.')) {
+        layoutAtual = { rows: [] };
+        widgetsConfig = {};
+        renderizarCanvas();
+        mostrarNotificacao('Layout resetado!', 'success');
+    }
+}
+
+// Validação do formulário
+document.getElementById('editarDashboardForm').addEventListener('submit', function(e) {
+    const nome = document.getElementById('nome').value.trim();
+    
+    if (!nome) {
+        e.preventDefault();
+        mostrarNotificacao('Nome do dashboard é obrigatório!', 'error');
+        document.getElementById('nome').focus();
+        return;
+    }
+    
+    // Verificar se há widgets
+    if (Object.keys(widgetsConfig).length === 0) {
+        e.preventDefault();
+        mostrarNotificacao('Adicione pelo menos um widget ao dashboard!', 'error');
+        return;
+    }
+    
+    // Salvar configurações nos campos ocultos
+    document.getElementById('widgets_config').value = JSON.stringify(widgetsConfig);
+    document.getElementById('layout_config').value = JSON.stringify(layoutAtual);
+    
+    // Mostrar loading
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<div class="loading-spinner"></div> Salvando...';
+    submitBtn.disabled = true;
+    
+    // Restaurar botão após submit
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 3000);
+});
+</script>
+
+<style>
+.dashboard-designer {
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    padding: 1rem;
+    min-height: 400px;
+}
+
+.design-canvas {
+    min-height: 300px;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.design-canvas.drag-over {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+.widget-item {
+    cursor: move;
+    transition: all 0.2s;
+}
+
+.widget-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.widget-preview {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 150px;
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.widget-content {
+    min-height: 100px;
+}
+
+.kpi-preview {
+    text-align: center;
+    padding: 1rem;
+}
+
+.kpi-preview .kpi-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.kpi-preview .kpi-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.chart-preview {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.bar-chart-preview {
+    display: flex;
+    align-items: end;
+    height: 60px;
+    gap: 4px;
+}
+
+.bar-chart-preview .bar {
+    width: 20px;
+    background: #007bff;
+    border-radius: 2px 2px 0 0;
+}
+
+.pie-chart-preview {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: conic-gradient(#007bff 0deg 120deg, #28a745 120deg 240deg, #ffc107 240deg 360deg);
+}
+
+.gauge-preview {
+    text-align: center;
+}
+
+.gauge-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin: 0 auto;
+}
+
+.table-preview {
+    font-size: 0.8rem;
+}
+
+.dashboard-preview {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.widget-preview-full {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 200px;
+}
+
+.widgets-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.widget-item-info {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: #f8f9fa;
+}
+
+.widget-item-info:last-child {
+    margin-bottom: 0;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -2rem;
+    top: 0.25rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content h6 {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.timeline-content small {
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}
+
+

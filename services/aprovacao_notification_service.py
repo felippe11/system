@@ -6,8 +6,7 @@ Serviço de notificações para o sistema de aprovação de compras.
 """
 
 from flask import current_app, render_template_string
-from flask_mail import Message
-from extensions import mail
+from services.email_service import send_email
 from models.user import Usuario
 from models.compra import Compra, AprovacaoCompra, NivelAprovacao
 from datetime import datetime
@@ -110,26 +109,26 @@ class AprovacaoNotificationService:
             for aprovador in aprovadores:
                 if not aprovador.email:
                     continue
-                    
+
                 try:
-                    msg = Message(
-                        subject=f'Nova Aprovação Pendente - Compra #{compra.numero_compra}',
-                        recipients=[aprovador.email],
-                        html=render_template_string(
-                            template_html,
-                            compra=compra,
-                            nivel=nivel,
-                            aprovador=aprovador,
-                            url_aprovacao=url_aprovacao
-                        )
+                    html_content = render_template_string(
+                        template_html,
+                        compra=compra,
+                        nivel=nivel,
+                        aprovador=aprovador,
+                        url_aprovacao=url_aprovacao,
                     )
-                    
-                    mail.send(msg)
+
+                    send_email(
+                        to=aprovador.email,
+                        subject=f'Nova Aprovação Pendente - Compra #{compra.numero_compra}',
+                        html=html_content,
+                    )
                     emails_enviados += 1
-                    logger.info(f"Email de aprovação enviado para {aprovador.email}")
-                    
+                    logger.info("Email de aprovação enviado para %s", aprovador.email)
+
                 except Exception as e:
-                    logger.error(f"Erro ao enviar email para {aprovador.email}: {e}")
+                    logger.error("Erro ao enviar email para %s: %s", aprovador.email, e)
             
             logger.info(f"Enviados {emails_enviados} emails de notificação para compra {compra_id}")
             return emails_enviados > 0
@@ -224,21 +223,21 @@ class AprovacaoNotificationService:
             # URL para acessar o sistema de compras
             url_compras = current_app.config.get('BASE_URL', 'http://localhost:5000') + '/compra'
             
-            msg = Message(
-                subject=f'Compra #{compra.numero_compra} - {status.title()}',
-                recipients=[solicitante.email],
-                html=render_template_string(
-                    template_html,
-                    compra=compra,
-                    status=status,
-                    comentario=comentario,
-                    solicitante=solicitante,
-                    url_compras=url_compras
-                )
+            html_content = render_template_string(
+                template_html,
+                compra=compra,
+                status=status,
+                comentario=comentario,
+                solicitante=solicitante,
+                url_compras=url_compras,
             )
-            
-            mail.send(msg)
-            logger.info(f"Email de conclusão de aprovação enviado para {solicitante.email}")
+
+            send_email(
+                to=solicitante.email,
+                subject=f'Compra #{compra.numero_compra} - {status.title()}',
+                html=html_content,
+            )
+            logger.info("Email de conclusão de aprovação enviado para %s", solicitante.email)
             return True
             
         except Exception as e:

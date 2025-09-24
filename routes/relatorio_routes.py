@@ -203,7 +203,16 @@ def gerar_relatorio_evento():
         ministrantes = Ministrante.query.all()
     else:
         oficinas = Oficina.query.filter_by(cliente_id=current_user.id).all()
-        ministrantes = Ministrante.query.join(Oficina).filter(Oficina.cliente_id==current_user.id).distinct().all()
+        join_condition = or_(
+            Oficina.ministrante_id == Ministrante.id,
+            Oficina.formador_id == Ministrante.id,
+        )
+        ministrantes = (
+            Ministrante.query.join(Oficina, join_condition)
+            .filter(Oficina.cliente_id == current_user.id)
+            .distinct()
+            .all()
+        )
     
     # Obter dados únicos para filtros
     # Distintos estados e cidades são baseados nas oficinas, que possuem esses campos

@@ -9,7 +9,7 @@ from models.compra import Compra
 from models.user import Usuario
 from models.material import Polo
 from models.orcamento import Orcamento
-from services.mailjet_service import send_via_mailjet
+from services.email_service import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +125,8 @@ class CompraNotificationService:
             html_content = CompraNotificationService._get_template_orcamento_excedido().render(**template_data)
             
             for destinatario in destinatarios:
-                send_via_mailjet(
-                    to_email=destinatario.email,
+                send_email(
+                    to=destinatario.email,
                     subject=subject,
                     html=html_content
                 )
@@ -158,8 +158,8 @@ class CompraNotificationService:
             html_content = CompraNotificationService._get_template_orcamento_proximo_limite().render(**template_data)
             
             for destinatario in destinatarios:
-                send_via_mailjet(
-                    to_email=destinatario.email,
+                send_email(
+                    to=destinatario.email,
                     subject=subject,
                     html=html_content
                 )
@@ -205,8 +205,8 @@ class CompraNotificationService:
                 html_content = CompraNotificationService._get_template_compras_pendentes().render(**template_data)
                 
                 for destinatario in destinatarios:
-                    send_via_mailjet(
-                        to_email=destinatario.email,
+                    send_email(
+                        to=destinatario.email,
                         subject=subject,
                         html=html_content
                     )
@@ -252,8 +252,8 @@ class CompraNotificationService:
                 html_content = CompraNotificationService._get_template_prestacoes_atrasadas().render(**template_data)
                 
                 for destinatario in destinatarios:
-                    send_via_mailjet(
-                        to_email=destinatario.email,
+                    send_email(
+                        to=destinatario.email,
                         subject=subject,
                         html=html_content
                     )

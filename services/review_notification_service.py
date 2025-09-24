@@ -5,7 +5,7 @@ from flask import url_for
 from mailjet_rest.client import ApiError
 
 from extensions import db
-from services.mailjet_service import send_via_mailjet
+from services.email_service import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,8 @@ def notify_reviewer(review):
     )
 
     try:
-        send_via_mailjet(
-            to_email=review.reviewer.email,
+        send_email(
+            to=review.reviewer.email,
             subject="Novo parecer disponível",
             text=text,
         )

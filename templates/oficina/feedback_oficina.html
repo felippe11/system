@@ -135,9 +135,16 @@
       </tbody>
     </table>
     <div class="text-center mt-4">
-      <a href="{{ url_for('routes.gerar_pdf_feedback_route', oficina_id=oficina.id, tipo=request.args.get('tipo'), estrelas=request.args.get('estrelas')) }}" class="btn btn-secondary">
-        Imprimir Feedbacks (PDF)
-      </a>
+      <div class="btn-group" role="group">
+        <a href="{{ url_for('routes.gerar_pdf_feedback_route', oficina_id=oficina.id, tipo=request.args.get('tipo'), estrelas=request.args.get('estrelas')) }}" class="btn btn-secondary">
+          <i class="fas fa-file-pdf me-2"></i>
+          Imprimir Feedbacks (PDF)
+        </a>
+        <a href="{{ url_for('feedback_routes.gerar_qr_feedback', oficina_id=oficina.id) }}" class="btn btn-primary">
+          <i class="fas fa-qrcode me-2"></i>
+          Gerar QR Code
+        </a>
+      </div>
       <p class="text-muted small mt-2">
         Observação: Os filtros aplicados (Tipo e Número de Estrelas) influenciarão o PDF gerado.
       </p>

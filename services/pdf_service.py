@@ -2700,26 +2700,21 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
         caminho_pdf: Caminho onde o PDF será salvo
     """
     
-    # 1) Obter agendamentos do professor ou do mesmo cliente para o relatório
+    # 1) Obter APENAS o agendamento específico do usuário (PRIVACIDADE)
     from models import AgendamentoVisita
-    from sqlalchemy import or_
 
-    agendamentos = AgendamentoVisita.query.filter(
-        or_(
-            AgendamentoVisita.professor_id == agendamento.professor_id,
-            AgendamentoVisita.cliente_id == agendamento.cliente_id,
-        )
-    ).all()
+    # CORREÇÃO DE PRIVACIDADE: Mostrar apenas o agendamento específico do usuário
+    agendamentos = [agendamento]  # Apenas o agendamento atual
     
     # 2) Cria objeto PDF
     pdf = FPDF()
     pdf.add_page()
 
     # 3) -------------------------------
-    #    SEÇÃO: Relatório de Agendamentos
+    #    SEÇÃO: Comprovante de Agendamento Individual
     # 3.1) Título
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
+    pdf.cell(190, 10, f'Comprovante de Agendamento - {evento.nome}', 0, 1, 'C')
     
     # 3.2) Cabeçalho do evento
     pdf.set_font('Arial', 'B', 12)
@@ -2737,84 +2732,70 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
 
     pdf.cell(190, 10, f'Local: {evento.localizacao or "Não informado"}', 0, 1)
 
-    # 3.3) Total de agendamentos
+    # 3.3) Informações do agendamento específico
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(190, 10, f'Total de agendamentos: {len(agendamentos)}', 0, 1)
+    pdf.cell(190, 10, f'Status do Agendamento: {agendamento.status.title()}', 0, 1)
     
-    # 3.4) Resumo por status
-    status_count = {'confirmado': 0, 'cancelado': 0, 'realizado': 0}
-    alunos_esperados = 0
+    # 3.4) Informações específicas do agendamento
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(190, 10, f'Escola: {agendamento.escola_nome}', 0, 1)
+    pdf.cell(190, 10, f'Turma: {agendamento.turma}', 0, 1)
+    pdf.cell(190, 10, f'Nível de Ensino: {agendamento.nivel_ensino}', 0, 1)
+    pdf.cell(190, 10, f'Quantidade de Alunos: {agendamento.quantidade_alunos}', 0, 1)
+    
+    # Contar alunos presentes apenas para este agendamento
     alunos_presentes = 0
+    if agendamento.status == 'realizado':
+        alunos_presentes = sum(1 for aluno in agendamento.alunos if aluno.presente)
+        pdf.cell(190, 10, f'Alunos Presentes: {alunos_presentes}', 0, 1)
     
-    for ag in agendamentos:
-        status = ag.status
-        status_count[status] = status_count.get(status, 0) + 1
-        
-        # Contar alunos
-        alunos_esperados += ag.quantidade_alunos
-        if ag.status == 'realizado':
-            presentes = sum(1 for aluno in ag.alunos if aluno.presente)
-            alunos_presentes += presentes
-    
-    pdf.cell(190, 10, f'Confirmados: {status_count["confirmado"]}', 0, 1)
-    pdf.cell(190, 10, f'Cancelados: {status_count["cancelado"]}', 0, 1)
-    pdf.cell(190, 10, f'Realizados: {status_count["realizado"]}', 0, 1)
-    pdf.cell(190, 10, f'Total de alunos esperados: {alunos_esperados}', 0, 1)
+    # 3.5) Informações do horário
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(190, 10, 'Detalhes do Horário:', 0, 1)
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(190, 10, f'Data: {horario.data.strftime("%d/%m/%Y")}', 0, 1)
+    pdf.cell(190, 10, f'Horário: {horario.horario_inicio} às {horario.horario_fim}', 0, 1)
     
     if alunos_presentes > 0:
-        presenca = (alunos_presentes / alunos_esperados) * 100 if alunos_esperados > 0 else 0
+        presenca = (alunos_presentes / agendamento.quantidade_alunos) * 100 if agendamento.quantidade_alunos > 0 else 0
         pdf.cell(
             190, 10,
-            f'Total de alunos presentes: {alunos_presentes} ({presenca:.1f}%)',
+            f'Taxa de presença: {presenca:.1f}% ({alunos_presentes}/{agendamento.quantidade_alunos})',
             0, 1
         )
     
-    # 3.5) Listagem de agendamentos
+    # 3.6) Informações adicionais do agendamento
     pdf.ln(10)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Listagem de Agendamentos', 0, 1, 'C')
+    pdf.cell(190, 10, 'Informações Adicionais', 0, 1, 'C')
     
-    # Cabeçalho da tabela
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(20, 10, 'ID', 1, 0, 'C')
-    pdf.cell(30, 10, 'Data', 1, 0, 'C')
-    pdf.cell(30, 10, 'Horário', 1, 0, 'C')
-    pdf.cell(50, 10, 'Escola', 1, 0, 'C')
-    pdf.cell(30, 10, 'Alunos', 1, 0, 'C')
-    pdf.cell(30, 10, 'Status', 1, 1, 'C')
+    pdf.set_font('Arial', '', 12)
+    if agendamento.escola_codigo_inep:
+        pdf.cell(190, 10, f'Código INEP: {agendamento.escola_codigo_inep}', 0, 1)
     
-    pdf.set_font('Arial', '', 9)
-    for ag in agendamentos:
-        h = ag.horario  # HorarioVisitacao
-        escola_nome = ag.escola_nome
-        if len(escola_nome) > 20:
-            escola_nome = escola_nome[:17] + '...'
-        
-        pdf.cell(20, 10, str(ag.id), 1, 0, 'C')
-        if h and h.data:
-            pdf.cell(30, 10, h.data.strftime('%d/%m/%Y'), 1, 0, 'C')
-        else:
-            pdf.cell(30, 10, '--/--/----', 1, 0, 'C')
-        
-        if h and h.horario_inicio and h.horario_fim:
-            pdf.cell(
-                30, 10,
-                f"{h.horario_inicio.strftime('%H:%M')} - {h.horario_fim.strftime('%H:%M')}",
-                1, 0, 'C'
-            )
-        else:
-            pdf.cell(30, 10, '---', 1, 0, 'C')
-        
-        pdf.cell(50, 10, escola_nome, 1, 0, 'L')
-        pdf.cell(30, 10, str(ag.quantidade_alunos), 1, 0, 'C')
-        pdf.cell(30, 10, ag.status.capitalize(), 1, 1, 'C')
+    if agendamento.rede_ensino:
+        pdf.cell(190, 10, f'Rede de Ensino: {agendamento.rede_ensino}', 0, 1)
     
-    # Rodapé do relatório
+    if agendamento.estado and agendamento.municipio:
+        pdf.cell(190, 10, f'Localização: {agendamento.municipio} - {agendamento.estado}', 0, 1)
+    
+    if agendamento.responsavel_nome:
+        pdf.cell(190, 10, f'Responsável: {agendamento.responsavel_nome}', 0, 1)
+        if agendamento.responsavel_cargo:
+            pdf.cell(190, 10, f'Cargo: {agendamento.responsavel_cargo}', 0, 1)
+    
+    if agendamento.acompanhantes_nomes:
+        pdf.cell(190, 10, f'Acompanhantes: {agendamento.acompanhantes_nomes}', 0, 1)
+    
+    if agendamento.observacoes:
+        pdf.cell(190, 10, f'Observações: {agendamento.observacoes}', 0, 1)
+    
+    # Rodapé do comprovante
     pdf.ln(10)
     pdf.set_font('Arial', 'I', 10)
     pdf.cell(
         190, 10,
-        f'Relatório gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}',
+        f'Comprovante gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}',
         0, 1, 'C'
     )
 

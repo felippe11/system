@@ -5,14 +5,15 @@ Fornece funcionalidades avançadas de análise, métricas e relatórios
 
 from extensions import db
 from models import (
-    Usuario, Evento, Oficina, Inscricao, Checkin, Cliente, 
-    Pagamento, Feedback, AtividadeMultiplaData, FrequenciaAtividade
+    Usuario, Evento, Oficina, Inscricao, Checkin, Cliente,
+    Feedback, InscricaoTipo, AtividadeMultiplaData, FrequenciaAtividade
 )
 from models.relatorio_bi import (
-    RelatorioBI, MetricaBI, DashboardBI, WidgetBI, 
+    RelatorioBI, MetricaBI, DashboardBI, WidgetBI,
     ExportacaoRelatorio, CacheRelatorio, AlertasBI
 )
-from sqlalchemy import func, text, and_, or_, desc, asc
+from sqlalchemy import func, text, and_, or_, desc, asc, case, cast
+from sqlalchemy.types import Float
 from datetime import datetime, timedelta, date
 import json
 import hashlib
@@ -60,6 +61,7 @@ class BIAnalyticsService:
             
         except Exception as e:
             logger.error(f"Erro ao calcular KPIs executivos: {str(e)}")
+            db.session.rollback()
             return {}
     
     def gerar_analise_tendencias(self, cliente_id: int, periodo_dias: int = 30) -> Dict[str, Any]:
@@ -106,22 +108,22 @@ class BIAnalyticsService:
                 Oficina.estado,
                 func.count(Inscricao.id).label('inscricoes'),
                 func.count(Checkin.id).label('presencas'),
-                func.sum(Pagamento.valor).label('receita')
+                func.coalesce(func.sum(cast(InscricaoTipo.preco, Float)), 0).label('receita')
             ).join(Inscricao, Oficina.id == Inscricao.oficina_id)\
-             .outerjoin(Checkin, Checkin.inscricao_id == Inscricao.id)\
-             .outerjoin(Pagamento, Pagamento.inscricao_id == Inscricao.id)\
+             .outerjoin(Checkin, Checkin.oficina_id == Oficina.id)\
+             .outerjoin(InscricaoTipo, Inscricao.tipo_inscricao_id == InscricaoTipo.id)\
              .filter(Oficina.cliente_id == cliente_id)\
              .group_by(Oficina.estado).all()
-            
+
             # Dados por cidade
             dados_cidades = db.session.query(
                 Oficina.cidade,
                 Oficina.estado,
                 func.count(Inscricao.id).label('inscricoes'),
                 func.count(Checkin.id).label('presencas'),
-                func.avg(Feedback.nota).label('satisfacao_media')
+                func.avg(Feedback.rating).label('satisfacao_media')
             ).join(Inscricao, Oficina.id == Inscricao.oficina_id)\
-             .outerjoin(Checkin, Checkin.inscricao_id == Inscricao.id)\
+             .outerjoin(Checkin, Checkin.oficina_id == Oficina.id)\
              .outerjoin(Feedback, Feedback.oficina_id == Oficina.id)\
              .filter(Oficina.cliente_id == cliente_id)\
              .group_by(Oficina.cidade, Oficina.estado).all()
@@ -155,6 +157,7 @@ class BIAnalyticsService:
             
         except Exception as e:
             logger.error(f"Erro ao gerar análise geográfica: {str(e)}")
+            db.session.rollback()
             return {}
     
     def gerar_analise_qualidade(self, cliente_id: int, filtros: Dict = None) -> Dict[str, Any]:
@@ -164,26 +167,17 @@ class BIAnalyticsService:
             feedbacks = db.session.query(
                 Feedback.oficina_id,
                 Oficina.titulo.label('oficina_titulo'),
-                func.avg(Feedback.nota).label('nota_media'),
+                func.avg(Feedback.rating).label('nota_media'),
                 func.count(Feedback.id).label('total_avaliacoes'),
-                func.sum(case([(Feedback.nota >= 4, 1)], else_=0)).label('avaliacoes_positivas'),
-                func.sum(case([(Feedback.nota <= 2, 1)], else_=0)).label('avaliacoes_negativas')
+                func.sum(case([(Feedback.rating >= 4, 1)], else_=0)).label('avaliacoes_positivas'),
+                func.sum(case([(Feedback.rating <= 2, 1)], else_=0)).label('avaliacoes_negativas')
             ).join(Oficina, Feedback.oficina_id == Oficina.id)\
              .filter(Oficina.cliente_id == cliente_id)\
              .group_by(Feedback.oficina_id, Oficina.titulo).all()
             
             # Análise por categoria
-            categorias = ['conteudo', 'logistica', 'estrutura', 'material', 'instrutor']
-            feedback_por_categoria = {}
-            
-            for categoria in categorias:
-                feedback_cat = db.session.query(
-                    func.avg(getattr(Feedback, f'nota_{categoria}')).label('nota_media')
-                ).join(Oficina, Feedback.oficina_id == Oficina.id)\
-                 .filter(Oficina.cliente_id == cliente_id)\
-                 .filter(getattr(Feedback, f'nota_{categoria}').isnot(None)).first()
-                
-                feedback_por_categoria[categoria] = float(feedback_cat.nota_media or 0)
+            media_geral = sum([float(f.nota_media or 0) for f in feedbacks]) / len(feedbacks) if feedbacks else 0
+            feedback_por_categoria = {'geral': media_geral}
             
             # NPS
             nps_data = self._calcular_nps_detalhado(cliente_id)
@@ -192,20 +186,20 @@ class BIAnalyticsService:
             comentarios_positivos = db.session.query(Feedback.comentario)\
                 .join(Oficina, Feedback.oficina_id == Oficina.id)\
                 .filter(Oficina.cliente_id == cliente_id)\
-                .filter(Feedback.nota >= 4)\
+                .filter(Feedback.rating >= 4)\
                 .filter(Feedback.comentario.isnot(None))\
                 .limit(50).all()
-            
+
             comentarios_negativos = db.session.query(Feedback.comentario)\
                 .join(Oficina, Feedback.oficina_id == Oficina.id)\
                 .filter(Oficina.cliente_id == cliente_id)\
-                .filter(Feedback.nota <= 2)\
+                .filter(Feedback.rating <= 2)\
                 .filter(Feedback.comentario.isnot(None))\
                 .limit(50).all()
             
             return {
                 'resumo_geral': {
-                    'nota_media_geral': sum([f.nota_media for f in feedbacks]) / len(feedbacks) if feedbacks else 0,
+                    'nota_media_geral': media_geral,
                     'total_avaliacoes': sum([f.total_avaliacoes for f in feedbacks]),
                     'nps': nps_data['nps'],
                     'promotores': nps_data['promotores'],
@@ -231,6 +225,7 @@ class BIAnalyticsService:
             
         except Exception as e:
             logger.error(f"Erro ao gerar análise de qualidade: {str(e)}")
+            db.session.rollback()
             return {}
     
     def gerar_analise_financeira(self, cliente_id: int, filtros: Dict = None) -> Dict[str, Any]:
@@ -238,14 +233,14 @@ class BIAnalyticsService:
         try:
             # Receitas por período
             receitas_mensais = db.session.query(
-                func.date_trunc('month', Pagamento.data_pagamento).label('mes'),
-                func.sum(Pagamento.valor).label('receita'),
-                func.count(Pagamento.id).label('transacoes')
-            ).join(Inscricao, Pagamento.inscricao_id == Inscricao.id)\
-             .join(Oficina, Inscricao.oficina_id == Oficina.id)\
+                func.date_trunc('month', Inscricao.created_at).label('mes'),
+                func.coalesce(func.sum(cast(InscricaoTipo.preco, Float)), 0).label('receita'),
+                func.count(Inscricao.id).label('transacoes')
+            ).join(Oficina, Inscricao.oficina_id == Oficina.id)\
+             .outerjoin(InscricaoTipo, Inscricao.tipo_inscricao_id == InscricaoTipo.id)\
              .filter(Oficina.cliente_id == cliente_id)\
-             .filter(Pagamento.status == 'approved')\
-             .group_by(func.date_trunc('month', Pagamento.data_pagamento))\
+             .filter(Inscricao.status_pagamento == 'approved')\
+             .group_by(func.date_trunc('month', Inscricao.created_at))\
              .order_by(desc('mes')).all()
             
             # Análise de inadimplência
@@ -257,12 +252,12 @@ class BIAnalyticsService:
             # Ticket médio por categoria
             ticket_medio_categoria = db.session.query(
                 Oficina.categoria,
-                func.avg(Pagamento.valor).label('ticket_medio'),
-                func.count(Pagamento.id).label('transacoes')
-            ).join(Inscricao, Pagamento.inscricao_id == Inscricao.id)\
-             .join(Oficina, Inscricao.oficina_id == Oficina.id)\
+                func.coalesce(func.avg(cast(InscricaoTipo.preco, Float)), 0).label('ticket_medio'),
+                func.count(Inscricao.id).label('transacoes')
+            ).join(Inscricao, Inscricao.oficina_id == Oficina.id)\
+             .outerjoin(InscricaoTipo, Inscricao.tipo_inscricao_id == InscricaoTipo.id)\
              .filter(Oficina.cliente_id == cliente_id)\
-             .filter(Pagamento.status == 'approved')\
+             .filter(Inscricao.status_pagamento == 'approved')\
              .group_by(Oficina.categoria).all()
             
             # Projeções
@@ -293,6 +288,7 @@ class BIAnalyticsService:
             
         except Exception as e:
             logger.error(f"Erro ao gerar análise financeira: {str(e)}")
+            db.session.rollback()
             return {}
     
     def gerar_relatorio_personalizado(self, relatorio_id: int) -> Dict[str, Any]:
@@ -420,34 +416,51 @@ class BIAnalyticsService:
     
     def _calcular_receita_total(self, query_base: Dict) -> float:
         """Calcula receita total"""
-        query = Pagamento.query.join(Inscricao, Pagamento.inscricao_id == Inscricao.id)\
-            .join(Oficina, Inscricao.oficina_id == Oficina.id)\
-            .filter(Oficina.cliente_id == query_base['cliente_id'])\
-            .filter(Pagamento.status == 'approved')
-        
+        query = db.session.query(func.coalesce(func.sum(cast(InscricaoTipo.preco, Float)), 0.0))\
+            .join(Inscricao, Inscricao.tipo_inscricao_id == InscricaoTipo.id)\
+            .filter(Inscricao.cliente_id == query_base['cliente_id'])\
+            .filter(Inscricao.status_pagamento == 'approved')
+
         if 'data_inicio' in query_base:
-            query = query.filter(Pagamento.data_pagamento >= query_base['data_inicio'])
+            query = query.filter(Inscricao.created_at >= query_base['data_inicio'])
         if 'data_fim' in query_base:
-            query = query.filter(Pagamento.data_pagamento <= query_base['data_fim'])
-        
-        return float(query.with_entities(func.sum(Pagamento.valor)).scalar() or 0)
-    
+            query = query.filter(Inscricao.created_at <= query_base['data_fim'])
+
+        return float(query.scalar() or 0)
+
     def _calcular_ticket_medio(self, query_base: Dict) -> float:
         """Calcula ticket médio"""
         receita = self._calcular_receita_total(query_base)
-        transacoes = Pagamento.query.join(Inscricao, Pagamento.inscricao_id == Inscricao.id)\
-            .join(Oficina, Inscricao.oficina_id == Oficina.id)\
+        transacoes = Inscricao.query.join(Oficina, Inscricao.oficina_id == Oficina.id)\
             .filter(Oficina.cliente_id == query_base['cliente_id'])\
-            .filter(Pagamento.status == 'approved').count()
-        
-        return receita / transacoes if transacoes > 0 else 0
+            .filter(Inscricao.status_pagamento == 'approved')
+
+        if 'data_inicio' in query_base:
+            transacoes = transacoes.filter(Inscricao.created_at >= query_base['data_inicio'])
+        if 'data_fim' in query_base:
+            transacoes = transacoes.filter(Inscricao.created_at <= query_base['data_fim'])
+
+        transacoes_count = transacoes.count()
+
+        return receita / transacoes_count if transacoes_count > 0 else 0
     
     def _calcular_taxa_presenca(self, query_base: Dict) -> float:
         """Calcula taxa de presença"""
         inscricoes = self._calcular_inscricoes_totais(query_base)
-        presencas = Checkin.query.join(Inscricao, Checkin.inscricao_id == Inscricao.id)\
-            .join(Oficina, Inscricao.oficina_id == Oficina.id)\
-            .filter(Oficina.cliente_id == query_base['cliente_id']).count()
+        presencas_query = Checkin.query.outerjoin(Oficina, Checkin.oficina_id == Oficina.id)\
+            .filter(
+                or_(
+                    Checkin.cliente_id == query_base['cliente_id'],
+                    Oficina.cliente_id == query_base['cliente_id']
+                )
+            )
+
+        if 'data_inicio' in query_base:
+            presencas_query = presencas_query.filter(Checkin.data_hora >= query_base['data_inicio'])
+        if 'data_fim' in query_base:
+            presencas_query = presencas_query.filter(Checkin.data_hora <= query_base['data_fim'])
+
+        presencas = presencas_query.count()
         
         return (presencas / inscricoes * 100) if inscricoes > 0 else 0
     
@@ -461,7 +474,7 @@ class BIAnalyticsService:
         if 'data_fim' in query_base:
             query = query.filter(Feedback.created_at <= query_base['data_fim'])
         
-        return float(query.with_entities(func.avg(Feedback.nota)).scalar() or 0)
+        return float(query.with_entities(func.avg(Feedback.rating)).scalar() or 0)
     
     def _calcular_nps(self, query_base: Dict) -> int:
         """Calcula NPS"""
@@ -472,11 +485,11 @@ class BIAnalyticsService:
         """Calcula NPS detalhado"""
         feedbacks = Feedback.query.join(Oficina, Feedback.oficina_id == Oficina.id)\
             .filter(Oficina.cliente_id == cliente_id)\
-            .filter(Feedback.nota.isnot(None)).all()
+            .filter(Feedback.rating.isnot(None)).all()
         
-        promotores = sum(1 for f in feedbacks if f.nota >= 9)
-        neutros = sum(1 for f in feedbacks if 7 <= f.nota <= 8)
-        detratores = sum(1 for f in feedbacks if f.nota <= 6)
+        promotores = sum(1 for f in feedbacks if f.rating >= 4)
+        neutros = sum(1 for f in feedbacks if f.rating == 3)
+        detratores = sum(1 for f in feedbacks if f.rating <= 2)
         total = len(feedbacks)
         
         if total == 0:

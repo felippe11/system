@@ -52,7 +52,7 @@ def test_logs_failure(app, monkeypatch):
         def boom(**_):
             raise Exception("boom")
 
-        monkeypatch.setattr(review_service, "send_via_mailjet", boom)
+        monkeypatch.setattr(review_service, "send_email", boom)
         review_service.notify_reviewer(review)
         db.session.commit()
         log = ReviewEmailLog.query.one()
@@ -65,7 +65,7 @@ def test_success_no_log(app, monkeypatch):
     with app.app_context():
         review = _create_review()
         monkeypatch.setattr(review_service, "url_for", lambda *a, **k: "http://link")
-        monkeypatch.setattr(review_service, "send_via_mailjet", lambda **_: None)
+        monkeypatch.setattr(review_service, "send_email", lambda **_: None)
         review_service.notify_reviewer(review)
         db.session.commit()
         assert ReviewEmailLog.query.count() == 0
