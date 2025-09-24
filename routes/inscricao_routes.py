@@ -583,6 +583,8 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
         for ofi in oficinas:
             if ofi.ministrante_obj:
                 ministrantes_set.add(ofi.ministrante_obj)
+            if ofi.formador:
+                ministrantes_set.add(ofi.formador)
             if hasattr(ofi, "ministrantes_associados"):
                 ministrantes_set.update(ofi.ministrantes_associados.all())
     ministrantes = sorted(ministrantes_set, key=lambda m: m.nome)
@@ -597,6 +599,7 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
                     "titulo": oficina.titulo,
                     "descricao": oficina.descricao,
                     "ministrante": oficina.ministrante_obj,
+                    "formador": oficina.formador,
                     "horario_inicio": dia.horario_inicio,
                     "horario_fim": dia.horario_fim,
                 }

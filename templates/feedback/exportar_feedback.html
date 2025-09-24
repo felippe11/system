@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Exportar Relatórios de Feedback{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-download me-2"></i>
+                        Exportar Relatórios de Feedback
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instruções:</strong> Selecione uma oficina abaixo para exportar os dados de feedback em PDF ou Excel.
+                    </div>
+                    
+                    {% if oficinas %}
+                    <div class="row">
+                        {% for oficina in oficinas %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-chalkboard-teacher me-2 text-primary"></i>
+                                        {{ oficina.titulo }}
+                                    </h5>
+                                    
+                                    <p class="card-text text-muted">
+                                        <small>
+                                            <i class="fas fa-calendar me-1"></i>
+                                            {{ oficina.data_inicio.strftime('%d/%m/%Y') if oficina.data_inicio else 'Data não definida' }}
+                                        </small>
+                                    </p>
+                                    
+                                    <p class="card-text text-muted">
+                                        <small>
+                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                            {{ oficina.cidade }}, {{ oficina.estado }}
+                                        </small>
+                                    </p>
+                                    
+                                    <div class="d-grid gap-2">
+                                        <a href="{{ url_for('feedback_routes.exportar_feedback_pdf', oficina_id=oficina.id) }}" 
+                                           class="btn btn-danger">
+                                            <i class="fas fa-file-pdf me-2"></i>
+                                            Exportar PDF
+                                        </a>
+                                        
+                                        <a href="{{ url_for('feedback_routes.exportar_feedback_xlsx', oficina_id=oficina.id) }}" 
+                                           class="btn btn-success">
+                                            <i class="fas fa-file-excel me-2"></i>
+                                            Exportar Excel
+                                        </a>
+                                        
+                                        <a href="{{ url_for('feedback_routes.gerenciar_perguntas_oficina', oficina_id=oficina.id) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="fas fa-cog me-2"></i>
+                                            Configurar Perguntas
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhuma oficina encontrada</h5>
+                        <p class="text-muted">Crie uma oficina primeiro para poder exportar relatórios de feedback.</p>
+                        <a href="{{ url_for('oficina_routes.criar_oficina') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>
+                            Criar Nova Oficina
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease-in-out;
+}
+
+.btn {
+    transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

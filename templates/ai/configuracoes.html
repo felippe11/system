@@ -1,538 +1,749 @@
 {% extends "base.html" %}
 
-{% block title %}Configurações da IA{% endblock %}
+{% block title %}Configurações de IA{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+  .config-page-container {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding-top: 2rem;
+  }
+
+  .config-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+  }
+
+  .config-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .config-header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+  }
+
+  .config-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #e9ecef;
+    transition: var(--transition-normal);
+  }
+
+  .config-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+
+  .config-card h3 {
+    color: var(--text-dark);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 2px solid #f1f3f4;
+    padding-bottom: 0.75rem;
+  }
+
+  .config-form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .config-form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .config-form-input,
+  .config-form-select,
+  .config-form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: var(--transition-fast);
+    background: #f8f9fa;
+  }
+
+  .config-form-input:focus,
+  .config-form-select:focus,
+  .config-form-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(42, 45, 114, 0.1);
+    background: white;
+  }
+
+  .config-form-textarea {
+    min-height: 6rem;
+    resize: vertical;
+  }
+
+  .config-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    box-shadow: var(--shadow-xs);
+  }
+
+  .config-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .config-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .config-btn.secondary {
+    background: white;
+    color: var(--text-dark);
+    border: 2px solid #e9ecef;
+  }
+
+  .config-btn.secondary:hover {
+    background: #f8f9fa;
+    border-color: var(--primary-color);
+  }
+
+  .config-btn.danger {
+    background: var(--danger-color);
+  }
+
+  .config-btn.danger:hover {
+    background: #c82333;
+  }
+
+  .config-status {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .config-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f1f3f4;
+  }
+
+  .config-status-item:last-child {
+    border-bottom: none;
+  }
+
+  .config-status-label {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+  }
+
+  .config-status-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .config-status-value.available {
+    color: var(--success-color);
+    font-weight: 600;
+  }
+
+  .config-status-value.unavailable {
+    color: var(--danger-color);
+    font-weight: 600;
+  }
+
+  .config-help {
+    background: rgba(23, 162, 184, 0.1);
+    border: 1px solid rgba(23, 162, 184, 0.2);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .config-help h4 {
+    color: var(--info-color);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .config-help p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .config-help a {
+    color: var(--info-color);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .config-help a:hover {
+    text-decoration: underline;
+  }
+
+  .config-test {
+    background: #f8f9fa;
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+    border: 1px solid #e9ecef;
+  }
+
+  .config-test h4 {
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .config-test-result {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    color: var(--text-dark);
+    margin-top: 0.75rem;
+  }
+
+  .config-alert {
+    padding: 1rem 1.25rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    display: none;
+    font-weight: 500;
+  }
+
+  .config-alert.success {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid rgba(40, 167, 69, 0.2);
+    color: #155724;
+  }
+
+  .config-alert.error {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    color: #721c24;
+  }
+
+  .config-alert.warning {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    color: #856404;
+  }
+
+  .config-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .config-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .config-checkbox input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+  }
+
+  .config-checkbox label {
+    margin: 0;
+    font-weight: 500;
+    color: var(--text-dark);
+  }
+
+  .config-small-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 768px) {
+    .config-header h1 {
+      font-size: 2rem;
+    }
+    
+    .config-card {
+      padding: 1.5rem;
+    }
+    
+    .config-actions {
+      flex-direction: column;
+    }
+    
+    .config-actions .config-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-gradient-info text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-cogs"></i> Configurações da IA
-                        <small class="float-right">
-                            <span class="badge badge-light" id="statusConexao">Verificando...</span>
-                        </small>
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <form id="formConfiguracoes">
-                        <div class="row">
-                            <!-- Configurações do Hugging Face -->
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-brain"></i> Hugging Face API
-                                            <span class="badge badge-primary ml-2">Recomendado</span>
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="form-group">
-                                            <label for="hfApiKey">
-                                                <i class="fas fa-key"></i> API Key
-                                                <a href="https://huggingface.co/settings/tokens" target="_blank" class="btn btn-sm btn-outline-info ml-2">
-                                                    <i class="fas fa-external-link-alt"></i> Obter Key
-                                                </a>
-                                            </label>
-                                            <div class="input-group">
-                                                <input type="password" class="form-control" id="hfApiKey" placeholder="<REMOVED>">
-                                                <div class="input-group-append">
-                                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('hfApiKey')">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <small class="form-text text-muted">
-                                                Necessária para usar modelos avançados de IA. Gratuita com limitações.
-                                            </small>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="modeloGeracao">
-                                                <i class="fas fa-robot"></i> Modelo de Geração de Texto
-                                            </label>
-                                            <select class="form-control" id="modeloGeracao">
-                                                <option value="microsoft/DialoGPT-medium">DialoGPT Medium (Rápido)</option>
-                                                <option value="gpt2">GPT-2 (Básico)</option>
-                                                <option value="distilgpt2">DistilGPT-2 (Leve)</option>
-                                                <option value="facebook/blenderbot-400M-distill">BlenderBot (Conversacional)</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="modeloParafrase">
-                                                <i class="fas fa-edit"></i> Modelo de Melhoria de Texto
-                                            </label>
-                                            <select class="form-control" id="modeloParafrase">
-                                                <option value="tuner007/pegasus_paraphrase">Pegasus Paraphrase (Recomendado)</option>
-                                                <option value="ramsrigouthamg/t5_paraphraser">T5 Paraphraser</option>
-                                                <option value="Vamsi/T5_Paraphrase_Paws">T5 Paraphrase PAWS</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="maxTokens">
-                                                <i class="fas fa-sliders-h"></i> Máximo de Tokens
-                                            </label>
-                                            <input type="range" class="form-control-range" id="maxTokens" min="50" max="500" value="150" oninput="updateTokensValue(this.value)">
-                                            <small class="form-text text-muted">
-                                                Tokens: <span id="tokensValue">150</span> (mais tokens = textos mais longos, mas mais lento)
-                                            </small>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="temperatura">
-                                                <i class="fas fa-thermometer-half"></i> Criatividade (Temperatura)
-                                            </label>
-                                            <input type="range" class="form-control-range" id="temperatura" min="0.1" max="1.0" step="0.1" value="0.7" oninput="updateTemperaturaValue(this.value)">
-                                            <small class="form-text text-muted">
-                                                Valor: <span id="temperaturaValue">0.7</span> (0.1 = conservador, 1.0 = criativo)
-                                            </small>
-                                        </div>
-                                        
-                                        <button type="button" class="btn btn-primary" onclick="testarConexaoHF()">
-                                            <i class="fas fa-plug"></i> Testar Conexão
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Configurações Gerais -->
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-cog"></i> Configurações Gerais
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="form-group">
-                                            <div class="custom-control custom-switch">
-                                                <input type="checkbox" class="custom-control-input" id="habilitarIA" checked>
-                                                <label class="custom-control-label" for="habilitarIA">
-                                                    <i class="fas fa-power-off"></i> Habilitar IA
-                                                </label>
-                                            </div>
-                                            <small class="form-text text-muted">
-                                                Desabilitar para usar apenas templates básicos
-                                            </small>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <div class="custom-control custom-switch">
-                                                <input type="checkbox" class="custom-control-input" id="usarFallback" checked>
-                                                <label class="custom-control-label" for="usarFallback">
-                                                    <i class="fas fa-shield-alt"></i> Usar Modo de Segurança
-                                                </label>
-                                            </div>
-                                            <small class="form-text text-muted">
-                                                Usar templates básicos se a IA falhar
-                                            </small>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="timeoutRequisicao">
-                                                <i class="fas fa-clock"></i> Timeout das Requisições (segundos)
-                                            </label>
-                                            <input type="number" class="form-control" id="timeoutRequisicao" min="5" max="60" value="30">
-                                            <small class="form-text text-muted">
-                                                Tempo limite para aguardar resposta da IA
-                                            </small>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="idiomaPreferido">
-                                                <i class="fas fa-language"></i> Idioma Preferido
-                                            </label>
-                                            <select class="form-control" id="idiomaPreferido">
-                                                <option value="pt-BR">Português (Brasil)</option>
-                                                <option value="en">English</option>
-                                                <option value="es">Español</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="nivelFormalidade">
-                                                <i class="fas fa-user-tie"></i> Nível de Formalidade Padrão
-                                            </label>
-                                            <select class="form-control" id="nivelFormalidade">
-                                                <option value="formal">Formal</option>
-                                                <option value="academico">Acadêmico</option>
-                                                <option value="profissional">Profissional</option>
-                                                <option value="informal">Informal</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Status e Estatísticas -->
-                                <div class="card mt-3">
-                                    <div class="card-header">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-chart-bar"></i> Status e Estatísticas
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row text-center">
-                                            <div class="col-4">
-                                                <div class="border-right">
-                                                    <h5 class="text-primary" id="totalGeracoes">-</h5>
-                                                    <small class="text-muted">Textos Gerados</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="border-right">
-                                                    <h5 class="text-success" id="totalMelhorias">-</h5>
-                                                    <small class="text-muted">Textos Melhorados</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <h5 class="text-info" id="ultimoUso">-</h5>
-                                                <small class="text-muted">Último Uso</small>
-                                            </div>
-                                        </div>
-                                        
-                                        <hr>
-                                        
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span><i class="fas fa-server"></i> Status do Serviço:</span>
-                                            <span class="badge" id="statusServico">Verificando...</span>
-                                        </div>
-                                        
-                                        <div class="d-flex justify-content-between align-items-center mt-2">
-                                            <span><i class="fas fa-tachometer-alt"></i> Latência Média:</span>
-                                            <span id="latenciaMedia">-</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Botões de Ação -->
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-body text-center">
-                                        <button type="button" class="btn btn-success mr-2" onclick="salvarConfiguracoes()">
-                                            <i class="fas fa-save"></i> Salvar Configurações
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-warning mr-2" onclick="resetarConfiguracoes()">
-                                            <i class="fas fa-undo"></i> Resetar
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-info mr-2" onclick="exportarConfiguracoes()">
-                                            <i class="fas fa-download"></i> Exportar
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-secondary" onclick="importarConfiguracoes()">
-                                            <i class="fas fa-upload"></i> Importar
-                                        </button>
-                                        
-                                        <input type="file" id="fileImport" accept=".json" style="display: none;" onchange="processarImportacao(this)">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+<div class="config-page-container">
+  <div class="container">
+    <!-- Header -->
+    <div class="config-header">
+      <h1><i class="bi bi-gear-fill me-3"></i>Configurações de IA</h1>
+      <p>Configure os serviços de inteligência artificial para geração de texto</p>
     </div>
-</div>
 
-<!-- Modal de Teste de Conexão -->
-<div class="modal fade" id="modalTeste" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-plug"></i> Teste de Conexão
-                </h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div id="resultadoTeste"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="fas fa-times"></i> Fechar
-                </button>
-            </div>
+    <!-- Alertas -->
+    <div class="config-alert" id="alertContainer"></div>
+
+    <!-- Status Atual -->
+    <div class="config-card">
+      <h3><i class="bi bi-activity"></i> Status dos Serviços</h3>
+      <div class="config-status" id="statusContainer">
+        <div class="text-center py-3">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+          </div>
+          <p class="text-muted mb-0 mt-2">Verificando serviços...</p>
         </div>
+      </div>
     </div>
-</div>
 
+    <!-- Configurações do Hugging Face -->
+    <div class="config-card">
+      <h3><i class="bi bi-cloud"></i> Hugging Face</h3>
+      
+      <div class="config-help">
+        <h4>Como obter a API Key:</h4>
+        <p>1. Acesse <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a><br>
+        2. Crie um novo token com permissões de leitura<br>
+        3. Cole o token no campo abaixo</p>
+      </div>
+
+      <form id="hfConfigForm">
+        {{ csrf_token() }}
+        <div class="config-form-group">
+          <label class="config-form-label">API Key</label>
+          <input type="password" class="config-form-input" id="hfApiKey" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        </div>
+
+        <div class="config-form-group">
+          <label class="config-form-label">Modelo</label>
+          <select class="config-form-select" id="hfModel">
+            <option value="microsoft/DialoGPT-medium">DialoGPT Medium</option>
+            <option value="microsoft/DialoGPT-large">DialoGPT Large</option>
+            <option value="gpt2">GPT-2</option>
+            <option value="distilgpt2">DistilGPT-2</option>
+            <option value="neuralmind/bert-base-portuguese-cased">BERT Português</option>
+          </select>
+        </div>
+
+        <button type="submit" class="config-btn">
+          <i class="bi bi-save"></i> Salvar Configurações
+        </button>
+      </form>
+
+      <div class="config-test" id="hfTest" style="display: none;">
+        <h4><i class="bi bi-play-circle"></i> Teste de Conectividade</h4>
+        <button class="config-btn secondary" onclick="testarHuggingFace()">
+          <i class="bi bi-play"></i> Testar Conexão
+        </button>
+        <div class="config-test-result" id="hfTestResult"></div>
+      </div>
+    </div>
+
+    <!-- Configurações do TGI -->
+    <div class="config-card">
+      <h3><i class="bi bi-lightning"></i> Text Generation Inference (TGI)</h3>
+      
+      <div class="config-help">
+        <h4>Configuração do TGI:</h4>
+        <p>Para usar TGI, você precisa ter um servidor TGI rodando. Consulte a <a href="https://huggingface.co/docs/text-generation-inference" target="_blank">documentação oficial</a> para instalação.</p>
+      </div>
+
+      <form id="tgiConfigForm">
+        {{ csrf_token() }}
+        <div class="config-checkbox">
+          <input type="checkbox" id="useTgi">
+          <label for="useTgi">Usar TGI</label>
+        </div>
+
+        <div class="config-form-group">
+          <label class="config-form-label">Endpoint do TGI</label>
+          <input type="url" class="config-form-input" id="tgiEndpoint" placeholder="http://localhost:3000" disabled>
+        </div>
+
+        <button type="submit" class="config-btn">
+          <i class="bi bi-save"></i> Salvar Configurações
+        </button>
+      </form>
+
+      <div class="config-test" id="tgiTest" style="display: none;">
+        <h4><i class="bi bi-play-circle"></i> Teste de Conectividade</h4>
+        <button class="config-btn secondary" onclick="testarTGI()">
+          <i class="bi bi-play"></i> Testar Conexão
+        </button>
+        <div class="config-test-result" id="tgiTestResult"></div>
+      </div>
+    </div>
+
+    <!-- Configurações Avançadas -->
+    <div class="config-card">
+      <h3><i class="bi bi-sliders"></i> Configurações Avançadas</h3>
+
+      <form id="advancedConfigForm">
+        {{ csrf_token() }}
+        <div class="config-form-group">
+          <label class="config-form-label">Timeout das Requisições (segundos)</label>
+          <input type="number" class="config-form-input" id="requestTimeout" value="30" min="5" max="120">
+        </div>
+
+        <div class="config-form-group">
+          <label class="config-form-label">Número Máximo de Tentativas</label>
+          <input type="number" class="config-form-input" id="maxRetries" value="3" min="1" max="10">
+        </div>
+
+        <div class="config-checkbox">
+          <input type="checkbox" id="enableFallback" checked>
+          <label for="enableFallback">Usar Templates de Fallback</label>
+        </div>
+        <div class="config-small-text">Quando os serviços de IA não estiverem disponíveis</div>
+
+        <button type="submit" class="config-btn">
+          <i class="bi bi-save"></i> Salvar Configurações
+        </button>
+      </form>
+    </div>
+
+    <!-- Ações -->
+    <div class="config-card">
+      <h3><i class="bi bi-tools"></i> Ações</h3>
+      
+      <div class="config-actions">
+        <button class="config-btn secondary" onclick="recarregarStatus()">
+          <i class="bi bi-arrow-clockwise"></i> Recarregar Status
+        </button>
+        
+        <button class="config-btn secondary" onclick="testarTodos()">
+          <i class="bi bi-play-circle"></i> Testar Todos os Serviços
+        </button>
+        
+        <button class="config-btn danger" onclick="resetarConfiguracoes()">
+          <i class="bi bi-trash"></i> Resetar Configurações
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
 <script>
-// Carregar configurações ao inicializar
-$(document).ready(function() {
-    carregarConfiguracoes();
-    verificarStatusServico();
-    carregarEstatisticas();
-});
+class AIConfigManager {
+  constructor() {
+    this.setupEventListeners();
+    this.loadStatus();
+    this.loadConfig();
+  }
 
-function carregarConfiguracoes() {
-    $.get('/ai/configuracoes', function(data) {
-        if (data.success) {
-            const config = data.configuracoes;
-            
-            // Hugging Face
-            if (config.huggingface) {
-                $('#hfApiKey').val(config.huggingface.api_key || '');
-                $('#modeloGeracao').val(config.huggingface.modelo_geracao || 'microsoft/DialoGPT-medium');
-                $('#modeloParafrase').val(config.huggingface.modelo_parafrase || 'tuner007/pegasus_paraphrase');
-                $('#maxTokens').val(config.huggingface.max_tokens || 150);
-                updateTokensValue(config.huggingface.max_tokens || 150);
-                $('#temperatura').val(config.huggingface.temperatura || 0.7);
-                updateTemperaturaValue(config.huggingface.temperatura || 0.7);
-            }
-            
-            // Configurações gerais
-            if (config.geral) {
-                $('#habilitarIA').prop('checked', config.geral.habilitado !== false);
-                $('#usarFallback').prop('checked', config.geral.usar_fallback !== false);
-                $('#timeoutRequisicao').val(config.geral.timeout || 30);
-                $('#idiomaPreferido').val(config.geral.idioma || 'pt-BR');
-                $('#nivelFormalidade').val(config.geral.formalidade || 'formal');
-            }
-        }
+  setupEventListeners() {
+    document.getElementById('hfConfigForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.salvarConfigHF();
     });
+
+    document.getElementById('tgiConfigForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.salvarConfigTGI();
+    });
+
+    document.getElementById('advancedConfigForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.salvarConfigAvancada();
+    });
+
+    document.getElementById('useTgi').addEventListener('change', (e) => {
+      document.getElementById('tgiEndpoint').disabled = !e.target.checked;
+    });
+  }
+
+  async loadStatus() {
+    try {
+      const response = await fetch('/ai/status');
+      const data = await response.json();
+      this.displayStatus(data.status);
+    } catch (error) {
+      console.error('Erro ao carregar status:', error);
+      this.displayStatusError();
+    }
+  }
+
+  displayStatus(status) {
+    const container = document.getElementById('statusContainer');
+    container.innerHTML = `
+      <div class="config-status-item">
+        <span class="config-status-label">Hugging Face</span>
+        <span class="config-status-value ${status.huggingface.disponivel ? 'available' : 'unavailable'}">
+          ${status.huggingface.disponivel ? 'Disponível' : 'Indisponível'}
+        </span>
+      </div>
+      <div class="config-status-item">
+        <span class="config-status-label">TGI</span>
+        <span class="config-status-value ${status.tgi.disponivel ? 'available' : 'unavailable'}">
+          ${status.tgi.disponivel ? 'Disponível' : 'Indisponível'}
+        </span>
+      </div>
+      <div class="config-status-item">
+        <span class="config-status-label">Fallback</span>
+        <span class="config-status-value available">Sempre Disponível</span>
+      </div>
+    `;
+  }
+
+  displayStatusError() {
+    const container = document.getElementById('statusContainer');
+    container.innerHTML = `
+      <div class="config-status-item">
+        <span class="config-status-label">Status</span>
+        <span class="config-status-value unavailable">Erro ao verificar</span>
+      </div>
+    `;
+  }
+
+  async loadConfig() {
+    // Carregar configurações salvas (implementar conforme necessário)
+    // Por enquanto, usar valores padrão
+  }
+
+  async salvarConfigHF() {
+    const apiKey = document.getElementById('hfApiKey').value;
+    const model = document.getElementById('hfModel').value;
+
+    if (!apiKey.trim()) {
+      this.showAlert('Por favor, insira a API Key do Hugging Face.', 'warning');
+      return;
+    }
+
+    try {
+      const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+      const response = await fetch('/ai/configuracoes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          tipo: 'huggingface',
+          api_key: apiKey,
+          model: model
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        this.showAlert('Configurações do Hugging Face salvas com sucesso!', 'success');
+        document.getElementById('hfTest').style.display = 'block';
+        this.loadStatus();
+      } else {
+        this.showAlert('Erro ao salvar configurações: ' + data.message, 'error');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      this.showAlert('Erro ao salvar configurações.', 'error');
+    }
+  }
+
+  async salvarConfigTGI() {
+    const useTgi = document.getElementById('useTgi').checked;
+    const endpoint = document.getElementById('tgiEndpoint').value;
+
+    if (useTgi && !endpoint.trim()) {
+      this.showAlert('Por favor, insira o endpoint do TGI.', 'warning');
+      return;
+    }
+
+    try {
+      const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+      const response = await fetch('/ai/configuracoes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          tipo: 'tgi',
+          use_tgi: useTgi,
+          endpoint: endpoint
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        this.showAlert('Configurações do TGI salvas com sucesso!', 'success');
+        if (useTgi) {
+          document.getElementById('tgiTest').style.display = 'block';
+        }
+        this.loadStatus();
+      } else {
+        this.showAlert('Erro ao salvar configurações: ' + data.message, 'error');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      this.showAlert('Erro ao salvar configurações.', 'error');
+    }
+  }
+
+  async salvarConfigAvancada() {
+    const timeout = document.getElementById('requestTimeout').value;
+    const retries = document.getElementById('maxRetries').value;
+    const fallback = document.getElementById('enableFallback').checked;
+
+    try {
+      const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+      const response = await fetch('/ai/configuracoes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          tipo: 'advanced',
+          timeout: parseInt(timeout),
+          retries: parseInt(retries),
+          fallback: fallback
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        this.showAlert('Configurações avançadas salvas com sucesso!', 'success');
+      } else {
+        this.showAlert('Erro ao salvar configurações: ' + data.message, 'error');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      this.showAlert('Erro ao salvar configurações.', 'error');
+    }
+  }
+
+  showAlert(message, type) {
+    const alertContainer = document.getElementById('alertContainer');
+    alertContainer.className = `config-alert ${type}`;
+    alertContainer.textContent = message;
+    alertContainer.style.display = 'block';
+    
+    setTimeout(() => {
+      alertContainer.style.display = 'none';
+    }, 5000);
+  }
 }
 
-function salvarConfiguracoes() {
-    const configuracoes = {
-        huggingface: {
-            api_key: $('#hfApiKey').val(),
-            modelo_geracao: $('#modeloGeracao').val(),
-            modelo_parafrase: $('#modeloParafrase').val(),
-            max_tokens: parseInt($('#maxTokens').val()),
-            temperatura: parseFloat($('#temperatura').val())
-        },
-        geral: {
-            habilitado: $('#habilitarIA').is(':checked'),
-            usar_fallback: $('#usarFallback').is(':checked'),
-            timeout: parseInt($('#timeoutRequisicao').val()),
-            idioma: $('#idiomaPreferido').val(),
-            formalidade: $('#nivelFormalidade').val()
-        }
-    };
-    
-    $.ajax({
-        url: '/ai/configuracoes',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(configuracoes),
-        success: function(response) {
-            if (response.success) {
-                alert('Configurações salvas com sucesso!');
-                verificarStatusServico();
-            } else {
-                alert('Erro ao salvar: ' + (response.message || 'Erro desconhecido'));
-            }
-        },
-        error: function() {
-            alert('Erro ao salvar configurações');
-        }
+// Funções globais
+async function testarHuggingFace() {
+  const result = document.getElementById('hfTestResult');
+  result.textContent = 'Testando conexão...';
+  
+  try {
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const response = await fetch('/ai/testar-huggingface', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken
+      }
     });
+    const data = await response.json();
+    result.textContent = JSON.stringify(data, null, 2);
+  } catch (error) {
+    result.textContent = 'Erro: ' + error.message;
+  }
+}
+
+async function testarTGI() {
+  const result = document.getElementById('tgiTestResult');
+  result.textContent = 'Testando conexão...';
+  
+  try {
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const response = await fetch('/ai/testar-tgi', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken
+      }
+    });
+    const data = await response.json();
+    result.textContent = JSON.stringify(data, null, 2);
+  } catch (error) {
+    result.textContent = 'Erro: ' + error.message;
+  }
+}
+
+async function testarTodos() {
+  await testarHuggingFace();
+  await testarTGI();
+}
+
+function recarregarStatus() {
+  if (window.configManager) {
+    window.configManager.loadStatus();
+  }
 }
 
 function resetarConfiguracoes() {
-    if (confirm('Tem certeza que deseja resetar todas as configurações?')) {
-        // Valores padrão
-        $('#hfApiKey').val('');
-        $('#modeloGeracao').val('microsoft/DialoGPT-medium');
-        $('#modeloParafrase').val('tuner007/pegasus_paraphrase');
-        $('#maxTokens').val(150);
-        updateTokensValue(150);
-        $('#temperatura').val(0.7);
-        updateTemperaturaValue(0.7);
-        $('#habilitarIA').prop('checked', true);
-        $('#usarFallback').prop('checked', true);
-        $('#timeoutRequisicao').val(30);
-        $('#idiomaPreferido').val('pt-BR');
-        $('#nivelFormalidade').val('formal');
-    }
+  if (confirm('Tem certeza que deseja resetar todas as configurações de IA?')) {
+    // Implementar reset
+    alert('Funcionalidade de reset será implementada em breve.');
+  }
 }
 
-function testarConexaoHF() {
-    const apiKey = $('#hfApiKey').val();
-    
-    if (!apiKey) {
-        alert('Por favor, informe a API Key do Hugging Face.');
-        return;
-    }
-    
-    $('#resultadoTeste').html(`
-        <div class="text-center">
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Testando...</span>
-            </div>
-            <p class="mt-2">Testando conexão com Hugging Face...</p>
-        </div>
-    `);
-    
-    $('#modalTeste').modal('show');
-    
-    // Simular teste (em produção, fazer requisição real)
-    setTimeout(() => {
-        const sucesso = Math.random() > 0.3; // 70% de chance de sucesso
-        
-        if (sucesso) {
-            $('#resultadoTeste').html(`
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i> <strong>Conexão bem-sucedida!</strong>
-                    <ul class="mt-2 mb-0">
-                        <li>API Key válida</li>
-                        <li>Modelos acessíveis</li>
-                        <li>Latência: ~${Math.floor(Math.random() * 500 + 200)}ms</li>
-                    </ul>
-                </div>
-            `);
-        } else {
-            $('#resultadoTeste').html(`
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle"></i> <strong>Falha na conexão!</strong>
-                    <ul class="mt-2 mb-0">
-                        <li>Verifique a API Key</li>
-                        <li>Verifique sua conexão com a internet</li>
-                        <li>Tente novamente em alguns minutos</li>
-                    </ul>
-                </div>
-            `);
-        }
-    }, 2000);
-}
-
-function verificarStatusServico() {
-    $.get('/ai/status', function(data) {
-        if (data.success) {
-            const hfStatus = data.status.huggingface;
-            
-            if (hfStatus.configurado && hfStatus.funcionando) {
-                $('#statusConexao').removeClass().addClass('badge badge-success').text('Conectado');
-                $('#statusServico').removeClass().addClass('badge badge-success').text('Online');
-            } else if (hfStatus.configurado) {
-                $('#statusConexao').removeClass().addClass('badge badge-warning').text('Configurado');
-                $('#statusServico').removeClass().addClass('badge badge-warning').text('Parcial');
-            } else {
-                $('#statusConexao').removeClass().addClass('badge badge-secondary').text('Não Configurado');
-                $('#statusServico').removeClass().addClass('badge badge-secondary').text('Offline');
-            }
-            
-            if (data.status.latencia_media) {
-                $('#latenciaMedia').text(data.status.latencia_media + 'ms');
-            }
-        } else {
-            $('#statusConexao').removeClass().addClass('badge badge-danger').text('Erro');
-            $('#statusServico').removeClass().addClass('badge badge-danger').text('Erro');
-        }
-    }).fail(function() {
-        $('#statusConexao').removeClass().addClass('badge badge-danger').text('Erro');
-        $('#statusServico').removeClass().addClass('badge badge-danger').text('Erro');
-    });
-}
-
-function carregarEstatisticas() {
-    // Em produção, carregar estatísticas reais do banco de dados
-    $('#totalGeracoes').text(Math.floor(Math.random() * 100));
-    $('#totalMelhorias').text(Math.floor(Math.random() * 50));
-    $('#ultimoUso').text('Hoje');
-}
-
-function updateTokensValue(value) {
-    $('#tokensValue').text(value);
-}
-
-function updateTemperaturaValue(value) {
-    $('#temperaturaValue').text(value);
-}
-
-function togglePassword(inputId) {
-    const input = document.getElementById(inputId);
-    const icon = event.target;
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.remove('fa-eye');
-        icon.classList.add('fa-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.remove('fa-eye-slash');
-        icon.classList.add('fa-eye');
-    }
-}
-
-function exportarConfiguracoes() {
-    const configuracoes = {
-        huggingface: {
-            modelo_geracao: $('#modeloGeracao').val(),
-            modelo_parafrase: $('#modeloParafrase').val(),
-            max_tokens: parseInt($('#maxTokens').val()),
-            temperatura: parseFloat($('#temperatura').val())
-        },
-        geral: {
-            habilitado: $('#habilitarIA').is(':checked'),
-            usar_fallback: $('#usarFallback').is(':checked'),
-            timeout: parseInt($('#timeoutRequisicao').val()),
-            idioma: $('#idiomaPreferido').val(),
-            formalidade: $('#nivelFormalidade').val()
-        }
-    };
-    
-    const dataStr = JSON.stringify(configuracoes, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
-    link.download = 'configuracoes_ia.json';
-    link.click();
-}
-
-function importarConfiguracoes() {
-    $('#fileImport').click();
-}
-
-function processarImportacao(input) {
-    const file = input.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const configuracoes = JSON.parse(e.target.result);
-            
-            // Aplicar configurações importadas
-            if (configuracoes.huggingface) {
-                $('#modeloGeracao').val(configuracoes.huggingface.modelo_geracao || 'microsoft/DialoGPT-medium');
-                $('#modeloParafrase').val(configuracoes.huggingface.modelo_parafrase || 'tuner007/pegasus_paraphrase');
-                $('#maxTokens').val(configuracoes.huggingface.max_tokens || 150);
-                updateTokensValue(configuracoes.huggingface.max_tokens || 150);
-                $('#temperatura').val(configuracoes.huggingface.temperatura || 0.7);
-                updateTemperaturaValue(configuracoes.huggingface.temperatura || 0.7);
-            }
-            
-            if (configuracoes.geral) {
-                $('#habilitarIA').prop('checked', configuracoes.geral.habilitado !== false);
-                $('#usarFallback').prop('checked', configuracoes.geral.usar_fallback !== false);
-                $('#timeoutRequisicao').val(configuracoes.geral.timeout || 30);
-                $('#idiomaPreferido').val(configuracoes.geral.idioma || 'pt-BR');
-                $('#nivelFormalidade').val(configuracoes.geral.formalidade || 'formal');
-            }
-            
-            alert('Configurações importadas com sucesso!');
-        } catch (error) {
-            alert('Erro ao importar configurações: arquivo inválido');
-        }
-    };
-    
-    reader.readAsText(file);
-    input.value = ''; // Limpar input
-}
-
-// Verificar status periodicamente
-setInterval(verificarStatusServico, 60000); // A cada minuto
+// Inicializar quando a página carregar
+let configManager;
+document.addEventListener('DOMContentLoaded', function() {
+  configManager = new AIConfigManager();
+  window.configManager = configManager;
+});
 </script>
 {% endblock %}

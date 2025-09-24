@@ -1,150 +1,765 @@
 {% extends "base.html" %}
 
-{% block title %}Editor Avançado de Certificado{% endblock %}
+{% block title %}Editor de Certificados - Estilo Canva{% endblock %}
 
 {% block extra_css %}
-<link href="{{ url_for('static', filename='css/certificate-editor.css') }}" rel="stylesheet">
+<style>
+  :root {
+    --canva-purple: #8b5cf6;
+    --canva-blue: #3b82f6;
+    --canva-green: #10b981;
+    --canva-red: #ef4444;
+    --canva-orange: #f59e0b;
+    --canva-gray-50: #f9fafb;
+    --canva-gray-100: #f3f4f6;
+    --canva-gray-200: #e5e7eb;
+    --canva-gray-300: #d1d5db;
+    --canva-gray-400: #9ca3af;
+    --canva-gray-500: #6b7280;
+    --canva-gray-600: #4b5563;
+    --canva-gray-700: #374151;
+    --canva-gray-800: #1f2937;
+    --canva-gray-900: #111827;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--canva-gray-50);
+  }
+
+  .editor-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  /* Top Toolbar */
+  .top-toolbar {
+    background: white;
+    border-bottom: 1px solid var(--canva-gray-200);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    z-index: 1000;
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .toolbar-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .canva-btn {
+    background: white;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--canva-gray-700);
+  }
+
+  .canva-btn:hover {
+    background: var(--canva-gray-50);
+    border-color: var(--canva-gray-400);
+    color: var(--canva-gray-800);
+  }
+
+  .canva-btn.primary {
+    background: var(--canva-purple);
+    border-color: var(--canva-purple);
+    color: white;
+  }
+
+  .canva-btn.primary:hover {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: white;
+  }
+
+  .canva-btn.active {
+    background: var(--canva-blue);
+    border-color: var(--canva-blue);
+    color: white;
+  }
+
+  .canva-btn.danger {
+    background: var(--canva-red);
+    border-color: var(--canva-red);
+    color: white;
+  }
+
+  .canva-btn.danger:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+  }
+  
+  /* Workspace */
+  .editor-workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Left Sidebar */
+  .left-sidebar {
+    width: 280px;
+    background: white;
+    border-right: 1px solid var(--canva-gray-200);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--canva-gray-200);
+  }
+
+  .sidebar-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--canva-gray-600);
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-tab.active {
+    color: var(--canva-purple);
+    border-bottom: 2px solid var(--canva-purple);
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  /* Element Library */
+  .element-category {
+    margin-bottom: 24px;
+  }
+
+  .category-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--canva-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .elements-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .element-item {
+    background: var(--canva-gray-50);
+    border: 1px solid var(--canva-gray-200);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .element-item:hover {
+    background: var(--canva-gray-100);
+    border-color: var(--canva-gray-300);
+    transform: translateY(-1px);
+  }
+
+  .element-icon {
+    font-size: 24px;
+    color: var(--canva-purple);
+    margin-bottom: 8px;
+  }
+
+  .element-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--canva-gray-800);
+    margin-bottom: 4px;
+  }
+
+  .element-description {
+    font-size: 10px;
+    color: var(--canva-gray-500);
+  }
+
+  /* Canvas Area */
+  .canvas-area {
+    flex: 1;
+    background: var(--canva-gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .canvas-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #canvas {
+    width: 800px;
+    height: 600px;
+    position: relative;
+    background: white;
+    border: 1px solid var(--canva-gray-200);
+  }
+
+  .canvas.landscape {
+    width: 800px;
+    height: 600px;
+  }
+
+  .canvas.portrait {
+    width: 600px;
+    height: 800px;
+  }
+
+  /* Draggable Elements */
+  .draggable-element {
+    position: absolute;
+    cursor: move;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    min-width: 50px;
+    min-height: 30px;
+    padding: 8px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+  }
+
+  .draggable-element:hover {
+    border-color: var(--canva-blue);
+  }
+
+  .draggable-element.selected {
+    border-color: var(--canva-purple);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  }
+
+  .element-controls {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: none;
+  }
+
+  .draggable-element.selected .element-controls {
+    display: block;
+  }
+
+  .control-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--canva-red);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .resize-handle {
+    position: absolute;
+    background: var(--canva-purple);
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .draggable-element.selected .resize-handle {
+    opacity: 1;
+  }
+
+  .resize-nw { top: -4px; left: -4px; cursor: nw-resize; }
+  .resize-ne { top: -4px; right: -4px; cursor: ne-resize; }
+  .resize-sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+  .resize-se { bottom: -4px; right: -4px; cursor: se-resize; }
+  .resize-n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+  .resize-s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+  .resize-e { right: -4px; top: 50%; transform: translateY(-50%); cursor: e-resize; }
+  .resize-w { left: -4px; top: 50%; transform: translateY(-50%); cursor: w-resize; }
+
+  /* Right Sidebar - Properties */
+  .right-sidebar {
+    width: 320px;
+    background: white;
+    border-left: 1px solid var(--canva-gray-200);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .properties-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--canva-gray-200);
+    font-weight: 600;
+    color: var(--canva-gray-800);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .properties-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .property-group {
+    margin-bottom: 24px;
+  }
+
+  .property-group h6 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--canva-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--canva-gray-700);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--canva-purple);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  }
+
+  .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+  }
+
+  .form-range {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--canva-gray-200);
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--canva-purple);
+    cursor: pointer;
+  }
+
+  .form-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--canva-purple);
+    cursor: pointer;
+    border: none;
+  }
+
+  .range-value {
+    font-size: 12px;
+    color: var(--canva-gray-600);
+    margin-left: 8px;
+  }
+
+  .color-picker {
+    width: 100%;
+    height: 40px;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  /* Grid Overlay */
+  .grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+      linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .grid-overlay.active {
+    opacity: 1;
+  }
+
+  /* Guidelines */
+  .guideline {
+    position: absolute;
+    background: var(--canva-purple);
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  .guideline-horizontal {
+    width: 100%;
+    height: 1px;
+  }
+
+  .guideline-vertical {
+    height: 100%;
+    width: 1px;
+  }
+
+  /* Zoom Controls */
+  .zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .zoom-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--canva-gray-100);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--canva-gray-600);
+  }
+
+  .zoom-btn:hover {
+    background: var(--canva-gray-200);
+  }
+
+  .zoom-level {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--canva-gray-700);
+    min-width: 40px;
+    text-align: center;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .left-sidebar {
+      width: 240px;
+    }
+    .right-sidebar {
+      width: 280px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .editor-workspace {
+      flex-direction: column;
+    }
+    .left-sidebar, .right-sidebar {
+      width: 100%;
+      height: 200px;
+    }
+    #canvas {
+      width: 100%;
+      max-width: 600px;
+      height: 400px;
+    }
+  }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 {% endblock %}
 
 {% block content %}
 <div class="editor-container">
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <div class="toolbar-group">
-      <button type="button" class="btn btn-primary" id="saveTemplate">
-        <i class="fas fa-save me-1"></i> Salvar
+  <!-- Top Toolbar -->
+  <div class="top-toolbar">
+    <div class="toolbar-left">
+      <h5 class="mb-0 fw-bold" style="color: var(--canva-purple);">🎨 Editor de Certificados</h5>
+      <span class="text-muted" id="templateNameDisplay">Novo Template</span>
+    </div>
+    
+    <div class="toolbar-center">
+      <button class="canva-btn" id="undoAction" title="Desfazer">
+        <i class="fas fa-undo"></i>
       </button>
-      <button type="button" class="btn btn-outline-primary" id="previewTemplate">
-        <i class="fas fa-eye me-1"></i> Preview
+      <button class="canva-btn" id="redoAction" title="Refazer">
+        <i class="fas fa-redo"></i>
       </button>
-      <button type="button" class="btn btn-outline-secondary" id="livePreviewToggle">
-        <i class="fas fa-play me-1"></i> Preview Dinâmico
+      <div style="width: 1px; height: 24px; background: var(--canva-gray-300); margin: 0 8px;"></div>
+      <button class="canva-btn" id="toggleGrid" title="Mostrar/Ocultar Grid">
+        <i class="fas fa-th"></i>
       </button>
-      <button type="button" class="btn btn-outline-success" id="exportTemplate">
-        <i class="fas fa-download me-1"></i> Exportar
+      <button class="canva-btn active" id="toggleSnap" title="Ativar/Desativar Snap">
+        <i class="fas fa-magnet"></i>
       </button>
     </div>
     
-    <div class="toolbar-group">
-      <button type="button" class="btn btn-outline-secondary" id="undoAction">
-        <i class="fas fa-undo me-1"></i> Desfazer
+    <div class="toolbar-right">
+      <button class="canva-btn" id="previewTemplate">
+        <i class="fas fa-eye"></i> Pré-visualizar
       </button>
-      <button type="button" class="btn btn-outline-secondary" id="redoAction">
-        <i class="fas fa-redo me-1"></i> Refazer
+      <button class="canva-btn" id="livePreviewToggle">
+        <i class="fas fa-play"></i> Preview ao Vivo
       </button>
-    </div>
-    
-    <div class="toolbar-group">
-      <button type="button" class="btn btn-outline-secondary" id="toggleGrid">
-        <i class="fas fa-th me-1"></i> Grade
+      <button class="canva-btn" id="exportTemplate">
+        <i class="fas fa-download"></i> Exportar
       </button>
-      <button type="button" class="btn btn-outline-secondary" id="toggleSnap">
-        <i class="fas fa-magnet me-1"></i> Ímã
+      <button class="canva-btn primary" id="saveTemplate">
+        <i class="fas fa-save"></i> Salvar
       </button>
-    </div>
-    
-    <div class="toolbar-group">
-      <label for="zoomLevel" class="form-label me-2 mb-0">Zoom:</label>
-      <select class="form-select form-select-sm" id="zoomLevel" style="width: auto;">
-        <option value="0.5">50%</option>
-        <option value="0.75">75%</option>
-        <option value="1" selected>100%</option>
-        <option value="1.25">125%</option>
-        <option value="1.5">150%</option>
-        <option value="2">200%</option>
-      </select>
     </div>
   </div>
 
   <!-- Workspace -->
-  <div class="workspace">
-    <!-- Sidebar da biblioteca de elementos -->
-    <div class="elements-sidebar">
-      <div class="sidebar-header">
-        <i class="fas fa-layer-group me-2"></i>
-        Biblioteca de Elementos
+  <div class="editor-workspace">
+    <!-- Left Sidebar -->
+    <div class="left-sidebar">
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="elements">
+          <i class="fas fa-shapes"></i> Elementos
+        </button>
+        <button class="sidebar-tab" data-tab="templates">
+          <i class="fas fa-file-alt"></i> Templates
+        </button>
+        <button class="sidebar-tab" data-tab="uploads">
+          <i class="fas fa-upload"></i> Uploads
+        </button>
+      </div>
+
+      <div class="sidebar-content">
+        <!-- Elements Tab -->
+        <div class="tab-content" id="elementsTab">
+          <!-- Text Elements -->
+          <div class="element-category">
+            <div class="category-title">
+              <i class="fas fa-font"></i>
+              Texto
+            </div>
+            <div class="elements-grid">
+              <div class="element-item" data-type="text">
+                <div class="element-icon"><i class="fas fa-font"></i></div>
+                <div class="element-title">Título</div>
+                <div class="element-description">Texto grande</div>
+              </div>
+              <div class="element-item" data-type="text">
+                <div class="element-icon"><i class="fas fa-align-left"></i></div>
+                <div class="element-title">Parágrafo</div>
+                <div class="element-description">Texto normal</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Media Elements -->
+          <div class="element-category">
+            <div class="category-title">
+              <i class="fas fa-image"></i>
+              Mídia
+            </div>
+            <div class="elements-grid">
+              <div class="element-item" data-type="logo">
+                <div class="element-icon"><i class="fas fa-image"></i></div>
+                <div class="element-title">Logo</div>
+                <div class="element-description">Imagem</div>
+              </div>
+              <div class="element-item" data-type="qrcode">
+                <div class="element-icon"><i class="fas fa-qrcode"></i></div>
+                <div class="element-title">QR Code</div>
+                <div class="element-description">Código QR</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Elements -->
+          <div class="element-category">
+            <div class="category-title">
+              <i class="fas fa-magic"></i>
+              Interativo
+            </div>
+            <div class="elements-grid">
+              <div class="element-item" data-type="signature">
+                <div class="element-icon"><i class="fas fa-signature"></i></div>
+                <div class="element-title">Assinatura</div>
+                <div class="element-description">Campo assinatura</div>
+              </div>
+              <div class="element-item" data-type="variable">
+                <div class="element-icon"><i class="fas fa-tag"></i></div>
+                <div class="element-title">Variável</div>
+                <div class="element-description">Dinâmica</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Variables -->
+          <div class="element-category">
+            <div class="category-title">
+              <i class="fas fa-code"></i>
+              Variáveis Dinâmicas
+            </div>
+            <div id="dynamicVariables">
+              <!-- Variables will be loaded here -->
+            </div>
+            <button class="canva-btn w-100 mt-2" data-bs-toggle="modal" data-bs-target="#newVariableModal">
+              <i class="fas fa-plus"></i> Nova Variável
+            </button>
+          </div>
+        </div>
+
+        <!-- Templates Tab -->
+        <div class="tab-content" id="templatesTab" style="display: none;">
+          <div class="element-category">
+            <div class="category-title">
+              <i class="fas fa-file-alt"></i>
+              Templates Predefinidos
+            </div>
+            <div class="elements-grid">
+              <div class="element-item" data-template="certificate">
+                <div class="element-icon"><i class="fas fa-certificate"></i></div>
+                <div class="element-title">Certificado</div>
+                <div class="element-description">Template padrão</div>
+              </div>
+              <div class="element-item" data-template="diploma">
+                <div class="element-icon"><i class="fas fa-scroll"></i></div>
+                <div class="element-title">Diploma</div>
+                <div class="element-description">Formato diploma</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Uploads Tab -->
+        <div class="tab-content" id="uploadsTab" style="display: none;">
+          <div class="element-category">
+            <div class="category-title">
+              <i class="fas fa-upload"></i>
+              Suas Imagens
+            </div>
+            <div class="upload-area">
+              <div class="upload-placeholder">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--canva-gray-300); margin-bottom: 16px;"></i>
+                <p style="color: var(--canva-gray-500); margin: 0;">Arraste imagens aqui ou clique para fazer upload</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <div class="canvas-container">
+        <div id="canvas" class="landscape">
+          <!-- Elements will be added here -->
+        </div>
+        <div class="grid-overlay" id="gridOverlay"></div>
       </div>
       
-      <div class="elements-library">
-        <!-- Elementos básicos -->
-        <div class="element-category">
-          <div class="category-title">Elementos Básicos</div>
-          
-          <div class="element-item" data-type="text">
-            <i class="fas fa-font me-2"></i>
-            <div>
-              <strong>Texto</strong>
-              <small class="d-block text-muted">Adicionar texto personalizado</small>
-            </div>
-          </div>
-          
-          <div class="element-item" data-type="logo">
-            <i class="fas fa-image me-2"></i>
-            <div>
-              <strong>Logo</strong>
-              <small class="d-block text-muted">Inserir logotipo</small>
-            </div>
-          </div>
-          
-          <div class="element-item" data-type="signature">
-            <i class="fas fa-signature me-2"></i>
-            <div>
-              <strong>Assinatura</strong>
-              <small class="d-block text-muted">Campo para assinatura</small>
-            </div>
-          </div>
-          
-          <div class="element-item" data-type="qrcode">
-            <i class="fas fa-qrcode me-2"></i>
-            <div>
-              <strong>QR Code</strong>
-              <small class="d-block text-muted">Código QR dinâmico</small>
-            </div>
-          </div>
-        </div>
-
-        <!-- Variáveis dinâmicas -->
-        <div class="element-category">
-          <div class="category-title">Variáveis Dinâmicas</div>
-          
-          <div class="element-item" data-type="variable">
-            <i class="fas fa-tag me-2"></i>
-            <div>
-              <strong>Variável Personalizada</strong>
-              <small class="d-block text-muted">Adicionar variável customizada</small>
-            </div>
-          </div>
-          
-          <div id="dynamicVariables">
-            <!-- Variáveis serão carregadas dinamicamente -->
-          </div>
-          
-          <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-2" data-bs-toggle="modal" data-bs-target="#newVariableModal">
-            <i class="fas fa-plus me-1"></i> Nova Variável
-          </button>
-        </div>
+      <!-- Zoom Controls -->
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomOut">
+          <i class="fas fa-minus"></i>
+        </button>
+        <span class="zoom-level" id="zoomLevel">100%</span>
+        <button class="zoom-btn" id="zoomIn">
+          <i class="fas fa-plus"></i>
+        </button>
       </div>
     </div>
 
-    <!-- Canvas principal -->
-    <div class="canvas-container">
-      <div class="canvas-wrapper">
-        <div id="canvas" class="landscape">
-          <!-- Elementos serão adicionados aqui dinamicamente -->
-        </div>
-      </div>
-    </div>
-
-    <!-- Painel de propriedades -->
-    <div class="properties-panel">
+    <!-- Right Sidebar - Properties -->
+    <div class="right-sidebar">
       <div class="properties-header">
-        <i class="fas fa-cog me-2"></i>
+        <i class="fas fa-cog"></i>
         Propriedades
       </div>
       
       <div class="properties-content" id="propertiesPanel" style="display: none;">
-        <!-- Propriedades de texto -->
+        <!-- Text Properties -->
         <div class="property-section" id="textProperties" style="display: none;">
           <div class="property-group">
             <h6>Conteúdo</h6>
@@ -155,7 +770,7 @@
           </div>
           
           <div class="property-group">
-            <h6>Formatação</h6>
+            <h6>Tipografia</h6>
             <div class="form-group">
               <label class="form-label">Fonte</label>
               <select class="form-select" id="fontFamily">
@@ -164,12 +779,14 @@
                 <option value="Helvetica">Helvetica</option>
                 <option value="Georgia">Georgia</option>
                 <option value="Verdana">Verdana</option>
+                <option value="Roboto">Roboto</option>
+                <option value="Open Sans">Open Sans</option>
               </select>
             </div>
             
             <div class="form-group">
               <label class="form-label">Tamanho</label>
-              <div class="input-group">
+              <div style="display: flex; align-items: center; gap: 8px;">
                 <input type="range" class="form-range" id="fontSize" min="8" max="72" value="16">
                 <span class="range-value" id="fontSizeValue">16px</span>
               </div>
@@ -187,22 +804,30 @@
             
             <div class="form-group">
               <label class="form-label">Alinhamento</label>
-              <select class="form-select" id="textAlign">
-                <option value="left">Esquerda</option>
-                <option value="center">Centro</option>
-                <option value="right">Direita</option>
-                <option value="justify">Justificado</option>
-              </select>
+              <div style="display: flex; gap: 8px;">
+                <button class="canva-btn" data-align="left" title="Esquerda">
+                  <i class="fas fa-align-left"></i>
+                </button>
+                <button class="canva-btn" data-align="center" title="Centro">
+                  <i class="fas fa-align-center"></i>
+                </button>
+                <button class="canva-btn" data-align="right" title="Direita">
+                  <i class="fas fa-align-right"></i>
+                </button>
+                <button class="canva-btn" data-align="justify" title="Justificado">
+                  <i class="fas fa-align-justify"></i>
+                </button>
+              </div>
             </div>
             
             <div class="form-group">
               <label class="form-label">Cor</label>
-              <input type="color" class="form-control form-control-color" id="textColor" value="#000000">
+              <input type="color" class="color-picker" id="textColor" value="#000000">
             </div>
           </div>
         </div>
 
-        <!-- Propriedades de logo -->
+        <!-- Logo Properties -->
         <div class="property-section" id="logoProperties" style="display: none;">
           <div class="property-group">
             <h6>Imagem</h6>
@@ -222,67 +847,7 @@
           </div>
         </div>
 
-        <!-- Propriedades de borda -->
-        <div class="property-section" id="borderProperties" style="display: none;">
-          <div class="property-group">
-            <h6>Borda</h6>
-            <div class="form-group">
-              <label class="form-label">Largura</label>
-              <div class="input-group">
-                <input type="range" class="form-range" id="borderWidth" min="0" max="10" value="1">
-                <span class="range-value" id="borderWidthValue">1px</span>
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Estilo</label>
-              <select class="form-select" id="borderStyle">
-                <option value="solid">Sólida</option>
-                <option value="dashed">Tracejada</option>
-                <option value="dotted">Pontilhada</option>
-                <option value="double">Dupla</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Cor</label>
-              <input type="color" class="form-control form-control-color" id="borderColor" value="#000000">
-            </div>
-          </div>
-        </div>
-
-        <!-- Propriedades de assinatura -->
-        <div class="property-section" id="signatureProperties" style="display: none;">
-          <div class="property-group">
-            <h6>Assinatura</h6>
-            <div class="form-group">
-              <label class="form-label">Texto da Assinatura</label>
-              <input type="text" class="form-control" id="signatureText" placeholder="Nome do responsável">
-            </div>
-          </div>
-        </div>
-
-        <!-- Propriedades de QR Code -->
-        <div class="property-section" id="qrcodeProperties" style="display: none;">
-          <div class="property-group">
-            <h6>QR Code</h6>
-            <div class="form-group">
-              <label class="form-label">Conteúdo</label>
-              <input type="text" class="form-control" id="qrCodeContent" placeholder="URL ou texto para o QR Code">
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Tamanho</label>
-              <select class="form-select" id="qrCodeSize">
-                <option value="small">Pequeno (100px)</option>
-                <option value="medium">Médio (150px)</option>
-                <option value="large">Grande (200px)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Propriedades de variável personalizada -->
+        <!-- Variable Properties -->
         <div class="property-section" id="variableProperties" style="display: none;">
           <div class="property-group">
             <h6>Variável</h6>
@@ -312,62 +877,45 @@
       </div>
     </div>
   </div>
-
-  <!-- Área de operações do template -->
-  <div class="template-operations">
-    <div class="template-info">
-      <div class="form-group">
-        <label for="templateName">Nome do Template</label>
-        <input type="text" class="form-control" id="templateName" placeholder="Digite o nome do template" value="Novo Template">
-      </div>
-      
-      <div class="form-group">
-        <label for="templateOrientation">Orientação</label>
-        <select class="form-select" id="templateOrientation">
-          <option value="landscape">Paisagem</option>
-          <option value="portrait">Retrato</option>
-        </select>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- Modal de Preview -->
-<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="previewModalLabel">
-          <i class="fas fa-eye me-2"></i>
-          Preview do Certificado
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div id="previewContent">
-          <!-- Conteúdo do preview será inserido aqui -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-        <button type="button" class="btn btn-primary">
-          <i class="fas fa-print me-1"></i> Imprimir
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de Nova Variável -->
-<div class="modal fade" id="newVariableModal" tabindex="-1" aria-labelledby="newVariableModalLabel" aria-hidden="true">
+<!-- Template Info Modal -->
+<div class="modal fade" id="templateInfoModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="newVariableModalLabel">
-          <i class="fas fa-plus me-2"></i>
-          Nova Variável
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title">Configurações do Template</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="templateName" class="form-label">Nome do Template</label>
+          <input type="text" class="form-control" id="templateName" placeholder="Digite o nome do template" value="Novo Template">
+        </div>
+        
+        <div class="form-group">
+          <label for="templateOrientation" class="form-label">Orientação</label>
+          <select class="form-select" id="templateOrientation">
+            <option value="landscape">Paisagem (800x600)</option>
+            <option value="portrait">Retrato (600x800)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="saveTemplateInfo">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Variable Modal -->
+<div class="modal fade" id="newVariableModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Variável</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -398,8 +946,29 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="saveNewVariable">
-          <i class="fas fa-save me-1"></i> Salvar Variável
+        <button type="button" class="btn btn-primary" id="saveNewVariable">Salvar Variável</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Preview do Certificado</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="previewContent" style="display: flex; justify-content: center; background: #f5f5f5; padding: 20px;">
+          <!-- Preview content will be inserted here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-primary" id="exportToPDF">
+          <i class="fas fa-file-pdf"></i> Exportar PDF
         </button>
       </div>
     </div>
@@ -409,4 +978,66 @@
 
 {% block scripts_extra %}
 <script src="{{ url_for('static', filename='js/certificate-editor.js') }}"></script>
+<script>
+// Sidebar tab switching
+document.addEventListener('DOMContentLoaded', function() {
+  const tabs = document.querySelectorAll('.sidebar-tab');
+  const tabContents = document.querySelectorAll('.tab-content');
+  
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Remove active class from all tabs and contents
+      tabs.forEach(t => t.classList.remove('active'));
+      tabContents.forEach(tc => tc.style.display = 'none');
+      
+      // Add active class to clicked tab
+      tab.classList.add('active');
+      
+      // Show corresponding content
+      const tabId = tab.dataset.tab + 'Tab';
+      const content = document.getElementById(tabId);
+      if (content) {
+        content.style.display = 'block';
+      }
+    });
+  });
+
+  // Template name display update
+  const templateNameInput = document.getElementById('templateName');
+  const templateNameDisplay = document.getElementById('templateNameDisplay');
+  
+  if (templateNameInput && templateNameDisplay) {
+    templateNameInput.addEventListener('input', function() {
+      templateNameDisplay.textContent = this.value || 'Novo Template';
+    });
+  }
+
+  // Zoom controls
+  const zoomIn = document.getElementById('zoomIn');
+  const zoomOut = document.getElementById('zoomOut');
+  const zoomLevel = document.getElementById('zoomLevel');
+  
+  if (zoomIn && zoomOut && zoomLevel) {
+    let currentZoom = 1;
+    
+    zoomIn.addEventListener('click', () => {
+      currentZoom = Math.min(currentZoom + 0.25, 3);
+      updateZoom();
+    });
+    
+    zoomOut.addEventListener('click', () => {
+      currentZoom = Math.max(currentZoom - 0.25, 0.25);
+      updateZoom();
+    });
+    
+    function updateZoom() {
+      const canvas = document.getElementById('canvas');
+      if (canvas) {
+        canvas.style.transform = `scale(${currentZoom})`;
+        zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+      }
+    }
+  }
+});
+</script>
 {% endblock %}

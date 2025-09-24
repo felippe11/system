@@ -1,0 +1,274 @@
+{% extends "atividade_multipla/base.html" %}
+
+{% block page_title %}Check-in - {{ atividade.titulo }}{% endblock %}
+{% block page_subtitle %}Realize check-in na atividade{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}">
+        {{ atividade.titulo }}
+    </a>
+</li>
+<li class="breadcrumb-item active">Check-in</li>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}" 
+   class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Voltar
+</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    Check-in - {{ atividade.titulo }}
+                </h5>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST" id="checkinForm" onsubmit="return validarCheckin()">
+                    <!-- Informações da Atividade -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle me-2"></i>Informações da Atividade
+                                </h6>
+                                <p class="mb-2">
+                                    <strong>Tipo:</strong> {{ atividade.tipo_atividade.title() }}<br>
+                                    <strong>Local:</strong> {{ atividade.cidade }}, {{ atividade.estado }}<br>
+                                    <strong>Carga Horária Total:</strong> {{ atividade.carga_horaria_total }} horas
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seleção da Data -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-calendar-day me-2"></i>Selecione a Data
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label for="data_atividade_id" class="form-label">Data da Atividade *</label>
+                            <select class="form-select" id="data_atividade_id" name="data_atividade_id" required 
+                                    onchange="atualizarPalavrasChave()">
+                                <option value="">Selecione uma data...</option>
+                                {% for data in atividade.get_datas_ordenadas() %}
+                                <option value="{{ data.id }}" 
+                                        data-manha="{{ data.palavra_chave_manha or '' }}"
+                                        data-tarde="{{ data.palavra_chave_tarde or '' }}">
+                                    {{ data.data.strftime('%d/%m/%Y') }} - 
+                                    {{ data.horario_inicio.strftime('%H:%M') }} às {{ data.horario_fim.strftime('%H:%M') }}
+                                    {% if data.palavra_chave_manha or data.palavra_chave_tarde %}
+                                    (Com palavras-chave)
+                                    {% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Seleção do Turno -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-clock me-2"></i>Selecione o Turno
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="turno" id="turno_manha" 
+                                               value="manha" onchange="atualizarPalavraChave()">
+                                        <label class="form-check-label" for="turno_manha">
+                                            <strong>Manhã</strong>
+                                            <small class="d-block text-muted">Turno da manhã</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="turno" id="turno_tarde" 
+                                               value="tarde" onchange="atualizarPalavraChave()">
+                                        <label class="form-check-label" for="turno_tarde">
+                                            <strong>Tarde</strong>
+                                            <small class="d-block text-muted">Turno da tarde</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="turno" id="turno_dia_inteiro" 
+                                               value="dia_inteiro" onchange="atualizarPalavraChave()">
+                                        <label class="form-check-label" for="turno_dia_inteiro">
+                                            <strong>Dia Inteiro</strong>
+                                            <small class="d-block text-muted">Manhã e tarde</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Palavra-chave -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-key me-2"></i>Palavra-chave
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label for="palavra_chave" class="form-label">Digite a palavra-chave *</label>
+                            <input type="text" class="form-control" id="palavra_chave" name="palavra_chave" 
+                                   placeholder="Digite a palavra-chave fornecida pelo instrutor..." required>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                A palavra-chave será fornecida pelo instrutor da atividade.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Informações do Usuário -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-light">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-user me-2"></i>Dados do Participante
+                                </h6>
+                                <p class="mb-0">
+                                    <strong>Nome:</strong> {{ current_user.nome }}<br>
+                                    <strong>Email:</strong> {{ current_user.email }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botões de Ação -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}" 
+                                   class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-check-circle me-2"></i>Confirmar Check-in
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Informações sobre Check-in -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle text-info me-2"></i>
+                    Como funciona o Check-in?
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-calendar-day fa-2x text-primary mb-2"></i>
+                            <h6>1. Selecione a Data</h6>
+                            <p class="text-muted small">
+                                Escolha a data específica da atividade em que você está participando.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-clock fa-2x text-primary mb-2"></i>
+                            <h6>2. Escolha o Turno</h6>
+                            <p class="text-muted small">
+                                Selecione se você está participando da manhã, tarde ou dia inteiro.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-key fa-2x text-primary mb-2"></i>
+                            <h6>3. Digite a Palavra-chave</h6>
+                            <p class="text-muted small">
+                                Insira a palavra-chave fornecida pelo instrutor para confirmar sua presença.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function atualizarPalavraChave() {
+        const dataSelect = document.getElementById('data_atividade_id');
+        const turnoRadios = document.querySelectorAll('input[name="turno"]:checked');
+        const palavraInput = document.getElementById('palavra_chave');
+        
+        if (dataSelect.value && turnoRadios.length > 0) {
+            const selectedOption = dataSelect.options[dataSelect.selectedIndex];
+            const turno = turnoRadios[0].value;
+            
+            let palavraEsperada = '';
+            if (turno === 'manha') {
+                palavraEsperada = selectedOption.getAttribute('data-manha');
+            } else if (turno === 'tarde') {
+                palavraEsperada = selectedOption.getAttribute('data-tarde');
+            } else if (turno === 'dia_inteiro') {
+                // Para dia inteiro, pode usar qualquer uma das palavras-chave
+                palavraEsperada = selectedOption.getAttribute('data-manha') || selectedOption.getAttribute('data-tarde');
+            }
+            
+            if (palavraEsperada) {
+                palavraInput.placeholder = `Digite a palavra-chave: ${palavraEsperada}`;
+            } else {
+                palavraInput.placeholder = 'Digite a palavra-chave fornecida pelo instrutor...';
+            }
+        } else {
+            palavraInput.placeholder = 'Digite a palavra-chave fornecida pelo instrutor...';
+        }
+    }
+    
+    // Atualizar quando a data mudar
+    document.getElementById('data_atividade_id').addEventListener('change', function() {
+        // Limpar seleção de turno
+        document.querySelectorAll('input[name="turno"]').forEach(radio => {
+            radio.checked = false;
+        });
+        atualizarPalavraChave();
+    });
+    
+    // Atualizar quando o turno mudar
+    document.querySelectorAll('input[name="turno"]').forEach(radio => {
+        radio.addEventListener('change', atualizarPalavraChave);
+    });
+</script>
+{% endblock %}

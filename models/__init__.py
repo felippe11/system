@@ -17,6 +17,7 @@ from .compra import *  # noqa: F401,F403
 from .formador import *  # noqa: F401,F403
 from .relatorio_config import *  # noqa: F401,F403
 from .orcamento import *  # noqa: F401,F403
+from .feedback_models import *  # noqa: F401,F403
 
 # Importações explícitas para garantir disponibilidade
 from .event import ParticipanteEvento, MonitorAgendamento, PresencaAluno, MaterialApoio, NecessidadeEspecial

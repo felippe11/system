@@ -1,0 +1,323 @@
+{% extends "atividade_multipla/base.html" %}
+
+{% block page_title %}{{ atividade.titulo }}{% endblock %}
+{% block page_subtitle %}Detalhes da atividade com múltiplas datas{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">{{ atividade.titulo }}</li>
+{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <a href="{{ url_for('atividade_multipla_routes.editar_atividade', id=atividade.id) }}" 
+       class="btn btn-outline-primary">
+        <i class="fas fa-edit me-2"></i>Editar
+    </a>
+    <a href="{{ url_for('atividade_multipla_routes.lista_frequencia', id=atividade.id) }}" 
+       class="btn btn-outline-info">
+        <i class="fas fa-list me-2"></i>Frequência
+    </a>
+    {% if atividade.permitir_checkin_multiplas_datas %}
+    <a href="{{ url_for('atividade_multipla_routes.checkin_atividade', id=atividade.id) }}" 
+       class="btn btn-success">
+        <i class="fas fa-check-circle me-2"></i>Check-in
+    </a>
+    {% endif %}
+    <a href="{{ url_for('atividade_multipla_routes.listar_atividades') }}" 
+       class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Voltar
+    </a>
+</div>
+{% endblock %}
+
+{% block main_content %}
+<div class="row">
+    <!-- Informações da Atividade -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    Informações da Atividade
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Título:</strong><br>
+                        {{ atividade.titulo }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Tipo:</strong><br>
+                        {{ atividade.tipo_atividade.title() }}
+                    </div>
+                </div>
+                
+                {% if atividade.descricao %}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <strong>Descrição:</strong><br>
+                        {{ atividade.descricao }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <strong>Carga Horária Total:</strong><br>
+                        <span class="badge bg-primary fs-6">{{ atividade.carga_horaria_total }}h</span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <strong>Local:</strong><br>
+                        {{ atividade.cidade }}, {{ atividade.estado }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <strong>Número de Datas:</strong><br>
+                        <span class="badge bg-info fs-6">{{ atividade.get_total_datas() }} data(s)</span>
+                    </div>
+                </div>
+                
+                {% if atividade.evento %}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <strong>Evento:</strong><br>
+                        <a href="#" class="text-decoration-none">{{ atividade.evento.nome }}</a>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Configurações:</strong><br>
+                        <div class="mt-2">
+                            {% if atividade.permitir_checkin_multiplas_datas %}
+                            <span class="badge bg-success me-2">
+                                <i class="fas fa-check me-1"></i>Check-in Múltiplo
+                            </span>
+                            {% endif %}
+                            {% if atividade.gerar_lista_frequencia %}
+                            <span class="badge bg-info me-2">
+                                <i class="fas fa-list me-1"></i>Lista Frequência
+                            </span>
+                            {% endif %}
+                            {% if atividade.exigir_presenca_todas_datas %}
+                            <span class="badge bg-warning me-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Presença Obrigatória
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Datas da Atividade -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-calendar-day text-primary me-2"></i>
+                    Datas Programadas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for data in atividade.get_datas_ordenadas() %}
+                <div class="row mb-3 p-3 border rounded {% if loop.index % 2 == 0 %}bg-light{% endif %}">
+                    <div class="col-md-3">
+                        <strong>Data:</strong><br>
+                        <span class="data-badge">{{ data.data.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Horário:</strong><br>
+                        {{ data.horario_inicio.strftime('%H:%M') }} - {{ data.horario_fim.strftime('%H:%M') }}
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Carga Horária:</strong><br>
+                        {{ "%.1f"|format(data.get_carga_horaria()) }}h
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Palavras-chave:</strong><br>
+                        {% if data.palavra_chave_manha %}
+                        <span class="badge bg-primary me-1">Manhã: {{ data.palavra_chave_manha }}</span>
+                        {% endif %}
+                        {% if data.palavra_chave_tarde %}
+                        <span class="badge bg-secondary">Tarde: {{ data.palavra_chave_tarde }}</span>
+                        {% endif %}
+                        {% if not data.palavra_chave_manha and not data.palavra_chave_tarde %}
+                        <span class="text-muted">Nenhuma definida</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar com Estatísticas -->
+    <div class="col-lg-4">
+        <!-- Estatísticas Gerais -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar text-primary me-2"></i>
+                    Estatísticas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="stats-card">
+                            <div class="stats-number">{{ atividade.get_total_datas() }}</div>
+                            <div class="stats-label">Datas</div>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="stats-card">
+                            <div class="stats-number">{{ atividade.carga_horaria_total }}</div>
+                            <div class="stats-label">Horas</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ações Rápidas -->
+                <div class="d-grid gap-2">
+                    {% if atividade.permitir_checkin_multiplas_datas %}
+                    <a href="{{ url_for('atividade_multipla_routes.checkin_atividade', id=atividade.id) }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-check-circle me-2"></i>Fazer Check-in
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('atividade_multipla_routes.lista_frequencia', id=atividade.id) }}" 
+                       class="btn btn-info">
+                        <i class="fas fa-list me-2"></i>Ver Frequência
+                    </a>
+                    
+                    <a href="{{ url_for('atividade_multipla_routes.gerar_pdf_frequencia', id=atividade.id) }}" 
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-file-pdf me-2"></i>Baixar PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Informações de Criação -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info text-primary me-2"></i>
+                    Informações
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">
+                    <strong>Criada em:</strong><br>
+                    {{ atividade.created_at.strftime('%d/%m/%Y às %H:%M') }}
+                </p>
+                
+                {% if atividade.updated_at != atividade.created_at %}
+                <p class="mb-2">
+                    <strong>Atualizada em:</strong><br>
+                    {{ atividade.updated_at.strftime('%d/%m/%Y às %H:%M') }}
+                </p>
+                {% endif %}
+                
+                <p class="mb-0">
+                    <strong>Status:</strong><br>
+                    <span class="status-badge {{ 'status-ativa' if atividade.ativa else 'status-inativa' }}">
+                        {{ 'Ativa' if atividade.ativa else 'Inativa' }}
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Frequências por Data -->
+{% if frequencias_por_data %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-users text-primary me-2"></i>
+                    Frequências por Data
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for data_id, frequencias in frequencias_por_data.items() %}
+                    {% set data_atividade = atividade.datas|selectattr('id', 'equalto', data_id)|first %}
+                    {% if data_atividade %}
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-calendar-day me-2"></i>
+                            {{ data_atividade.data.strftime('%d/%m/%Y') }} - 
+                            {{ data_atividade.horario_inicio.strftime('%H:%M') }} às {{ data_atividade.horario_fim.strftime('%H:%M') }}
+                        </h6>
+                        
+                        {% if frequencias %}
+                        <div class="table-responsive">
+                            <table class="table table-sm frequencia-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Email</th>
+                                        <th>Manhã</th>
+                                        <th>Tarde</th>
+                                        <th>Dia Inteiro</th>
+                                        <th>Status</th>
+                                        <th>Carga Horária</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for freq in frequencias %}
+                                    <tr>
+                                        <td>{{ freq.usuario.nome }}</td>
+                                        <td>{{ freq.usuario.email }}</td>
+                                        <td class="text-center">
+                                            {% if freq.presente_manha %}
+                                            <span class="presenca-presente">✓</span>
+                                            {% else %}
+                                            <span class="presenca-ausente">✗</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if freq.presente_tarde %}
+                                            <span class="presenca-presente">✓</span>
+                                            {% else %}
+                                            <span class="presenca-ausente">✗</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if freq.presente_dia_inteiro %}
+                                            <span class="presenca-presente">✓</span>
+                                            {% else %}
+                                            <span class="presenca-ausente">✗</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if freq.get_status_presenca() == 'Ausente' %}bg-danger
+                                                {% elif freq.get_status_presenca() == 'Dia Inteiro' %}bg-success
+                                                {% elif freq.get_status_presenca() == 'Manhã e Tarde' %}bg-success
+                                                {% else %}bg-warning{% endif %}">
+                                                {{ freq.get_status_presenca() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ "%.1f"|format(freq.get_carga_horaria_presenca()) }}h</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Nenhuma frequência registrada para esta data.</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

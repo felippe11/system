@@ -3,11 +3,133 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Status da Candidatura</title>
+    <title>Status da Candidatura de Revisor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-aprovado {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-rejeitado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-pendente {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .code-box {
+            background: #e9ecef;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .code {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            color: #495057;
+            letter-spacing: 2px;
+        }
+        .instructions {
+            background: white;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-    <p>Olá!</p>
-    <p>O status da sua candidatura agora é <strong>{{ status }}</strong>.</p>
-    <p>Guarde seu código: <strong>{{ codigo }}</strong>.</p>
+    <div class="header">
+        <h1>🎉 Candidatura de Revisor - {{ status|title }}</h1>
+    </div>
+    
+    <div class="content">
+        <p>Olá <strong>{{ nome }}</strong>!</p>
+        
+        <p>Informamos que sua candidatura para revisor foi <span class="status-badge status-{{ status }}">{{ status|title }}</span>.</p>
+        
+        {% if status == 'aprovado' %}
+        <div class="code-box">
+            <h3>🔑 Seu Código de Acesso</h3>
+            <div class="code">{{ codigo }}</div>
+            <p><strong>Guarde este código com segurança!</strong></p>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Próximos Passos:</h3>
+            <ol>
+                <li>Guarde seu código de acesso: <strong>{{ codigo }}</strong></li>
+                <li>Acesse o sistema através do link fornecido</li>
+                <li>Use seu código para acessar as tarefas de revisão</li>
+                <li>Consulte o prazo estabelecido para cada trabalho</li>
+            </ol>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ url_for('evento_routes.home') }}#revisorModal" class="btn">
+                🚀 Acessar Sistema de Revisão
+            </a>
+        </div>
+        
+        {% elif status == 'rejeitado' %}
+        <div class="instructions">
+            <p>Infelizmente, sua candidatura não foi aprovada neste momento. Agradecemos seu interesse e encorajamos você a tentar novamente em futuras oportunidades.</p>
+        </div>
+        {% else %}
+        <div class="instructions">
+            <p>Sua candidatura está sendo analisada. Você receberá uma notificação assim que houver uma atualização no status.</p>
+        </div>
+        {% endif %}
+        
+        <div class="footer">
+            <p><strong>Sistema de Gestão IAFAP</strong></p>
+            <p>Este é um email automático, não responda.</p>
+        </div>
+    </div>
 </body>
 </html>

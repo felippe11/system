@@ -1154,7 +1154,13 @@ def listar_respostas():
             RespostaFormulario.query.join(Usuario)
             .join(Inscricao, Inscricao.usuario_id == Usuario.id)
             .join(Oficina, Inscricao.oficina_id == Oficina.id)
-            .filter(Oficina.ministrante_id == current_user.id)
+            .filter(
+                or_(
+                    Oficina.ministrante_id == current_user.id,
+                    Oficina.formador_id == current_user.id,
+                    Oficina.ministrantes_associados.any(Ministrante.id == current_user.id)
+                )
+            )
             .order_by(RespostaFormulario.data_submissao.desc())
             .all()
         )

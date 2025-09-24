@@ -53,7 +53,31 @@ class Oficina(db.Model):
     ministrante_id = db.Column(
         db.Integer, db.ForeignKey("ministrante.id"), nullable=True
     )
-    ministrante_obj = db.relationship("Ministrante", backref="oficinas", lazy=True)
+    ministrante_obj = db.relationship(
+        "Ministrante",
+        foreign_keys=[ministrante_id],
+        backref=db.backref("oficinas", lazy=True),
+        lazy=True,
+    )
+
+    formador_id = db.Column(
+        db.Integer, db.ForeignKey("ministrante.id"), nullable=True
+    )
+    formador = db.relationship(
+        "Ministrante",
+        foreign_keys=[formador_id],
+        backref=db.backref("oficinas_como_formador", lazy=True),
+        lazy=True,
+    )
+
+    @property
+    def ministrante(self):
+        """Alias para manter compatibilidade legada."""
+        return self.ministrante_obj
+
+    @ministrante.setter
+    def ministrante(self, value):
+        self.ministrante_obj = value
 
     # Tipo de inscrição: 'sem_inscricao', 'com_inscricao_sem_limite', 'com_inscricao_com_limite'
     tipo_inscricao = db.Column(
@@ -107,6 +131,7 @@ class Oficina(db.Model):
         carga_horaria,
         estado,
         cidade,
+        formador_id=None,
         cliente_id=None,
         evento_id=None,
         qr_code=None,
@@ -122,6 +147,7 @@ class Oficina(db.Model):
         self.titulo = titulo
         self.descricao = descricao
         self.ministrante_id = ministrante_id
+        self.formador_id = formador_id
         self.carga_horaria = carga_horaria
         self.estado = estado
         self.cidade = cidade
@@ -347,19 +373,47 @@ class Checkin(db.Model):
     )
     cliente = db.relationship("Cliente", backref=db.backref("checkins", lazy=True))
 
+    # Campos para atividades com múltiplas datas
+    atividade_multipla_id = db.Column(
+        db.Integer, db.ForeignKey("atividade_multipla_data.id"), nullable=True, index=True
+    )
+    data_atividade_id = db.Column(
+        db.Integer, db.ForeignKey("atividade_data.id"), nullable=True, index=True
+    )
+    turno = db.Column(db.String(10), nullable=True)  # 'manha', 'tarde', 'dia_inteiro'
+    
+    # Dados adicionais do checkin
+    ip_address = db.Column(db.String(45), nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+
     usuario = db.relationship("Usuario", backref=db.backref("checkins", lazy=True))
     oficina = db.relationship("Oficina", backref=db.backref("checkins", lazy=True))
     evento = db.relationship("Evento", backref=db.backref("checkins_evento", lazy=True))
+    
+    # Relacionamentos para atividades com múltiplas datas
+    atividade_multipla = db.relationship("AtividadeMultiplaData", backref=db.backref("checkins_legacy", lazy=True))
+    data_atividade = db.relationship("AtividadeData", backref=db.backref("checkins_legacy", lazy=True))
 
     def __repr__(self):
         return f"<Checkin (usuario={self.usuario_id}, oficina={self.oficina_id}, evento={self.evento_id}, data={self.data_hora})>"
 
     @property
-    def turno(self) -> str:
-        """Retorna o turno baseado no horário do check-in."""
+    def turno_legacy(self) -> str:
+        """Retorna o turno baseado no horário do check-in (método legado)."""
         from utils import determinar_turno
 
         return determinar_turno(self.data_hora)
+    
+    def get_turno_display(self):
+        """Retorna o turno formatado para exibição"""
+        if self.turno:
+            turnos = {
+                'manha': 'Manhã',
+                'tarde': 'Tarde',
+                'dia_inteiro': 'Dia Inteiro'
+            }
+            return turnos.get(self.turno, self.turno)
+        return self.turno_legacy
 
 
 # =================================

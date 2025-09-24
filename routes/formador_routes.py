@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 from extensions import db
 from models.user import Ministrante, Cliente, Monitor, FormadorCadastroLink
@@ -131,7 +131,13 @@ def dashboard_formador():
     formador = current_user
     
     # Buscar oficinas/atividades do formador
-    oficinas = Oficina.query.filter_by(ministrante_id=formador.id).all()
+    oficinas = Oficina.query.filter(
+        or_(
+            Oficina.ministrante_id == formador.id,
+            Oficina.formador_id == formador.id,
+            Oficina.ministrantes_associados.any(Ministrante.id == formador.id)
+        )
+    ).all()
     
     # Buscar solicitações de material pendentes
     solicitacoes_pendentes = SolicitacaoMaterialFormador.query.filter_by(

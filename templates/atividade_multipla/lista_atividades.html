@@ -1,0 +1,184 @@
+{% extends "atividade_multipla/base.html" %}
+
+{% block page_title %}Atividades com Múltiplas Datas{% endblock %}
+{% block page_subtitle %}Gerencie atividades que ocorrem em múltiplas datas{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Lista de Atividades</li>
+{% endblock %}
+
+{% block main_content %}
+<div class="row">
+    {% if atividades %}
+        {% for atividade in atividades %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+            <div class="card atividade-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt text-primary me-2"></i>
+                        {{ atividade.titulo }}
+                    </h5>
+                    <span class="status-badge {{ 'status-ativa' if atividade.ativa else 'status-inativa' }}">
+                        {{ 'Ativa' if atividade.ativa else 'Inativa' }}
+                    </span>
+                </div>
+                
+                <div class="card-body">
+                    <p class="card-text text-muted mb-3">
+                        {{ atividade.descricao[:100] }}{% if atividade.descricao|length > 100 %}...{% endif %}
+                    </p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Tipo</small>
+                            <strong>{{ atividade.tipo_atividade.title() }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Carga Horária</small>
+                            <strong>{{ atividade.carga_horaria_total }}h</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Local</small>
+                            <strong>{{ atividade.cidade }}, {{ atividade.estado }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Datas</small>
+                            <strong>{{ atividade.get_total_datas() }} data(s)</strong>
+                        </div>
+                    </div>
+                    
+                    {% if atividade.evento %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Evento</small>
+                        <strong>{{ atividade.evento.nome }}</strong>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Datas da atividade -->
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-2">Datas Programadas</small>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for data in atividade.get_datas_ordenadas() %}
+                            <span class="data-badge">
+                                {{ data.data.strftime('%d/%m') }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Configurações -->
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-2">Configurações</small>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if atividade.permitir_checkin_multiplas_datas %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check me-1"></i>Check-in Múltiplo
+                            </span>
+                            {% endif %}
+                            {% if atividade.gerar_lista_frequencia %}
+                            <span class="badge bg-info">
+                                <i class="fas fa-list me-1"></i>Lista Frequência
+                            </span>
+                            {% endif %}
+                            {% if atividade.exigir_presenca_todas_datas %}
+                            <span class="badge bg-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Presença Obrigatória
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            Criada em {{ atividade.created_at.strftime('%d/%m/%Y') }}
+                        </small>
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('atividade_multipla_routes.editar_atividade', id=atividade.id) }}" 
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{{ url_for('atividade_multipla_routes.lista_frequencia', id=atividade.id) }}" 
+                               class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-list"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-alt fa-4x text-muted mb-4"></i>
+                <h4 class="text-muted">Nenhuma atividade encontrada</h4>
+                <p class="text-muted mb-4">
+                    Você ainda não criou nenhuma atividade com múltiplas datas.
+                </p>
+                <a href="{{ url_for('atividade_multipla_routes.nova_atividade') }}" 
+                   class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>Criar Primeira Atividade
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Estatísticas Gerais -->
+{% if atividades %}
+<div class="row mt-5">
+    <div class="col-12">
+        <h5 class="mb-4">
+            <i class="fas fa-chart-bar text-primary me-2"></i>Estatísticas Gerais
+        </h5>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ atividades|length }}</div>
+            <div class="stats-label">Atividades Ativas</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="stats-card">
+            <div class="stats-number">
+                {{ atividades|sum(attribute='get_total_datas') }}
+            </div>
+            <div class="stats-label">Total de Datas</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="stats-card">
+            <div class="stats-number">
+                {% set total_horas = 0 %}
+                {% for atividade in atividades %}
+                    {% set total_horas = total_horas + (atividade.carga_horaria_total|int) %}
+                {% endfor %}
+                {{ total_horas }}
+            </div>
+            <div class="stats-label">Horas Totais</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="stats-card">
+            <div class="stats-number">
+                {{ atividades|selectattr('permitir_checkin_multiplas_datas')|list|length }}
+            </div>
+            <div class="stats-label">Com Check-in</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

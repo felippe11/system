@@ -736,6 +736,202 @@ function copiarLinkGerado() { // Renomeada para evitar conflito e ser mais espec
 }
 // Adicionar listener ao botão de copiar link gerado, se ele existir
 const btnCopiarLinkGeradoEl = document.getElementById("btnCopiarLinkGerado");
+
+// =============================================================================
+// FUNCIONALIDADES PARA ENVIO DE EMAILS PARA REVISORES
+// =============================================================================
+
+// Função para copiar código do revisor
+function copiarCodigoRevisor(codigo) {
+  navigator.clipboard.writeText(codigo).then(() => {
+    // Mostrar feedback visual
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message: 'Código copiado com sucesso!',
+        type: 'success'
+      }
+    });
+    document.dispatchEvent(event);
+  }).catch(err => {
+    console.error('Falha ao copiar código:', err);
+    alert('Falha ao copiar código. Tente novamente.');
+  });
+}
+
+// Função para enviar email individual
+async function enviarEmailIndividual(candId, email) {
+  try {
+    const response = await fetch(`/revisor/send_email_individual/${candId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      }
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      const event = new CustomEvent('showToast', {
+        detail: {
+          message: data.message,
+          type: 'success'
+        }
+      });
+      document.dispatchEvent(event);
+    } else {
+      const event = new CustomEvent('showToast', {
+        detail: {
+          message: data.message || 'Erro ao enviar email',
+          type: 'error'
+        }
+      });
+      document.dispatchEvent(event);
+    }
+  } catch (error) {
+    console.error('Erro ao enviar email individual:', error);
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message: 'Erro de conexão. Tente novamente.',
+        type: 'error'
+      }
+    });
+    document.dispatchEvent(event);
+  }
+}
+
+// Função para enviar email em massa
+async function enviarEmailMassa() {
+  const btn = document.getElementById('btnEnviarEmailMassa');
+  const originalText = btn.innerHTML;
+  
+  // Desabilitar botão e mostrar loading
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Enviando...';
+  
+  try {
+    const response = await fetch('/revisor/send_email_mass', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      }
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      const event = new CustomEvent('showToast', {
+        detail: {
+          message: data.message,
+          type: 'success'
+        }
+      });
+      document.dispatchEvent(event);
+    } else {
+      const event = new CustomEvent('showToast', {
+        detail: {
+          message: data.message || 'Erro ao enviar emails',
+          type: 'error'
+        }
+      });
+      document.dispatchEvent(event);
+    }
+  } catch (error) {
+    console.error('Erro ao enviar emails em massa:', error);
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message: 'Erro de conexão. Tente novamente.',
+        type: 'error'
+      }
+    });
+    document.dispatchEvent(event);
+  } finally {
+    // Reabilitar botão
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+// Event listeners para os botões de email
+document.addEventListener('DOMContentLoaded', function() {
+  // Listener para botões de copiar código
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.copiar-codigo')) {
+      const codigo = e.target.closest('.copiar-codigo').dataset.codigo;
+      copiarCodigoRevisor(codigo);
+    }
+  });
+
+  // Listener para botões de enviar email individual
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.enviar-email-individual')) {
+      const btn = e.target.closest('.enviar-email-individual');
+      const candId = btn.dataset.candId;
+      const email = btn.dataset.email;
+      
+      if (confirm(`Enviar email de aprovação para ${email}?`)) {
+        enviarEmailIndividual(candId, email);
+      }
+    }
+  });
+
+  // Listener para botão de enviar email em massa
+  const btnEnviarEmailMassa = document.getElementById('btnEnviarEmailMassa');
+  if (btnEnviarEmailMassa) {
+    btnEnviarEmailMassa.addEventListener('click', function() {
+      if (confirm('Enviar email de aprovação para todos os revisores aprovados?')) {
+        enviarEmailMassa();
+      }
+    });
+  }
+});
+
+// Sistema de toast notifications (se não existir)
+if (!window.showToast) {
+  window.showToast = function(message, type = 'info') {
+    // Criar elemento de toast se não existir
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+      `;
+      document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.style.cssText = `
+      margin-bottom: 10px;
+      min-width: 300px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    
+    toast.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 5000);
+  };
+}
+
+// Listener para eventos de toast customizados
+document.addEventListener('showToast', function(e) {
+  showToast(e.detail.message, e.detail.type);
+});
 if (btnCopiarLinkGeradoEl) {
     btnCopiarLinkGeradoEl.addEventListener("click", copiarLinkGerado);
 }

@@ -47,6 +47,19 @@
         </div>
 
         <div class="mb-3">
+          <label for="formador_id" class="form-label">Formador responsável:</label>
+          <select name="formador_id" id="formador_id" class="form-select">
+            <option value="">-- Selecione um Formador --</option>
+            {% for formador in formadores %}
+              <option value="{{ formador.id }}" {% if (formador_id is defined and formador_id and formador.id == formador_id|int) or (formador_id is not defined and oficina.formador_id and formador.id == oficina.formador_id) %}selected{% endif %}>
+                {{ formador.nome }}
+              </option>
+            {% endfor %}
+          </select>
+          <small class="text-muted">O formador será mostrado em todas as listagens desta atividade.</small>
+        </div>
+
+        <div class="mb-3">
           <label for="ministrantes_search" class="form-label">Ministrantes:</label>
           <input type="text" class="form-control mb-2" id="ministrantes_search" placeholder="Buscar ministrante...">
           

@@ -1150,58 +1150,27 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     pdf = FPDF()
     pdf.add_page()
 
-    font_dir = os.path.join(current_app.root_path, "fonts")
-    if not os.path.isdir(font_dir):
-        font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
-
-    fonts_registered = False
-    fonts_to_register = {
-        ("DejaVu", ""): "DejaVuSans.ttf",
-        ("DejaVu", "B"): "DejaVuSans-Bold.ttf",
-        ("DejaVu", "I"): "DejaVuSans-Oblique.ttf",
-    }
-    if hasattr(pdf, "add_font"):
-        for (family, style), filename in fonts_to_register.items():
-            font_path = os.path.join(font_dir, filename)
-            if not os.path.exists(font_path):
-                logger.warning(
-                    "Fonte %s não encontrada no diretório %s; mantendo fontes padrão.",
-                    filename,
-                    font_dir,
-                )
-                continue
-            try:
-                pdf.add_font(family, style, font_path, uni=True)
-                fonts_registered = True
-            except (RuntimeError, OSError) as exc:
-                logger.warning("Falha ao registrar fonte %s: %s", filename, exc)
-                continue
-            font_key = f"{family}{style}".lower()
-            if hasattr(pdf, "fonts") and font_key in pdf.fonts:
-                pdf.fonts[font_key]["ttffile"] = font_path
-    else:
-        logger.debug("Instância de PDF não oferece suporte a add_font; usando fontes padrões.")
-
-    # Configurar fonte
-    pdf.set_font("DejaVu", "B", 16)
+    # Usar fontes padrão do sistema que não precisam ser instaladas
+    # Configurar fonte padrão
+    pdf.set_font("Arial", "B", 16)
     
     # Título
     pdf.cell(190, 10, 'Relatório Geral de Agendamentos', 0, 1, 'C')
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     pdf.cell(190, 10, f'Período: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}', 0, 1, 'C')
     
     # Data e hora de geração
-    pdf.set_font('DejaVu', 'I', 10)
+    pdf.set_font('Arial', 'I', 10)
     pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
     
     # Resumo geral
     pdf.ln(5)
-    pdf.set_font('DejaVu', 'B', 14)
+    pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Resumo Geral', 0, 1)
     
     total_agendamentos = totais['confirmados'] + totais['realizados'] + totais['cancelados'] + totais['pendentes']
     
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
     pdf.cell(95, 10, f'Confirmados: {totais["confirmados"]}', 0, 1)
     
@@ -1220,10 +1189,10 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Estatísticas por escola com PCD
     if 'escolas' in dados_agregados and dados_agregados['escolas']:
         pdf.ln(10)
-        pdf.set_font('DejaVu', 'B', 14)
+        pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, 'Top 10 Escolas', 0, 1)
         
-        pdf.set_font('DejaVu', 'B', 9)
+        pdf.set_font('Arial', 'B', 9)
         pdf.cell(60, 10, 'Escola', 1, 0, 'C')
         pdf.cell(25, 10, 'Agendamentos', 1, 0, 'C')
         pdf.cell(25, 10, 'Alunos', 1, 0, 'C')
@@ -1231,7 +1200,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         pdf.cell(25, 10, 'Realizados', 1, 0, 'C')
         pdf.cell(30, 10, 'Pendentes', 1, 1, 'C')
         
-        pdf.set_font('DejaVu', '', 8)
+        pdf.set_font('Arial', '', 8)
         for escola in dados_agregados['escolas'][:10]:
             escola_nome = escola.nome[:30] + '...' if len(escola.nome) > 30 else escola.nome
             
@@ -1253,15 +1222,15 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Estatísticas por professor
     if 'professores' in dados_agregados and dados_agregados['professores']:
         pdf.ln(5)
-        pdf.set_font('DejaVu', 'B', 14)
+        pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, 'Top 10 Professores', 0, 1)
         
-        pdf.set_font('DejaVu', 'B', 10)
+        pdf.set_font('Arial', 'B', 10)
         pdf.cell(80, 10, 'Professor', 1, 0, 'C')
         pdf.cell(30, 10, 'Agendamentos', 1, 0, 'C')
         pdf.cell(30, 10, 'Alunos', 1, 1, 'C')
         
-        pdf.set_font('DejaVu', '', 10)
+        pdf.set_font('Arial', '', 10)
         for professor in dados_agregados['professores'][:10]:
             prof_nome = professor.nome[:35] + '...' if len(professor.nome) > 35 else professor.nome
             pdf.cell(80, 10, prof_nome, 1, 0)
@@ -1271,16 +1240,16 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Professores confirmados
     if professores_confirmados:
         pdf.ln(5)
-        pdf.set_font('DejaVu', 'B', 14)
+        pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, 'Professores Confirmados', 0, 1)
         
-        pdf.set_font('DejaVu', 'B', 10)
+        pdf.set_font('Arial', 'B', 10)
         pdf.cell(60, 10, 'Nome', 1, 0, 'C')
         pdf.cell(70, 10, 'Email', 1, 0, 'C')
         pdf.cell(30, 10, 'Total de Visitantes', 1, 0, 'C')
         pdf.cell(30, 10, 'WhatsApp', 1, 1, 'C')
         
-        pdf.set_font('DejaVu', '', 8)
+        pdf.set_font('Arial', '', 8)
         for professor in professores_confirmados[:20]:  # Limitar a 20 para não sobrecarregar
             nome = professor.nome[:25] + '...' if len(professor.nome) > 25 else professor.nome
             email = professor.email[:30] + '...' if len(professor.email) > 30 else professor.email
@@ -1300,10 +1269,10 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Necessidades especiais com detalhes
     if 'necessidades_especiais' in dados_agregados:
         pdf.ln(5)
-        pdf.set_font('DejaVu', 'B', 14)
+        pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, 'Necessidades Especiais', 0, 1)
         
-        pdf.set_font('DejaVu', '', 12)
+        pdf.set_font('Arial', '', 12)
         pcd_data = dados_agregados['necessidades_especiais']
         
         # Calcular estatísticas detalhadas de PCD
@@ -1326,15 +1295,15 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         # Distribuição por tipo de necessidade especial
         if tipos_pcd:
             pdf.ln(3)
-            pdf.set_font('DejaVu', 'B', 12)
+            pdf.set_font('Arial', 'B', 12)
             pdf.cell(190, 8, 'Distribuição por Tipo de Necessidade:', 0, 1)
-            pdf.set_font('DejaVu', '', 10)
+            pdf.set_font('Arial', '', 10)
             for tipo, quantidade in tipos_pcd.items():
                 pdf.cell(190, 6, f'- {tipo}: {quantidade} aluno(s)', 0, 1)
     
     # Agendamentos detalhados por status
     pdf.add_page()
-    pdf.set_font('DejaVu', 'B', 16)
+    pdf.set_font('Arial', 'B', 16)
     pdf.cell(190, 10, 'Detalhes dos Agendamentos', 0, 1, 'C')
     
     # Organizar agendamentos por status (confirmados primeiro)
@@ -1350,7 +1319,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             continue
             
         pdf.ln(5)
-        pdf.set_font('DejaVu', 'B', 14)
+        pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, f'Agendamentos {status.capitalize()}s ({len(lista_agendamentos)})', 0, 1)
         
         for agendamento in lista_agendamentos:
@@ -1362,12 +1331,12 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             
             # Cabeçalho do agendamento
             pdf.ln(3)
-            pdf.set_font('DejaVu', 'B', 11)
+            pdf.set_font('Arial', 'B', 11)
             pdf.set_fill_color(230, 230, 230)
             pdf.cell(190, 8, f'#{agendamento.id} - {agendamento.escola_nome} - {horario.data.strftime("%d/%m/%Y")} {horario.horario_inicio.strftime("%H:%M")}', 1, 1, 'L', True)
             
             # Informações básicas
-            pdf.set_font('DejaVu', '', 9)
+            pdf.set_font('Arial', '', 9)
             professor_nome = agendamento.professor.nome if agendamento.professor else 'Não informado'
             pdf.cell(95, 6, f'Professor: {professor_nome}', 1, 0)
             pdf.cell(95, 6, f'Status: {agendamento.status.capitalize()}', 1, 1)
@@ -1385,28 +1354,28 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             # Lista de alunos
             if agendamento.alunos:
                 pdf.ln(2)
-                pdf.set_font('DejaVu', 'B', 9)
+                pdf.set_font('Arial', 'B', 9)
                 pdf.cell(190, 6, 'Lista de Alunos:', 0, 1)
                 
                 # Cabeçalho da tabela de alunos
-                pdf.set_font('DejaVu', 'B', 8)
+                pdf.set_font('Arial', 'B', 8)
                 pdf.cell(70, 6, 'Nome', 1, 0, 'C')
                 pdf.cell(20, 6, 'Presente', 1, 0, 'C')
                 pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
                 pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
                 
-                pdf.set_font('DejaVu', '', 7)
+                pdf.set_font('Arial', '', 7)
                 for aluno in agendamento.alunos:
                     # Verificar se precisa de nova página
                     if pdf.get_y() > 270:
                         pdf.add_page()
                         # Repetir cabeçalho
-                        pdf.set_font('DejaVu', 'B', 8)
+                        pdf.set_font('Arial', 'B', 8)
                         pdf.cell(70, 6, 'Nome', 1, 0, 'C')
                         pdf.cell(20, 6, 'Presente', 1, 0, 'C')
                         pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
                         pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
-                        pdf.set_font('DejaVu', '', 7)
+                        pdf.set_font('Arial', '', 7)
                     
                     nome = aluno.nome[:35] + '...' if len(aluno.nome) > 35 else aluno.nome
                     presente = 'Sim' if aluno.presente else 'Não'
@@ -1425,10 +1394,10 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     
     # Análise e recomendações
     pdf.add_page()
-    pdf.set_font('DejaVu', 'B', 14)
+    pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Análise e Recomendações', 0, 1)
     
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     if total_agendamentos > 0:
         taxa_cancelamento = (totais['cancelados'] / total_agendamentos) * 100
         if taxa_cancelamento > 30:
@@ -1449,7 +1418,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     
     # Rodapé
     pdf.ln(10)
-    pdf.set_font('DejaVu', 'I', 10)
+    pdf.set_font('Arial', 'I', 10)
     pdf.cell(190, 10, 'Este relatório é gerado automaticamente pelo sistema de agendamentos.', 0, 1, 'C')
     
     # Salvar o PDF
@@ -1471,15 +1440,15 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     pdf.add_page()
     
     # Configurar fonte
-    pdf.set_font('DejaVu', 'B', 16)
+    pdf.set_font('Arial', 'B', 16)
     
     # Título
     pdf.cell(190, 10, 'Relatório Geral de Agendamentos', 0, 1, 'C')
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     pdf.cell(190, 10, f'Período: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}', 0, 1, 'C')
     
     # Data e hora de geração
-    pdf.set_font('DejaVu', 'I', 10)
+    pdf.set_font('Arial', 'I', 10)
     pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
     
     # Cálculo de totais
@@ -1498,10 +1467,10 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Resumo geral
     pdf.ln(5)
-    pdf.set_font('DejaVu', 'B', 14)
+    pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Resumo Geral', 0, 1)
     
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
     pdf.cell(95, 10, f'Total de Visitantes: {total_visitantes}', 0, 1)
     
@@ -1521,11 +1490,11 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Detalhes por evento
     pdf.ln(10)
-    pdf.set_font('DejaVu', 'B', 14)
+    pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Detalhes por Evento', 0, 1)
     
     # Cabeçalho da tabela
-    pdf.set_font('DejaVu', 'B', 10)
+    pdf.set_font('Arial', 'B', 10)
     pdf.cell(60, 10, 'Evento', 1, 0, 'C')
     pdf.cell(25, 10, 'Confirmados', 1, 0, 'C')
     pdf.cell(25, 10, 'Realizados', 1, 0, 'C')
@@ -1534,7 +1503,7 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     pdf.cell(30, 10, 'Taxa Conclusão', 1, 1, 'C')
     
     # Dados da tabela
-    pdf.set_font('DejaVu', '', 10)
+    pdf.set_font('Arial', '', 10)
     for evento_id, stats in estatisticas.items():
         evento_nome = stats['nome']
         
@@ -1557,10 +1526,10 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Análise e recomendações
     pdf.ln(10)
-    pdf.set_font('DejaVu', 'B', 14)
+    pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Análise e Recomendações', 0, 1)
     
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     if total_agendamentos > 0:
         if taxa_cancelamento > 30:
             pdf.multi_cell(190, 10, '- Alta taxa de cancelamento. Considere revisar suas políticas de cancelamento.')
@@ -1580,7 +1549,7 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Rodapé
     pdf.ln(10)
-    pdf.set_font('DejaVu', 'I', 10)
+    pdf.set_font('Arial', 'I', 10)
     pdf.cell(190, 10, 'Este relatório é gerado automaticamente pelo sistema de agendamentos.', 0, 1, 'C')
     
     # Salvar o PDF
@@ -1601,23 +1570,23 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.add_page()
     
     # Configurar fonte
-    pdf.set_font('DejaVu', 'B', 16)
+    pdf.set_font('Arial', 'B', 16)
     
     # Título
     pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
     
     # Informações do evento
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     pdf.cell(190, 10, f'Local: {evento.local}', 0, 1)
     pdf.cell(190, 10, f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} a {evento.data_fim.strftime("%d/%m/%Y")}', 0, 1)
     
     # Data e hora de geração
-    pdf.set_font('DejaVu', 'I', 10)
+    pdf.set_font('Arial', 'I', 10)
     pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
     
     # Estatísticas
     pdf.ln(5)
-    pdf.set_font('DejaVu', 'B', 14)
+    pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Estatísticas', 0, 1)
     
     # Contadores
@@ -1632,7 +1601,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         if a.status == 'realizado':
             presentes += sum(1 for aluno in a.alunos if aluno.presente)
     
-    pdf.set_font('DejaVu', '', 12)
+    pdf.set_font('Arial', '', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
     pdf.cell(95, 10, f'Total de Alunos: {total_alunos}', 0, 1)
     
@@ -1645,11 +1614,11 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     
     # Lista de agendamentos
     pdf.ln(10)
-    pdf.set_font('DejaVu', 'B', 14)
+    pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Lista de Agendamentos', 0, 1)
 
     # Larguras dinâmicas para escola e professor
-    pdf.set_font('DejaVu', '', 8)
+    pdf.set_font('Arial', '', 8)
     max_escola = max(
         (pdf.get_string_width(a.escola_nome) for a in agendamentos),
         default=0,
@@ -1676,7 +1645,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         prof_w *= scale
 
     # Cabeçalho da tabela
-    pdf.set_font('DejaVu', 'B', 9)
+    pdf.set_font('Arial', 'B', 9)
     pdf.cell(15, 10, 'ID', 1, 0, 'C')
     pdf.cell(25, 10, 'Data', 1, 0, 'C')
     pdf.cell(20, 10, 'Horário', 1, 0, 'C')
@@ -1686,7 +1655,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.cell(30, 10, 'Status', 1, 1, 'C')
 
     # Dados da tabela
-    pdf.set_font('DejaVu', '', 8)
+    pdf.set_font('Arial', '', 8)
     for agendamento in agendamentos:
         horario = agendamento.horario
         escola_nome = agendamento.escola_nome
@@ -1716,16 +1685,16 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     ]
     if agendamentos_com_presenca:
         pdf.ln(10)
-        pdf.set_font('DejaVu', 'B', 14)
+        pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, 'Lista de Presença', 0, 1)
 
         for ag in agendamentos_com_presenca:
-            pdf.set_font('DejaVu', 'B', 10)
+            pdf.set_font('Arial', 'B', 10)
             pdf.cell(190, 8, f'Agendamento {ag.id} - {ag.escola_nome}', 0, 1)
-            pdf.set_font('DejaVu', 'B', 9)
+            pdf.set_font('Arial', 'B', 9)
             pdf.cell(160, 8, 'Aluno', 1, 0, 'L')
             pdf.cell(30, 8, 'Presente', 1, 1, 'C')
-            pdf.set_font('DejaVu', '', 9)
+            pdf.set_font('Arial', '', 9)
             for aluno in ag.alunos:
                 if not aluno.presente:
                     continue
@@ -1735,7 +1704,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
     # Rodapé
     pdf.ln(10)
-    pdf.set_font('DejaVu', 'I', 10)
+    pdf.set_font('Arial', 'I', 10)
     pdf.cell(
         190,
         10,
