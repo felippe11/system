@@ -7,6 +7,12 @@ import logging
 import psutil
 import os
 import time
+import uuid
+import tempfile
+import re
+import textwrap
+from html import unescape
+from flask import current_app
 from utils import endpoints
 
 logger = logging.getLogger(__name__)
@@ -32,6 +38,112 @@ def _profile(func):
             )
 
     return wrapper
+
+
+STYLE_DELIMITER_RE = re.compile(r';')
+TAG_RE = re.compile(r'<[^>]+>')
+NUMBER_RE = re.compile(r'([-+]?[0-9]*\.?[0-9]+)')
+
+
+def _parse_style_dict(style_str):
+    if not style_str:
+        return {}
+    styles = {}
+    for raw in STYLE_DELIMITER_RE.split(style_str):
+        if ':' not in raw:
+            continue
+        key, value = raw.split(':', 1)
+        styles[key.strip().lower()] = value.strip()
+    return styles
+
+
+def _parse_px(value, default):
+    if not value:
+        return float(default)
+    match = NUMBER_RE.search(str(value))
+    if match:
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return float(default)
+    return float(default)
+
+
+def _parse_color(value, default=None):
+    from reportlab.lib import colors
+
+    if default is None:
+        default = colors.black
+    if not value:
+        return default
+
+    value = value.strip()
+    try:
+        if value.startswith('#'):
+            if len(value) == 4:
+                value = '#' + ''.join(ch * 2 for ch in value[1:])
+            return colors.HexColor(value)
+        if value.startswith('rgb'):
+            nums = [float(part) for part in NUMBER_RE.findall(value)[:3]]
+            if len(nums) == 3:
+                return colors.Color(*(n / 255.0 for n in nums))
+        if value:
+            return colors.HexColor('#' + value.replace('#', ''))
+    except Exception:
+        pass
+    return default
+
+
+def _extract_text(html_value):
+    if not html_value:
+        return ''
+    text = html_value.replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')
+    text = TAG_RE.sub('', text)
+    return unescape(text).strip()
+
+
+def _extract_image_src(html_value):
+    if not html_value:
+        return None
+    match = re.search(r'src\s*=\s*"([^"]+)"', html_value)
+    if match:
+        return match.group(1)
+    match = re.search(r"src\s*=\s*'([^']+)'", html_value)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _resolve_image_path(src):
+    if not src:
+        return None
+    if src.startswith('data:'):
+        return None
+    if src.startswith('http'):
+        return None
+
+    cleaned = src.lstrip('/')
+    candidates = []
+
+    if os.path.isabs(src) and os.path.exists(src):
+        return src
+
+    try:
+        app = current_app._get_current_object()
+    except RuntimeError:
+        app = None
+
+    if app:
+        candidates.append(os.path.join(app.root_path, cleaned))
+        if app.static_folder:
+            candidates.append(os.path.join(app.static_folder, cleaned))
+
+    candidates.append(src)
+
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            return candidate
+    return None
 
 
 @_profile
@@ -4769,3 +4881,167 @@ def gerar_relatorio_necessidades(relatorio_dados, pdf_path=None):
         as_attachment=True,
         download_name=os.path.basename(target_path),
     )
+
+
+def gerar_pdf_template(template_data):
+    """Gera um PDF a partir dos dados estruturados do editor de certificados."""
+    if not template_data:
+        raise ValueError("Dados do template não fornecidos")
+
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import landscape, portrait, A4
+    from reportlab.lib import colors
+    import qrcode
+
+    orientation = (template_data.get('orientation') or 'landscape').lower()
+    if orientation not in ('landscape', 'portrait'):
+        orientation = 'landscape'
+
+    base_width = 800 if orientation == 'landscape' else 600
+    base_height = 600 if orientation == 'landscape' else 800
+
+    page_size = landscape(A4) if orientation == 'landscape' else portrait(A4)
+    page_width, page_height = page_size
+    scale_x = page_width / base_width
+    scale_y = page_height / base_height
+
+    output_path = os.path.join(
+        tempfile.gettempdir(), f"template_{uuid.uuid4().hex}.pdf"
+    )
+
+    pdf = canvas.Canvas(output_path, pagesize=page_size)
+    elements = template_data.get('elements') or []
+    temp_files = []
+
+    for element in elements:
+        element_type = (element.get('type') or '').lower()
+        style = _parse_style_dict(element.get('style'))
+        position = element.get('position') or {}
+        properties = element.get('properties') or {}
+
+        try:
+            x_px = float(position.get('x', 0))
+            y_px = float(position.get('y', 0))
+        except (TypeError, ValueError):
+            x_px = 0
+            y_px = 0
+
+        width_px = _parse_px(
+            style.get('width') or properties.get('width'),
+            default=150,
+        )
+        height_px = _parse_px(
+            style.get('height') or properties.get('height'),
+            default=50,
+        )
+
+        width = max(width_px * scale_x, 10)
+        height = max(height_px * scale_y, 10)
+        pdf_x = x_px * scale_x
+        pdf_y = page_height - (y_px * scale_y) - height
+
+        if element_type in ('text', 'variable'):
+            font_size_px = _parse_px(style.get('font-size'), default=16)
+            font_size = max(font_size_px * scale_y, 6)
+            font_family = (style.get('font-family') or 'Helvetica').strip('"\' ')
+            font_weight = (style.get('font-weight') or '').lower()
+            font_name = 'Helvetica-Bold' if font_weight in ('bold', '700') else 'Helvetica'
+
+            text_color = _parse_color(style.get('color'), colors.black)
+            text_align = (style.get('text-align') or 'left').lower()
+            raw_text = element.get('innerHTML') or properties.get('text') or ''
+            text = _extract_text(raw_text)
+
+            if not text:
+                continue
+
+            pdf.setFont(font_name, font_size)
+            pdf.setFillColor(text_color)
+
+            max_chars = max(int(width / max(font_size * 0.6, 1)), 1)
+            lines = []
+            for part in text.splitlines() or ['']:
+                wrapped = textwrap.wrap(part, width=max_chars) or ['']
+                lines.extend(wrapped)
+
+            current_y = pdf_y + height - font_size
+            leading = font_size * 1.2
+
+            for line in lines:
+                if text_align == 'center':
+                    pdf.drawCentredString(pdf_x + width / 2, current_y, line)
+                elif text_align == 'right':
+                    pdf.drawRightString(pdf_x + width, current_y, line)
+                else:
+                    pdf.drawString(pdf_x, current_y, line)
+                current_y -= leading
+
+        elif element_type == 'signature':
+            pdf.setStrokeColor(colors.black)
+            pdf.setLineWidth(1)
+            pdf.line(pdf_x, pdf_y + height / 2, pdf_x + width, pdf_y + height / 2)
+            pdf.setFont('Helvetica', 10)
+            pdf.drawCentredString(pdf_x + width / 2, pdf_y + height / 2 + 6, 'Assinatura')
+
+        elif element_type == 'logo':
+            src = properties.get('src') or _extract_image_src(element.get('innerHTML'))
+            image_path = _resolve_image_path(src)
+            if image_path:
+                try:
+                    pdf.drawImage(
+                        image_path,
+                        pdf_x,
+                        pdf_y,
+                        width=width,
+                        height=height,
+                        preserveAspectRatio=True,
+                        anchor='sw',
+                    )
+                except Exception:
+                    pdf.setStrokeColor(colors.HexColor('#E5E7EB'))
+                    pdf.rect(pdf_x, pdf_y, width, height)
+            else:
+                pdf.setStrokeColor(colors.HexColor('#E5E7EB'))
+                pdf.rect(pdf_x, pdf_y, width, height)
+
+        elif element_type == 'qrcode':
+            qr_content = properties.get('content') or _extract_text(element.get('innerHTML'))
+            if qr_content:
+                try:
+                    qr_img = qrcode.make(qr_content)
+                    temp_qr_path = os.path.join(
+                        tempfile.gettempdir(), f"qr_{uuid.uuid4().hex}.png"
+                    )
+                    qr_img.save(temp_qr_path)
+                    temp_files.append(temp_qr_path)
+                    pdf.drawImage(
+                        temp_qr_path,
+                        pdf_x,
+                        pdf_y,
+                        width=width,
+                        height=height,
+                        preserveAspectRatio=True,
+                        anchor='sw',
+                    )
+                except Exception:
+                    pdf.setStrokeColor(colors.HexColor('#E5E7EB'))
+                    pdf.rect(pdf_x, pdf_y, width, height)
+            else:
+                pdf.setStrokeColor(colors.HexColor('#E5E7EB'))
+                pdf.rect(pdf_x, pdf_y, width, height)
+
+        else:
+            pdf.setStrokeColor(colors.HexColor('#E5E7EB'))
+            pdf.rect(pdf_x, pdf_y, width, height)
+
+    pdf.showPage()
+    pdf.save()
+
+    for temp_path in temp_files:
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception:
+            logger.warning('Não foi possível remover arquivo temporário %s', temp_path)
+
+    return output_path
