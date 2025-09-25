@@ -18,8 +18,9 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 from app import create_app
 from extensions import db
 from models.user import Cliente
-from models.event import Evento
+from models.event import Evento, RespostaFormulario
 from models.event import Formulario, CampoFormulario
+from models.review import Submission
 
 
 @pytest.fixture
@@ -90,3 +91,40 @@ def test_novo_trabalho_with_and_without_form(client, app):
     resp = client.get("/trabalhos/novo")
     assert resp.status_code == 200
     assert b"Adicionar Novo Trabalho" in resp.data
+
+
+def test_cliente_pode_criar_trabalho_sem_usuario_vinculado(client, app):
+    login(client)
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email="cli@test").first()
+        formulario = Formulario(
+            nome="Formulário de Trabalhos", cliente_id=cliente.id
+        )
+        campo = CampoFormulario(nome="Título", tipo="text")
+        formulario.campos.append(campo)
+        evento = Evento(cliente_id=cliente.id, nome="E1")
+        db.session.add_all([formulario, evento])
+        db.session.commit()
+
+        campo_id = campo.id
+        evento_id = evento.id
+
+    resp = client.post(
+        "/trabalhos/novo",
+        data={
+            "evento_id": str(evento_id),
+            f"campo_{campo_id}": "Meu Trabalho",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 302
+
+    with app.app_context():
+        submission = Submission.query.one()
+        assert submission.author_id is None
+        assert submission.attributes.get("cliente_id") == cliente.id
+
+        resposta = RespostaFormulario.query.filter_by(trabalho_id=submission.id).one()
+        assert resposta.usuario_id is None
+        assert resposta.evento_id == evento_id
