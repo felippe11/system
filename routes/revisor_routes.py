@@ -49,6 +49,8 @@ from models import (
     RevisorCandidaturaEtapa,
     RevisorEtapa,
     RevisorProcess,
+    AvaliacaoBarema,
+    AvaliacaoCriterio,
     revisor_process_evento_association,
     Submission,
     Review,
@@ -1328,19 +1330,59 @@ def avaliar_barema(trabalho_id, categoria):
         criterios.append(criterio)
 
     if request.method == "POST":
-        revisor_id = current_user.id if current_user.is_authenticated else 1
-
         nome_revisor = None
+        revisor_usuario = None
+
+        if assignment:
+            if assignment.reviewer:
+                revisor_usuario = assignment.reviewer
+            elif assignment.reviewer_id:
+                revisor_usuario = Usuario.query.get(assignment.reviewer_id)
+
+        if not revisor_usuario and current_user.is_authenticated:
+            possible_id = getattr(current_user, "id", None)
+            if possible_id:
+                revisor_usuario = Usuario.query.get(possible_id)
+
+        if not revisor_usuario and assignment and assignment.reviewer:
+            revisor_usuario = Usuario.query.filter_by(
+                email=assignment.reviewer.email
+            ).first()
+
+        if not revisor_usuario:
+            current_app.logger.error(
+                "[DEBUG] Nenhum usuário de revisor encontrado para trabalho %s",
+                trabalho_id,
+            )
+            flash(
+                "Não foi possível identificar o revisor responsável por esta avaliação.",
+                "danger",
+            )
+            return redirect(
+                url_for(
+                    "revisor_routes.selecionar_categoria_barema",
+                    trabalho_id=trabalho_id,
+                )
+            )
+
+        revisor_id = revisor_usuario.id
+        nome_revisor = revisor_usuario.nome
+
         if assignment and assignment.reviewer:
             candidatura = RevisorCandidatura.query.filter_by(
                 email=assignment.reviewer.email
             ).first()
             if candidatura:
-                nome_revisor = candidatura.nome
+                nome_revisor = candidatura.nome or nome_revisor
                 if candidatura.status == "aprovado":
-                    revisor_user = Usuario.query.filter_by(email=candidatura.email).first()
+                    revisor_user = Usuario.query.filter_by(
+                        email=candidatura.email
+                    ).first()
                     if revisor_user and revisor_user.nome:
                         nome_revisor = revisor_user.nome
+
+        if not nome_revisor and getattr(revisor_usuario, "email", None):
+            nome_revisor = revisor_usuario.email
 
         avaliacao = AvaliacaoBarema.query.filter_by(
             trabalho_id=trabalho_id,
