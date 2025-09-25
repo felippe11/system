@@ -51,13 +51,7 @@ class Attachment:
 
 
 class EmailService:
-    """Centralised email sending service.
-
-    Prefers Mailjet's API when credentials are available. Falls back to the
-    configured Flask-Mail SMTP transport otherwise. This keeps background
-    threads working (Mailjet does not require an app context) while allowing
-    teams to reuse existing SMTP setups locally.
-    """
+    """Centralised email sending service with provider fallbacks."""
 
     def __init__(self) -> None:
         self._mailjet_client = None
@@ -82,7 +76,7 @@ class EmailService:
         reply_to: Optional[RecipientInput] = None,
         attachments: Optional[Sequence[AttachmentInput]] = None,
     ) -> Dict[str, Any]:
-        """Send an email using the best available provider."""
+        """Send an email using Mailjet or SMTP depending on configuration."""
 
         recipients = self._normalise_recipients(to)
         if not recipients:
@@ -133,7 +127,7 @@ class EmailService:
         )
 
     # ------------------------------------------------------------------
-    #  Provider detection helpers
+    #  Provider helpers
     # ------------------------------------------------------------------
 
     def _get_mailjet_client(self):
@@ -143,8 +137,8 @@ class EmailService:
         if self._mailjet_client and self._mailjet_auth == (api_key, secret):
             return self._mailjet_client
         try:
-            from mailjet_rest import Client  # Imported lazily to avoid dependency when unused
-        except ImportError:  # pragma: no cover - dependency optional in tests
+            from mailjet_rest import Client  # Imported lazily when available
+        except ImportError:  # pragma: no cover
             logger.warning("mailjet_rest not installed; falling back to SMTP")
             return None
         self._mailjet_client = Client(auth=(api_key, secret), version="v3.1")
@@ -264,8 +258,16 @@ class EmailService:
                 except FileNotFoundError as exc:
                     logger.error("Attachment %s not found: %s", path, exc)
                     continue
-                content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-                results.append(Attachment(filename=path.name, content=content, content_type=content_type))
+                content_type = (
+                    mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+                )
+                results.append(
+                    Attachment(
+                        filename=path.name,
+                        content=content,
+                        content_type=content_type,
+                    )
+                )
                 continue
             if isinstance(item, dict):
                 filename = item.get("filename") or item.get("name")
@@ -292,7 +294,9 @@ class EmailService:
                     filename, content, content_type = item
                 elif len(item) == 2:
                     filename, content = item
-                    content_type = mimetypes.guess_type(str(filename))[0] or "application/octet-stream"
+                    content_type = (
+                        mimetypes.guess_type(str(filename))[0] or "application/octet-stream"
+                    )
                 else:
                     continue
                 if isinstance(content, str):
@@ -340,7 +344,7 @@ class EmailService:
         if reply_to:
             message["ReplyTo"] = reply_to.as_mailjet()
         if attachments:
-            message["Attachments"] = [attachment.as_mailjet() for attachment in attachments]
+            message["Attachments"] = [att.as_mailjet() for att in attachments]
 
         response = client.send.create(data={"Messages": [message]})
         logger.info(
@@ -348,7 +352,8 @@ class EmailService:
             ", ".join(rec.email for rec in to),
             subject,
         )
-        return {"provider": "mailjet", "response": response.json() if hasattr(response, "json") else response}
+        payload = response.json() if hasattr(response, "json") else response
+        return {"provider": "mailjet", "response": payload}
 
     def _send_smtp(
         self,

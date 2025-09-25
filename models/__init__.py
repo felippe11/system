@@ -40,4 +40,10 @@ from .atividade_multipla_data import (
     CheckinAtividade,
     atividade_ministrantes_association,
 )
+from .reminder import (
+    LembreteOficina,
+    LembreteEnvio,
+    TipoLembrete,
+    StatusLembrete,
+)
 

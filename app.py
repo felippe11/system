@@ -238,6 +238,10 @@ def create_app():
         reconciliar_pendentes, "cron", hour=3, minute=0, args=[app]
     )
     scheduler.start()
+    
+    # Inicializar scheduler de lembretes
+    from services.reminder_scheduler import init_scheduler
+    init_scheduler(app)
 
     @socketio.on("join", namespace="/checkins")
     def on_join(data):

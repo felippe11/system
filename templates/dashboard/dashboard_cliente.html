@@ -429,6 +429,29 @@
         </div>
       </div>
 
+      <!-- Lembretes de Oficinas -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-primary mb-3">
+              <i class="bi bi-bell fs-1"></i>
+            </div>
+            <h5 class="card-title fw-bold">Lembretes</h5>
+            <p class="card-text text-muted">Envie lembretes automáticos ou manuais para participantes</p>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <div class="d-flex gap-2">
+              <a href="{{ url_for('reminder_routes.listar_lembretes') }}" class="btn btn-sm btn-primary flex-grow-1">
+                <i class="bi bi-list me-1"></i> Listar
+              </a>
+              <a href="{{ url_for('reminder_routes.criar_lembrete') }}" class="btn btn-sm btn-outline-primary flex-grow-1">
+                <i class="bi bi-plus me-1"></i> Criar
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Etiquetas -->
       <div class="col-lg-6 col-xl-3">
         <div class="card h-100 shadow-sm hover-shadow border-0">

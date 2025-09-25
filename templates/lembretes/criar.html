@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Lembrete{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>
+                        Criar Novo Lembrete
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <form id="lembreteForm">
+                        <div class="row">
+                            <!-- Informações Básicas -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Informações Básicas</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="titulo" class="form-label">Título do Lembrete *</label>
+                                    <input type="text" class="form-control" id="titulo" name="titulo" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="mensagem" class="form-label">Mensagem *</label>
+                                    <textarea class="form-control" id="mensagem" name="mensagem" rows="4" required 
+                                              placeholder="Digite a mensagem que será enviada aos participantes..."></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="tipo" class="form-label">Tipo de Envio *</label>
+                                    <select class="form-select" id="tipo" name="tipo" required onchange="toggleTipoEnvio()">
+                                        <option value="">Selecione o tipo</option>
+                                        <option value="manual">Manual (Enviar agora)</option>
+                                        <option value="automatico">Automático (Agendar envio)</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Configurações para envio automático -->
+                                <div id="configAutomatico" style="display: none;">
+                                    <h6 class="mb-3">Configurações Automáticas</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="dias_antecedencia" class="form-label">Dias de Antecedência</label>
+                                        <input type="number" class="form-control" id="dias_antecedencia" name="dias_antecedencia" 
+                                               min="1" max="30" placeholder="Ex: 3">
+                                        <div class="form-text">Quantos dias antes da oficina enviar o lembrete</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="data_envio_agendada" class="form-label">Data e Hora Específica (Opcional)</label>
+                                        <input type="datetime-local" class="form-control" id="data_envio_agendada" name="data_envio_agendada">
+                                        <div class="form-text">Se preenchido, ignora a configuração de dias de antecedência</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Destinatários -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Destinatários</h5>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="enviar_todas_oficinas" name="enviar_todas_oficinas">
+                                        <label class="form-check-label" for="enviar_todas_oficinas">
+                                            <strong>Enviar para todas as oficinas</strong>
+                                        </label>
+                                        <div class="form-text">Enviará para todos os participantes de todas as oficinas do cliente</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="selecaoOficinas" class="mb-3">
+                                    <label class="form-label">Selecionar Oficinas Específicas</label>
+                                    <div id="oficinasContainer" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                        <div class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Carregando oficinas...
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="selecaoUsuarios" class="mb-3">
+                                    <label class="form-label">Selecionar Usuários Específicos (Opcional)</label>
+                                    <div id="usuariosContainer" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                        <div class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Carregando usuários...
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Dica:</strong> Você pode combinar oficinas específicas com usuários específicos para maior controle sobre quem receberá o lembrete.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('reminder_routes.listar_lembretes') }}" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>
+                                        Voltar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>
+                                        Criar Lembrete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let oficinas = [];
+let usuarios = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    carregarOficinas();
+    carregarUsuarios();
+    
+    // Event listener para checkbox de todas as oficinas
+    document.getElementById('enviar_todas_oficinas').addEventListener('change', function() {
+        const selecaoOficinas = document.getElementById('selecaoOficinas');
+        if (this.checked) {
+            selecaoOficinas.style.display = 'none';
+        } else {
+            selecaoOficinas.style.display = 'block';
+        }
+    });
+    
+    // Event listener para formulário
+    document.getElementById('lembreteForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        criarLembrete();
+    });
+});
+
+function toggleTipoEnvio() {
+    const tipo = document.getElementById('tipo').value;
+    const configAutomatico = document.getElementById('configAutomatico');
+    
+    if (tipo === 'automatico') {
+        configAutomatico.style.display = 'block';
+    } else {
+        configAutomatico.style.display = 'none';
+    }
+}
+
+function carregarOficinas() {
+    fetch('/api/oficinas-para-lembrete')
+        .then(response => response.json())
+        .then(data => {
+            oficinas = data.oficinas;
+            renderizarOficinas();
+        })
+        .catch(error => {
+            console.error('Erro ao carregar oficinas:', error);
+            document.getElementById('oficinasContainer').innerHTML = 
+                '<div class="text-center text-danger">Erro ao carregar oficinas</div>';
+        });
+}
+
+function carregarUsuarios() {
+    fetch('/api/usuarios-para-lembrete')
+        .then(response => response.json())
+        .then(data => {
+            usuarios = data.usuarios;
+            renderizarUsuarios();
+        })
+        .catch(error => {
+            console.error('Erro ao carregar usuários:', error);
+            document.getElementById('usuariosContainer').innerHTML = 
+                '<div class="text-center text-danger">Erro ao carregar usuários</div>';
+        });
+}
+
+function renderizarOficinas() {
+    const container = document.getElementById('oficinasContainer');
+    
+    if (oficinas.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted">Nenhuma oficina encontrada</div>';
+        return;
+    }
+    
+    let html = '';
+    oficinas.forEach(oficina => {
+        const dataFormatada = oficina.data_inicio ? 
+            new Date(oficina.data_inicio).toLocaleDateString('pt-BR') : 'Data não definida';
+        
+        html += `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${oficina.id}" id="oficina_${oficina.id}">
+                <label class="form-check-label" for="oficina_${oficina.id}">
+                    <strong>${oficina.titulo}</strong>
+                    <br>
+                    <small class="text-muted">
+                        ${dataFormatada} | ${oficina.local || 'Local não definido'} | 
+                        ${oficina.total_inscritos} inscrito(s)
+                    </small>
+                </label>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderizarUsuarios() {
+    const container = document.getElementById('usuariosContainer');
+    
+    if (usuarios.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted">Nenhum usuário encontrado</div>';
+        return;
+    }
+    
+    let html = '';
+    usuarios.forEach(usuario => {
+        html += `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${usuario.id}" id="usuario_${usuario.id}">
+                <label class="form-check-label" for="usuario_${usuario.id}">
+                    <strong>${usuario.nome}</strong>
+                    <br>
+                    <small class="text-muted">${usuario.email} | ${usuario.total_inscricoes} inscrição(ões)</small>
+                </label>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function criarLembrete() {
+    const formData = new FormData(document.getElementById('lembreteForm'));
+    
+    // Coletar oficinas selecionadas
+    const oficinasSelecionadas = Array.from(document.querySelectorAll('#oficinasContainer input[type="checkbox"]:checked'))
+        .map(input => parseInt(input.value));
+    
+    // Coletar usuários selecionados
+    const usuariosSelecionados = Array.from(document.querySelectorAll('#usuariosContainer input[type="checkbox"]:checked'))
+        .map(input => parseInt(input.value));
+    
+    const data = {
+        titulo: formData.get('titulo'),
+        mensagem: formData.get('mensagem'),
+        tipo: formData.get('tipo'),
+        enviar_todas_oficinas: document.getElementById('enviar_todas_oficinas').checked,
+        oficina_ids: oficinasSelecionadas,
+        usuario_ids: usuariosSelecionados,
+        dias_antecedencia: formData.get('dias_antecedencia') ? parseInt(formData.get('dias_antecedencia')) : null,
+        data_envio_agendada: formData.get('data_envio_agendada') || null
+    };
+    
+    // Validações
+    if (!data.titulo || !data.mensagem || !data.tipo) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    if (!data.enviar_todas_oficinas && oficinasSelecionadas.length === 0) {
+        alert('Por favor, selecione pelo menos uma oficina ou marque "Enviar para todas as oficinas".');
+        return;
+    }
+    
+    if (data.tipo === 'automatico' && !data.dias_antecedencia && !data.data_envio_agendada) {
+        alert('Para lembretes automáticos, defina os dias de antecedência ou uma data específica.');
+        return;
+    }
+    
+    // Enviar dados
+    fetch('/lembretes/criar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Lembrete criado com sucesso!');
+            window.location.href = '/lembretes';
+        } else {
+            alert('Erro ao criar lembrete: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar lembrete');
+    });
+}
+</script>
+{% endblock %}
