@@ -49,6 +49,8 @@ from models import (
     RevisorCandidaturaEtapa,
     RevisorEtapa,
     RevisorProcess,
+    AvaliacaoBarema,
+    AvaliacaoCriterio,
     revisor_process_evento_association,
     Submission,
     Review,
