@@ -93,12 +93,11 @@ def gerar_revisor_details_pdf(cand, pdf_path=None):
 @_profile
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
     """
-    Gera uma lista de frequência moderna e elegante para uma oficina.
-    Design minimalista com foco na clareza e organização das informações.
+    Generates a modern and professional attendance list PDF for a workshop.
     
     Args:
-        oficina: Objeto da oficina contendo todas as informações relevantes
-        pdf_path: Caminho do arquivo onde o PDF será salvo
+        oficina: The workshop object containing all relevant information
+        pdf_path: The file path where the PDF will be saved
     """
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
@@ -109,145 +108,149 @@ def gerar_lista_frequencia_pdf(oficina, pdf_path):
     import os
     from datetime import datetime
 
-    # Paleta de cores moderna e elegante
-    COLORS = {
-        'primary': colors.HexColor('#2C3E50'),      # Azul escuro elegante
-        'secondary': colors.HexColor('#34495E'),    # Cinza azulado
-        'accent': colors.HexColor('#E74C3C'),       # Vermelho vibrante
-        'light': colors.HexColor('#ECF0F1'),       # Cinza muito claro
-        'white': colors.HexColor('#FFFFFF'),
-        'text_light': colors.HexColor('#7F8C8D'),  # Cinza para textos secundários
-        'border': colors.HexColor('#BDC3C7')        # Cinza para bordas
-    }
-
-    # Criar estilos personalizados modernos
+    # Create custom styles
     styles = getSampleStyleSheet()
     
-    # Título principal elegante
+    # Custom title style
     title_style = ParagraphStyle(
-        name='ModernTitle',
+        name='CustomTitle',
         parent=styles['Title'],
-        fontSize=24,
-        textColor=COLORS['primary'],
-        spaceAfter=8,
-        alignment=TA_CENTER,
-        fontName='Helvetica-Bold',
-        leading=28
-    )
-    
-    # Subtítulo moderno
-    subtitle_style = ParagraphStyle(
-        name='ModernSubtitle',
-        parent=styles['Heading2'],
         fontSize=16,
-        textColor=COLORS['accent'],
-        spaceBefore=15,
-        spaceAfter=8,
-        alignment=TA_CENTER,
-        fontName='Helvetica-Bold',
-        leading=20
+        textColor=colors.HexColor("#023E8A"),
+        spaceAfter=10,
+        alignment=TA_CENTER
     )
     
-    # Estilo para informações gerais
-    info_style = ParagraphStyle(
-        name='ModernInfo',
-        parent=styles['Normal'],
-        fontSize=11,
-        leading=15,
-        fontName='Helvetica',
-        textColor=COLORS['secondary'],
-        spaceAfter=5
+    # Custom heading styles
+    heading_style = ParagraphStyle(
+        name='CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=12,
+        textColor=colors.HexColor("#023E8A"),
+        spaceBefore=12,
+        spaceAfter=6
     )
     
-    # Estilo para texto normal
+    # Custom normal text style
     normal_style = ParagraphStyle(
-        name='ModernNormal',
+        name='CustomNormal',
         parent=styles['Normal'],
         fontSize=10,
         leading=14,
-        fontName='Helvetica',
-        textColor=COLORS['primary']
+        spaceBefore=6,
+        spaceAfter=6
     )
     
-    # Configurar documento com margens modernas
+    # Info style for workshop details
+    info_style = ParagraphStyle(
+        name='InfoStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        leftIndent=5 * mm,
+        textColor=colors.HexColor("#444444")
+    )
+    
+    # Setup document with proper margins
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=letter,
-        leftMargin=25 * mm,
-        rightMargin=25 * mm,
-        topMargin=25 * mm,
-        bottomMargin=25 * mm
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm
     )
     
     elements = []
     
-    # Cabeçalho elegante com ícone
+    # Add header with logo (if available)
+    logo_path = os.path.join("static", "logos", "company_logo.png")
+    if os.path.exists(logo_path):
+        elements.append(Image(logo_path, width=50 * mm, height=15 * mm, hAlign='CENTER'))
+        elements.append(Spacer(1, 5 * mm))
+    
+    # Add title and current date
     current_date = datetime.now().strftime("%d/%m/%Y")
-    elements.append(Paragraph("📋 Lista de Frequência", title_style))
-    elements.append(Paragraph(f"📅 Gerado em {current_date}", ParagraphStyle(
-        name='ModernDate', parent=normal_style, alignment=TA_CENTER, fontSize=9, textColor=COLORS['text_light']
+    elements.append(Paragraph(f"LISTA DE FREQUÊNCIA", title_style))
+    elements.append(Paragraph(f"<i>Gerado em {current_date}</i>", ParagraphStyle(
+        name='date_style', parent=normal_style, alignment=TA_CENTER, fontSize=8, textColor=colors.gray
     )))
-    elements.append(Spacer(1, 15 * mm))
+    elements.append(Spacer(1, 10 * mm))
     
-    # Informações da oficina com design moderno
-    elements.append(Paragraph("📚 Informações da Oficina", subtitle_style))
-    elements.append(Spacer(1, 8 * mm))
+    # Workshop information in a visually appealing box
+    workshop_info = [
+        [Paragraph("<b>INFORMAÇÕES DA OFICINA</b>", ParagraphStyle(
+            name='workshop_header_style', parent=heading_style, textColor=colors.white, alignment=TA_CENTER
+        ))]
+    ]
     
-    # Detalhes da oficina organizados
-    elements.append(Paragraph(f"📖 <b>Título:</b> {oficina.titulo}", info_style))
+    workshop_info_table = Table(workshop_info, colWidths=[doc.width])
+    workshop_info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('ROUNDEDCORNERS', [5, 5, 5, 5]),
+    ]))
+    elements.append(workshop_info_table)
+    elements.append(Spacer(1, 2 * mm))
+    
+    # Workshop details
+    elements.append(Paragraph(f"<b>Título:</b> {oficina.titulo}", info_style))
     
     ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
-    formador_nome = oficina.formador.nome if getattr(oficina, 'formador', None) else 'N/A'
-    elements.append(Paragraph(f"👤 <b>Ministrante:</b> {ministrante_nome}", info_style))
-    elements.append(Paragraph(f"🧑‍🏫 <b>Formador:</b> {formador_nome}", info_style))
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", info_style))
     
-    elements.append(Paragraph(f"📍 <b>Local:</b> {oficina.cidade}, {oficina.estado}", info_style))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", info_style))
     
-    elements.append(Paragraph(f"⏰ <b>Carga Horária:</b> {oficina.carga_horaria} horas", info_style))
+    elements.append(Paragraph("<b>Carga Horária:</b> {0} horas".format(oficina.carga_horaria), info_style))
     
-    # Datas e horários com design moderno
+    # Dates and times
     if oficina.dias:
-        elements.append(Paragraph("📅 <b>Datas e Horários:</b>", info_style))
+        elements.append(Paragraph("<b>Datas e Horários:</b>", info_style))
         
         dates_data = []
         for dia in oficina.dias:
             data_formatada = dia.data.strftime('%d/%m/%Y')
             horario = f"{dia.horario_inicio} às {dia.horario_fim}"
             dates_data.append([
-                Paragraph(f"📆 {data_formatada}", normal_style),
-                Paragraph(f"🕐 {horario}", normal_style)
+                Paragraph(data_formatada, normal_style),
+                Paragraph(horario, normal_style)
             ])
         
         if dates_data:
             dates_table = Table(dates_data, colWidths=[doc.width/2 - 10*mm, doc.width/2 - 10*mm])
             dates_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), COLORS['light']),
-                ('GRID', (0, 0), (-1, -1), 0.5, COLORS['border']),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F8F9FA")),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('LEFTPADDING', (0, 0), (-1, -1), 8),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
             ]))
             elements.append(dates_table)
     else:
-        elements.append(Paragraph("📅 <b>Datas:</b> Nenhuma data registrada", info_style))
+        elements.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", info_style))
     
-    elements.append(Spacer(1, 20 * mm))
+    elements.append(Spacer(1, 15 * mm))
     
-    # Cabeçalho da lista de presença
-    elements.append(Paragraph("✍️ Lista de Presença", subtitle_style))
-    elements.append(Spacer(1, 8 * mm))
+    # Attendance list header
+    elements.append(Paragraph("LISTA DE PRESENÇA", heading_style))
+    elements.append(Spacer(1, 5 * mm))
     
-    # Tabela de presença com design moderno
+    # Attendance table with signature column
     table_data = [
         [
-            Paragraph("🔢", ParagraphStyle('HeaderStyle', parent=normal_style, fontSize=12, textColor=COLORS['white'], alignment=TA_CENTER)),
-            Paragraph("👤 Nome Completo", ParagraphStyle('HeaderStyle', parent=normal_style, fontSize=12, textColor=COLORS['white'], alignment=TA_CENTER)),
-            Paragraph("✍️ Assinatura", ParagraphStyle('HeaderStyle', parent=normal_style, fontSize=12, textColor=COLORS['white'], alignment=TA_CENTER))
+            Paragraph("<b>Nº</b>", normal_style),
+            Paragraph("<b>Nome Completo</b>", normal_style),
+            Paragraph("<b>Assinatura</b>", normal_style)
         ]
     ]
     
@@ -269,59 +272,57 @@ def gerar_lista_frequencia_pdf(oficina, pdf_path):
                 ""   # Signature space
             ])
     
-    # Criar tabela com distribuição de largura otimizada
-    table = Table(table_data, colWidths=[20*mm, 100*mm, 60*mm])
+    # Create the table with appropriate width distribution
+    table = Table(table_data, colWidths=[15*mm, 85*mm, 70*mm])
     
-    # Aplicar estilos modernos à tabela
+    # Apply styles to the table
     table.setStyle(TableStyle([
-        # Estilo do cabeçalho
-        ('BACKGROUND', (0, 0), (-1, 0), COLORS['accent']),
-        ('TEXTCOLOR', (0, 0), (-1, 0), COLORS['white']),
+        # Header row styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
         
-        # Estilo das linhas de dados
-        ('BACKGROUND', (0, 1), (-1, -1), COLORS['white']),
-        ('TEXTCOLOR', (0, 1), (-1, -1), COLORS['primary']),
-        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Coluna de número centralizada
-        ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Coluna de nome à esquerda
-        ('ALIGN', (2, 1), (2, -1), 'CENTER'),  # Coluna de assinatura centralizada
-        ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
+        # Data rows styling
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Center the numbers
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Left-align the names
         
-        # Linhas alternadas para facilitar a leitura
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLORS['white'], COLORS['light']]),
+        # Grid styling
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#023E8A")),
         
-        # Grade sutil
-        ('GRID', (0, 0), (-1, -1), 0.5, COLORS['border']),
+        # Alternating row colors for better readability
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9FA")]),
         
-        # Espaçamento interno generoso
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ('TOPPADDING', (0, 0), (-1, -1), 10),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        # Cell padding
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         
-        # Linha para espaços de assinatura
-        ('LINEBELOW', (2, 1), (2, -1), 0.5, COLORS['border']),
+        # Line height for signature spaces
+        ('LINEBELOW', (2, 1), (2, -1), 0.5, colors.HexColor("#AAAAAA")),
     ]))
     
     elements.append(table)
     
-    # Rodapé com campos de assinatura modernos
-    elements.append(Spacer(1, 25 * mm))
+    # Footer with signature fields
+    elements.append(Spacer(1, 30 * mm))
     
-    # Criar linhas de assinatura elegantes
+    # Create signature lines
     signature_data = [
         [
-            Paragraph("_______________________________", ParagraphStyle(name="ModernSignatureLine", parent=normal_style, alignment=TA_CENTER, fontSize=10, textColor=COLORS['border'])),
-            Paragraph("_______________________________", ParagraphStyle(name="ModernSignatureLine", parent=normal_style, alignment=TA_CENTER, fontSize=10, textColor=COLORS['border'])),
-            Paragraph("_______________________________", ParagraphStyle(name="ModernSignatureLine", parent=normal_style, alignment=TA_CENTER, fontSize=10, textColor=COLORS['border']))
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER)),
+            "",
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER))
         ],
         [
-            Paragraph("👤 Ministrante", ParagraphStyle(name="ModernSignatureLabel", parent=normal_style, alignment=TA_CENTER, fontSize=9, textColor=COLORS['secondary'])),
-            Paragraph("🧑‍🏫 Formador", ParagraphStyle(name="ModernSignatureLabel", parent=normal_style, alignment=TA_CENTER, fontSize=9, textColor=COLORS['secondary'])),
-            Paragraph("📋 Coordenador", ParagraphStyle(name="ModernSignatureLabel", parent=normal_style, alignment=TA_CENTER, fontSize=9, textColor=COLORS['secondary']))
+            Paragraph("Ministrante", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER)),
+            "",
+            Paragraph("Coordenador", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER))
         ]
     ]
     
@@ -333,19 +334,19 @@ def gerar_lista_frequencia_pdf(oficina, pdf_path):
     
     elements.append(signature_table)
     
-    # Adicionar números de página modernos
+    # Add page numbers
     def add_page_number(canvas, doc):
         page_num = canvas.getPageNumber()
-        text = f"📄 Página {page_num}"
+        text = f"Página {page_num}"
         canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(COLORS['text_light'])
+        canvas.setFillColor(colors.grey)
         canvas.drawRightString(
             doc.pagesize[0] - doc.rightMargin, 
             doc.bottomMargin/2, 
             text
         )
     
-    # Construir o PDF com números de página
+    # Build the PDF with page numbers
     doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)    
     
 
@@ -479,9 +480,7 @@ def gerar_pdf_inscritos_pdf(oficina_id):
     elements.append(Paragraph("<b>Detalhes da Oficina</b>", subtitle_style))
     
     ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'Não atribuído'
-    formador_nome = oficina.formador.nome if getattr(oficina, 'formador', None) else 'Não atribuído'
     elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))
-    elements.append(Paragraph(f"<b>Formador:</b> {formador_nome}", normal_style))
     elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
     elements.append(Paragraph(f"<b>Carga Horária:</b> {oficina.carga_horaria} horas", normal_style))
     
@@ -659,9 +658,7 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
 
     # Dados da oficina
     ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
-    formador_nome = oficina.formador.nome if getattr(oficina, 'formador', None) else 'N/A'
     elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", styles['Normal']))
-    elements.append(Paragraph(f"<b>Formador:</b> {formador_nome}", styles['Normal']))
     elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", styles['Normal']))
     elements.append(Paragraph(f"<b>Carga Horária:</b> {oficina.carga_horaria} horas", styles['Normal']))
     elements.append(Spacer(1, 12))
@@ -706,10 +703,6 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
     elements.append(Spacer(1, 24))
     elements.append(Paragraph("________________________", styles['Normal']))
     elements.append(Paragraph("Ministrante", styles['Normal']))
-
-    elements.append(Spacer(1, 48))
-    elements.append(Paragraph("________________________", styles['Normal']))
-    elements.append(Paragraph("Formador", styles['Normal']))
 
     elements.append(Spacer(1, 48))
     elements.append(Paragraph("________________________", styles['Normal']))
@@ -1028,10 +1021,6 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
 
     elements.append(Spacer(1, 48))
     elements.append(Paragraph("________________________", styles['Normal']))
-    elements.append(Paragraph("Formador", styles['Normal']))
-
-    elements.append(Spacer(1, 48))
-    elements.append(Paragraph("________________________", styles['Normal']))
     elements.append(Paragraph("Coordenador", styles['Normal']))
 
     # Gera PDF
@@ -1065,17 +1054,14 @@ def gerar_certificados(oficina_id):
     flash("Certificados gerados com sucesso!", "success")
     return send_file(pdf_path, as_attachment=True)
 
-def gerar_pdf_feedback(oficina, feedbacks, pdf_path, perguntas_personalizadas=None):
+def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
     """
-    Gera um PDF moderno e elegante com os feedbacks de uma oficina.
-    Design minimalista com foco na clareza e organização das informações.
-    Inclui seção de perguntas personalizadas se fornecidas.
+    Gera um PDF elegante com os feedbacks de uma oficina.
     
     Args:
         oficina: Objeto da oficina com informações como título
         feedbacks: Lista de objetos de feedback contendo avaliações e comentários
         pdf_path: Caminho onde o PDF será salvo
-        perguntas_personalizadas: Lista de perguntas personalizadas (opcional)
     """
     from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, SimpleDocTemplate, PageBreak, Image
     from reportlab.lib.pagesizes import letter, landscape
@@ -1094,275 +1080,142 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path, perguntas_personalizadas=No
             dt = dt.replace(tzinfo=pytz.utc)
         return dt.astimezone(brasilia_tz)
     
-    # Paleta de cores moderna e elegante
-    COLORS = {
-        'primary': colors.HexColor('#2C3E50'),      # Azul escuro elegante
-        'secondary': colors.HexColor('#34495E'),    # Cinza azulado
-        'accent': colors.HexColor('#E74C3C'),       # Vermelho vibrante
-        'light': colors.HexColor('#ECF0F1'),       # Cinza muito claro
-        'white': colors.HexColor('#FFFFFF'),
-        'text_light': colors.HexColor('#7F8C8D'),  # Cinza para textos secundários
-        'border': colors.HexColor('#BDC3C7')        # Cinza para bordas
-    }
-    
-    # Criar estilos personalizados modernos
+    # Criar estilos personalizados
     styles = getSampleStyleSheet()
     
-    # Título principal elegante
+    # Título com estilo moderno
     title_style = ParagraphStyle(
-        'ModernTitle',
+        'TitleStyle',
         parent=styles['Title'],
-        fontSize=28,
+        fontSize=24,
         fontName='Helvetica-Bold',
         alignment=1,  # Centralizado
-        spaceAfter=15,
-        textColor=COLORS['primary'],
-        leading=32
+        spaceAfter=20,
+        textColor=colors.HexColor('#1A365D')  # Azul escuro elegante
     )
     
-    # Subtítulo moderno
+    # Estilo para o subtítulo
     subtitle_style = ParagraphStyle(
-        'ModernSubtitle',
+        'SubtitleStyle',
         parent=styles['Heading2'],
-        fontSize=18,
+        fontSize=16,
         fontName='Helvetica-Bold',
         alignment=1,
-        spaceAfter=12,
-        textColor=COLORS['accent'],
-        leading=22
-    )
-    
-    # Estilo para informações gerais
-    info_style = ParagraphStyle(
-        'ModernInfo',
-        parent=styles['Normal'],
-        fontSize=12,
-        leading=16,
-        fontName='Helvetica',
-        textColor=COLORS['secondary'],
-        spaceAfter=8
-    )
-    
-    # Estilo para estatísticas destacadas
-    stats_style = ParagraphStyle(
-        'ModernStats',
-        parent=styles['Normal'],
-        fontSize=14,
-        leading=18,
-        fontName='Helvetica-Bold',
-        textColor=COLORS['primary'],
         spaceAfter=15,
-        alignment=1
+        textColor=colors.HexColor('#2A4365')  # Azul médio
+    )
+    
+    # Estilo para o texto normal
+    normal_style = ParagraphStyle(
+        'NormalStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        leading=14,
+        fontName='Helvetica'
     )
     
     # Estilo para o cabeçalho da tabela
     header_style = ParagraphStyle(
-        'ModernHeader',
+        'HeaderStyle',
         parent=styles['Heading4'],
-        fontSize=13,
+        fontSize=12,
         fontName='Helvetica-Bold',
         alignment=1,
-        textColor=COLORS['white'],
-        leading=16
-    )
-    
-    # Estilo para comentários
-    comment_style = ParagraphStyle(
-        'ModernComment',
-        parent=styles['Normal'],
-        fontSize=11,
-        leading=15,
-        fontName='Helvetica',
-        firstLineIndent=0,
-        spaceBefore=5,
-        spaceAfter=5,
-        textColor=COLORS['secondary']
+        textColor=colors.white,
+        leading=14
     )
     
     # Estilo para o rodapé
     footer_style = ParagraphStyle(
-        'ModernFooter',
+        'FooterStyle',
         parent=styles['Normal'],
-        fontSize=10,
-        fontName='Helvetica',
-        textColor=COLORS['text_light'],
-        alignment=1,
-        spaceBefore=20
+        fontSize=9,
+        fontName='Helvetica-Oblique',
+        textColor=colors.HexColor('#4A5568'),  # Cinza escuro
+        alignment=1
     )
     
-    # Cria o documento com design moderno
+    # Estilo para comentários
+    comment_style = ParagraphStyle(
+        'CommentStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        fontName='Helvetica',
+        firstLineIndent=0,
+        spaceBefore=3,
+        spaceAfter=3
+    )
+    
+    # Cria o documento em modo paisagem com margens aprimoradas
     doc = SimpleDocTemplate(
         pdf_path, 
         pagesize=landscape(letter), 
-        leftMargin=1*inch, 
-        rightMargin=1*inch,
-        topMargin=0.8*inch,
-        bottomMargin=0.8*inch
+        leftMargin=0.75*inch, 
+        rightMargin=0.75*inch,
+        topMargin=0.5*inch,
+        bottomMargin=0.5*inch
     )
     
     available_width = doc.width  # largura disponível após as margens
     
     elements = []
     
-    # Cabeçalho elegante com ícone
-    elements.append(Paragraph("📊 Relatório de Feedback", title_style))
+    # Adicionar logotipo ou imagem header (opcional)
+    logo_path = os.path.join("static", "logo.png")
+    if os.path.exists(logo_path):
+        # Adiciona um espaço antes do logo
+        elements.append(Spacer(1, 0.2 * inch))
+        
+        # Centraliza o logo
+        logo = Image(logo_path, width=1.5*inch, height=0.75*inch)
+        elements.append(logo)
+        
+        # Adiciona um espaço após o logo
+        elements.append(Spacer(1, 0.3 * inch))
+    
+    # Título principal
+    elements.append(Paragraph(f"Relatório de Feedback", title_style))
     
     # Subtítulo com informações da oficina
-    elements.append(Paragraph(f"📚 {oficina.titulo}", subtitle_style))
+    elements.append(Paragraph(f"Oficina: {oficina.titulo}", subtitle_style))
     
-    # Informações gerais organizadas
+    # Adicionar informações da data de geração
     now = convert_to_brasilia(datetime.utcnow())
-    elements.append(Paragraph(f"📅 Gerado em: {now.strftime('%d/%m/%Y às %H:%M')}", info_style))
+    elements.append(Paragraph(f"Gerado em: {now.strftime('%d/%m/%Y às %H:%M')}", normal_style))
     
-    # Ministrante
+    # Informações gerais (pode-se adicionar ministrate, datas, etc.)
     ministrante_nome = oficina.ministrante_obj.nome if hasattr(oficina, 'ministrante_obj') and oficina.ministrante_obj else 'N/A'
-    elements.append(Paragraph(f"👤 Ministrante: {ministrante_nome}", info_style))
+    elements.append(Paragraph(f"Ministrante: {ministrante_nome}", normal_style))
     
-    # Local
+    # Verificar se oficina tem atributo 'cidade' e 'estado'
     if hasattr(oficina, 'cidade') and hasattr(oficina, 'estado'):
-        elements.append(Paragraph(f"📍 Local: {oficina.cidade}, {oficina.estado}", info_style))
+        elements.append(Paragraph(f"Local: {oficina.cidade}, {oficina.estado}", normal_style))
     
-    # Estatísticas destacadas
+    # Calcular estatísticas de avaliação
     if feedbacks:
         total_ratings = len(feedbacks)
         avg_rating = sum(fb.rating for fb in feedbacks) / total_ratings if total_ratings > 0 else 0
-        
-        # Criar estrelas para a avaliação média
-        filled_star = "★"
-        empty_star = "☆"
-        avg_stars = filled_star * int(avg_rating) + empty_star * (5 - int(avg_rating))
-        
-        elements.append(Spacer(1, 0.3 * inch))
-        elements.append(Paragraph(f"⭐ Avaliação Média: {avg_rating:.1f}/5.0", stats_style))
-        elements.append(Paragraph(f"{avg_stars}", stats_style))
-        elements.append(Paragraph(f"📈 Total de Avaliações: {total_ratings}", stats_style))
+        elements.append(Paragraph(f"Avaliação média: {avg_rating:.1f}/5.0 ({total_ratings} avaliações)", normal_style))
     
-    # Separador elegante
+    # Adicionar espaço antes da tabela
     elements.append(Spacer(1, 0.4 * inch))
+    
+    # Linha decorativa antes da tabela
     elements.append(Table([['']], colWidths=[doc.width], 
-                          style=TableStyle([('LINEABOVE', (0, 0), (-1, 0), 2, COLORS['accent'])])))
+                          style=TableStyle([('LINEABOVE', (0, 0), (-1, 0), 1, colors.HexColor('#3182CE'))])))
     elements.append(Spacer(1, 0.3 * inch))
     
-    # Seção de perguntas personalizadas (se disponível)
-    if perguntas_personalizadas:
-        elements.append(Paragraph("❓ Perguntas Personalizadas", subtitle_style))
-        elements.append(Spacer(1, 0.2 * inch))
-        
-        # Criar tabela para perguntas personalizadas
-        perguntas_data = []
-        perguntas_header = [
-            Paragraph("📝 Pergunta", header_style),
-            Paragraph("📊 Tipo", header_style),
-            Paragraph("📈 Respostas", header_style),
-            Paragraph("📋 Estatísticas", header_style)
-        ]
-        perguntas_data.append(perguntas_header)
-        
-        for pergunta in perguntas_personalizadas:
-            # Coletar respostas para esta pergunta
-            respostas = []
-            for fb in feedbacks:
-                if hasattr(fb, 'respostas_personalizadas'):
-                    for resposta in fb.respostas_personalizadas:
-                        if resposta.pergunta_id == pergunta.id:
-                            respostas.append(resposta.resposta)
-            
-            # Calcular estatísticas baseadas no tipo de pergunta
-            stats_text = ""
-            if pergunta.tipo == 'escala_numerica' and respostas:
-                numeros = [int(r) for r in respostas if r.isdigit()]
-                if numeros:
-                    avg = sum(numeros) / len(numeros)
-                    stats_text = f"Média: {avg:.1f} | Total: {len(numeros)}"
-            elif pergunta.tipo == 'multipla_escolha' and respostas:
-                from collections import Counter
-                contador = Counter(respostas)
-                stats_text = f"Total: {len(respostas)} | Mais comum: {contador.most_common(1)[0][0] if contador else 'N/A'}"
-            elif pergunta.tipo == 'sim_nao' and respostas:
-                sim_count = respostas.count('Sim')
-                nao_count = respostas.count('Não')
-                total = len(respostas)
-                stats_text = f"Sim: {sim_count} ({sim_count/total*100:.1f}%) | Não: {nao_count} ({nao_count/total*100:.1f}%)" if total > 0 else "Nenhuma resposta"
-            else:
-                stats_text = f"Total de respostas: {len(respostas)}"
-            
-            # Formatar tipo de pergunta
-            tipo_map = {
-                'texto_livre': 'Texto Livre',
-                'escala_numerica': 'Escala Numérica (1-5)',
-                'multipla_escolha': 'Múltipla Escolha',
-                'sim_nao': 'Sim/Não'
-            }
-            tipo_display = tipo_map.get(pergunta.tipo, pergunta.tipo)
-            
-            # Mostrar algumas respostas de exemplo (máximo 3)
-            respostas_exemplo = respostas[:3]
-            respostas_text = "; ".join(respostas_exemplo) if respostas_exemplo else "Nenhuma resposta"
-            if len(respostas) > 3:
-                respostas_text += f" ... (+{len(respostas)-3} mais)"
-            
-            row = [
-                Paragraph(pergunta.titulo, info_style),
-                Paragraph(tipo_display, info_style),
-                Paragraph(respostas_text, comment_style),
-                Paragraph(stats_text, info_style)
-            ]
-            perguntas_data.append(row)
-        
-        # Criar tabela de perguntas personalizadas
-        perguntas_table = Table(perguntas_data, colWidths=[
-            available_width * 0.35,  # Pergunta
-            available_width * 0.15,  # Tipo
-            available_width * 0.30,  # Respostas
-            available_width * 0.20   # Estatísticas
-        ], repeatRows=1)
-        
-        perguntas_table.setStyle(TableStyle([
-            # Cabeçalho
-            ('BACKGROUND', (0, 0), (-1, 0), COLORS['primary']),
-            ('TEXTCOLOR', (0, 0), (-1, 0), COLORS['white']),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('TOPPADDING', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-            
-            # Linhas alternadas
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLORS['white'], COLORS['light']]),
-            
-            # Grade
-            ('GRID', (0, 0), (-1, -1), 0.5, COLORS['border']),
-            
-            # Alinhamento
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('ALIGN', (1, 1), (1, -1), 'CENTER'),
-            ('ALIGN', (3, 1), (3, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            
-            # Espaçamento
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 1), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 10),
-        ]))
-        
-        elements.append(perguntas_table)
-        elements.append(Spacer(1, 0.4 * inch))
-        
-        # Separador entre seções
-        elements.append(Table([['']], colWidths=[doc.width], 
-                              style=TableStyle([('LINEABOVE', (0, 0), (-1, 0), 1, COLORS['border'])])))
-        elements.append(Spacer(1, 0.3 * inch))
-    
     # Título da seção de feedbacks
-    elements.append(Paragraph("💬 Detalhes dos Feedbacks", subtitle_style))
+    elements.append(Paragraph("Detalhes dos Feedbacks", subtitle_style))
     elements.append(Spacer(1, 0.2 * inch))
     
-    # Cabeçalho da tabela moderno
+    # Cabeçalho da tabela com Paragraph para melhor formatação
     header = [
-        Paragraph("👤 Usuário", header_style),
-        Paragraph("⭐ Avaliação", header_style),
-        Paragraph("💬 Comentário", header_style),
-        Paragraph("📅 Data", header_style)
+        Paragraph("Usuário", header_style),
+        Paragraph("Avaliação", header_style),
+        Paragraph("Comentário", header_style),
+        Paragraph("Data", header_style)
     ]
     table_data = [header]
     
@@ -1388,10 +1241,10 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path, perguntas_personalizadas=No
         comentario_paragraph = Paragraph(comentario_text, comment_style)
         
         row = [
-            Paragraph(nome_autor, info_style),
-            Paragraph(rating_str, info_style),
+            Paragraph(nome_autor, normal_style),
+            Paragraph(rating_str, normal_style),
             comentario_paragraph,
-            Paragraph(data_str, info_style)
+            Paragraph(data_str, normal_style)
         ]
         table_data.append(row)
     
@@ -1407,45 +1260,49 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path, perguntas_personalizadas=No
     
     available_width = doc.width  # largura disponível após as margens
     
-    # Define as larguras das colunas otimizadas
+    # Define as larguras das colunas em porcentagem da largura disponível
     col_widths = [
-        available_width * 0.18,  # Usuário
-        available_width * 0.12,  # Avaliação
-        available_width * 0.50,  # Comentário
+        available_width * 0.20,  # Usuário
+        available_width * 0.15,  # Avaliação
+        available_width * 0.45,  # Comentário
         available_width * 0.20   # Data
     ]
     
-    # Cria e estiliza a tabela com design moderno
+    # Cria e estiliza a tabela
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
     
+    # Cores suaves e modernas
+    header_bg_color = colors.HexColor('#2C5282')  # Azul escuro
+    alt_row_color = colors.HexColor('#EBF8FF')    # Azul bem claro
+    grid_color = colors.HexColor('#CBD5E0')       # Cinza claro
+    
     table.setStyle(TableStyle([
-        # Cabeçalho com cor de destaque
-        ('BACKGROUND', (0, 0), (-1, 0), COLORS['accent']),
-        ('TEXTCOLOR', (0, 0), (-1, 0), COLORS['white']),
+        # Cabeçalho
+        ('BACKGROUND', (0, 0), (-1, 0), header_bg_color),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 13),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         
         # Linhas alternadas para facilitar a leitura
-        ('BACKGROUND', (0, 1), (-1, -1), COLORS['white']),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLORS['white'], COLORS['light']]),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, alt_row_color]),
         
-        # Grade sutil
-        ('GRID', (0, 0), (-1, -1), 0.5, COLORS['border']),
+        # Grade fina e elegante
+        ('GRID', (0, 0), (-1, -1), 0.5, grid_color),
         
-        # Alinhamento otimizado
+        # Alinhamento
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),       # Cabeçalho centralizado
         ('ALIGN', (1, 1), (1, -1), 'CENTER'),       # Coluna de avaliação centralizada
         ('ALIGN', (0, 1), (0, -1), 'LEFT'),         # Coluna de usuários à esquerda
         ('ALIGN', (3, 1), (3, -1), 'CENTER'),       # Coluna de datas centralizada
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),        # Alinhamento vertical no topo
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),     # Alinhamento vertical no meio
         
-        # Espaçamento interno generoso
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 1), (-1, -1), 12),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 12),
+        # Espaçamento interno
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 10),
     ]))
     
     elements.append(table)
@@ -1455,12 +1312,14 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path, perguntas_personalizadas=No
     
     # Linha decorativa antes do rodapé
     elements.append(Table([['']], colWidths=[doc.width], 
-                          style=TableStyle([('LINEABOVE', (0, 0), (-1, 0), 1, COLORS['border'])])))
+                          style=TableStyle([('LINEABOVE', (0, 0), (-1, 0), 0.5, colors.HexColor('#CBD5E0'))])))
     
-    elements.append(Spacer(1, 0.3 * inch))
+    # Adiciona espaço após a linha
+    elements.append(Spacer(1, 0.2 * inch))
     
-    # Rodapé moderno
-    footer_text = f"📄 Relatório gerado automaticamente pelo sistema de gestão de eventos"
+    # Rodapé com horário local e informações adicionais
+    footer_text = "Este relatório é um documento confidencial e de uso interno. "
+    footer_text += f"Gerado via AppFiber em {now.strftime('%d/%m/%Y às %H:%M')}."
     elements.append(Paragraph(footer_text, footer_style))
     
     # Construir o PDF
@@ -1487,20 +1346,11 @@ def gerar_pdf_feedback_route(oficina_id):
     
     feedbacks = query.order_by(Feedback.created_at.desc()).all()
     
-    # Buscar perguntas personalizadas para esta oficina
-    from models.feedback_models import FeedbackPergunta
-    perguntas_personalizadas = FeedbackPergunta.query.filter(
-        FeedbackPergunta.cliente_id == oficina.cliente_id,
-        FeedbackPergunta.ativa == True
-    ).filter(
-        (FeedbackPergunta.oficina_id == oficina_id) | (FeedbackPergunta.oficina_id == None)
-    ).order_by(FeedbackPergunta.ordem).all()
-    
     pdf_folder = os.path.join("static", "feedback_pdfs")
     os.makedirs(pdf_folder, exist_ok=True)
     pdf_filename = f"feedback_{oficina.id}.pdf"
     pdf_path = os.path.join(pdf_folder, pdf_filename)
-    gerar_pdf_feedback(oficina, feedbacks, pdf_path, perguntas_personalizadas)
+    gerar_pdf_feedback(oficina, feedbacks, pdf_path)
     return send_file(pdf_path, as_attachment=True)
 
 
@@ -2700,27 +2550,48 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
         caminho_pdf: Caminho onde o PDF será salvo
     """
     
-    # 1) Obter APENAS o agendamento específico do usuário (PRIVACIDADE)
+    # 1) Obter agendamentos do professor ou do mesmo cliente para o relatório
     from models import AgendamentoVisita
+    from sqlalchemy import or_
 
-    # CORREÇÃO DE PRIVACIDADE: Mostrar apenas o agendamento específico do usuário
-    agendamentos = [agendamento]  # Apenas o agendamento atual
+    agendamentos = AgendamentoVisita.query.filter(
+        or_(
+            AgendamentoVisita.professor_id == agendamento.professor_id,
+            AgendamentoVisita.cliente_id == agendamento.cliente_id,
+        )
+    ).all()
     
     # 2) Cria objeto PDF
     pdf = FPDF()
+    
+    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
+    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+    
+    def set_font_safe(style='', size=12):
+        """Define fonte Arial com fallback robusto"""
+        try:
+            pdf.set_font('Arial', style, size)
+        except Exception as e:
+            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
+            try:
+                pdf.set_font('Helvetica', style, size)
+            except Exception:
+                # Último recurso - fonte básica
+                pdf.set_font('Times', '', size)
+    
     pdf.add_page()
 
     # 3) -------------------------------
-    #    SEÇÃO: Comprovante de Agendamento Individual
+    #    SEÇÃO: Relatório de Agendamentos
     # 3.1) Título
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(190, 10, f'Comprovante de Agendamento - {evento.nome}', 0, 1, 'C')
+    set_font_safe('B', 16)
+    pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
     
     # 3.2) Cabeçalho do evento
-    pdf.set_font('Arial', 'B', 12)
+    set_font_safe('B', 12)
     pdf.cell(190, 10, f'Evento: {evento.nome}', 0, 1)
     
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     if evento.data_inicio and evento.data_fim:
         pdf.cell(
             190, 10,
@@ -2732,70 +2603,84 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
 
     pdf.cell(190, 10, f'Local: {evento.localizacao or "Não informado"}', 0, 1)
 
-    # 3.3) Informações do agendamento específico
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(190, 10, f'Status do Agendamento: {agendamento.status.title()}', 0, 1)
+    # 3.3) Total de agendamentos
+    set_font_safe('B', 12)
+    pdf.cell(190, 10, f'Total de agendamentos: {len(agendamentos)}', 0, 1)
     
-    # 3.4) Informações específicas do agendamento
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(190, 10, f'Escola: {agendamento.escola_nome}', 0, 1)
-    pdf.cell(190, 10, f'Turma: {agendamento.turma}', 0, 1)
-    pdf.cell(190, 10, f'Nível de Ensino: {agendamento.nivel_ensino}', 0, 1)
-    pdf.cell(190, 10, f'Quantidade de Alunos: {agendamento.quantidade_alunos}', 0, 1)
-    
-    # Contar alunos presentes apenas para este agendamento
+    # 3.4) Resumo por status
+    status_count = {'confirmado': 0, 'cancelado': 0, 'realizado': 0}
+    alunos_esperados = 0
     alunos_presentes = 0
-    if agendamento.status == 'realizado':
-        alunos_presentes = sum(1 for aluno in agendamento.alunos if aluno.presente)
-        pdf.cell(190, 10, f'Alunos Presentes: {alunos_presentes}', 0, 1)
     
-    # 3.5) Informações do horário
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(190, 10, 'Detalhes do Horário:', 0, 1)
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(190, 10, f'Data: {horario.data.strftime("%d/%m/%Y")}', 0, 1)
-    pdf.cell(190, 10, f'Horário: {horario.horario_inicio} às {horario.horario_fim}', 0, 1)
+    for ag in agendamentos:
+        status = ag.status
+        status_count[status] = status_count.get(status, 0) + 1
+        
+        # Contar alunos
+        alunos_esperados += ag.quantidade_alunos
+        if ag.status == 'realizado':
+            presentes = sum(1 for aluno in ag.alunos if aluno.presente)
+            alunos_presentes += presentes
+    
+    pdf.cell(190, 10, f'Confirmados: {status_count["confirmado"]}', 0, 1)
+    pdf.cell(190, 10, f'Cancelados: {status_count["cancelado"]}', 0, 1)
+    pdf.cell(190, 10, f'Realizados: {status_count["realizado"]}', 0, 1)
+    pdf.cell(190, 10, f'Total de alunos esperados: {alunos_esperados}', 0, 1)
     
     if alunos_presentes > 0:
-        presenca = (alunos_presentes / agendamento.quantidade_alunos) * 100 if agendamento.quantidade_alunos > 0 else 0
+        presenca = (alunos_presentes / alunos_esperados) * 100 if alunos_esperados > 0 else 0
         pdf.cell(
             190, 10,
-            f'Taxa de presença: {presenca:.1f}% ({alunos_presentes}/{agendamento.quantidade_alunos})',
+            f'Total de alunos presentes: {alunos_presentes} ({presenca:.1f}%)',
             0, 1
         )
     
-    # 3.6) Informações adicionais do agendamento
+    # 3.5) Listagem de agendamentos
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Informações Adicionais', 0, 1, 'C')
+    set_font_safe('B', 14)
+    pdf.cell(190, 10, 'Listagem de Agendamentos', 0, 1, 'C')
     
-    pdf.set_font('Arial', '', 12)
-    if agendamento.escola_codigo_inep:
-        pdf.cell(190, 10, f'Código INEP: {agendamento.escola_codigo_inep}', 0, 1)
+    # Cabeçalho da tabela
+    set_font_safe('B', 10)
+    pdf.cell(20, 10, 'ID', 1, 0, 'C')
+    pdf.cell(30, 10, 'Data', 1, 0, 'C')
+    pdf.cell(30, 10, 'Horário', 1, 0, 'C')
+    pdf.cell(50, 10, 'Escola', 1, 0, 'C')
+    pdf.cell(30, 10, 'Alunos', 1, 0, 'C')
+    pdf.cell(30, 10, 'Status', 1, 1, 'C')
     
-    if agendamento.rede_ensino:
-        pdf.cell(190, 10, f'Rede de Ensino: {agendamento.rede_ensino}', 0, 1)
+    set_font_safe('', 9)
+    for ag in agendamentos:
+        h = ag.horario  # HorarioVisitacao
+        escola_nome = ag.escola_nome
+        if len(escola_nome) > 20:
+            escola_nome = escola_nome[:17] + '...'
+        
+        pdf.cell(20, 10, str(ag.id), 1, 0, 'C')
+        if h and h.data:
+            pdf.cell(30, 10, h.data.strftime('%d/%m/%Y'), 1, 0, 'C')
+        else:
+            pdf.cell(30, 10, '--/--/----', 1, 0, 'C')
+        
+        if h and h.horario_inicio and h.horario_fim:
+            pdf.cell(
+                30, 10,
+                f"{h.horario_inicio.strftime('%H:%M')} - {h.horario_fim.strftime('%H:%M')}",
+                1, 0, 'C'
+            )
+        else:
+            pdf.cell(30, 10, '---', 1, 0, 'C')
+        
+        pdf.cell(50, 10, escola_nome, 1, 0, 'L')
+        pdf.cell(30, 10, str(ag.quantidade_alunos), 1, 0, 'C')
+        pdf.cell(30, 10, ag.status.capitalize(), 1, 1, 'C')
     
-    if agendamento.estado and agendamento.municipio:
-        pdf.cell(190, 10, f'Localização: {agendamento.municipio} - {agendamento.estado}', 0, 1)
-    
-    if agendamento.responsavel_nome:
-        pdf.cell(190, 10, f'Responsável: {agendamento.responsavel_nome}', 0, 1)
-        if agendamento.responsavel_cargo:
-            pdf.cell(190, 10, f'Cargo: {agendamento.responsavel_cargo}', 0, 1)
-    
-    if agendamento.acompanhantes_nomes:
-        pdf.cell(190, 10, f'Acompanhantes: {agendamento.acompanhantes_nomes}', 0, 1)
-    
-    if agendamento.observacoes:
-        pdf.cell(190, 10, f'Observações: {agendamento.observacoes}', 0, 1)
-    
-    # Rodapé do comprovante
+    # Rodapé do relatório
     pdf.ln(10)
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(
         190, 10,
-        f'Comprovante gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}',
+        f'Relatório gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}',
         0, 1, 'C'
     )
 
@@ -2804,15 +2689,15 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     # Precisamos de nova página para não escrever em cima do relatório
     pdf.add_page()
 
-    pdf.set_font('Arial', 'B', 16)
+    set_font_safe('B', 16)
     pdf.cell(190, 10, 'Comprovante de Agendamento', 0, 1, 'C')
 
     # Informações do evento
-    pdf.set_font('Arial', 'B', 12)
+    set_font_safe('B', 12)
     pdf.cell(190, 10, f'Evento: {evento.nome}', 0, 1)
     
     # Informações do agendamento
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(190, 10, f'Cód. do Agendamento: #{agendamento.id}', 0, 1)
 
     if horario and horario.data:
@@ -2848,15 +2733,15 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
         pdf.cell(190, 10, 'Agendado em: --/--/---- --:--', 0, 1)
     
     # Status do agendamento
-    pdf.set_font('Arial', 'B', 12)
+    set_font_safe('B', 12)
     pdf.cell(190, 10, f'Status: {agendamento.status.upper()}', 0, 1)
     
     # Salas selecionadas
     if salas:
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.cell(190, 10, 'Salas selecionadas:', 0, 1)
-        pdf.set_font('Arial', '', 12)
+        set_font_safe('', 12)
         for sala in salas:
             pdf.cell(190, 10, f'- {sala.nome}', 0, 1)
     
@@ -2864,7 +2749,7 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     pdf.ln(5)
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(190, 10, 'Informações para Check-in:', 0, 1)
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     if agendamento.checkin_realizado and agendamento.data_checkin:
         pdf.cell(
             190, 10,
@@ -2939,14 +2824,30 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     """Gera um PDF completo de agendamentos com todas as informações detalhadas."""
 
     pdf = FPDF()
+    
+    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
+    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+    
+    def set_font_safe(style='', size=12):
+        """Define fonte Arial com fallback robusto"""
+        try:
+            pdf.set_font('Arial', style, size)
+        except Exception as e:
+            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
+            try:
+                pdf.set_font('Helvetica', style, size)
+            except Exception:
+                # Último recurso - fonte básica
+                pdf.set_font('Times', '', size)
+    
     pdf.add_page()
 
     # Título
-    pdf.set_font('Arial', 'B', 16)
+    set_font_safe('B', 16)
     pdf.cell(190, 10, f'Relatório Completo de Agendamentos - {evento.nome}', 0, 1, 'C')
 
     # Informações do evento
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(190, 10, f'Local: {evento.local}', 0, 1)
     periodo = (
         f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} '
@@ -2955,7 +2856,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.cell(190, 10, periodo, 0, 1)
 
     # Data e hora de geração
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(
         190,
         10,
@@ -2967,7 +2868,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
     # Estatísticas Gerais
     pdf.ln(5)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Estatísticas Gerais', 0, 1)
 
     confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
@@ -3030,24 +2931,24 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     # Estatísticas de PCD
     if tipos_pcd:
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.cell(190, 10, 'Distribuição por Tipo de Necessidade Especial:', 0, 1)
-        pdf.set_font('Arial', '', 10)
+        set_font_safe('', 10)
         for tipo, quantidade in tipos_pcd.items():
             pdf.cell(190, 8, f'• {tipo}: {quantidade} aluno(s)', 0, 1)
     
     # Materiais de apoio utilizados
     if materiais_apoio_utilizados:
         pdf.ln(3)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.cell(190, 10, 'Materiais de Apoio Utilizados:', 0, 1)
-        pdf.set_font('Arial', '', 10)
+        set_font_safe('', 10)
         for material in sorted(materiais_apoio_utilizados):
             pdf.cell(190, 8, f'• {material}', 0, 1)
 
     # Detalhes dos Agendamentos
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Detalhes dos Agendamentos', 0, 1)
 
     for i, agendamento in enumerate(agendamentos, 1):
@@ -3059,12 +2960,12 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         
         # Cabeçalho do agendamento
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 12)
+        set_font_safe('B', 12)
         pdf.set_fill_color(230, 230, 230)
         pdf.cell(190, 8, f'Agendamento #{agendamento.id} - {agendamento.escola_nome}', 1, 1, 'L', True)
         
         # Informações básicas
-        pdf.set_font('Arial', '', 10)
+        set_font_safe('', 10)
         pdf.cell(95, 6, f'Data: {horario.data.strftime("%d/%m/%Y")}', 1, 0)
         pdf.cell(95, 6, f'Horário: {horario.horario_inicio.strftime("%H:%M")} às {horario.horario_fim.strftime("%H:%M")}', 1, 1)
         
@@ -3097,30 +2998,30 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         # Lista de alunos com detalhes
         if agendamento.alunos:
             pdf.ln(2)
-            pdf.set_font('Arial', 'B', 10)
+            set_font_safe('B', 10)
             pdf.cell(190, 6, 'Lista de Alunos:', 0, 1)
             
             # Cabeçalho da tabela de alunos
-            pdf.set_font('Arial', 'B', 8)
+            set_font_safe('B', 8)
             pdf.cell(50, 6, 'Nome', 1, 0, 'C')
             pdf.cell(20, 6, 'Presente', 1, 0, 'C')
             pdf.cell(40, 6, 'Tipo PCD', 1, 0, 'C')
             pdf.cell(40, 6, 'Descrição', 1, 0, 'C')
             pdf.cell(40, 6, 'Materiais de Apoio', 1, 1, 'C')
             
-            pdf.set_font('Arial', '', 7)
+            set_font_safe('', 7)
             for aluno in agendamento.alunos:
                 # Verificar se precisa de nova página
                 if pdf.get_y() > 270:
                     pdf.add_page()
                     # Repetir cabeçalho
-                    pdf.set_font('Arial', 'B', 8)
+                    set_font_safe('B', 8)
                     pdf.cell(50, 6, 'Nome', 1, 0, 'C')
                     pdf.cell(20, 6, 'Presente', 1, 0, 'C')
                     pdf.cell(40, 6, 'Tipo PCD', 1, 0, 'C')
                     pdf.cell(40, 6, 'Descrição', 1, 0, 'C')
                     pdf.cell(40, 6, 'Materiais de Apoio', 1, 1, 'C')
-                    pdf.set_font('Arial', '', 7)
+                    set_font_safe('', 7)
                 
                 nome = aluno.nome[:25] + '...' if len(aluno.nome) > 25 else aluno.nome
                 presente = 'Sim' if aluno.presente else 'Não'
@@ -3220,7 +3121,7 @@ def gerar_qrcode_token(token):
 
 
 def gerar_programacao_evento_pdf(evento_id):
-    """Gera um PDF moderno e elegante da programação do evento com design minimalista"""
+    """Gera um PDF profissional e organizado da programação do evento"""
     from models import Evento, Oficina
     from extensions import db
     from flask import current_app, send_file
@@ -3236,6 +3137,7 @@ def gerar_programacao_evento_pdf(evento_id):
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
         PageBreak, Frame, PageTemplate, BaseDocTemplate
     )
+    from reportlab.platypus.tableofcontents import TableOfContents
 
     # 1. Data Retrieval and Preparation
     evento = Evento.query.get_or_404(evento_id)
@@ -3243,11 +3145,7 @@ def gerar_programacao_evento_pdf(evento_id):
     oficinas = (
         Oficina.query
         .filter_by(evento_id=evento_id)
-        .options(
-            db.joinedload(Oficina.dias),
-            db.joinedload(Oficina.ministrante_obj),
-            db.joinedload(Oficina.formador)
-        )
+        .options(db.joinedload(Oficina.dias), db.joinedload(Oficina.ministrante_obj))
         .all()
     )
 
@@ -3270,7 +3168,6 @@ def gerar_programacao_evento_pdf(evento_id):
             grouped_oficinas[data_str].append({
                 'titulo': oficina.titulo,
                 'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'A definir',
-                'formador': oficina.formador.nome if getattr(oficina, 'formador', None) else 'A definir',
                 'inicio': format_horario(dia.horario_inicio),
                 'fim': format_horario(dia.horario_fim),
                 'descricao': getattr(oficina, 'descricao', '') or '',
@@ -3289,190 +3186,199 @@ def gerar_programacao_evento_pdf(evento_id):
     filename = f"programacao_evento_{evento_id}.pdf"
     pdf_path = os.path.join(pdf_dir, filename)
 
-    # 3. Create Document with Modern Design
+    # 3. Create Document with Custom Styles
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=A4,
-        rightMargin=2.5*cm,
-        leftMargin=2.5*cm,
-        topMargin=3*cm,
-        bottomMargin=2.5*cm
+        rightMargin=2*cm,
+        leftMargin=2*cm,
+        topMargin=2.5*cm,
+        bottomMargin=2*cm
     )
 
-    # 4. Modern Color Palette
-    COLORS = {
-        'primary': HexColor('#2C3E50'),      # Azul escuro elegante
-        'secondary': HexColor('#34495E'),    # Cinza azulado
-        'accent': HexColor('#E74C3C'),       # Vermelho vibrante
-        'light': HexColor('#ECF0F1'),       # Cinza muito claro
-        'white': HexColor('#FFFFFF'),
-        'text_light': HexColor('#7F8C8D'),  # Cinza para textos secundários
-        'border': HexColor('#BDC3C7')        # Cinza para bordas
-    }
-
-    # 5. Modern Styles
+    # 4. Define Custom Styles
     styles = getSampleStyleSheet()
     
-    # Título principal com destaque
+    # Cores do tema
+    primary_color = HexColor('#2C3E50')      # Azul escuro
+    secondary_color = HexColor('#3498DB')     # Azul claro
+    accent_color = HexColor('#E74C3C')        # Vermelho
+    text_color = HexColor('#34495E')          # Cinza escuro
+    light_gray = HexColor('#ECF0F1')          # Cinza claro
+    
+    # Estilos customizados
     styles.add(ParagraphStyle(
-        name='ModernTitle',
+        name='EventTitle',
         parent=styles['Heading1'],
-        fontSize=32,
-        textColor=COLORS['primary'],
+        fontSize=28,
+        textColor=primary_color,
         alignment=TA_CENTER,
-        spaceAfter=6*mm,
-        spaceBefore=0,
-        fontName='Helvetica-Bold',
-        leading=36
+        spaceAfter=8*mm,
+        spaceBefore=5*mm,
+        fontName='Helvetica-Bold'
     ))
     
-    # Subtítulo elegante
     styles.add(ParagraphStyle(
-        name='ModernSubtitle',
+        name='EventSubtitle',
         parent=styles['Normal'],
-        fontSize=16,
-        textColor=COLORS['secondary'],
+        fontSize=14,
+        textColor=secondary_color,
         alignment=TA_CENTER,
-        spaceAfter=15*mm,
-        fontName='Helvetica',
-        leading=20
+        spaceAfter=12*mm,
+        fontName='Helvetica-Oblique'
     ))
     
-    # Descrição do evento
     styles.add(ParagraphStyle(
-        name='ModernDescription',
-        parent=styles['Normal'],
-        fontSize=12,
-        textColor=COLORS['secondary'],
-        alignment=TA_JUSTIFY,
-        spaceAfter=20*mm,
-        leading=16,
-        leftIndent=0,
-        rightIndent=0
-    ))
-    
-    # Cabeçalho de data com destaque
-    styles.add(ParagraphStyle(
-        name='ModernDateHeader',
-        parent=styles['Heading2'],
-        fontSize=20,
-        textColor=COLORS['white'],
-        spaceBefore=20*mm,
-        spaceAfter=10*mm,
-        fontName='Helvetica-Bold',
-        alignment=TA_CENTER,
-        backColor=COLORS['accent'],
-        borderPadding=8*mm,
-        leading=24
-    ))
-    
-    # Estilo para informações da oficina
-    styles.add(ParagraphStyle(
-        name='ModernOficinaInfo',
+        name='EventDescription',
         parent=styles['Normal'],
         fontSize=11,
-        textColor=COLORS['primary'],
-        fontName='Helvetica-Bold',
-        spaceAfter=3*mm,
+        textColor=text_color,
+        alignment=TA_JUSTIFY,
+        spaceAfter=15*mm,
         leading=14
     ))
     
-    # Estilo para detalhes da oficina
     styles.add(ParagraphStyle(
-        name='ModernOficinaDetails',
+        name='DateHeader',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=primary_color,
+        spaceBefore=15*mm,
+        spaceAfter=8*mm,
+        fontName='Helvetica-Bold',
+        borderWidth=0,
+        borderColor=secondary_color,
+        borderPadding=3*mm
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='OficinaTitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=primary_color,
+        fontName='Helvetica-Bold',
+        spaceAfter=2*mm
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='OficinaDetails',
         parent=styles['Normal'],
         fontSize=10,
-        textColor=COLORS['text_light'],
-        leftIndent=8*mm,
-        spaceAfter=2*mm,
-        leading=12
+        textColor=text_color,
+        leftIndent=5*mm,
+        spaceAfter=1*mm
     ))
     
-    # Rodapé moderno
     styles.add(ParagraphStyle(
-        name='ModernFooter',
+        name='Footer',
         parent=styles['Normal'],
         fontSize=9,
-        textColor=COLORS['text_light'],
+        textColor=HexColor('#7F8C8D'),
         alignment=TA_CENTER,
-        spaceBefore=25*mm,
-        leading=12
+        spaceBefore=20*mm
     ))
 
-    # 6. Build Document Content
+    # 5. Build Document Content
     story = []
     
-    # Cabeçalho principal com destaque
-    story.append(Paragraph(f"{evento.nome}", styles['ModernTitle']))
+    # Cabeçalho do evento
+    story.append(Paragraph(f"{evento.nome}", styles['EventTitle']))
     
     if hasattr(evento, 'data_inicio') and evento.data_inicio:
         data_evento = evento.data_inicio.strftime('%d de %B de %Y')
-        story.append(Paragraph(f"Programação do Evento", styles['ModernSubtitle']))
-        story.append(Paragraph(f"{data_evento}", styles['ModernSubtitle']))
+        story.append(Paragraph(f"Programação do Evento - {data_evento}", styles['EventSubtitle']))
     else:
-        story.append(Paragraph("Programação do Evento", styles['ModernSubtitle']))
+        story.append(Paragraph("Programação do Evento", styles['EventSubtitle']))
     
-    # Descrição do evento com estilo moderno
+    # Descrição do evento
     if evento.descricao:
-        story.append(Paragraph(evento.descricao, styles['ModernDescription']))
+        story.append(Paragraph(evento.descricao, styles['EventDescription']))
     
-    # Linha separadora elegante
-    story.append(Spacer(1, 10*mm))
+    # Linha separadora
+    story.append(Spacer(1, 5*mm))
     
-    # Programação por data com design moderno
+    # Programação por data
     for i, data in enumerate(sorted_dates):
-        # Cabeçalho da data com fundo destacado
+        # Cabeçalho da data
         data_dt = datetime.strptime(data, '%d/%m/%Y')
         data_formatada = f"{dia_semana(data_dt)}, {data_dt.strftime('%d de %B de %Y')}"
-        story.append(Paragraph(data_formatada, styles['ModernDateHeader']))
+        story.append(Paragraph(data_formatada, styles['DateHeader']))
         
-        # Oficinas do dia com layout moderno
+        # Criar tabela para as oficinas do dia
         oficinas_do_dia = sorted(grouped_oficinas[data], key=lambda x: x['inicio'])
         
         if oficinas_do_dia:
+            # Dados da tabela
+            table_data = [['Horário', 'Oficina', 'Ministrante']]
+            
             for oficina in oficinas_do_dia:
-                # Container da oficina com borda sutil
                 horario = f"{oficina['inicio']} - {oficina['fim']}" if oficina['inicio'] and oficina['fim'] else "A definir"
                 
-                # Título da oficina em destaque
-                story.append(Paragraph(f"🕒 {horario}", styles['ModernOficinaInfo']))
-                story.append(Paragraph(f"📚 {oficina['titulo']}", styles['ModernOficinaInfo']))
-                
-                # Detalhes da oficina
-                if oficina['ministrante'] and oficina['ministrante'] != 'A definir':
-                    story.append(Paragraph(f"👤 Ministrante: {oficina['ministrante']}", styles['ModernOficinaDetails']))
-                if oficina['formador'] and oficina['formador'] != 'A definir':
-                    story.append(Paragraph(f"🧑‍🏫 Formador: {oficina['formador']}", styles['ModernOficinaDetails']))
-                
+                # Título da oficina
+                titulo_oficina = oficina['titulo']
                 if oficina['local']:
-                    story.append(Paragraph(f"📍 Local: {oficina['local']}", styles['ModernOficinaDetails']))
+                    titulo_oficina += f"<br/><i>Local: {oficina['local']}</i>"
                 
+                # Descrição se houver
                 if oficina['descricao']:
-                    descricao_truncada = oficina['descricao'][:150] + "..." if len(oficina['descricao']) > 150 else oficina['descricao']
-                    story.append(Paragraph(f"📝 {descricao_truncada}", styles['ModernOficinaDetails']))
+                    descricao_truncada = oficina['descricao'][:100] + "..." if len(oficina['descricao']) > 100 else oficina['descricao']
+                    titulo_oficina += f"<br/><font size='9' color='#7F8C8D'>{descricao_truncada}</font>"
                 
-                # Espaçamento entre oficinas
-                story.append(Spacer(1, 8*mm))
+                table_data.append([
+                    horario,
+                    Paragraph(titulo_oficina, styles['Normal']),
+                    oficina['ministrante']
+                ])
+            
+            # Criar e estilizar tabela
+            table = Table(table_data, colWidths=[3.5*cm, 9*cm, 4*cm])
+            table.setStyle(TableStyle([
+                # Cabeçalho
+                ('BACKGROUND', (0, 0), (-1, 0), secondary_color),
+                ('TEXTCOLOR', (0, 0), (-1, 0), white),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8*mm),
+                ('TOPPADDING', (0, 0), (-1, 0), 8*mm),
+                
+                # Corpo da tabela
+                ('BACKGROUND', (0, 1), (-1, -1), white),
+                ('TEXTCOLOR', (0, 1), (-1, -1), text_color),
+                ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Horário centralizado
+                ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Oficina à esquerda
+                ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # Ministrante à esquerda
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [white, light_gray]),
+                ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#BDC3C7')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 5*mm),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5*mm),
+                ('TOPPADDING', (0, 1), (-1, -1), 5*mm),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 8*mm),
+            ]))
+            
+            story.append(table)
         else:
-            story.append(Paragraph("📅 Nenhuma oficina programada para este dia.", styles['ModernOficinaDetails']))
+            story.append(Paragraph("Nenhuma oficina programada para este dia.", styles['OficinaDetails']))
         
-        # Espaçamento entre datas
-        story.append(Spacer(1, 15*mm))
+        story.append(Spacer(1, 8*mm))
         
         # Quebra de página entre datas (exceto na última)
         if i < len(sorted_dates) - 1:
             story.append(PageBreak())
     
-    # Rodapé moderno
-    footer_text = f"📄 Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}"
+    # Rodapé
+    footer_text = f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}"
     if hasattr(evento, 'organizador') and evento.organizador:
-        footer_text += f"<br/>🏢 Organização: {evento.organizador}"
+        footer_text += f"<br/>Organização: {evento.organizador}"
     if hasattr(evento, 'contato') and evento.contato:
-        footer_text += f"<br/>📞 Contato: {evento.contato}"
+        footer_text += f"<br/>Contato: {evento.contato}"
         
-    story.append(Paragraph(footer_text, styles['ModernFooter']))
+    story.append(Paragraph(footer_text, styles['Footer']))
 
-    # 7. Build PDF
+    # 6. Build PDF
     doc.build(story)
 
     return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
@@ -3491,90 +3397,142 @@ from textwrap import wrap
 
 def gerar_placas_oficinas_pdf(evento_id):
     """
-    Gera um PDF com placas elegantes e simples para cada oficina de um evento.
-    Design minimalista com foco no nome da oficina como elemento principal.
+    Gera um PDF com placas individuais, modernas e harmoniosas para cada oficina de um evento.
+    O design foi aprimorado para ter um visual mais profissional, com gradientes,
+    ícones vetoriais e uma hierarquia visual clara.
     """
     from models import Evento, Oficina
     from extensions import db
     from flask import current_app, send_file
 
-    # --- Paleta de Cores Minimalista ---
+    # --- Paleta de Cores Refinada ---
     COLORS = {
-        'primary': HexColor('#2C3E50'),      # Azul escuro elegante
-        'secondary': HexColor('#34495E'),    # Cinza azulado
-        'accent': HexColor('#E74C3C'),       # Vermelho vibrante para destaques
-        'light': HexColor('#ECF0F1'),       # Cinza muito claro
+        'primary_dark': HexColor('#0D1B2A'),    # Azul quase preto para textos principais
+        'primary_medium': HexColor('#1B263B'),  # Azul escuro para fundos de destaque
+        'primary_light': HexColor('#415A77'),   # Azul acinzentado para subtextos
+        'accent': HexColor('#E0E1DD'),          # Bege claro para detalhes e fundos
+        'highlight': HexColor('#D90429'),       # Vermelho vibrante para destaques importantes
         'white': HexColor('#FFFFFF'),
-        'text_light': HexColor('#7F8C8D'),  # Cinza para textos secundários
-        'border': HexColor('#BDC3C7')        # Cinza para bordas
+        'light_gray': HexColor('#F8F9FA'),
+        'shadow': Color(0, 0, 0, alpha=0.15)
     }
 
-    # --- Funções de Desenho Simplificadas ---
+    # --- Funções de Desenho Auxiliares ---
 
-    def draw_clean_background(c, width, height):
-        """Fundo limpo e minimalista."""
-        c.setFillColor(COLORS['white'])
+    def draw_background(c, width, height):
+        """Desenha um fundo com um gradiente vertical sutil."""
+        # O gradiente vai do cinza claro (topo) para o branco (base)
+        c.setFillColor(COLORS['light_gray'])
         c.rect(0, 0, width, height, fill=1, stroke=0)
+        # Adiciona um retângulo decorativo na base
+        c.setFillColor(COLORS['primary_medium'])
+        c.rect(0, 0, width, 2*cm, fill=1, stroke=0)
 
-    def draw_title_section(c, x, y, width, height, title):
-        """Seção principal com o título da oficina em destaque."""
-        # Fundo destacado para o título
-        c.setFillColor(COLORS['accent'])
-        c.roundRect(x, y + height * 0.7, width, height * 0.3, radius=0.3*cm, fill=1, stroke=0)
+    def draw_card(c, x, y, width, height):
+        """Desenha o cartão principal com sombra e bordas arredondadas."""
+        # Sombra sutil
+        c.setFillColor(COLORS['shadow'])
+        c.roundRect(x + 0.1*cm, y - 0.1*cm, width, height, radius=0.5*cm, fill=1, stroke=0)
         
-        # Título da oficina
+        # Cartão branco
         c.setFillColor(COLORS['white'])
-        c.setFont('Helvetica-Bold', 36)
+        c.roundRect(x, y, width, height, radius=0.5*cm, fill=1, stroke=0)
+
+    def draw_header(c, x, y, width, height):
+        """Desenha a faixa de destaque no topo do cartão."""
+        c.setFillColor(COLORS['highlight'])
+        c.roundRect(x, y + height - 1.5*cm, width, 1.5*cm, radius=0.5*cm, fill=1, stroke=0)
+
+    def draw_workshop_title(c, box, title):
+        """Desenha o título da oficina, centralizado e com quebra de linha automática."""
+        c.setFillColor(COLORS['primary_dark'])
         
-        # Quebra de linha inteligente para o título
-        words = title.split()
-        lines = []
-        current_line = ""
+        # Tenta diferentes tamanhos de fonte para caber o título
+        for size in [32, 28, 24, 20]:
+            c.setFont('Helvetica-Bold', size)
+            lines = wrap(title, width=int(box.width / (size * 0.02))) # Heurística para quebra
+            line_height = size * 1.2
+            total_height = len(lines) * line_height
+            if total_height < box.height:
+                break
         
-        for word in words:
-            test_line = current_line + (" " if current_line else "") + word
-            if c.stringWidth(test_line, 'Helvetica-Bold', 36) <= width - 2*cm:
-                current_line = test_line
-            else:
-                if current_line:
-                    lines.append(current_line)
-                    current_line = word
-                else:
-                    lines.append(word)
-        
-        if current_line:
-            lines.append(current_line)
-        
-        # Centraliza o texto verticalmente
-        line_height = 45
-        total_height = len(lines) * line_height
-        start_y = y + height * 0.85 - total_height / 2
+        start_y = box.y + box.height - (box.height - total_height) / 2
         
         for i, line in enumerate(lines):
-            c.drawCentredString(x + width / 2, start_y - i * line_height, line)
+            text_width = c.stringWidth(line, 'Helvetica-Bold', size)
+            c.drawCentredString(box.x + box.width / 2, start_y - i * line_height, line)
 
-    def draw_info_section(c, x, y, width, height, label, value, icon_char="•"):
-        """Seção de informação simples e elegante."""
-        # Ícone simples
-        c.setFillColor(COLORS['accent'])
-        c.setFont('Helvetica-Bold', 20)
-        c.drawString(x, y + height * 0.7, icon_char)
-        
-        # Label
-        c.setFillColor(COLORS['secondary'])
-        c.setFont('Helvetica-Bold', 14)
-        c.drawString(x + 1*cm, y + height * 0.7, label)
-        
-        # Valor
-        c.setFillColor(COLORS['primary'])
-        c.setFont('Helvetica', 16)
-        c.drawString(x + 1*cm, y + height * 0.4, value)
+    def draw_info_block(c, box, icon_func, primary_text, secondary_text=""):
+        """
+        Desenha um bloco de informação genérico com ícone, texto primário e secundário.
+        Retorna a altura total do bloco desenhado.
+        """
+        icon_size = 0.8 * cm
+        padding = 0.5 * cm
+        text_x = box.x + icon_size + padding
+        text_width = box.width - icon_size - padding
 
-    def draw_minimal_divider(c, x, y, width):
-        """Linha divisória minimalista."""
-        c.setStrokeColor(COLORS['border'])
-        c.setLineWidth(1)
-        c.line(x, y, x + width, y)
+        # Desenha o ícone
+        icon_func(c, box.x, box.y + (box.height - icon_size) / 2, icon_size)
+
+        # Texto Primário (ex: Nome do ministrante)
+        c.setFont('Helvetica-Bold', 16)
+        c.setFillColor(COLORS['primary_dark'])
+        c.drawString(text_x, box.y + box.height * 0.55, primary_text)
+        
+        # Texto Secundário (ex: Formação)
+        if secondary_text:
+            c.setFont('Helvetica', 12)
+            c.setFillColor(COLORS['primary_light'])
+            c.drawString(text_x, box.y + box.height * 0.2, secondary_text)
+        
+        return box.height + 0.5*cm # Retorna altura do bloco mais um espaçamento
+
+    # --- Funções para Desenhar Ícones Vetoriais ---
+
+    def draw_user_icon(c, x, y, size):
+        c.setFillColor(COLORS['primary_light'])
+        c.setStrokeColor(COLORS['primary_light'])
+        c.setLineWidth(2)
+        # Cabeça
+        c.circle(x + size/2, y + size*0.65, size*0.2, fill=0)
+        # Corpo
+        path = c.beginPath()
+        path.moveTo(x + size*0.2, y + size*0.4)
+        path.lineTo(x + size*0.8, y + size*0.4)
+        path.arcTo(x, y, x + size, y + size*0.8, startAng=200, endAng=340)
+        c.drawPath(path, fill=0)
+
+    def draw_calendar_icon(c, x, y, size):
+        c.setFillColor(COLORS['primary_light'])
+        c.setStrokeColor(COLORS['primary_light'])
+        c.setLineWidth(2)
+        # Corpo do calendário
+        c.roundRect(x, y, size, size, radius=size*0.1, fill=0)
+        # Linha do topo
+        c.line(x, y + size*0.7, x + size, y + size*0.7)
+        # Pinos do fichário
+        c.rect(x + size*0.2, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
+        c.rect(x + size*0.7, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
+
+    def draw_pin_icon(c, x, y, size):
+        c.setFillColor(COLORS['primary_light'])
+        c.setStrokeColor(COLORS['primary_light'])
+        c.setLineWidth(2)
+        path = c.beginPath()
+        path.moveTo(x + size/2, y + size)
+        path.arcTo(x, y + size*0.2, x + size, y + size, startAng=180, endAng=0)
+        path.lineTo(x + size/2, y)
+        c.drawPath(path, fill=0)
+        c.circle(x + size/2, y + size*0.65, size*0.15, fill=1, stroke=0)
+
+    # --- Classe para gerenciar caixas de layout ---
+    class BoundingBox:
+        def __init__(self, x, y, width, height):
+            self.x = x
+            self.y = y
+            self.width = width
+            self.height = height
 
     # --- Lógica Principal ---
 
@@ -3595,85 +3553,95 @@ def gerar_placas_oficinas_pdf(evento_id):
     page_width, page_height = landscape(A4)
 
     for oficina in oficinas:
-        draw_clean_background(c, page_width, page_height)
+        draw_background(c, page_width, page_height)
         
-        # Margens generosas para respiração visual
-        margin = 3 * cm
-        content_width = page_width - 2 * margin
-        content_height = page_height - 2 * margin
+        # Define a área do cartão principal
+        card_margin = 2.5 * cm
+        card_width = page_width - 2 * card_margin
+        card_height = page_height - 2 * card_margin
+        draw_card(c, card_margin, card_margin, card_width, card_height)
         
-        # --- Seção do Título (Principal) ---
-        title_height = content_height * 0.4
-        draw_title_section(c, margin, margin + content_height * 0.6, content_width, title_height, oficina.titulo)
+        # Define a área de conteúdo dentro do cartão
+        content_padding = 1.5 * cm
+        content_box = BoundingBox(
+            card_margin + content_padding,
+            card_margin,
+            card_width - 2 * content_padding,
+            card_height - content_padding
+        )
         
-        # --- Seções de Informação ---
-        info_start_y = margin + content_height * 0.5
-        info_height = 1.2 * cm
-        spacing = 0.3 * cm
+        # --- Desenha o Título ---
+        title_box = BoundingBox(
+            content_box.x,
+            content_box.y + content_box.height * 0.6,
+            content_box.width,
+            content_box.height * 0.4
+        )
+        draw_workshop_title(c, title_box, oficina.titulo)
         
-        current_y = info_start_y
+        # Posição inicial para os blocos de informação
+        current_y = content_box.y + content_box.height * 0.5
         
-        # Ministrante
+        # --- Bloco do Ministrante ---
         if oficina.ministrante_obj:
-            ministrante_text = oficina.ministrante_obj.nome
-            if oficina.ministrante_obj.formacao:
-                ministrante_text += f" - {oficina.ministrante_obj.formacao}"
-            
-            draw_info_section(c, margin, current_y, content_width, info_height, "Ministrante", ministrante_text, "👤")
-            current_y -= info_height + spacing
-            
-            # Divisor
-            draw_minimal_divider(c, margin, current_y + spacing/2, content_width)
-            current_y -= spacing
+            info_box = BoundingBox(content_box.x, current_y - 1.5*cm, content_box.width, 1.5*cm)
+            height_drawn = draw_info_block(
+                c, info_box, draw_user_icon,
+                f"Ministrante: {oficina.ministrante_obj.nome}",
+                oficina.ministrante_obj.formacao
+            )
+            current_y -= height_drawn
 
-        if getattr(oficina, 'formador', None):
-            formador_text = oficina.formador.nome
-            if getattr(oficina.formador, 'formacao', None):
-                formador_text += f" - {oficina.formador.formacao}"
-
-            draw_info_section(c, margin, current_y, content_width, info_height, "Formador", formador_text, "🧑‍🏫")
-            current_y -= info_height + spacing
-
-            draw_minimal_divider(c, margin, current_y + spacing/2, content_width)
-            current_y -= spacing
-
-        # Datas e Horários
+        # --- Bloco da Programação ---
         if oficina.dias:
+            # Helper para obter um objeto de data para ordenação, tratando strings.
             def get_date_for_sort(d):
                 if hasattr(d.data, 'strftime'):
                     return d.data
                 try:
+                    # Tenta converter uma data em string (formato comum de BD).
                     return datetime.strptime(str(d.data), '%Y-%m-%d').date()
                 except (ValueError, TypeError):
+                    # Se a conversão falhar, retorna uma data que ficará por último na ordenação.
                     return datetime.max.date()
 
             dias_sorted = sorted(oficina.dias, key=get_date_for_sort)
             
             for dia in dias_sorted:
-                # Formatação segura das datas
+                # Formata a data de forma segura
                 if hasattr(dia.data, 'strftime'):
                     data_str = dia.data.strftime('%d/%m/%Y')
                 else:
                     data_str = str(dia.data)
 
-                if hasattr(dia.horario_inicio, 'strftime') and hasattr(dia.horario_fim, 'strftime'):
-                    horario_str = f"{dia.horario_inicio.strftime('%H:%M')} - {dia.horario_fim.strftime('%H:%M')}"
+                # Formata a hora de início de forma segura
+                if hasattr(dia.horario_inicio, 'strftime'):
+                    inicio_str = dia.horario_inicio.strftime('%H:%M')
                 else:
-                    horario_str = f"{dia.horario_inicio} - {dia.horario_fim}"
+                    inicio_str = str(dia.horario_inicio)
+
+                # Formata a hora de fim de forma segura
+                if hasattr(dia.horario_fim, 'strftime'):
+                    fim_str = dia.horario_fim.strftime('%H:%M')
+                else:
+                    fim_str = str(dia.horario_fim)
                 
-                schedule_text = f"{data_str} às {horario_str}"
-                draw_info_section(c, margin, current_y, content_width, info_height, "Data", schedule_text, "📅")
-                current_y -= info_height + spacing
+                horario_str = f"{inicio_str} - {fim_str}"
 
-        # Local
+                info_box = BoundingBox(content_box.x, current_y - 1.5*cm, content_box.width, 1.5*cm)
+                height_drawn = draw_info_block(c, info_box, draw_calendar_icon, data_str, horario_str)
+                current_y -= height_drawn
+
+        # --- Bloco do Local ---
         if hasattr(oficina, 'local') and oficina.local:
-            draw_info_section(c, margin, current_y, content_width, info_height, "Local", oficina.local, "📍")
-            current_y -= info_height + spacing
+            info_box = BoundingBox(content_box.x, current_y - 1.5*cm, content_box.width, 1.5*cm)
+            height_drawn = draw_info_block(c, info_box, draw_pin_icon, "Local", oficina.local)
+            current_y -= height_drawn
 
-        # --- Rodapé Minimalista ---
-        c.setFillColor(COLORS['text_light'])
-        c.setFont('Helvetica', 12)
-        c.drawCentredString(page_width / 2, margin - 1*cm, evento.nome)
+        # --- Rodapé com nome do evento ---
+        c.setFont('Helvetica', 10)
+        c.setFillColor(COLORS['primary_light'])
+        c.drawCentredString(page_width / 2, card_margin - 1*cm, evento.nome)
         
         c.showPage()
     
@@ -3842,12 +3810,12 @@ from datetime import datetime
 
 def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     """
-    Gera um PDF com etiquetas elegantes e profissionais contendo Nome, ID, QR Code e informações do evento.
-    Design moderno com layout otimizado para 9 etiquetas por página A4 (3x3).
+    Gera um PDF com etiquetas simples em preto e branco contendo Nome, ID, QR Code e informações do evento.
+    Layout otimizado para 9 etiquetas por página A4 (3x3).
     Se evento_id for fornecido, apenas gera etiquetas para os usuários inscritos nesse evento.
     """
     
-    # Configurações de layout moderno para 9 etiquetas por página A4 (3x3)
+    # Configurações de layout para 9 etiquetas por página A4 (3x3)
     etiqueta_largura = 65 * mm
     etiqueta_altura = 85 * mm
     margem_esquerda = 12 * mm
@@ -3856,16 +3824,10 @@ def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     espacamento_x = 5 * mm
     espacamento_y = 5 * mm
     
-    # Paleta de cores moderna e elegante
-    COLORS = {
-        'primary': colors.HexColor('#2C3E50'),      # Azul escuro elegante
-        'secondary': colors.HexColor('#34495E'),    # Cinza azulado
-        'accent': colors.HexColor('#E74C3C'),       # Vermelho vibrante
-        'light': colors.HexColor('#ECF0F1'),       # Cinza muito claro
-        'white': colors.HexColor('#FFFFFF'),
-        'text_light': colors.HexColor('#7F8C8D'),  # Cinza para textos secundários
-        'border': colors.HexColor('#BDC3C7')        # Cinza para bordas
-    }
+    # Cores simples preto e branco
+    cor_texto = colors.black
+    cor_borda = colors.black
+    cor_fundo = colors.white
     
     # Buscar informações do evento se o evento_id foi fornecido
     evento = None
@@ -3909,29 +3871,29 @@ def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     linha = 0
     coluna = 0
     
-    # Cabeçalho elegante e moderno
+    # Cabeçalho simples preto e branco
     def desenhar_cabecalho():
-        # Fundo do cabeçalho
-        c.setFillColor(COLORS['accent'])
-        c.rect(margem_esquerda, altura_pagina - 20*mm, largura_pagina - 2*margem_esquerda, 15*mm, fill=1, stroke=0)
+        # Linha horizontal simples
+        c.setStrokeColor(cor_borda)
+        c.setLineWidth(1)
+        c.line(margem_esquerda, altura_pagina - 12*mm, largura_pagina - margem_esquerda, altura_pagina - 12*mm)
         
-        # Texto do cabeçalho em branco
-        c.setFillColor(COLORS['white'])
-        c.setFont("Helvetica-Bold", 12)
+        # Texto do cabeçalho
+        c.setFillColor(cor_texto)
+        c.setFont("Helvetica-Bold", 10)
         
         if evento:
             # Limitar o tamanho do nome do evento no cabeçalho
             nome_evento = evento.nome
             if len(nome_evento) > 35:
                 nome_evento = nome_evento[:32] + "..."
-            c.drawString(margem_esquerda + 5*mm, altura_pagina - 15*mm, f"🏷️ ETIQUETAS - {nome_evento}")
+            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS - {nome_evento}")
         else:
-            c.drawString(margem_esquerda + 5*mm, altura_pagina - 15*mm, f"🏷️ ETIQUETAS - CLIENTE {cliente_id}")
+            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS - CLIENTE {cliente_id}")
         
         # Data gerada à direita
         data_atual = datetime.utcnow().strftime('%d/%m/%Y')
-        c.setFont("Helvetica", 10)
-        c.drawRightString(largura_pagina - margem_esquerda - 5*mm, altura_pagina - 15*mm, f"📅 {data_atual}")
+        c.drawRightString(largura_pagina - margem_esquerda, altura_pagina - 10*mm, f"{data_atual}")
     
     desenhar_cabecalho()
     
@@ -3963,94 +3925,90 @@ def gerar_etiquetas_pdf(cliente_id, evento_id=None):
         x = margem_esquerda + coluna * (etiqueta_largura + espacamento_x)
         y = altura_pagina - margem_superior - linha * (etiqueta_altura + espacamento_y)
         
-        # Design moderno com bordas arredondadas e cores elegantes
-        # Fundo branco com borda elegante
-        c.setFillColor(COLORS['white'])
-        c.setStrokeColor(COLORS['border'])
-        c.setLineWidth(1.5)
-        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, radius=3*mm, fill=1, stroke=1)
+        # Design simples com borda retangular
+        # Fundo branco com borda preta
+        c.setFillColor(cor_fundo)
+        c.setStrokeColor(cor_borda)
+        c.setLineWidth(1)
+        c.rect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, fill=1, stroke=1)
         
-        # Cabeçalho da etiqueta com cor de destaque
-        c.setFillColor(COLORS['primary'])
-        c.roundRect(x + 2*mm, y - 20*mm, etiqueta_largura - 4*mm, 15*mm, radius=2*mm, fill=1, stroke=0)
+        # Linha horizontal para separar seções
+        linha_separacao_y = y - 25*mm
+        c.setStrokeColor(cor_borda)
+        c.setLineWidth(0.5)
+        c.line(x + 3*mm, linha_separacao_y, x + etiqueta_largura - 3*mm, linha_separacao_y)
         
-        # Nome do usuário centralizado no cabeçalho
+        # Nome do usuário centralizado
         nome = usuario.nome
         if len(nome) > 18:  # Limite para caber na etiqueta
             nome = nome[:16] + "..."
         
-        c.setFillColor(COLORS['white'])
-        c.setFont("Helvetica-Bold", 11)
+        c.setFillColor(cor_texto)
+        c.setFont("Helvetica-Bold", 12)
         # Centralizado horizontalmente
-        nome_largura = c.stringWidth(nome, "Helvetica-Bold", 11)
+        nome_largura = c.stringWidth(nome, "Helvetica-Bold", 12)
         nome_x = x + (etiqueta_largura - nome_largura) / 2
         nome_y = y - 12*mm
         c.drawString(nome_x, nome_y, nome)
         
-        # ID do usuário centralizado abaixo do cabeçalho
-        id_str = f"👤 ID: {usuario.id}"
-        c.setFont("Helvetica", 9)
-        c.setFillColor(COLORS['secondary'])
-        id_largura = c.stringWidth(id_str, "Helvetica", 9)
+        # ID do usuário centralizado
+        id_str = f"ID: {usuario.id}"
+        c.setFont("Helvetica", 10)
+        c.setFillColor(cor_texto)
+        id_largura = c.stringWidth(id_str, "Helvetica", 10)
         id_x = x + (etiqueta_largura - id_largura) / 2
-        c.drawString(id_x, nome_y - 12*mm, id_str)
+        c.drawString(id_x, nome_y - 8*mm, id_str)
         
-        # Adicionar informações do evento à etiqueta com design moderno
+        # Adicionar informações do evento à etiqueta (abaixo da linha)
         if evento:
-            # Nome do evento centralizado com ícone
-            c.setFont("Helvetica-Bold", 8)
-            c.setFillColor(COLORS['primary'])
-            evento_str = f"📚 {evento.nome}"
+            # Nome do evento centralizado
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColor(cor_texto)
+            evento_str = evento.nome
             if len(evento_str) > 20:  # Limite para o nome do evento
                 evento_str = evento_str[:18] + "..."
-            evento_largura = c.stringWidth(evento_str, "Helvetica-Bold", 8)
+            evento_largura = c.stringWidth(evento_str, "Helvetica-Bold", 9)
             evento_x = x + (etiqueta_largura - evento_largura) / 2
-            c.drawString(evento_x, nome_y - 20*mm, evento_str)
+            c.drawString(evento_x, linha_separacao_y - 8*mm, evento_str)
             
-            # Data do evento centralizada com ícone
+            # Data do evento centralizada
             if evento.data_inicio:
                 data_evento = evento.data_inicio.strftime('%d/%m/%Y')
                 if evento.data_fim and evento.data_fim != evento.data_inicio:
                     data_evento += f" - {evento.data_fim.strftime('%d/%m/%Y')}"
                 
-                c.setFont("Helvetica", 7)
-                c.setFillColor(COLORS['text_light'])
-                data_str = f"📅 {data_evento}"
-                data_largura = c.stringWidth(data_str, "Helvetica", 7)
+                c.setFont("Helvetica", 8)
+                c.setFillColor(cor_texto)
+                data_largura = c.stringWidth(data_evento, "Helvetica", 8)
                 data_x = x + (etiqueta_largura - data_largura) / 2
-                c.drawString(data_x, nome_y - 28*mm, data_str)
+                c.drawString(data_x, linha_separacao_y - 15*mm, data_evento)
         
-        # QR Code centralizado na parte inferior com moldura elegante
+        # QR Code centralizado na parte inferior
         if inscricao and inscricao.qr_code_token:
-            qr_size = 18 * mm  # Tamanho otimizado para o design moderno
+            qr_size = 20 * mm  # Tamanho menor para caber melhor
             qr_code_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
             
             try:
                 qr_image = ImageReader(qr_code_path)
                 # Centralizado horizontalmente na parte inferior
                 qr_x = x + (etiqueta_largura - qr_size) / 2
-                qr_y = y - etiqueta_altura + 5*mm
-                
-                # Moldura para o QR Code
-                c.setStrokeColor(COLORS['border'])
-                c.setLineWidth(1)
-                c.roundRect(qr_x - 2*mm, qr_y - 2*mm, qr_size + 4*mm, qr_size + 4*mm, radius=1*mm, fill=0, stroke=1)
+                qr_y = y - etiqueta_altura + 8*mm
                 
                 c.drawImage(qr_image, qr_x, qr_y, qr_size, qr_size)
                 
-                # Token abaixo do QR Code com estilo moderno
+                # Token abaixo do QR Code
                 token_curto = inscricao.qr_code_token[:8]
-                c.setFont("Helvetica", 6)
-                c.setFillColor(COLORS['text_light'])
-                token_largura = c.stringWidth(token_curto, "Helvetica", 6)
+                c.setFont("Helvetica", 7)
+                c.setFillColor(cor_texto)
+                token_largura = c.stringWidth(token_curto, "Helvetica", 7)
                 token_x = x + (etiqueta_largura - token_largura) / 2
-                c.drawString(token_x, qr_y - 6*mm, f"🔗 {token_curto}")
+                c.drawString(token_x, qr_y - 4*mm, token_curto)
             except Exception:
                 # Fallback de texto se não for possível desenhar o QR
-                c.setFont("Helvetica", 7)
-                c.setFillColor(COLORS['text_light'])
-                token_text = f"🔗 Token: {inscricao.qr_code_token[:10]}..."
-                token_largura = c.stringWidth(token_text, "Helvetica", 7)
+                c.setFont("Helvetica", 8)
+                c.setFillColor(cor_texto)
+                token_text = f"Token: {inscricao.qr_code_token[:10]}..."
+                token_largura = c.stringWidth(token_text, "Helvetica", 8)
                 token_x = x + (etiqueta_largura - token_largura) / 2
                 c.drawString(token_x, y - etiqueta_altura + 15*mm, token_text)
         
@@ -4226,68 +4184,29 @@ def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_person
                                    .replace("{TEXTO_PERSONALIZADO}", texto_personalizado)\
                                    .replace("{DATAS_OFICINAS}", datas_oficinas)
 
-    # ===== RENDERIZAÇÃO DO CERTIFICADO ELEGANTE =====
-    from reportlab.lib.colors import HexColor
+    # ===== RENDERIZAÇÃO DO CERTIFICADO =====
 
-    # Paleta de cores elegante
-    COLORS = {
-        'primary': HexColor('#2C3E50'),      # Azul escuro elegante
-        'secondary': HexColor('#34495E'),    # Cinza azulado
-        'accent': HexColor('#E74C3C'),       # Vermelho vibrante
-        'gold': HexColor('#D4AF37'),         # Dourado para elementos especiais
-        'white': HexColor('#FFFFFF'),
-        'light_gray': HexColor('#F8F9FA')    # Cinza muito claro
-    }
-
-    # 1. Fundo elegante com gradiente sutil
-    c.setFillColor(COLORS['light_gray'])
-    c.rect(0, 0, width, height, fill=1, stroke=0)
-    
-    # Borda decorativa
-    c.setStrokeColor(COLORS['gold'])
-    c.setLineWidth(3)
-    c.rect(20, 20, width-40, height-40, fill=0, stroke=1)
-    
-    # Borda interna mais fina
-    c.setStrokeColor(COLORS['primary'])
-    c.setLineWidth(1)
-    c.rect(30, 30, width-60, height-60, fill=0, stroke=1)
-
-    # 2. Imagem de fundo (se disponível)
+    # 1. Imagem de fundo (ocupa toda a página)
     fundo_path = caminho_absoluto_arquivo(cliente.fundo_certificado)
     if fundo_path:
         fundo = ImageReader(fundo_path)
-        c.drawImage(fundo, 40, 40, width=width-80, height=height-80, mask='auto')
+        c.drawImage(fundo, 0, 0, width=width, height=height)
 
-    # 3. Título elegante com ornamentos
-    c.setFont("Helvetica-Bold", 36)
+    # 2. Título
+    c.setFont("Helvetica-Bold", 24)
     titulo = "CERTIFICADO"
-    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 36)
-    
-    # Linha decorativa acima do título
-    c.setStrokeColor(COLORS['gold'])
-    c.setLineWidth(2)
-    linha_y = height * 0.8
-    c.line((width - titulo_largura) / 2 - 20, linha_y, (width + titulo_largura) / 2 + 20, linha_y)
-    
-    # Título em dourado
-    c.setFillColor(COLORS['gold'])
+    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 24)
     c.drawString((width - titulo_largura) / 2, height * 0.75, titulo)
-    
-    # Linha decorativa abaixo do título
-    c.line((width - titulo_largura) / 2 - 20, linha_y - 10, (width + titulo_largura) / 2 + 20, linha_y - 10)
 
-    # 4. Texto principal com estilo elegante
+    # 3. Texto principal (centralizado e justificado no meio da página)
     styles = getSampleStyleSheet()
     estilo_paragrafo = ParagraphStyle(
-        'EstiloCertificadoElegante',
+        'EstiloCertificado',
         parent=styles['Normal'],
-        fontSize=16,
-        leading=22,
-        alignment=TA_CENTER,
-        spaceAfter=15,
-        textColor=COLORS['primary'],
-        fontName='Helvetica'
+        fontSize=14,
+        leading=18,
+        alignment=TA_JUSTIFY,
+        spaceAfter=12
     )
 
     # Processando quebras de linha explícitas
@@ -4295,25 +4214,20 @@ def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_person
     texto_formatado = '<br/>'.join(paragrafos)
     p = Paragraph(texto_formatado, estilo_paragrafo)
 
-    margem_lateral = width * 0.12
+    margem_lateral = width * 0.15
     largura_texto = width - 2 * margem_lateral
-    altura_texto = height * 0.25
-    posicao_y_texto = height * 0.45
+    altura_texto = height * 0.3
+    posicao_y_texto = height * 0.4
 
     frame = Frame(margem_lateral, posicao_y_texto, largura_texto, altura_texto, showBoundary=0)
     frame.addFromList([p], c)
 
-    # 5. Logo com moldura elegante
+    # 4. Logo (posicionada na parte inferior da página)
     logo_path = caminho_absoluto_arquivo(cliente.logo_certificado)
     if logo_path:
-        logo_largura = 200
-        logo_altura = 120
-        margem_inferior = 80
-
-        # Moldura para o logo
-        c.setStrokeColor(COLORS['gold'])
-        c.setLineWidth(2)
-        c.rect((width - logo_largura - 20) / 2, margem_inferior - 10, logo_largura + 20, logo_altura + 20, fill=0, stroke=1)
+        logo_largura = 180
+        logo_altura = 100
+        margem_inferior = 50
 
         logo = ImageReader(logo_path)
         c.drawImage(logo, 
@@ -4323,22 +4237,16 @@ def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_person
                    height=logo_altura,
                    preserveAspectRatio=True)
 
-    # 6. Assinatura com estilo profissional
+    # 5. Assinatura (posicionada acima da logo na parte inferior)
     assinatura_path = caminho_absoluto_arquivo(cliente.assinatura_certificado)
     if assinatura_path:
-        assinatura_largura = 220
-        assinatura_altura = 80
+        assinatura_largura = 200
+        assinatura_altura = 60
 
         if logo_path:
-            assinatura_posicao_y = margem_inferior + logo_altura + 30
+            assinatura_posicao_y = margem_inferior + logo_altura + 20
         else:
-            assinatura_posicao_y = 120
-
-        # Linha para assinatura
-        c.setStrokeColor(COLORS['primary'])
-        c.setLineWidth(1)
-        c.line((width - assinatura_largura) / 2, assinatura_posicao_y - 10, 
-               (width + assinatura_largura) / 2, assinatura_posicao_y - 10)
+            assinatura_posicao_y = 30
 
         assinatura = ImageReader(assinatura_path)
         c.drawImage(
@@ -4350,13 +4258,6 @@ def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_person
             preserveAspectRatio=True,
             mask='auto'
         )
-
-    # 7. Data de emissão elegante
-    c.setFont("Helvetica", 12)
-    c.setFillColor(COLORS['secondary'])
-    data_emissao = f"Emitido em {datetime.now().strftime('%d de %B de %Y')}"
-    data_largura = c.stringWidth(data_emissao, "Helvetica", 12)
-    c.drawString((width - data_largura) / 2, 40, data_emissao)
 
     c.save()
     return pdf_path
@@ -4868,71 +4769,3 @@ def gerar_relatorio_necessidades(relatorio_dados, pdf_path=None):
         as_attachment=True,
         download_name=os.path.basename(target_path),
     )
-
-@_profile
-def gerar_pdf_template(template_data):
-    """Gera PDF a partir de um template personalizado."""
-    from reportlab.lib.pagesizes import A4, letter
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.units import mm
-    from reportlab.lib.colors import black, white
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    import tempfile
-    import os
-    
-    try:
-        # Criar arquivo temporário
-        pdf_filename = f"template_{int(time.time())}.pdf"
-        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
-        
-        # Determinar orientação
-        orientation = template_data.get('orientation', 'landscape')
-        if orientation == 'landscape':
-            page_size = A4
-        else:
-            page_size = A4
-        
-        # Criar documento
-        doc = SimpleDocTemplate(pdf_path, pagesize=page_size)
-        story = []
-        styles = getSampleStyleSheet()
-        
-        # Processar elementos do template
-        elements = template_data.get('elements', [])
-        
-        for element in elements:
-            element_type = element.get('type', '')
-            position = element.get('position', {})
-            style = element.get('style', '')
-            innerHTML = element.get('innerHTML', '')
-            
-            # Converter posição (assumindo que está em pixels, converter para mm)
-            x = position.get('x', 0) * 0.264583  # px to mm
-            y = position.get('y', 0) * 0.264583  # px to mm
-            
-            if element_type == 'text' or element_type == 'variable':
-                # Processar texto
-                text_content = innerHTML.replace('<br>', '\n').replace('<br/>', '\n')
-                text_content = text_content.replace('&nbsp;', ' ')
-                
-                # Criar parágrafo
-                para = Paragraph(text_content, styles['Normal'])
-                story.append(para)
-                story.append(Spacer(1, 12))
-                
-            elif element_type == 'logo':
-                # Processar logo (simplificado - assumindo URL)
-                # Em uma implementação real, você faria download da imagem
-                story.append(Paragraph("[LOGO]", styles['Normal']))
-                story.append(Spacer(1, 12))
-        
-        # Construir PDF
-        doc.build(story)
-        
-        return pdf_path
-        
-    except Exception as e:
-        logger.error(f"Erro ao gerar PDF do template: {str(e)}")
-        return None

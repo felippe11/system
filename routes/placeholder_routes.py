@@ -3,6 +3,7 @@ placeholder_routes = Blueprint("placeholder_routes", __name__)
 
 from flask import send_file, current_app, Response
 import io
+import os
 
 try:  # Pillow pode não estar instalado em todos os ambientes
     from PIL import Image, ImageDraw, ImageFont
@@ -25,8 +26,34 @@ def placeholder_image(width, height):
         img = Image.new('RGB', (width, height), color=(200, 200, 200))
         d = ImageDraw.Draw(img)
         
-        # Use a fonte padrão do sistema que sempre está disponível
-        font = ImageFont.load_default()
+
+        # Tente carregar a fonte Arial ou use a fonte padrão se não estiver disponível
+        try:
+            font = ImageFont.truetype("arial.ttf", 30)
+        except IOError:
+            # Fallback para uma fonte que provavelmente existe no sistema
+            font = None
+            # Tenta encontrar o diretório de fontes em múltiplos locais
+            font_dirs = [
+                os.path.join(current_app.root_path, "fonts"),
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts"),
+                "fonts",
+                os.path.join(os.getcwd(), "fonts")
+            ]
+            
+            for font_dir in font_dirs:
+                font_path = os.path.join(font_dir, "DejaVuSans.ttf")
+                if os.path.exists(font_path):
+                    try:
+                        font = ImageFont.truetype(font_path, 30)
+                        break
+                    except IOError:
+                        continue
+            
+            if font is None:
+                # Se nenhuma fonte específica estiver disponível, use a fonte padrão
+                font = ImageFont.load_default()
+
         
         # Desenhe o texto na imagem
         text = f"{width} x {height}"

@@ -149,7 +149,7 @@ def submeter_trabalho():
             submission = SubmissionService.create_submission(
                 title=titulo,
                 author_id=current_user.id,
-                evento_id=evento_id,
+                evento_id=int(evento_id),
                 file_path=arquivo_pdf
             )
             
@@ -620,20 +620,39 @@ def novo_trabalho():
             # Permitir múltiplos trabalhos por usuário no mesmo evento
             current_app.logger.info(f"Criando nova submissão para usuário {current_user.id} no evento {evento_id}")
             
+            author_usuario = db.session.get(Usuario, getattr(current_user, "id", None))
+            if not author_usuario and getattr(current_user, "email", None):
+                author_usuario = Usuario.query.filter_by(email=current_user.email).first()
+
+            author_id = author_usuario.id if author_usuario else None
+            submission_attributes = {}
+            if not author_usuario:
+                current_app.logger.info(
+                    "Nenhum usuário encontrado na tabela 'usuario' para o cliente %s",
+                    current_user.id,
+                )
+                submission_attributes = {
+                    "cliente_id": current_user.id,
+                    "cliente_nome": current_user.nome,
+                }
+                if getattr(current_user, "email", None):
+                    submission_attributes["cliente_email"] = current_user.email
+
             # Criar submissão usando o serviço
             submission = SubmissionService.create_submission(
                 title=titulo,
-                author_id=current_user.id,
-                evento_id=int(evento_id)
+                author_id=author_id,
+                evento_id=int(evento_id),
+                attributes=submission_attributes or None,
             )
-            
+
             current_app.logger.info(f"Submissão criada com sucesso - ID: {submission.id}")
-            
+
             # Criar nova resposta do formulário vinculada à submissão
             resposta_formulario = RespostaFormulario(
                 formulario_id=formulario.id,
-                usuario_id=current_user.id,
-                evento_id=evento_id,
+                usuario_id=author_id,
+                evento_id=int(evento_id),
                 trabalho_id=submission.id  # Vincular à submissão criada
             )
             db.session.add(resposta_formulario)

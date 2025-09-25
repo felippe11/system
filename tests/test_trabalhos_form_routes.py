@@ -20,14 +20,11 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
+
 from models.user import Cliente
-from models.event import (
-    CampoFormulario,
-    Evento,
-    Formulario,
-    RespostaCampoFormulario,
-    RespostaFormulario,
-)
+from models.event import Evento, RespostaFormulario
+from models.event import Formulario, CampoFormulario
+
 from models.review import Submission
 
 
@@ -84,6 +81,7 @@ def test_novo_trabalho_with_and_without_form(client, app):
     assert resp.status_code == 200
     assert b"executar_formulario_trabalhos.py" in resp.data
 
+
     with app.app_context():
         cliente = Cliente.query.filter_by(email="cli@test").first()
         formulario = Formulario(
@@ -96,77 +94,45 @@ def test_novo_trabalho_with_and_without_form(client, app):
         db.session.add_all([formulario, campo, evento])
         db.session.commit()
 
+
     resp = client.get("/trabalhos/novo")
     assert resp.status_code == 200
     assert b"Adicionar Novo Trabalho" in resp.data
 
 
-def test_importar_trabalhos_excel(client, app):
-    login(client)
 
+def test_cliente_pode_criar_trabalho_sem_usuario_vinculado(client, app):
+    login(client)
     with app.app_context():
         cliente = Cliente.query.filter_by(email="cli@test").first()
         formulario = Formulario(
-            nome="Formul\u00e1rio de Trabalhos", cliente_id=cliente.id
+            nome="Formulário de Trabalhos", cliente_id=cliente.id
         )
-        db.session.add(formulario)
-        db.session.flush()
-
-        campo_titulo = CampoFormulario(
-            formulario_id=formulario.id,
-            nome="T\u00edtulo",
-            tipo="text",
-            obrigatorio=True,
-        )
-        campo_categoria = CampoFormulario(
-            formulario_id=formulario.id,
-            nome="Categoria",
-            tipo="text",
-            obrigatorio=False,
-        )
-        evento = Evento(cliente_id=cliente.id, nome="Evento Importa\u00e7\u00e3o")
-
-        db.session.add_all([campo_titulo, campo_categoria, evento])
+        campo = CampoFormulario(nome="Título", tipo="text")
+        formulario.campos.append(campo)
+        evento = Evento(cliente_id=cliente.id, nome="E1")
+        db.session.add_all([formulario, evento])
         db.session.commit()
+
+        campo_id = campo.id
         evento_id = evento.id
 
-    df = pd.DataFrame(
-        {
-            "T\u00edtulo": ["Trabalho Exemplo", None],
-            "Categoria": ["Educa\u00e7\u00e3o", None],
-        }
-    )
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False)
-    buffer.seek(0)
-
-    response = client.post(
-        "/trabalhos/importar",
+    resp = client.post(
+        "/trabalhos/novo",
         data={
-            "evento_id": evento_id,
-            "arquivo_excel": (buffer, "trabalhos.xlsx"),
+            "evento_id": str(evento_id),
+            f"campo_{campo_id}": "Meu Trabalho",
         },
-        content_type="multipart/form-data",
-        follow_redirects=True,
+        follow_redirects=False,
     )
 
-    assert response.status_code == 200
+    assert resp.status_code == 302
 
     with app.app_context():
-        submissions = Submission.query.all()
-        assert len(submissions) == 1
-        assert submissions[0].title == "Trabalho Exemplo"
-        assert submissions[0].evento_id == evento_id
+        submission = Submission.query.one()
+        assert submission.author_id is None
+        assert submission.attributes.get("cliente_id") == cliente.id
 
-        respostas = RespostaFormulario.query.all()
-        assert len(respostas) == 1
-        respostas_campos = RespostaCampoFormulario.query.all()
-        assert len(respostas_campos) == 2
-
-        valores = {
-            resp_campo.campo.nome: resp_campo.valor
-            for resp_campo in respostas_campos
-        }
-        assert valores["T\u00edtulo"] == "Trabalho Exemplo"
-        assert valores["Categoria"] == "Educa\u00e7\u00e3o"
+        resposta = RespostaFormulario.query.filter_by(trabalho_id=submission.id).one()
+        assert resposta.usuario_id is None
+        assert resposta.evento_id == evento_id

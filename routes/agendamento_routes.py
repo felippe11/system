@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db
-from services.email_service import send_email
+from services.mailjet_service import send_via_mailjet
 from services import pdf_service
 from mailjet_rest.client import ApiError
 import logging
@@ -194,7 +194,7 @@ class NotificacaoAgendamentoService:
                 logger.warning("Dados incompletos para envio de email")
                 return
                 
-            send_email(to=dest, subject=subject, html=html)
+            send_via_mailjet(to_email=dest, subject=subject, html=html)
             logger.info(f"Email enviado com sucesso para {dest}")
         except ApiError as exc:
             logger.exception("Erro da API Mailjet ao enviar email: %s", exc)
@@ -1150,27 +1150,43 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     pdf = FPDF()
     pdf.add_page()
 
-    # Usar fontes padrão do sistema que não precisam ser instaladas
-    # Configurar fonte padrão
-    pdf.set_font("Arial", "B", 16)
+    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
+    fonts_registered = False
+    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+
+    # Função auxiliar para definir fonte - sempre Arial
+    def set_font_safe(style='', size=12):
+        """Define fonte Arial com fallback robusto"""
+        try:
+            pdf.set_font('Arial', style, size)
+        except Exception as e:
+            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
+            try:
+                pdf.set_font('Helvetica', style, size)
+            except Exception:
+                # Último recurso - fonte básica
+                pdf.set_font('Times', '', size)
+
+    # Configurar fonte inicial
+    set_font_safe('B', 16)
     
     # Título
     pdf.cell(190, 10, 'Relatório Geral de Agendamentos', 0, 1, 'C')
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(190, 10, f'Período: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}', 0, 1, 'C')
     
     # Data e hora de geração
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
     
     # Resumo geral
     pdf.ln(5)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Resumo Geral', 0, 1)
     
     total_agendamentos = totais['confirmados'] + totais['realizados'] + totais['cancelados'] + totais['pendentes']
     
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
     pdf.cell(95, 10, f'Confirmados: {totais["confirmados"]}', 0, 1)
     
@@ -1189,10 +1205,10 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Estatísticas por escola com PCD
     if 'escolas' in dados_agregados and dados_agregados['escolas']:
         pdf.ln(10)
-        pdf.set_font('Arial', 'B', 14)
+        set_font_safe('B', 14)
         pdf.cell(190, 10, 'Top 10 Escolas', 0, 1)
         
-        pdf.set_font('Arial', 'B', 9)
+        set_font_safe('B', 9)
         pdf.cell(60, 10, 'Escola', 1, 0, 'C')
         pdf.cell(25, 10, 'Agendamentos', 1, 0, 'C')
         pdf.cell(25, 10, 'Alunos', 1, 0, 'C')
@@ -1200,7 +1216,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         pdf.cell(25, 10, 'Realizados', 1, 0, 'C')
         pdf.cell(30, 10, 'Pendentes', 1, 1, 'C')
         
-        pdf.set_font('Arial', '', 8)
+        set_font_safe('', 8)
         for escola in dados_agregados['escolas'][:10]:
             escola_nome = escola.nome[:30] + '...' if len(escola.nome) > 30 else escola.nome
             
@@ -1222,15 +1238,15 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Estatísticas por professor
     if 'professores' in dados_agregados and dados_agregados['professores']:
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 14)
+        set_font_safe('B', 14)
         pdf.cell(190, 10, 'Top 10 Professores', 0, 1)
         
-        pdf.set_font('Arial', 'B', 10)
+        set_font_safe('B', 10)
         pdf.cell(80, 10, 'Professor', 1, 0, 'C')
         pdf.cell(30, 10, 'Agendamentos', 1, 0, 'C')
         pdf.cell(30, 10, 'Alunos', 1, 1, 'C')
         
-        pdf.set_font('Arial', '', 10)
+        set_font_safe('', 10)
         for professor in dados_agregados['professores'][:10]:
             prof_nome = professor.nome[:35] + '...' if len(professor.nome) > 35 else professor.nome
             pdf.cell(80, 10, prof_nome, 1, 0)
@@ -1240,16 +1256,16 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Professores confirmados
     if professores_confirmados:
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 14)
+        set_font_safe('B', 14)
         pdf.cell(190, 10, 'Professores Confirmados', 0, 1)
         
-        pdf.set_font('Arial', 'B', 10)
+        set_font_safe('B', 10)
         pdf.cell(60, 10, 'Nome', 1, 0, 'C')
         pdf.cell(70, 10, 'Email', 1, 0, 'C')
         pdf.cell(30, 10, 'Total de Visitantes', 1, 0, 'C')
         pdf.cell(30, 10, 'WhatsApp', 1, 1, 'C')
         
-        pdf.set_font('Arial', '', 8)
+        set_font_safe('', 8)
         for professor in professores_confirmados[:20]:  # Limitar a 20 para não sobrecarregar
             nome = professor.nome[:25] + '...' if len(professor.nome) > 25 else professor.nome
             email = professor.email[:30] + '...' if len(professor.email) > 30 else professor.email
@@ -1269,10 +1285,10 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     # Necessidades especiais com detalhes
     if 'necessidades_especiais' in dados_agregados:
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 14)
+        set_font_safe('B', 14)
         pdf.cell(190, 10, 'Necessidades Especiais', 0, 1)
         
-        pdf.set_font('Arial', '', 12)
+        set_font_safe('', 12)
         pcd_data = dados_agregados['necessidades_especiais']
         
         # Calcular estatísticas detalhadas de PCD
@@ -1295,15 +1311,15 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         # Distribuição por tipo de necessidade especial
         if tipos_pcd:
             pdf.ln(3)
-            pdf.set_font('Arial', 'B', 12)
+            set_font_safe('B', 12)
             pdf.cell(190, 8, 'Distribuição por Tipo de Necessidade:', 0, 1)
-            pdf.set_font('Arial', '', 10)
+            set_font_safe('', 10)
             for tipo, quantidade in tipos_pcd.items():
                 pdf.cell(190, 6, f'- {tipo}: {quantidade} aluno(s)', 0, 1)
     
     # Agendamentos detalhados por status
     pdf.add_page()
-    pdf.set_font('Arial', 'B', 16)
+    set_font_safe('B', 16)
     pdf.cell(190, 10, 'Detalhes dos Agendamentos', 0, 1, 'C')
     
     # Organizar agendamentos por status (confirmados primeiro)
@@ -1319,7 +1335,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             continue
             
         pdf.ln(5)
-        pdf.set_font('Arial', 'B', 14)
+        set_font_safe('B', 14)
         pdf.cell(190, 10, f'Agendamentos {status.capitalize()}s ({len(lista_agendamentos)})', 0, 1)
         
         for agendamento in lista_agendamentos:
@@ -1331,12 +1347,12 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             
             # Cabeçalho do agendamento
             pdf.ln(3)
-            pdf.set_font('Arial', 'B', 11)
+            set_font_safe('B', 11)
             pdf.set_fill_color(230, 230, 230)
             pdf.cell(190, 8, f'#{agendamento.id} - {agendamento.escola_nome} - {horario.data.strftime("%d/%m/%Y")} {horario.horario_inicio.strftime("%H:%M")}', 1, 1, 'L', True)
             
             # Informações básicas
-            pdf.set_font('Arial', '', 9)
+            set_font_safe('', 9)
             professor_nome = agendamento.professor.nome if agendamento.professor else 'Não informado'
             pdf.cell(95, 6, f'Professor: {professor_nome}', 1, 0)
             pdf.cell(95, 6, f'Status: {agendamento.status.capitalize()}', 1, 1)
@@ -1354,28 +1370,28 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             # Lista de alunos
             if agendamento.alunos:
                 pdf.ln(2)
-                pdf.set_font('Arial', 'B', 9)
+                set_font_safe('B', 9)
                 pdf.cell(190, 6, 'Lista de Alunos:', 0, 1)
                 
                 # Cabeçalho da tabela de alunos
-                pdf.set_font('Arial', 'B', 8)
+                set_font_safe('B', 8)
                 pdf.cell(70, 6, 'Nome', 1, 0, 'C')
                 pdf.cell(20, 6, 'Presente', 1, 0, 'C')
                 pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
                 pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
                 
-                pdf.set_font('Arial', '', 7)
+                set_font_safe('', 7)
                 for aluno in agendamento.alunos:
                     # Verificar se precisa de nova página
                     if pdf.get_y() > 270:
                         pdf.add_page()
                         # Repetir cabeçalho
-                        pdf.set_font('Arial', 'B', 8)
+                        set_font_safe('B', 8)
                         pdf.cell(70, 6, 'Nome', 1, 0, 'C')
                         pdf.cell(20, 6, 'Presente', 1, 0, 'C')
                         pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
                         pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
-                        pdf.set_font('Arial', '', 7)
+                        set_font_safe('', 7)
                     
                     nome = aluno.nome[:35] + '...' if len(aluno.nome) > 35 else aluno.nome
                     presente = 'Sim' if aluno.presente else 'Não'
@@ -1394,10 +1410,10 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     
     # Análise e recomendações
     pdf.add_page()
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Análise e Recomendações', 0, 1)
     
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     if total_agendamentos > 0:
         taxa_cancelamento = (totais['cancelados'] / total_agendamentos) * 100
         if taxa_cancelamento > 30:
@@ -1418,7 +1434,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     
     # Rodapé
     pdf.ln(10)
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(190, 10, 'Este relatório é gerado automaticamente pelo sistema de agendamentos.', 0, 1, 'C')
     
     # Salvar o PDF
@@ -1439,16 +1455,33 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     pdf = FPDF()
     pdf.add_page()
     
-    # Configurar fonte
-    pdf.set_font('Arial', 'B', 16)
+    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
+    fonts_registered = False
+    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+
+    # Função auxiliar para definir fonte - sempre Arial
+    def set_font_safe(style='', size=12):
+        """Define fonte Arial com fallback robusto"""
+        try:
+            pdf.set_font('Arial', style, size)
+        except Exception as e:
+            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
+            try:
+                pdf.set_font('Helvetica', style, size)
+            except Exception:
+                # Último recurso - fonte básica
+                pdf.set_font('Times', '', size)
+    
+    # Configurar fonte inicial
+    set_font_safe('B', 16)
     
     # Título
     pdf.cell(190, 10, 'Relatório Geral de Agendamentos', 0, 1, 'C')
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(190, 10, f'Período: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}', 0, 1, 'C')
     
     # Data e hora de geração
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
     
     # Cálculo de totais
@@ -1467,10 +1500,10 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Resumo geral
     pdf.ln(5)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Resumo Geral', 0, 1)
     
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
     pdf.cell(95, 10, f'Total de Visitantes: {total_visitantes}', 0, 1)
     
@@ -1490,11 +1523,11 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Detalhes por evento
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Detalhes por Evento', 0, 1)
     
     # Cabeçalho da tabela
-    pdf.set_font('Arial', 'B', 10)
+    set_font_safe('B', 10)
     pdf.cell(60, 10, 'Evento', 1, 0, 'C')
     pdf.cell(25, 10, 'Confirmados', 1, 0, 'C')
     pdf.cell(25, 10, 'Realizados', 1, 0, 'C')
@@ -1503,7 +1536,7 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     pdf.cell(30, 10, 'Taxa Conclusão', 1, 1, 'C')
     
     # Dados da tabela
-    pdf.set_font('Arial', '', 10)
+    set_font_safe('', 10)
     for evento_id, stats in estatisticas.items():
         evento_nome = stats['nome']
         
@@ -1526,10 +1559,10 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Análise e recomendações
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Análise e Recomendações', 0, 1)
     
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     if total_agendamentos > 0:
         if taxa_cancelamento > 30:
             pdf.multi_cell(190, 10, '- Alta taxa de cancelamento. Considere revisar suas políticas de cancelamento.')
@@ -1549,7 +1582,7 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     
     # Rodapé
     pdf.ln(10)
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(190, 10, 'Este relatório é gerado automaticamente pelo sistema de agendamentos.', 0, 1, 'C')
     
     # Salvar o PDF
@@ -1569,24 +1602,41 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf = FPDF()
     pdf.add_page()
     
-    # Configurar fonte
-    pdf.set_font('Arial', 'B', 16)
+    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
+    fonts_registered = False
+    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+
+    # Função auxiliar para definir fonte - sempre Arial
+    def set_font_safe(style='', size=12):
+        """Define fonte Arial com fallback robusto"""
+        try:
+            pdf.set_font('Arial', style, size)
+        except Exception as e:
+            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
+            try:
+                pdf.set_font('Helvetica', style, size)
+            except Exception:
+                # Último recurso - fonte básica
+                pdf.set_font('Times', '', size)
+    
+    # Configurar fonte inicial
+    set_font_safe('B', 16)
     
     # Título
     pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
     
     # Informações do evento
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(190, 10, f'Local: {evento.local}', 0, 1)
     pdf.cell(190, 10, f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} a {evento.data_fim.strftime("%d/%m/%Y")}', 0, 1)
     
     # Data e hora de geração
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
     
     # Estatísticas
     pdf.ln(5)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Estatísticas', 0, 1)
     
     # Contadores
@@ -1601,7 +1651,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         if a.status == 'realizado':
             presentes += sum(1 for aluno in a.alunos if aluno.presente)
     
-    pdf.set_font('Arial', '', 12)
+    set_font_safe('', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
     pdf.cell(95, 10, f'Total de Alunos: {total_alunos}', 0, 1)
     
@@ -1614,11 +1664,11 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     
     # Lista de agendamentos
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
+    set_font_safe('B', 14)
     pdf.cell(190, 10, 'Lista de Agendamentos', 0, 1)
 
     # Larguras dinâmicas para escola e professor
-    pdf.set_font('Arial', '', 8)
+    set_font_safe('', 8)
     max_escola = max(
         (pdf.get_string_width(a.escola_nome) for a in agendamentos),
         default=0,
@@ -1645,7 +1695,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         prof_w *= scale
 
     # Cabeçalho da tabela
-    pdf.set_font('Arial', 'B', 9)
+    set_font_safe('B', 9)
     pdf.cell(15, 10, 'ID', 1, 0, 'C')
     pdf.cell(25, 10, 'Data', 1, 0, 'C')
     pdf.cell(20, 10, 'Horário', 1, 0, 'C')
@@ -1655,7 +1705,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.cell(30, 10, 'Status', 1, 1, 'C')
 
     # Dados da tabela
-    pdf.set_font('Arial', '', 8)
+    set_font_safe('', 8)
     for agendamento in agendamentos:
         horario = agendamento.horario
         escola_nome = agendamento.escola_nome
@@ -1685,16 +1735,16 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     ]
     if agendamentos_com_presenca:
         pdf.ln(10)
-        pdf.set_font('Arial', 'B', 14)
+        set_font_safe('B', 14)
         pdf.cell(190, 10, 'Lista de Presença', 0, 1)
 
         for ag in agendamentos_com_presenca:
-            pdf.set_font('Arial', 'B', 10)
+            set_font_safe('B', 10)
             pdf.cell(190, 8, f'Agendamento {ag.id} - {ag.escola_nome}', 0, 1)
-            pdf.set_font('Arial', 'B', 9)
+            set_font_safe('B', 9)
             pdf.cell(160, 8, 'Aluno', 1, 0, 'L')
             pdf.cell(30, 8, 'Presente', 1, 1, 'C')
-            pdf.set_font('Arial', '', 9)
+            set_font_safe('', 9)
             for aluno in ag.alunos:
                 if not aluno.presente:
                     continue
@@ -1704,7 +1754,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
     # Rodapé
     pdf.ln(10)
-    pdf.set_font('Arial', 'I', 10)
+    set_font_safe('I', 10)
     pdf.cell(
         190,
         10,
@@ -4391,136 +4441,6 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                     cell.border = border
                     if col_idx > 1:  # Números
                         cell.alignment = center_alignment
-        
-        # Aba 6: Detalhes Individuais dos Alunos
-        ws_alunos = wb.create_sheet("Detalhes dos Alunos")
-        
-        # Cabeçalhos para alunos
-        headers_alunos = [
-            'ID Aluno', 'Nome', 'CPF', 'Data Nascimento', 'Agendamento ID', 
-            'Data Visita', 'Horário', 'Evento', 'Escola', 'Professor',
-            'Presente', 'Data Check-in', 'Necessidades Especiais', 'Tipo Necessidade',
-            'Observações Aluno', 'Material Apoio', 'Responsável Legal'
-        ]
-        
-        for col, header in enumerate(headers_alunos, 1):
-            cell = ws_alunos.cell(row=1, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center_alignment
-            cell.border = border
-        
-        # Buscar todos os alunos dos agendamentos
-        from models import AlunoVisitante, NecessidadeEspecial
-        row_idx = 2
-        
-        for agendamento in agendamentos:
-            try:
-                # Buscar alunos deste agendamento
-                alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
-                
-                for aluno in alunos:
-                    # Buscar informações do agendamento
-                    horario = agendamento.horario
-                    evento = horario.evento if horario else None
-                    professor = agendamento.professor
-                    
-                    # Buscar necessidades especiais
-                    necessidade = NecessidadeEspecial.query.filter_by(aluno_id=aluno.id).first()
-                    
-                    # Buscar materiais de apoio (se existir relacionamento)
-                    materiais_apoio = []
-                    if hasattr(aluno, 'materiais_apoio'):
-                        materiais_apoio = [ma.nome for ma in aluno.materiais_apoio]
-                    
-                    data_aluno = [
-                        aluno.id,
-                        aluno.nome or 'N/A',
-                        aluno.cpf or 'N/A',
-                        aluno.data_nascimento.strftime('%d/%m/%Y') if aluno.data_nascimento else 'N/A',
-                        agendamento.id,
-                        horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
-                        f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
-                        evento.nome if evento else 'N/A',
-                        agendamento.escola_nome or 'N/A',
-                        professor.nome if professor else agendamento.professor_nome or 'N/A',
-                        'Sim' if aluno.presente else 'Não',
-                        aluno.data_checkin.strftime('%d/%m/%Y %H:%M') if aluno.data_checkin else 'N/A',
-                        'Sim' if necessidade else 'Não',
-                        necessidade.tipo_necessidade if necessidade else 'N/A',
-                        aluno.observacoes or '',
-                        ', '.join(materiais_apoio) if materiais_apoio else 'N/A',
-                        aluno.responsavel_legal or 'N/A'
-                    ]
-                    
-                    for col_idx, value in enumerate(data_aluno, 1):
-                        cell = ws_alunos.cell(row=row_idx, column=col_idx, value=value)
-                        cell.border = border
-                        if col_idx in [1, 4, 11]:  # IDs e presença
-                            cell.alignment = center_alignment
-                    
-                    row_idx += 1
-                    
-            except Exception as e:
-                logger.error(f"Erro ao processar alunos do agendamento {agendamento.id}: {e}")
-                continue
-        
-        # Aba 7: Estatísticas de Presença dos Alunos
-        ws_presenca = wb.create_sheet("Estatísticas de Presença")
-        
-        # Cabeçalhos
-        headers_presenca = [
-            'Agendamento ID', 'Data Visita', 'Evento', 'Escola', 'Professor',
-            'Total Alunos', 'Presentes', 'Ausentes', 'Taxa Presença (%)'
-        ]
-        
-        for col, header in enumerate(headers_presenca, 1):
-            cell = ws_presenca.cell(row=1, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center_alignment
-            cell.border = border
-        
-        # Calcular estatísticas de presença por agendamento
-        row_idx = 2
-        for agendamento in agendamentos:
-            try:
-                # Buscar alunos deste agendamento
-                alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
-                
-                total_alunos = len(alunos)
-                presentes = sum(1 for aluno in alunos if aluno.presente)
-                ausentes = total_alunos - presentes
-                taxa_presenca = (presentes / total_alunos * 100) if total_alunos > 0 else 0
-                
-                # Buscar informações do agendamento
-                horario = agendamento.horario
-                evento = horario.evento if horario else None
-                professor = agendamento.professor
-                
-                data_presenca = [
-                    agendamento.id,
-                    horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
-                    evento.nome if evento else 'N/A',
-                    agendamento.escola_nome or 'N/A',
-                    professor.nome if professor else agendamento.professor_nome or 'N/A',
-                    total_alunos,
-                    presentes,
-                    ausentes,
-                    f'{taxa_presenca:.1f}%'
-                ]
-                
-                for col_idx, value in enumerate(data_presenca, 1):
-                    cell = ws_presenca.cell(row=row_idx, column=col_idx, value=value)
-                    cell.border = border
-                    if col_idx in [1, 6, 7, 8, 9]:  # IDs e números
-                        cell.alignment = center_alignment
-                
-                row_idx += 1
-                
-            except Exception as e:
-                logger.error(f"Erro ao processar estatísticas de presença do agendamento {agendamento.id}: {e}")
-                continue
         
         # Ajustar largura das colunas em todas as abas
         for ws in wb.worksheets:
