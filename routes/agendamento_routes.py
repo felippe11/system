@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, date
 from flask import current_app, send_file, Response, abort
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from werkzeug.security import generate_password_hash
 from extensions import db
 from services.mailjet_service import send_via_mailjet
@@ -3519,7 +3520,9 @@ def exportar_agendamentos():
             flash("Formato de exportação inválido. Use 'csv' ou 'excel'.", "danger")
             return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
         
-        cliente_id = getattr(current_user, 'cliente_id', None)
+        cliente_id = request.args.get('cliente_id', type=int)
+        if not cliente_id:
+            cliente_id = getattr(current_user, 'cliente_id', None)
         if getattr(current_user, 'tipo', None) == 'cliente':
             cliente_id = current_user.id
 
