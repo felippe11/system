@@ -1468,3 +1468,127 @@ def avaliar(submission_id: int):
     
     # Usar barema específico se disponível, senão usar o geral
 
+
+# -----------------------------------------------------------------------------
+# ENVIO DE EMAILS PARA REVISORES APROVADOS
+# -----------------------------------------------------------------------------
+
+@revisor_routes.route("/revisor/send_email_individual/<int:cand_id>", methods=["POST"])
+@login_required
+def send_email_individual(cand_id: int):
+    """Envia email individual para um revisor aprovado."""
+    if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+
+    cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
+    
+    # Verificar se a candidatura pertence ao cliente atual
+    if cand.process.cliente_id != current_user.id:  # type: ignore[attr-defined]
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+    
+    if not cand.email:
+        return jsonify({"success": False, "message": "Email não encontrado"}), 400
+    
+    try:
+        # Enviar email usando o template melhorado
+        send_email_task.delay(
+            cand.email,
+            cand.nome or "Revisor",
+            "Aprovação de Candidatura - Revisor IAFAP",
+            "Sua candidatura foi aprovada!",
+            "",
+            template_path="emails/revisor_status_change.html",
+            template_context={
+                "status": cand.status,
+                "codigo": cand.codigo,
+                "nome": cand.nome or "Revisor"
+            },
+        )
+        
+        return jsonify({
+            "success": True, 
+            "message": f"Email enviado com sucesso para {cand.email}"
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao enviar email individual: {e}")
+        return jsonify({
+            "success": False, 
+            "message": f"Erro ao enviar email: {str(e)}"
+        }), 500
+
+
+@revisor_routes.route("/revisor/send_email_mass", methods=["POST"])
+@login_required
+def send_email_mass():
+    """Envia email em massa para todos os revisores aprovados do cliente."""
+    if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+
+    try:
+        # Buscar todos os revisores aprovados do cliente
+        revisores_aprovados = (
+            RevisorCandidatura.query
+            .join(RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id)
+            .filter(
+                RevisorProcess.cliente_id == current_user.id,  # type: ignore[attr-defined]
+                RevisorCandidatura.status == 'aprovado',
+                RevisorCandidatura.email.isnot(None)
+            )
+            .all()
+        )
+        
+        if not revisores_aprovados:
+            return jsonify({
+                "success": False, 
+                "message": "Nenhum revisor aprovado encontrado com email"
+            }), 400
+        
+        emails_enviados = 0
+        erros = []
+        
+        for cand in revisores_aprovados:
+            try:
+                send_email_task.delay(
+                    cand.email,
+                    cand.nome or "Revisor",
+                    "Aprovação de Candidatura - Revisor IAFAP",
+                    "Sua candidatura foi aprovada!",
+                    "",
+                    template_path="emails/revisor_status_change.html",
+                    template_context={
+                        "status": cand.status,
+                        "codigo": cand.codigo,
+                        "nome": cand.nome or "Revisor"
+                    },
+                )
+                emails_enviados += 1
+                
+            except Exception as e:
+                erros.append(f"Erro para {cand.email}: {str(e)}")
+                current_app.logger.error(f"Erro ao enviar email para {cand.email}: {e}")
+        
+        if emails_enviados > 0:
+            message = f"Emails enviados com sucesso para {emails_enviados} revisores"
+            if erros:
+                message += f". {len(erros)} erros encontrados."
+            return jsonify({
+                "success": True,
+                "message": message,
+                "emails_enviados": emails_enviados,
+                "erros": erros
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Nenhum email foi enviado com sucesso",
+                "erros": erros
+            }), 500
+            
+    except Exception as e:
+        current_app.logger.error(f"Erro ao enviar emails em massa: {e}")
+        return jsonify({
+            "success": False, 
+            "message": f"Erro interno: {str(e)}"
+        }), 500
+

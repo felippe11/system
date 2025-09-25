@@ -6,6 +6,7 @@ from models.certificado import (
     SolicitacaoCertificado, CertificadoTemplateAvancado
 )
 from models.event import ConfiguracaoCertificadoAvancada
+from models.atividade_multipla_data import AtividadeMultiplaData, FrequenciaAtividade
 from extensions import db
 from sqlalchemy import func
 from datetime import datetime
@@ -164,6 +165,7 @@ def _gerar_certificado_participante(usuario_id, evento_id, config):
 
 def _calcular_carga_horaria_participante(usuario_id, evento_id):
     """Calcula a carga horária total do participante no evento."""
+    # Carga horária de oficinas tradicionais
     oficinas_participadas = db.session.query(Oficina).join(
         Checkin, Oficina.id == Checkin.oficina_id
     ).filter(
@@ -171,7 +173,24 @@ def _calcular_carga_horaria_participante(usuario_id, evento_id):
         Oficina.evento_id == evento_id
     ).all()
 
-    return sum(oficina.carga_horaria or 0 for oficina in oficinas_participadas)
+    carga_horaria_oficinas = sum(int(oficina.carga_horaria) for oficina in oficinas_participadas)
+    
+    # Carga horária de atividades com múltiplas datas
+    atividades_multiplas = db.session.query(AtividadeMultiplaData).filter(
+        AtividadeMultiplaData.evento_id == evento_id
+    ).all()
+    
+    carga_horaria_atividades_multiplas = 0
+    for atividade in atividades_multiplas:
+        frequencias = FrequenciaAtividade.query.filter_by(
+            atividade_id=atividade.id,
+            usuario_id=usuario_id
+        ).all()
+        
+        if frequencias:
+            carga_horaria_atividades_multiplas += sum(freq.get_carga_horaria_presenca() for freq in frequencias)
+
+    return carga_horaria_oficinas + carga_horaria_atividades_multiplas
 
 
 def calcular_atividades_participadas(usuario_id, evento_id, config=None):
@@ -189,6 +208,7 @@ def calcular_atividades_participadas(usuario_id, evento_id, config=None):
     atividades = {
         "oficinas": [],
         "atividades_sem_inscricao": [],
+        "atividades_multiplas_data": [],
         "total_horas": 0,
         "total_atividades": 0,
     }
@@ -203,6 +223,35 @@ def calcular_atividades_participadas(usuario_id, evento_id, config=None):
             }
         )
         atividades["total_horas"] += int(oficina.carga_horaria)
+
+    # Buscar atividades com múltiplas datas
+    atividades_multiplas = db.session.query(AtividadeMultiplaData).filter(
+        AtividadeMultiplaData.evento_id == evento_id
+    ).all()
+    
+    for atividade in atividades_multiplas:
+        # Verificar se o usuário participou desta atividade
+        frequencias = FrequenciaAtividade.query.filter_by(
+            atividade_id=atividade.id,
+            usuario_id=usuario_id
+        ).all()
+        
+        if frequencias:
+            # Calcular carga horária total presenciada
+            carga_horaria_presenciada = sum(freq.get_carga_horaria_presenca() for freq in frequencias)
+            
+            if carga_horaria_presenciada > 0:
+                atividades["atividades_multiplas_data"].append(
+                    {
+                        "id": atividade.id,
+                        "titulo": atividade.titulo,
+                        "carga_horaria": carga_horaria_presenciada,
+                        "tipo": "atividade_multipla_data",
+                        "datas_participadas": len(frequencias),
+                        "total_datas": atividade.get_total_datas()
+                    }
+                )
+                atividades["total_horas"] += carga_horaria_presenciada
 
     if config and getattr(config, "incluir_atividades_sem_inscricao", False):
         checkins_extras = (
@@ -226,9 +275,9 @@ def calcular_atividades_participadas(usuario_id, evento_id, config=None):
                 )
                 atividades["total_horas"] += 2
 
-    atividades["total_atividades"] = len(atividades["oficinas"]) + len(
-        atividades["atividades_sem_inscricao"]
-    )
+    atividades["total_atividades"] = (len(atividades["oficinas"]) + 
+                                    len(atividades["atividades_sem_inscricao"]) +
+                                    len(atividades["atividades_multiplas_data"]))
 
     return atividades
 

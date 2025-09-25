@@ -1,0 +1,851 @@
+{% extends "relatorio_bi/base.html" %}
+
+{% set title = "Editar Relatório" %}
+{% set subtitle = relatorio.nome %}
+
+{% block bi_content %}
+<!-- Formulário de Edição de Relatório -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="bi-card">
+            <h4><i class="fas fa-edit"></i> Editar Relatório</h4>
+            <p class="text-muted">Modifique as configurações do seu relatório de Business Intelligence</p>
+            
+            <form method="POST" id="editarRelatorioForm">
+                <!-- Informações Básicas -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5><i class="fas fa-info-circle"></i> Informações Básicas</h5>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">
+                                <i class="fas fa-tag"></i> Nome do Relatório *
+                            </label>
+                            <input type="text" class="form-control" id="nome" name="nome" required
+                                   value="{{ relatorio.nome }}"
+                                   placeholder="Ex: Relatório Executivo Mensal">
+                            <div class="form-text">Escolha um nome descritivo para identificar o relatório</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="tipo_relatorio" class="form-label">
+                                <i class="fas fa-chart-bar"></i> Tipo de Relatório *
+                            </label>
+                            <select class="form-select" id="tipo_relatorio" name="tipo_relatorio" required>
+                                <option value="">Selecione o tipo...</option>
+                                <option value="executivo" {{ 'selected' if relatorio.tipo_relatorio == 'executivo' }}>
+                                    <i class="fas fa-chart-line"></i> Executivo - Visão estratégica
+                                </option>
+                                <option value="operacional" {{ 'selected' if relatorio.tipo_relatorio == 'operacional' }}>
+                                    <i class="fas fa-cogs"></i> Operacional - Análise de processos
+                                </option>
+                                <option value="financeiro" {{ 'selected' if relatorio.tipo_relatorio == 'financeiro' }}>
+                                    <i class="fas fa-dollar-sign"></i> Financeiro - Análise financeira
+                                </option>
+                                <option value="qualidade" {{ 'selected' if relatorio.tipo_relatorio == 'qualidade' }}>
+                                    <i class="fas fa-star"></i> Qualidade - Satisfação e feedback
+                                </option>
+                            </select>
+                            <div class="form-text">Escolha o tipo de análise que melhor atende suas necessidades</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">
+                        <i class="fas fa-align-left"></i> Descrição
+                    </label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3"
+                              placeholder="Descreva o objetivo e escopo deste relatório...">{{ relatorio.descricao or '' }}</textarea>
+                    <div class="form-text">Uma descrição detalhada ajuda outros usuários a entender o propósito do relatório</div>
+                </div>
+                
+                <!-- Período de Análise -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5><i class="fas fa-calendar-alt"></i> Período de Análise</h5>
+                        <p class="text-muted">Defina o período que será analisado no relatório</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="periodo_inicio" class="form-label">
+                                <i class="fas fa-calendar-plus"></i> Data de Início
+                            </label>
+                            <input type="date" class="form-control" id="periodo_inicio" name="periodo_inicio"
+                                   value="{{ relatorio.filtros_json.periodo_inicio if relatorio.filtros_json else '' }}">
+                            <div class="form-text">Deixe em branco para incluir todos os dados</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="periodo_fim" class="form-label">
+                                <i class="fas fa-calendar-minus"></i> Data de Fim
+                            </label>
+                            <input type="date" class="form-control" id="periodo_fim" name="periodo_fim"
+                                   value="{{ relatorio.filtros_json.periodo_fim if relatorio.filtros_json else '' }}">
+                            <div class="form-text">Deixe em branco para incluir dados até hoje</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Filtros Avançados -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5><i class="fas fa-filter"></i> Filtros Avançados</h5>
+                        <p class="text-muted">Refine os dados que serão incluídos no relatório</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="evento_id" class="form-label">
+                                <i class="fas fa-calendar"></i> Evento Específico
+                            </label>
+                            <select class="form-select" id="evento_id" name="evento_id">
+                                <option value="">Todos os eventos</option>
+                                {% for evento in eventos %}
+                                <option value="{{ evento.id }}" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.evento_id == evento.id }}>
+                                    {{ evento.nome }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="oficina_id" class="form-label">
+                                <i class="fas fa-chalkboard-teacher"></i> Oficina Específica
+                            </label>
+                            <select class="form-select" id="oficina_id" name="oficina_id">
+                                <option value="">Todas as oficinas</option>
+                                {% for oficina in oficinas %}
+                                <option value="{{ oficina.id }}" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.oficina_id == oficina.id }}>
+                                    {{ oficina.titulo }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="estado" class="form-label">
+                                <i class="fas fa-map-marker-alt"></i> Estado
+                            </label>
+                            <input type="text" class="form-control" id="estado" name="estado" 
+                                   value="{{ relatorio.filtros_json.estado if relatorio.filtros_json else '' }}"
+                                   placeholder="Ex: São Paulo">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="cidade" class="form-label">
+                                <i class="fas fa-city"></i> Cidade
+                            </label>
+                            <input type="text" class="form-control" id="cidade" name="cidade" 
+                                   value="{{ relatorio.filtros_json.cidade if relatorio.filtros_json else '' }}"
+                                   placeholder="Ex: São Paulo">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Configurações Avançadas -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="accordion" id="configuracoesAvancadas">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingConfiguracoes">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#collapseConfiguracoes">
+                                        <i class="fas fa-cog"></i> Configurações Avançadas
+                                    </button>
+                                </h2>
+                                <div id="collapseConfiguracoes" class="accordion-collapse collapse" 
+                                     data-bs-parent="#configuracoesAvancadas">
+                                    <div class="accordion-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="modalidade" class="form-label">
+                                                        <i class="fas fa-laptop"></i> Modalidade
+                                                    </label>
+                                                    <select class="form-select" id="modalidade" name="modalidade">
+                                                        <option value="">Todas as modalidades</option>
+                                                        <option value="presencial" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.modalidade == 'presencial' }}>
+                                                            Presencial
+                                                        </option>
+                                                        <option value="online" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.modalidade == 'online' }}>
+                                                            Online
+                                                        </option>
+                                                        <option value="hibrido" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.modalidade == 'hibrido' }}>
+                                                            Híbrido
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="turno" class="form-label">
+                                                        <i class="fas fa-clock"></i> Turno
+                                                    </label>
+                                                    <select class="form-select" id="turno" name="turno">
+                                                        <option value="">Todos os turnos</option>
+                                                        <option value="manha" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.turno == 'manha' }}>
+                                                            Manhã
+                                                        </option>
+                                                        <option value="tarde" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.turno == 'tarde' }}>
+                                                            Tarde
+                                                        </option>
+                                                        <option value="noite" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.turno == 'noite' }}>
+                                                            Noite
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="status_pagamento" class="form-label">
+                                                        <i class="fas fa-credit-card"></i> Status de Pagamento
+                                                    </label>
+                                                    <select class="form-select" id="status_pagamento" name="status_pagamento">
+                                                        <option value="">Todos os status</option>
+                                                        <option value="approved" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.status_pagamento == 'approved' }}>
+                                                            Aprovado
+                                                        </option>
+                                                        <option value="pending" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.status_pagamento == 'pending' }}>
+                                                            Pendente
+                                                        </option>
+                                                        <option value="rejected" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.status_pagamento == 'rejected' }}>
+                                                            Rejeitado
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="tipo_inscricao" class="form-label">
+                                                        <i class="fas fa-user-plus"></i> Tipo de Inscrição
+                                                    </label>
+                                                    <select class="form-select" id="tipo_inscricao" name="tipo_inscricao">
+                                                        <option value="">Todos os tipos</option>
+                                                        <option value="com_inscricao_com_limite" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.tipo_inscricao == 'com_inscricao_com_limite' }}>
+                                                            Com limite de vagas
+                                                        </option>
+                                                        <option value="com_inscricao_sem_limite" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.tipo_inscricao == 'com_inscricao_sem_limite' }}>
+                                                            Sem limite de vagas
+                                                        </option>
+                                                        <option value="sem_inscricao" {{ 'selected' if relatorio.filtros_json and relatorio.filtros_json.tipo_inscricao == 'sem_inscricao' }}>
+                                                            Sem inscrição
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botões de Ação -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a href="{{ url_for('relatorio_bi_routes.lista_relatorios') }}" 
+                                   class="btn btn-secondary btn-custom me-2">
+                                    <i class="fas fa-arrow-left"></i> Cancelar
+                                </a>
+                                <a href="{{ url_for('relatorio_bi_routes.visualizar_relatorio', id=relatorio.id) }}" 
+                                   class="btn btn-outline-info btn-custom">
+                                    <i class="fas fa-eye"></i> Visualizar
+                                </a>
+                            </div>
+                            
+                            <div>
+                                <button type="button" class="btn btn-outline-primary btn-custom me-2" 
+                                        onclick="previewRelatorio()">
+                                    <i class="fas fa-eye"></i> Preview
+                                </button>
+                                <button type="submit" class="btn btn-primary btn-custom">
+                                    <i class="fas fa-save"></i> Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Painel de Informações -->
+    <div class="col-md-4">
+        <div class="bi-card">
+            <h5><i class="fas fa-info-circle"></i> Informações do Relatório</h5>
+            
+            <div class="mb-3">
+                <h6><i class="fas fa-calendar"></i> Datas</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-1">
+                        <strong>Criado:</strong> {{ relatorio.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </li>
+                    <li class="mb-1">
+                        <strong>Última atualização:</strong> {{ relatorio.updated_at.strftime('%d/%m/%Y %H:%M') }}
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6><i class="fas fa-chart-bar"></i> Estatísticas</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-1">
+                        <strong>Tipo:</strong> {{ relatorio.tipo_relatorio|title }}
+                    </li>
+                    <li class="mb-1">
+                        <strong>Status:</strong> 
+                        <span class="badge bg-{{ 'success' if relatorio.status == 'ativo' else 'warning' }}">
+                            {{ relatorio.status|title }}
+                        </span>
+                    </li>
+                    <li class="mb-1">
+                        <strong>Exportações:</strong> {{ relatorio.exportacoes|length }}
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6><i class="fas fa-filter"></i> Filtros Ativos</h6>
+                {% if relatorio.filtros_json %}
+                    <div class="filtros-ativos">
+                        {% for key, value in relatorio.filtros_json.items() %}
+                            {% if value %}
+                                <div class="filtro-item">
+                                    <strong>{{ key|replace('_', ' ')|title }}:</strong> {{ value }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Nenhum filtro específico aplicado</p>
+                {% endif %}
+            </div>
+            
+            <div class="alert alert-info">
+                <h6><i class="fas fa-lightbulb"></i> Dicas</h6>
+                <ul class="mb-0">
+                    <li>Use filtros específicos para dados mais precisos</li>
+                    <li>Teste sempre com preview antes de salvar</li>
+                    <li>Mantenha descrições claras e objetivas</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Ações Rápidas -->
+        <div class="bi-card mt-3">
+            <h5><i class="fas fa-bolt"></i> Ações Rápidas</h5>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="duplicarRelatorio()">
+                    <i class="fas fa-copy"></i> Duplicar Relatório
+                </button>
+                
+                <button class="btn btn-outline-success btn-sm" onclick="exportarRelatorio('pdf')">
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+                
+                <button class="btn btn-outline-info btn-sm" onclick="exportarRelatorio('xlsx')">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+                
+                <button class="btn btn-outline-warning btn-sm" onclick="agendarRelatorio()">
+                    <i class="fas fa-clock"></i> Agendar Execução
+                </button>
+            </div>
+        </div>
+        
+        <!-- Histórico de Alterações -->
+        <div class="bi-card mt-3">
+            <h5><i class="fas fa-history"></i> Histórico</h5>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-primary"></div>
+                    <div class="timeline-content">
+                        <h6>Relatório criado</h6>
+                        <small class="text-muted">{{ relatorio.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+                
+                {% if relatorio.updated_at != relatorio.created_at %}
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-success"></div>
+                    <div class="timeline-content">
+                        <h6>Última atualização</h6>
+                        <small class="text-muted">{{ relatorio.updated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% for exportacao in relatorio.exportacoes[:3] %}
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-info"></div>
+                    <div class="timeline-content">
+                        <h6>Exportação {{ exportacao.formato|upper }}</h6>
+                        <small class="text-muted">{{ exportacao.data_solicitacao.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye"></i> Preview do Relatório
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <div class="text-center">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Gerando preview...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarRelatorioComPreview()">
+                    <i class="fas fa-save"></i> Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// Função para preview do relatório
+function previewRelatorio() {
+    const form = document.getElementById('editarRelatorioForm');
+    const formData = new FormData(form);
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const content = document.getElementById('previewContent');
+    
+    // Mostrar loading
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="loading-spinner"></div>
+            <p class="mt-2">Gerando preview...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Simular geração de preview (implementar com dados reais)
+    setTimeout(() => {
+        const tipoRelatorio = formData.get('tipo_relatorio');
+        content.innerHTML = gerarPreviewRelatorio(tipoRelatorio, formData);
+    }, 1500);
+}
+
+// Gerar preview baseado no tipo de relatório
+function gerarPreviewRelatorio(tipo, formData) {
+    const nome = formData.get('nome') || 'Relatório';
+    const periodoInicio = formData.get('periodo_inicio');
+    const periodoFim = formData.get('periodo_fim');
+    
+    let preview = `
+        <div class="preview-relatorio">
+            <h4>${nome}</h4>
+            <p class="text-muted">Tipo: ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</p>
+    `;
+    
+    if (periodoInicio || periodoFim) {
+        preview += `<p class="text-muted">Período: ${periodoInicio || 'Início'} a ${periodoFim || 'Hoje'}</p>`;
+    }
+    
+    switch (tipo) {
+        case 'executivo':
+            preview += `
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="kpi-widget">
+                            <div class="kpi-value text-primary">1,250</div>
+                            <div class="kpi-label">Inscrições</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-widget">
+                            <div class="kpi-value text-success">85%</div>
+                            <div class="kpi-label">Taxa de Presença</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-widget">
+                            <div class="kpi-value text-warning">R$ 45.000</div>
+                            <div class="kpi-label">Receita</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-widget">
+                            <div class="kpi-value text-info">4.2/5</div>
+                            <div class="kpi-label">Satisfação</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'qualidade':
+            preview += `
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Distribuição de Avaliações</h6>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" style="width: 60%">5 estrelas (60%)</div>
+                        </div>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-info" style="width: 25%">4 estrelas (25%)</div>
+                        </div>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-warning" style="width: 10%">3 estrelas (10%)</div>
+                        </div>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-danger" style="width: 5%">2 estrelas (5%)</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>NPS Score</h6>
+                        <div class="text-center">
+                            <div class="kpi-value text-success" style="font-size: 3rem;">+65</div>
+                            <div class="kpi-label">Net Promoter Score</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'financeiro':
+            preview += `
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="metric-card success">
+                            <h6>Receita Total</h6>
+                            <div class="kpi-value text-success">R$ 125.000</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card info">
+                            <h6>Ticket Médio</h6>
+                            <div class="kpi-value text-info">R$ 85</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card warning">
+                            <h6>Crescimento</h6>
+                            <div class="kpi-value text-warning">+12%</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'operacional':
+            preview += `
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Eficiência Operacional</h6>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" style="width: 90%">Check-ins (90%)</div>
+                        </div>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-info" style="width: 85%">Certificados (85%)</div>
+                        </div>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-warning" style="width: 75%">Feedback (75%)</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Processos</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Inscrições automatizadas</li>
+                            <li><i class="fas fa-check text-success"></i> Check-in digital</li>
+                            <li><i class="fas fa-check text-success"></i> Certificados automáticos</li>
+                            <li><i class="fas fa-clock text-warning"></i> Feedback pendente</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            break;
+    }
+    
+    preview += `
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle"></i>
+            <strong>Preview:</strong> Esta é uma visualização aproximada do relatório. Os dados reais serão calculados quando o relatório for salvo.
+        </div>
+    </div>
+    `;
+    
+    return preview;
+}
+
+// Salvar relatório com preview
+function salvarRelatorioComPreview() {
+    document.getElementById('editarRelatorioForm').submit();
+}
+
+// Duplicar relatório
+function duplicarRelatorio() {
+    mostrarNotificacao('Duplicando relatório...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/relatorios/{{ relatorio.id }}/duplicar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarNotificacao('Relatório duplicado com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.href = `${BI_CONFIG.baseUrl}/relatorios/${data.relatorio_id}/editar`;
+            }, 1500);
+        } else {
+            mostrarNotificacao('Erro ao duplicar relatório: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao duplicar relatório', 'error');
+    });
+}
+
+// Exportar relatório
+function exportarRelatorio(formato) {
+    mostrarNotificacao(`Exportando relatório em ${formato.toUpperCase()}...`, 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/relatorios/{{ relatorio.id }}/exportar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ formato: formato })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio_{{ relatorio.id }}.${formato}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        mostrarNotificacao(`Relatório exportado em ${formato.toUpperCase()}!`, 'success');
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao exportar relatório', 'error');
+    });
+}
+
+// Agendar relatório
+function agendarRelatorio() {
+    mostrarNotificacao('Abrindo agendamento de relatório...', 'info');
+    // Implementar modal de agendamento
+}
+
+// Validação do formulário
+document.getElementById('editarRelatorioForm').addEventListener('submit', function(e) {
+    const nome = document.getElementById('nome').value.trim();
+    const tipo = document.getElementById('tipo_relatorio').value;
+    
+    if (!nome) {
+        e.preventDefault();
+        mostrarNotificacao('Nome do relatório é obrigatório!', 'error');
+        document.getElementById('nome').focus();
+        return;
+    }
+    
+    if (!tipo) {
+        e.preventDefault();
+        mostrarNotificacao('Tipo do relatório é obrigatório!', 'error');
+        document.getElementById('tipo_relatorio').focus();
+        return;
+    }
+    
+    // Validação de datas
+    const dataInicio = document.getElementById('periodo_inicio').value;
+    const dataFim = document.getElementById('periodo_fim').value;
+    
+    if (dataInicio && dataFim && dataInicio > dataFim) {
+        e.preventDefault();
+        mostrarNotificacao('Data de início não pode ser posterior à data de fim!', 'error');
+        return;
+    }
+    
+    // Mostrar loading
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<div class="loading-spinner"></div> Salvando...';
+    submitBtn.disabled = true;
+    
+    // Restaurar botão após submit
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 3000);
+});
+
+// Auto-preenchimento de datas
+document.getElementById('tipo_relatorio').addEventListener('change', function() {
+    const tipo = this.value;
+    const hoje = new Date().toISOString().split('T')[0];
+    
+    if (tipo === 'executivo') {
+        // Último mês
+        const ultimoMes = new Date();
+        ultimoMes.setMonth(ultimoMes.getMonth() - 1);
+        document.getElementById('periodo_inicio').value = ultimoMes.toISOString().split('T')[0];
+        document.getElementById('periodo_fim').value = hoje;
+    } else if (tipo === 'qualidade') {
+        // Últimos 3 meses
+        const tresMesesAtras = new Date();
+        tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3);
+        document.getElementById('periodo_inicio').value = tresMesesAtras.toISOString().split('T')[0];
+        document.getElementById('periodo_fim').value = hoje;
+    } else if (tipo === 'financeiro') {
+        // Ano atual
+        const inicioAno = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+        document.getElementById('periodo_inicio').value = inicioAno;
+        document.getElementById('periodo_fim').value = hoje;
+    }
+});
+</script>
+
+<style>
+.filtros-ativos {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+.filtro-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.filtro-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -2rem;
+    top: 0.25rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content h6 {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.timeline-content small {
+    font-size: 0.8rem;
+}
+
+.kpi-widget {
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.kpi-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.metric-card {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.metric-card h6 {
+    margin-bottom: 0.5rem;
+    color: #6c757d;
+}
+
+.metric-card .kpi-value {
+    font-size: 1.5rem;
+}
+</style>
+{% endblock %}
+
+
+
+

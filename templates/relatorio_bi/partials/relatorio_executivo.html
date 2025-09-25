@@ -1,0 +1,210 @@
+<!-- Relatório Executivo -->
+<div class="relatorio-executivo">
+    <!-- KPIs Principais -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5><i class="fas fa-tachometer-alt"></i> Indicadores Principais</h5>
+            <p class="text-muted">Métricas essenciais para tomada de decisão estratégica</p>
+        </div>
+    </div>
+    
+    <div class="row" id="kpis-executivo">
+        <div class="col-md-3 mb-3">
+            <div class="kpi-widget drill-down" onclick="drillDown('kpi', 'inscricoes_totais')">
+                <div class="kpi-value text-primary">{{ dados.inscricoes_totais or 0 }}</div>
+                <div class="kpi-label">Inscrições Totais</div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-arrow-up"></i> +12% vs período anterior
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="kpi-widget drill-down" onclick="drillDown('kpi', 'usuarios_unicos')">
+                <div class="kpi-value text-success">{{ dados.usuarios_unicos or 0 }}</div>
+                <div class="kpi-label">Usuários Únicos</div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-arrow-up"></i> +8% vs período anterior
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="kpi-widget drill-down" onclick="drillDown('kpi', 'taxa_conversao')">
+                <div class="kpi-value text-info">{{ "%.1f"|format(dados.taxa_conversao or 0) }}%</div>
+                <div class="kpi-label">Taxa de Conversão</div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-arrow-up"></i> +3.2% vs período anterior
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="kpi-widget drill-down" onclick="drillDown('kpi', 'receita_total')">
+                <div class="kpi-value text-warning">R$ {{ "%.2f"|format(dados.receita_total or 0) }}</div>
+                <div class="kpi-label">Receita Total</div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-arrow-up"></i> +15% vs período anterior
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Métricas de Qualidade -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="bi-card">
+                <h6><i class="fas fa-star"></i> Satisfação e Qualidade</h6>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="metric-card success">
+                            <div class="d-flex justify-content-between">
+                                <span>Satisfação Média</span>
+                                <strong>{{ "%.1f"|format(dados.satisfacao_media or 0) }}/5.0</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card info">
+                            <div class="d-flex justify-content-between">
+                                <span>NPS</span>
+                                <strong>{{ dados.nps or 0 }} pontos</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="progress progress-custom">
+                        <div class="progress-bar bg-success" style="width: {{ ((dados.satisfacao_media or 0) / 5) * 100 }}%">
+                            {{ "%.1f"|format(dados.satisfacao_media or 0) }}/5.0
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="bi-card">
+                <h6><i class="fas fa-users"></i> Participação e Presença</h6>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="metric-card warning">
+                            <div class="d-flex justify-content-between">
+                                <span>Taxa de Presença</span>
+                                <strong>{{ "%.1f"|format(dados.taxa_presenca or 0) }}%</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card primary">
+                            <div class="d-flex justify-content-between">
+                                <span>Ticket Médio</span>
+                                <strong>R$ {{ "%.2f"|format(dados.ticket_medio or 0) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="progress progress-custom">
+                        <div class="progress-bar bg-warning" style="width: {{ dados.taxa_presenca or 0 }}%">
+                            {{ "%.1f"|format(dados.taxa_presenca or 0) }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Análise de Tendências -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="bi-card">
+                <h6><i class="fas fa-chart-line"></i> Análise de Tendências</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="comparison-card">
+                            <div class="comparison-value text-success">
+                                <i class="fas fa-arrow-up"></i> +12%
+                            </div>
+                            <div class="comparison-label">Crescimento de Inscrições</div>
+                            <small class="text-muted">Comparado ao período anterior</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="comparison-card">
+                            <div class="comparison-value text-info">
+                                <i class="fas fa-arrow-up"></i> +8%
+                            </div>
+                            <div class="comparison-label">Crescimento de Receita</div>
+                            <small class="text-muted">Comparado ao período anterior</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="comparison-card">
+                            <div class="comparison-value text-warning">
+                                <i class="fas fa-arrow-down"></i> -2%
+                            </div>
+                            <div class="comparison-label">Variação de Satisfação</div>
+                            <small class="text-muted">Comparado ao período anterior</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Resumo Executivo -->
+    <div class="row">
+        <div class="col-12">
+            <div class="bi-card">
+                <h6><i class="fas fa-file-alt"></i> Resumo Executivo</h6>
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Principais Destaques</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <strong>{{ dados.inscricoes_totais or 0 }} inscrições</strong> processadas com sucesso
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <strong>{{ "%.1f"|format(dados.taxa_conversao or 0) }}% de conversão</strong> de visitantes em inscritos
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <strong>R$ {{ "%.2f"|format(dados.receita_total or 0) }} em receita</strong> gerada
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <strong>{{ "%.1f"|format(dados.taxa_presenca or 0) }}% de presença</strong> nos eventos
+                            </li>
+                        </ul>
+                        
+                        <h6 class="mt-4">Recomendações Estratégicas</h6>
+                        <div class="alert alert-info">
+                            <ul class="mb-0">
+                                <li>Manter foco na qualidade para aumentar a satisfação</li>
+                                <li>Investir em marketing para aumentar as inscrições</li>
+                                <li>Otimizar processos para melhorar a conversão</li>
+                                <li>Implementar estratégias de retenção de participantes</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Indicadores de Risco</h6>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Taxa de satisfação abaixo da meta
+                        </div>
+                        
+                        <h6 class="mt-4">Oportunidades</h6>
+                        <div class="alert alert-success">
+                            <i class="fas fa-lightbulb"></i>
+                            <strong>Oportunidade:</strong> Alto potencial de crescimento nas inscrições
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

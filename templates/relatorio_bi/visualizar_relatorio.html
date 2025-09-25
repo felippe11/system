@@ -1,0 +1,597 @@
+{% extends "relatorio_bi/base.html" %}
+
+{% set title = relatorio.nome %}
+{% set subtitle = "Relatório de " + relatorio.tipo_relatorio.title() %}
+{% set show_export_buttons = true %}
+
+{% block bi_content %}
+<!-- Cabeçalho do Relatório -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="bi-card">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h2 class="mb-1">{{ relatorio.nome }}</h2>
+                    <p class="text-muted mb-2">{{ relatorio.descricao or 'Sem descrição' }}</p>
+                    <div class="d-flex gap-3">
+                        <span class="badge badge-custom bg-primary">{{ relatorio.tipo_relatorio.title() }}</span>
+                        <span class="badge badge-custom bg-{{ 'success' if relatorio.status == 'ativo' else 'secondary' }}">
+                            {{ relatorio.status.title() }}
+                        </span>
+                        {% if relatorio.ultima_execucao %}
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i> Atualizado em {{ relatorio.ultima_execucao.strftime('%d/%m/%Y %H:%M') }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="atualizarRelatorio()">
+                            <i class="fas fa-sync"></i> Atualizar
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="editarRelatorio()">
+                            <i class="fas fa-edit"></i> Editar
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="excluirRelatorio()">
+                            <i class="fas fa-trash"></i> Excluir
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Informações do Período -->
+            {% if relatorio.periodo_inicio or relatorio.periodo_fim %}
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="fas fa-calendar"></i> Período de Análise</h6>
+                    <p class="mb-0">
+                        {% if relatorio.periodo_inicio %}
+                            <strong>Início:</strong> {{ relatorio.periodo_inicio.strftime('%d/%m/%Y') }}
+                        {% endif %}
+                        {% if relatorio.periodo_fim %}
+                            <br><strong>Fim:</strong> {{ relatorio.periodo_fim.strftime('%d/%m/%Y') }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="fas fa-info-circle"></i> Metadados</h6>
+                    <p class="mb-0">
+                        <strong>Criado em:</strong> {{ relatorio.data_criacao.strftime('%d/%m/%Y %H:%M') }}<br>
+                        <strong>Criado por:</strong> {{ relatorio.usuario_criador.nome if relatorio.usuario_criador else 'N/A' }}
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="bi-card">
+            <h5><i class="fas fa-download"></i> Exportar Relatório</h5>
+            <p class="text-muted mb-3">Escolha o formato desejado para download</p>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-danger btn-custom" onclick="exportarRelatorio('pdf')">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="btn btn-success btn-custom" onclick="exportarRelatorio('xlsx')">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button class="btn btn-info btn-custom" onclick="exportarRelatorio('csv')">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+                <button class="btn btn-secondary btn-custom" onclick="exportarRelatorio('json')">
+                    <i class="fas fa-file-code"></i> JSON
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conteúdo do Relatório -->
+<div class="row">
+    <div class="col-12">
+        <div class="bi-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4><i class="fas fa-chart-bar"></i> Dados do Relatório</h4>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary active" onclick="alternarVisualizacao('grafico')">
+                        <i class="fas fa-chart-bar"></i> Gráficos
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="alternarVisualizacao('tabela')">
+                        <i class="fas fa-table"></i> Tabela
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="alternarVisualizacao('resumo')">
+                        <i class="fas fa-list"></i> Resumo
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Conteúdo baseado no tipo de relatório -->
+            <div id="conteudo-relatorio">
+                {% if relatorio.tipo_relatorio == 'executivo' %}
+                    {% include 'relatorio_bi/partials/relatorio_executivo.html' %}
+                {% elif relatorio.tipo_relatorio == 'operacional' %}
+                    {% include 'relatorio_bi/partials/relatorio_operacional.html' %}
+                {% elif relatorio.tipo_relatorio == 'financeiro' %}
+                    {% include 'relatorio_bi/partials/relatorio_financeiro.html' %}
+                {% elif relatorio.tipo_relatorio == 'qualidade' %}
+                    {% include 'relatorio_bi/partials/relatorio_qualidade.html' %}
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Tipo de relatório não reconhecido: {{ relatorio.tipo_relatorio }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Histórico de Exportações -->
+{% if historico_exportacoes %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="bi-card">
+            <h5><i class="fas fa-history"></i> Histórico de Exportações</h5>
+            <p class="text-muted">Últimas exportações deste relatório</p>
+            
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Formato</th>
+                            <th>Status</th>
+                            <th>Data de Início</th>
+                            <th>Data de Conclusão</th>
+                            <th>Tamanho</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exportacao in historico_exportacoes %}
+                        <tr>
+                            <td>
+                                <span class="badge badge-custom bg-{{ 'danger' if exportacao.formato == 'pdf' else 'success' if exportacao.formato == 'xlsx' else 'info' }}">
+                                    {{ exportacao.formato.upper() }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge badge-custom bg-{{ 'success' if exportacao.status == 'concluido' else 'warning' if exportacao.status == 'processando' else 'danger' }}">
+                                    {{ exportacao.status.title() }}
+                                </span>
+                            </td>
+                            <td>{{ exportacao.data_inicio }}</td>
+                            <td>{{ exportacao.data_conclusao or 'Em processamento...' }}</td>
+                            <td>
+                                {% if exportacao.tamanho_arquivo %}
+                                    {{ (exportacao.tamanho_arquivo / 1024) | round(1) }} KB
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if exportacao.status == 'concluido' and exportacao.arquivo_path %}
+                                <a href="{{ url_for('relatorio_bi_routes.download_relatorio', id=relatorio.id, filename=exportacao.arquivo_path.split('/')[-1]) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Filtros Aplicados -->
+{% if relatorio.filtros_aplicados %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="bi-card">
+            <h5><i class="fas fa-filter"></i> Filtros Aplicados</h5>
+            <div class="row">
+                {% for chave, valor in relatorio.get_filtros_dict().items() %}
+                <div class="col-md-4 mb-2">
+                    <strong>{{ chave.replace('_', ' ').title() }}:</strong> {{ valor }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// Variáveis globais
+const relatorioId = {{ relatorio.id }};
+const tipoRelatorio = '{{ relatorio.tipo_relatorio }}';
+let dadosRelatorio = {{ dados | tojson }};
+let visualizacaoAtual = 'grafico';
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    renderizarConteudo();
+});
+
+// Função principal de renderização
+function renderizarConteudo() {
+    const container = document.getElementById('conteudo-relatorio');
+    
+    if (!dadosRelatorio || Object.keys(dadosRelatorio).length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                Nenhum dado disponível para este relatório.
+            </div>
+        `;
+        return;
+    }
+    
+    switch (visualizacaoAtual) {
+        case 'grafico':
+            renderizarGraficos();
+            break;
+        case 'tabela':
+            renderizarTabela();
+            break;
+        case 'resumo':
+            renderizarResumo();
+            break;
+    }
+}
+
+// Renderizar gráficos
+function renderizarGraficos() {
+    const container = document.getElementById('conteudo-relatorio');
+    
+    if (tipoRelatorio === 'executivo') {
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="chart-container">
+                        <canvas id="kpis-chart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="chart-container">
+                        <canvas id="tendencias-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="chart-container large">
+                        <canvas id="comparacao-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Inicializar gráficos
+        setTimeout(() => {
+            criarGraficoKPIs();
+            criarGraficoTendencias();
+            criarGraficoComparacao();
+        }, 100);
+    } else {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Gráficos para este tipo de relatório estão em desenvolvimento.
+            </div>
+        `;
+    }
+}
+
+// Renderizar tabela
+function renderizarTabela() {
+    const container = document.getElementById('conteudo-relatorio');
+    
+    if (tipoRelatorio === 'executivo') {
+        const kpis = [
+            { metrica: 'Inscrições Totais', valor: dadosRelatorio.inscricoes_totais || 0, unidade: 'unidades' },
+            { metrica: 'Usuários Únicos', valor: dadosRelatorio.usuarios_unicos || 0, unidade: 'pessoas' },
+            { metrica: 'Taxa de Conversão', valor: dadosRelatorio.taxa_conversao || 0, unidade: '%' },
+            { metrica: 'Receita Total', valor: dadosRelatorio.receita_total || 0, unidade: 'R$' },
+            { metrica: 'Ticket Médio', valor: dadosRelatorio.ticket_medio || 0, unidade: 'R$' },
+            { metrica: 'Taxa de Presença', valor: dadosRelatorio.taxa_presenca || 0, unidade: '%' },
+            { metrica: 'Satisfação Média', valor: dadosRelatorio.satisfacao_media || 0, unidade: '/5.0' },
+            { metrica: 'NPS', valor: dadosRelatorio.nps || 0, unidade: 'pontos' }
+        ];
+        
+        container.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Métrica</th>
+                            <th>Valor</th>
+                            <th>Unidade</th>
+                            <th>Variação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${kpis.map(kpi => `
+                            <tr class="drill-down" onclick="drillDown('kpi', '${kpi.metrica.toLowerCase().replace(/\s+/g, '_')}')">
+                                <td><strong>${kpi.metrica}</strong></td>
+                                <td>${formatarValor(kpi.valor, kpi.unidade)}</td>
+                                <td>${kpi.unidade}</td>
+                                <td>
+                                    <span class="trend-indicator up">
+                                        <i class="fas fa-arrow-up"></i> +2.5%
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Tabela para este tipo de relatório está em desenvolvimento.
+            </div>
+        `;
+    }
+}
+
+// Renderizar resumo
+function renderizarResumo() {
+    const container = document.getElementById('conteudo-relatorio');
+    
+    if (tipoRelatorio === 'executivo') {
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Resumo Executivo</h6>
+                    <p>Este relatório apresenta os principais indicadores de performance do sistema de eventos e oficinas.</p>
+                    
+                    <h6 class="mt-4">Principais Destaques</h6>
+                    <ul>
+                        <li>Total de ${dadosRelatorio.inscricoes_totais || 0} inscrições processadas</li>
+                        <li>Taxa de conversão de ${dadosRelatorio.taxa_conversao || 0}%</li>
+                        <li>Receita total de ${formatCurrency(dadosRelatorio.receita_total || 0)}</li>
+                        <li>Taxa de presença de ${dadosRelatorio.taxa_presenca || 0}%</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>Métricas de Qualidade</h6>
+                    <div class="metric-card success">
+                        <div class="d-flex justify-content-between">
+                            <span>Satisfação Média</span>
+                            <strong>${dadosRelatorio.satisfacao_media || 0}/5.0</strong>
+                        </div>
+                    </div>
+                    <div class="metric-card info">
+                        <div class="d-flex justify-content-between">
+                            <span>NPS</span>
+                            <strong>${dadosRelatorio.nps || 0} pontos</strong>
+                        </div>
+                    </div>
+                    <div class="metric-card warning">
+                        <div class="d-flex justify-content-between">
+                            <span>Ticket Médio</span>
+                            <strong>${formatCurrency(dadosRelatorio.ticket_medio || 0)}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Resumo para este tipo de relatório está em desenvolvimento.
+            </div>
+        `;
+    }
+}
+
+// Criar gráfico de KPIs
+function criarGraficoKPIs() {
+    const ctx = document.getElementById('kpis-chart');
+    if (!ctx) return;
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Inscrições', 'Usuários Únicos', 'Conversões', 'Presenças'],
+            datasets: [{
+                data: [
+                    dadosRelatorio.inscricoes_totais || 0,
+                    dadosRelatorio.usuarios_unicos || 0,
+                    (dadosRelatorio.inscricoes_totais || 0) * (dadosRelatorio.taxa_conversao || 0) / 100,
+                    (dadosRelatorio.inscricoes_totais || 0) * (dadosRelatorio.taxa_presenca || 0) / 100
+                ],
+                backgroundColor: BI_CONFIG.chartColors.slice(0, 4)
+            }]
+        },
+        options: {
+            ...BI_CONFIG.chartOptions,
+            plugins: {
+                ...BI_CONFIG.chartOptions.plugins,
+                title: {
+                    display: true,
+                    text: 'Distribuição de KPIs'
+                }
+            }
+        }
+    });
+}
+
+// Criar gráfico de tendências
+function criarGraficoTendencias() {
+    const ctx = document.getElementById('tendencias-chart');
+    if (!ctx) return;
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+            datasets: [{
+                label: 'Inscrições',
+                data: [120, 150, 180, 160, 200, 220],
+                borderColor: BI_CONFIG.chartColors[0],
+                backgroundColor: BI_CONFIG.chartColors[0] + '20',
+                tension: 0.4
+            }, {
+                label: 'Presenças',
+                data: [100, 130, 160, 140, 180, 200],
+                borderColor: BI_CONFIG.chartColors[1],
+                backgroundColor: BI_CONFIG.chartColors[1] + '20',
+                tension: 0.4
+            }]
+        },
+        options: {
+            ...BI_CONFIG.chartOptions,
+            plugins: {
+                ...BI_CONFIG.chartOptions.plugins,
+                title: {
+                    display: true,
+                    text: 'Tendências Mensais'
+                }
+            }
+        }
+    });
+}
+
+// Criar gráfico de comparação
+function criarGraficoComparacao() {
+    const ctx = document.getElementById('comparacao-chart');
+    if (!ctx) return;
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Inscrições', 'Usuários Únicos', 'Conversões', 'Presenças', 'Satisfação', 'NPS'],
+            datasets: [{
+                label: 'Valor Atual',
+                data: [
+                    dadosRelatorio.inscricoes_totais || 0,
+                    dadosRelatorio.usuarios_unicos || 0,
+                    dadosRelatorio.taxa_conversao || 0,
+                    dadosRelatorio.taxa_presenca || 0,
+                    (dadosRelatorio.satisfacao_media || 0) * 20, // Escalar para visualização
+                    dadosRelatorio.nps || 0
+                ],
+                backgroundColor: BI_CONFIG.chartColors[0]
+            }, {
+                label: 'Meta',
+                data: [250, 200, 80, 85, 80, 70],
+                backgroundColor: BI_CONFIG.chartColors[1]
+            }]
+        },
+        options: {
+            ...BI_CONFIG.chartOptions,
+            plugins: {
+                ...BI_CONFIG.chartOptions.plugins,
+                title: {
+                    display: true,
+                    text: 'Comparação com Metas'
+                }
+            }
+        }
+    });
+}
+
+// Alternar visualização
+function alternarVisualizacao(tipo) {
+    visualizacaoAtual = tipo;
+    
+    // Atualizar botões
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Renderizar conteúdo
+    renderizarConteudo();
+}
+
+// Exportar relatório
+function exportarRelatorio(formato) {
+    const loadingBtn = event.target;
+    const originalText = loadingBtn.innerHTML;
+    
+    // Mostrar loading
+    loadingBtn.innerHTML = '<div class="loading-spinner"></div> Exportando...';
+    loadingBtn.disabled = true;
+    
+    fetch(`/bi/relatorios/${relatorioId}/exportar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            formato: formato,
+            configuracao: {}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.open(`/bi/relatorios/${relatorioId}/download/${data.filename}`, '_blank');
+            mostrarNotificacao('Relatório exportado com sucesso!', 'success');
+        } else {
+            mostrarNotificacao(`Erro na exportação: ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        mostrarNotificacao(`Erro de conexão: ${error.message}`, 'error');
+    })
+    .finally(() => {
+        // Restaurar botão
+        loadingBtn.innerHTML = originalText;
+        loadingBtn.disabled = false;
+    });
+}
+
+// Funções auxiliares
+function formatarValor(valor, unidade) {
+    switch (unidade) {
+        case 'R$':
+            return formatCurrency(valor);
+        case '%':
+            return formatPercent(valor);
+        case '/5.0':
+            return formatNumber(valor, 1) + '/5.0';
+        default:
+            return formatNumber(valor);
+    }
+}
+
+function atualizarRelatorio() {
+    mostrarNotificacao('Relatório atualizado!', 'success');
+    location.reload();
+}
+
+function editarRelatorio() {
+    window.location.href = `/bi/relatorios/${relatorioId}/editar`;
+}
+
+function excluirRelatorio() {
+    if (confirm('Tem certeza que deseja excluir este relatório?')) {
+        // Implementar exclusão
+        mostrarNotificacao('Relatório excluído com sucesso!', 'success');
+        window.location.href = '/bi/relatorios';
+    }
+}
+</script>
+{% endblock %}

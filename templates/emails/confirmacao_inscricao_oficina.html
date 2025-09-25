@@ -52,6 +52,7 @@
         <div class="info-block">
             <p><strong>Cidade:</strong> {{ oficina.cidade }} - {{ oficina.estado }}</p>
             <p><strong>Ministrante:</strong> {{ oficina.ministrante_obj.nome }}</p>
+            <p><strong>Formador:</strong> {{ oficina.formador.nome if oficina.formador else 'Não informado' }}</p>
             <p><strong>Datas e horários:</strong></p>
             <ul>
                 {% for dia in oficina.dias %}

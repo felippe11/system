@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title or "Atividades com Múltiplas Datas" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .atividade-card {
+        transition: transform 0.2s ease-in-out;
+        border-left: 4px solid var(--bs-primary);
+    }
+    
+    .atividade-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .data-badge {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 500;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: 500;
+    }
+    
+    .status-ativa {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .status-inativa {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .frequencia-table {
+        font-size: 0.9em;
+    }
+    
+    .frequencia-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-top: none;
+    }
+    
+    .presenca-presente {
+        color: #28a745;
+        font-weight: bold;
+    }
+    
+    .presenca-ausente {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    
+    .presenca-parcial {
+        color: #ffc107;
+        font-weight: bold;
+    }
+    
+    .btn-checkin {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        border: none;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-checkin:hover {
+        background: linear-gradient(45deg, #218838, #1ea085);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    }
+    
+    .form-data-row {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .form-data-row .row {
+        margin-bottom: 10px;
+    }
+    
+    .form-data-row .row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .remove-data-btn {
+        background-color: #dc3545;
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 50%;
+        font-size: 0.8em;
+        transition: all 0.3s ease;
+    }
+    
+    .remove-data-btn:hover {
+        background-color: #c82333;
+        transform: scale(1.1);
+    }
+    
+    .add-data-btn {
+        background-color: #28a745;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .add-data-btn:hover {
+        background-color: #218838;
+        transform: translateY(-1px);
+    }
+    
+    .checkin-form {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .checkin-form .form-control {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .checkin-form .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .checkin-form .btn {
+        border-radius: 10px;
+        padding: 12px 25px;
+        font-weight: 500;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .stats-card .stats-number {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .stats-card .stats-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('dashboard_cliente_routes.dashboard_cliente') }}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('atividade_multipla_routes.listar_atividades') }}">
+                    Atividades com Múltiplas Datas
+                </a>
+            </li>
+            {% block breadcrumb_items %}{% endblock %}
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-calendar-alt text-primary me-2"></i>
+                        {% block page_title %}Atividades com Múltiplas Datas{% endblock %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% block page_subtitle %}Gerencie atividades que ocorrem em múltiplas datas{% endblock %}
+                    </p>
+                </div>
+                <div>
+                    {% block page_actions %}
+                    <a href="{{ url_for('atividade_multipla_routes.nova_atividade') }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nova Atividade
+                    </a>
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'danger' else 'info-circle' if category == 'info' else 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    {% block main_content %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Função para adicionar nova data
+    function adicionarNovaData() {
+        const container = document.getElementById('datas-container');
+        const dataIndex = container.children.length;
+        
+        const dataRow = document.createElement('div');
+        dataRow.className = 'form-data-row';
+        dataRow.innerHTML = `
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0 text-primary">
+                            <i class="fas fa-calendar-day me-2"></i>Data ${dataIndex + 1}
+                        </h6>
+                        <button type="button" class="remove-data-btn" onclick="removerData(this)">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Data</label>
+                    <input type="date" name="datas[]" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Início</label>
+                    <input type="time" name="horarios_inicio[]" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fim</label>
+                    <input type="time" name="horarios_fim[]" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Carga Horária</label>
+                    <input type="number" name="cargas_horarias[]" class="form-control" step="0.5" min="0">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label class="form-label">Palavra-chave Manhã</label>
+                    <input type="text" name="palavras_manha[]" class="form-control" placeholder="Opcional">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Palavra-chave Tarde</label>
+                    <input type="text" name="palavras_tarde[]" class="form-control" placeholder="Opcional">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Observações</label>
+                    <input type="text" name="observacoes[]" class="form-control" placeholder="Opcional">
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(dataRow);
+    }
+    
+    // Função para remover data
+    function removerData(button) {
+        const dataRow = button.closest('.form-data-row');
+        dataRow.remove();
+    }
+    
+    // Função para validar formulário de checkin
+    function validarCheckin() {
+        const dataAtividade = document.getElementById('data_atividade_id');
+        const palavraChave = document.getElementById('palavra_chave');
+        const turno = document.querySelector('input[name="turno"]:checked');
+        
+        if (!dataAtividade.value) {
+            alert('Selecione uma data para o check-in.');
+            return false;
+        }
+        
+        if (!palavraChave.value.trim()) {
+            alert('Digite a palavra-chave.');
+            return false;
+        }
+        
+        if (!turno) {
+            alert('Selecione um turno.');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Função para atualizar palavras-chave baseadas na data selecionada
+    function atualizarPalavrasChave() {
+        const dataSelect = document.getElementById('data_atividade_id');
+        const palavraInput = document.getElementById('palavra_chave');
+        const turnoRadios = document.querySelectorAll('input[name="turno"]');
+        
+        if (dataSelect.value) {
+            // Aqui você pode fazer uma requisição AJAX para buscar as palavras-chave
+            // Por enquanto, vamos apenas limpar o campo
+            palavraInput.value = '';
+            palavraInput.placeholder = 'Digite a palavra-chave...';
+        }
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adicionar primeira data automaticamente se não existir
+        const container = document.getElementById('datas-container');
+        if (container && container.children.length === 0) {
+            adicionarNovaData();
+        }
+        
+        // Atualizar palavras-chave quando data mudar
+        const dataSelect = document.getElementById('data_atividade_id');
+        if (dataSelect) {
+            dataSelect.addEventListener('change', atualizarPalavrasChave);
+        }
+    });
+</script>
+{% endblock %}

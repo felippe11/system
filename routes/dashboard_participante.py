@@ -500,6 +500,7 @@ def dashboard_participante():
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
             'ministrantes': [m.nome for m in oficina.ministrantes_associados] if hasattr(oficina, 'ministrantes_associados') and oficina.ministrantes_associados else [],
+            'formador_nome': oficina.formador.nome if getattr(oficina, 'formador', None) else None,
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
             'dias': dias,

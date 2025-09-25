@@ -30,6 +30,7 @@ class CertificateEditor {
     this.setupDragAndDrop();
     this.setupGrid();
     this.setupGuidelines();
+    this.setupSidebarTabs();
     this.loadTemplate();
     this.saveState();
   }
@@ -56,6 +57,14 @@ class CertificateEditor {
       if (e.target === this.canvas) {
         this.deselectElement();
       }
+    });
+
+    // Event listeners para botões de alinhamento
+    document.querySelectorAll('[data-align]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const align = e.currentTarget.dataset.align;
+        this.applyTextAlignment(align);
+      });
     });
   }
 
@@ -144,15 +153,24 @@ class CertificateEditor {
         ],
         autoScroll: true,
         listeners: {
+          start: (event) => {
+            this.selectElement(event.target);
+            event.target.style.zIndex = 1000;
+          },
           move: this.dragMoveListener.bind(this),
           end: (event) => {
+            event.target.style.zIndex = '';
             this.saveState();
+            this.hideGuidelines();
           }
         }
       })
       .resizable({
         edges: { left: true, right: true, bottom: true, top: true },
         listeners: {
+          start: (event) => {
+            this.selectElement(event.target);
+          },
           move: this.resizeMoveListener.bind(this),
           end: (event) => {
             this.saveState();
@@ -169,7 +187,7 @@ class CertificateEditor {
         inertia: true
       });
 
-    // Configurar zona de drop
+    // Configurar zona de drop para elementos da biblioteca
     interact('#canvas').dropzone({
       accept: '.element-item',
       overlap: 0.75,
@@ -183,6 +201,21 @@ class CertificateEditor {
         }
       }
     });
+
+    // Configurar drag and drop para elementos da biblioteca
+    interact('.element-item')
+      .draggable({
+        inertia: true,
+        autoScroll: true,
+        listeners: {
+          start: (event) => {
+            event.target.style.opacity = '0.5';
+          },
+          end: (event) => {
+            event.target.style.opacity = '';
+          }
+        }
+      });
   }
 
   dragMoveListener(event) {
@@ -224,14 +257,41 @@ class CertificateEditor {
   }
 
   setupGrid() {
-    const gridOverlay = document.createElement('div');
-    gridOverlay.id = 'grid-overlay';
-    gridOverlay.className = 'grid-overlay';
-    this.canvas.appendChild(gridOverlay);
+    // Grid overlay is already in the HTML template
+    const gridOverlay = document.getElementById('gridOverlay');
+    if (!gridOverlay) {
+      const gridOverlay = document.createElement('div');
+      gridOverlay.id = 'gridOverlay';
+      gridOverlay.className = 'grid-overlay';
+      this.canvas.appendChild(gridOverlay);
+    }
   }
 
   setupGuidelines() {
     this.guidelines = [];
+  }
+
+  setupSidebarTabs() {
+    const tabs = document.querySelectorAll('.sidebar-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs and contents
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(tc => tc.style.display = 'none');
+        
+        // Add active class to clicked tab
+        tab.classList.add('active');
+        
+        // Show corresponding content
+        const tabId = tab.dataset.tab + 'Tab';
+        const content = document.getElementById(tabId);
+        if (content) {
+          content.style.display = 'block';
+        }
+      });
+    });
   }
 
   showGuidelines(element, x, y) {
@@ -291,15 +351,23 @@ class CertificateEditor {
 
   toggleGrid() {
     this.isGridEnabled = !this.isGridEnabled;
-    const gridOverlay = document.getElementById('grid-overlay');
+    const gridOverlay = document.getElementById('gridOverlay');
     const gridBtn = document.getElementById('toggleGrid');
     
     if (this.isGridEnabled) {
-      gridOverlay.style.display = 'block';
-      gridBtn.classList.add('active');
+      if (gridOverlay) {
+        gridOverlay.classList.add('active');
+      }
+      if (gridBtn) {
+        gridBtn.classList.add('active');
+      }
     } else {
-      gridOverlay.style.display = 'none';
-      gridBtn.classList.remove('active');
+      if (gridOverlay) {
+        gridOverlay.classList.remove('active');
+      }
+      if (gridBtn) {
+        gridBtn.classList.remove('active');
+      }
     }
   }
 
@@ -354,7 +422,57 @@ class CertificateEditor {
     this.saveState();
     
     // Reconfigurar interact.js para o novo elemento
-    this.setupDragAndDrop();
+    this.setupElementInteractions(element);
+  }
+
+  setupElementInteractions(element) {
+    if (typeof interact === 'undefined') return;
+
+    // Configurar drag and drop para o elemento específico
+    interact(element)
+      .draggable({
+        inertia: true,
+        modifiers: [
+          interact.modifiers.restrictRect({
+            restriction: 'parent',
+            endOnly: true
+          })
+        ],
+        autoScroll: true,
+        listeners: {
+          start: (event) => {
+            this.selectElement(event.target);
+            event.target.style.zIndex = 1000;
+          },
+          move: this.dragMoveListener.bind(this),
+          end: (event) => {
+            event.target.style.zIndex = '';
+            this.saveState();
+            this.hideGuidelines();
+          }
+        }
+      })
+      .resizable({
+        edges: { left: true, right: true, bottom: true, top: true },
+        listeners: {
+          start: (event) => {
+            this.selectElement(event.target);
+          },
+          move: this.resizeMoveListener.bind(this),
+          end: (event) => {
+            this.saveState();
+          }
+        },
+        modifiers: [
+          interact.modifiers.restrictEdges({
+            outer: 'parent'
+          }),
+          interact.modifiers.restrictSize({
+            min: { width: 20, height: 20 }
+          })
+        ],
+        inertia: true
+      });
   }
 
   createElement(type) {
@@ -366,41 +484,55 @@ class CertificateEditor {
     
     switch (type) {
       case 'text':
-        element.innerHTML = defaultProps.text || 'Texto';
+        element.innerHTML = defaultProps.text || 'Clique para editar';
         element.style.fontSize = defaultProps.fontSize || '16px';
         element.style.fontFamily = defaultProps.fontFamily || 'Arial';
         element.style.color = defaultProps.color || '#000000';
         element.style.textAlign = defaultProps.textAlign || 'left';
         element.style.fontWeight = defaultProps.fontWeight || 'normal';
+        element.style.padding = '8px';
+        element.style.minWidth = '100px';
+        element.style.minHeight = '30px';
+        element.contentEditable = true;
         break;
         
       case 'logo':
         element.innerHTML = '<img src="' + (defaultProps.src || '/static/img/placeholder-logo.png') + '" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">';
         element.style.width = defaultProps.width || '100px';
         element.style.height = defaultProps.height || '100px';
+        element.style.padding = '4px';
         break;
         
       case 'signature':
-        element.innerHTML = '<div style="border-bottom: 2px solid #000; padding-bottom: 5px; text-align: center;">Assinatura</div>';
+        element.innerHTML = '<div style="border-bottom: 2px solid #000; padding-bottom: 5px; text-align: center; font-style: italic;">Assinatura</div>';
         element.style.width = defaultProps.width || '200px';
         element.style.height = defaultProps.height || '50px';
+        element.style.padding = '8px';
         break;
         
       case 'qrcode':
-        element.innerHTML = '<div style="width: 100%; height: 100%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc;">QR Code</div>';
+        element.innerHTML = '<div style="width: 100%; height: 100%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 4px; font-size: 12px; color: #666;">QR Code</div>';
         element.style.width = defaultProps.width || '100px';
         element.style.height = defaultProps.height || '100px';
+        element.style.padding = '4px';
         break;
         
       case 'variable':
-        element.innerHTML = '{VARIAVEL}';
+        element.innerHTML = '{NOME_PARTICIPANTE}';
         element.style.fontSize = defaultProps.fontSize || '16px';
         element.style.fontFamily = defaultProps.fontFamily || 'Arial';
         element.style.color = defaultProps.color || '#000000';
+        element.style.padding = '8px';
+        element.style.minWidth = '120px';
+        element.style.minHeight = '30px';
+        element.style.background = '#f0f8ff';
+        element.style.border = '1px dashed #3b82f6';
+        element.style.borderRadius = '4px';
         break;
         
       default:
         element.innerHTML = 'Elemento';
+        element.style.padding = '8px';
     }
     
     // Adicionar controles
@@ -411,6 +543,13 @@ class CertificateEditor {
       e.stopPropagation();
       this.selectElement(element);
     });
+
+    // Event listener para edição de texto
+    if (type === 'text') {
+      element.addEventListener('blur', () => {
+        this.saveState();
+      });
+    }
     
     return element;
   }
@@ -439,6 +578,43 @@ class CertificateEditor {
       handleEl.className = `resize-handle resize-${handle}`;
       element.appendChild(handleEl);
     });
+
+    // Adicionar indicador de tipo de elemento
+    const typeIndicator = document.createElement('div');
+    typeIndicator.className = 'element-type-indicator';
+    typeIndicator.style.cssText = `
+      position: absolute;
+      top: -20px;
+      left: 0;
+      background: var(--canva-purple);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    `;
+    typeIndicator.textContent = this.getElementTypeName(element);
+    element.appendChild(typeIndicator);
+
+    // Mostrar indicador no hover
+    element.addEventListener('mouseenter', () => {
+      typeIndicator.style.opacity = '1';
+    });
+    element.addEventListener('mouseleave', () => {
+      typeIndicator.style.opacity = '0';
+    });
+  }
+
+  getElementTypeName(element) {
+    if (element.contentEditable === 'true') return 'Texto';
+    if (element.querySelector('img')) return 'Logo';
+    if (element.innerHTML.includes('QR Code')) return 'QR Code';
+    if (element.innerHTML.includes('Assinatura')) return 'Assinatura';
+    if (element.innerHTML.includes('{')) return 'Variável';
+    return 'Elemento';
   }
 
   getDefaultProperties(type) {
@@ -566,6 +742,22 @@ class CertificateEditor {
     if (fontWeight) this.selectedElement.style.fontWeight = fontWeight.value;
     if (textAlign) this.selectedElement.style.textAlign = textAlign.value;
     if (textColor) this.selectedElement.style.color = textColor.value;
+    
+    this.saveState();
+  }
+
+  applyTextAlignment(align) {
+    if (!this.selectedElement) return;
+    
+    this.selectedElement.style.textAlign = align;
+    
+    // Update visual state of alignment buttons
+    document.querySelectorAll('[data-align]').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.dataset.align === align) {
+        btn.classList.add('active');
+      }
+    });
     
     this.saveState();
   }
@@ -788,7 +980,11 @@ class CertificateEditor {
     const previewModal = document.getElementById('previewModal');
     const previewContent = document.getElementById('previewContent');
     
-    if (!previewModal || !previewContent) return;
+    if (!previewModal || !previewContent) {
+      // Criar modal se não existir
+      this.createPreviewModal();
+      return;
+    }
     
     const canvasClone = this.canvas.cloneNode(true);
     canvasClone.id = 'preview-canvas';
@@ -803,6 +999,12 @@ class CertificateEditor {
     previewContent.appendChild(canvasClone);
     
     const modal = new bootstrap.Modal(previewModal);
+    modal.show();
+  }
+
+  createPreviewModal() {
+    // Modal já existe no template, apenas mostrar
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
     modal.show();
   }
 
@@ -836,6 +1038,52 @@ class CertificateEditor {
     link.click();
     
     URL.revokeObjectURL(url);
+  }
+
+  exportToPDF() {
+    const templateData = {
+      name: document.getElementById('templateName').value || 'Template',
+      orientation: document.getElementById('templateOrientation').value || 'landscape',
+      elements: this.elements.map(el => {
+        const domElement = document.getElementById(el.id);
+        return {
+          ...el,
+          style: domElement ? domElement.style.cssText : '',
+          innerHTML: domElement ? domElement.innerHTML : '',
+          position: {
+            x: domElement ? parseFloat(domElement.getAttribute('data-x')) || 0 : 0,
+            y: domElement ? parseFloat(domElement.getAttribute('data-y')) || 0 : 0
+          }
+        };
+      })
+    };
+    
+    // Enviar dados para o servidor para gerar PDF
+    fetch('/certificado/gerar_pdf_template', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(templateData)
+    })
+    .then(response => {
+      if (response.ok) {
+        return response.blob();
+      }
+      throw new Error('Erro ao gerar PDF');
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${templateData.name}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro ao gerar PDF: ' + error.message);
+    });
   }
 
   loadTemplate() {

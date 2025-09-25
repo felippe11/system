@@ -42,8 +42,10 @@ def register_routes(app):
     from .campo_routes import campo_routes
     from .checkin_routes import checkin_routes
     from .feedback_routes import feedback_routes
+    from .reminder_routes import reminder_routes
     from .config_cliente_routes import config_cliente_routes
     from .relatorio_routes import relatorio_routes
+    from .relatorio_bi_routes import relatorio_bi_routes
     from .gerar_link_routes import gerar_link_routes
     from .comprovante_routes import comprovante_routes
     from .certificado_routes import certificado_routes
@@ -113,8 +115,10 @@ def register_routes(app):
     app.register_blueprint(campo_routes)
     app.register_blueprint(checkin_routes)
     app.register_blueprint(feedback_routes)
+    app.register_blueprint(reminder_routes)
     app.register_blueprint(config_cliente_routes)
     app.register_blueprint(relatorio_routes)
+    app.register_blueprint(relatorio_bi_routes)
     app.register_blueprint(gerar_link_routes)
     app.register_blueprint(comprovante_routes)
     app.register_blueprint(agendamento_routes)

@@ -791,6 +791,7 @@ def exibir_evento(evento_id):
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
                 'ministrante': oficina.ministrante_obj,  # Objeto ministrante completo em vez de só o nome
+                'formador': oficina.formador,
                 'horario_inicio': dia.horario_inicio,
                 'horario_fim': dia.horario_fim
             })
@@ -826,6 +827,7 @@ def preview_evento(evento_id):
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
                 'ministrante': oficina.ministrante_obj,
+                'formador': oficina.formador,
                 'horario_inicio': dia.horario_inicio,
                 'horario_fim': dia.horario_fim
             })

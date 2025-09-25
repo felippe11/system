@@ -14,9 +14,8 @@ from werkzeug.security import generate_password_hash
 from models import ConfiguracaoCliente, AuditLog
 from models.review import Submission, Review, Assignment
 from extensions import db
-from services.mailjet_service import send_via_mailjet
+from services.email_service import send_email
 from services.review_notification_service import notify_reviewer
-from mailjet_rest.client import ApiError
 import logging
 
 submission_routes = Blueprint('submission_routes', __name__)
@@ -44,13 +43,13 @@ def create_submission():
 
 
     try:
-        send_via_mailjet(
-            to_email=email,
+        send_email(
+            to=email,
             subject='Submission Access Code',
             text=f'Locator: {locator}\nAccess code: {raw_code}'
         )
 
-    except ApiError as exc:
+    except Exception as exc:
         logger.exception("Erro ao enviar código de acesso para %s", email)
         return jsonify({'error': 'falha ao enviar email'}), 500
 

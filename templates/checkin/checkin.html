@@ -259,6 +259,10 @@
                     <i class="fas fa-chalkboard-teacher"></i>
                     <span><strong>Ministrante:</strong> {{ oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A' }}</span>
                 </div>
+                <div class="instructor-badge mt-2">
+                    <i class="fas fa-user-tie"></i>
+                    <span><strong>Formador:</strong> {{ oficina.formador.nome if oficina.formador else 'N/A' }}</span>
+                </div>
             </div>
         </div>
 

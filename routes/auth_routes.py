@@ -4,6 +4,7 @@ from utils import endpoints
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy import func
 from datetime import datetime, timedelta
 import pyotp
 import logging
@@ -80,13 +81,18 @@ def load_user(user_id):
 def login():
     next_page = request.args.get('next') or request.form.get('next')
     if request.method == 'POST':
-        email = request.form['email']
+        email_input = request.form.get('email', '')
         senha = request.form['senha']
 
-        # Tenta localizar o usuário por email nas três tabelas
-        usuario = Usuario.query.filter_by(email=email).first() or \
-                  Ministrante.query.filter_by(email=email).first() or \
-                  Cliente.query.filter_by(email=email).first()
+        email_normalized = email_input.strip().lower()
+
+        # Tenta localizar o usuário por email nas três tabelas (ignorando maiúsculas/minúsculas)
+        usuario = None
+        for modelo in (Usuario, Ministrante, Cliente):
+            resultado = modelo.query.filter(func.lower(modelo.email) == email_normalized).first()
+            if resultado:
+                usuario = resultado
+                break
 
         if not usuario:
             flash('E-mail ou senha incorretos!', 'danger')

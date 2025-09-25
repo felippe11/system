@@ -26,6 +26,7 @@ def placeholder_image(width, height):
         img = Image.new('RGB', (width, height), color=(200, 200, 200))
         d = ImageDraw.Draw(img)
         
+
         # Tente carregar a fonte Arial ou use a fonte padrão se não estiver disponível
         try:
             font = ImageFont.truetype("arial.ttf", 30)
@@ -52,6 +53,7 @@ def placeholder_image(width, height):
             if font is None:
                 # Se nenhuma fonte específica estiver disponível, use a fonte padrão
                 font = ImageFont.load_default()
+
         
         # Desenhe o texto na imagem
         text = f"{width} x {height}"

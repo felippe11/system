@@ -1,0 +1,790 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title or "Business Intelligence" }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/datatables.net@1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+
+<style>
+    .bi-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .bi-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .bi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .kpi-widget {
+        text-align: center;
+        padding: 1.5rem;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-left: 4px solid #007bff;
+    }
+    
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .kpi-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .kpi-change {
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+    }
+    
+    .kpi-change.positive {
+        color: #28a745;
+    }
+    
+    .kpi-change.negative {
+        color: #dc3545;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 1rem 0;
+    }
+    
+    .chart-container.small {
+        height: 250px;
+    }
+    
+    .chart-container.large {
+        height: 500px;
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    
+    .alert-custom {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+    
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
+    
+    .alert-warning {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        color: #856404;
+    }
+    
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+    }
+    
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+    }
+    
+    .table-custom {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table-custom thead th {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .table-custom tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .btn-custom {
+        border-radius: 25px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+    }
+    
+    .btn-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .badge-custom {
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+    }
+    
+    .progress-custom {
+        height: 8px;
+        border-radius: 4px;
+        background-color: #e9ecef;
+    }
+    
+    .progress-custom .progress-bar {
+        border-radius: 4px;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .sidebar {
+        background: #f8f9fa;
+        min-height: 100vh;
+        padding: 1rem;
+    }
+    
+    .sidebar .nav-link {
+        color: #495057;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.25rem;
+        transition: all 0.3s;
+    }
+    
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+        background: #007bff;
+        color: white;
+    }
+    
+    .export-buttons {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+    
+    .export-buttons .btn {
+        margin-left: 0.5rem;
+        border-radius: 20px;
+    }
+    
+    .drill-down {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .drill-down:hover {
+        background: #e3f2fd;
+        border-radius: 5px;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #007bff;
+        margin-bottom: 1rem;
+    }
+    
+    .metric-card.success {
+        border-left-color: #28a745;
+    }
+    
+    .metric-card.warning {
+        border-left-color: #ffc107;
+    }
+    
+    .metric-card.danger {
+        border-left-color: #dc3545;
+    }
+    
+    .metric-card.info {
+        border-left-color: #17a2b8;
+    }
+    
+    .widget-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .widget-item {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+    }
+    
+    .widget-item:hover {
+        transform: translateY(-2px);
+    }
+    
+    .widget-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .widget-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .widget-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .widget-actions .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .tabs-custom {
+        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 2rem;
+    }
+    
+    .tabs-custom .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #6c757d;
+        font-weight: 600;
+        padding: 1rem 1.5rem;
+        transition: all 0.3s;
+    }
+    
+    .tabs-custom .nav-link:hover {
+        border-bottom-color: #007bff;
+        color: #007bff;
+    }
+    
+    .tabs-custom .nav-link.active {
+        border-bottom-color: #007bff;
+        color: #007bff;
+        background: none;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .empty-state h4 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-state p {
+        margin-bottom: 1.5rem;
+    }
+    
+    .comparison-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid #28a745;
+    }
+    
+    .comparison-card.negative {
+        border-left-color: #dc3545;
+    }
+    
+    .comparison-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .comparison-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .trend-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .trend-indicator.up {
+        color: #28a745;
+    }
+    
+    .trend-indicator.down {
+        color: #dc3545;
+    }
+    
+    .trend-indicator.stable {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bi-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1><i class="fas fa-chart-line"></i> {{ title or "Business Intelligence" }}</h1>
+                <p class="mb-0">{{ subtitle or "Análises avançadas e relatórios inteligentes" }}</p>
+            </div>
+            <div class="col-md-4 text-end">
+                {% if show_export_buttons %}
+                <div class="export-buttons">
+                    <button class="btn btn-light btn-custom" onclick="exportarDados('pdf')">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="btn btn-light btn-custom" onclick="exportarDados('xlsx')">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-light btn-custom" onclick="exportarDados('csv')">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    {% block bi_content %}
+    <!-- Conteúdo específico será inserido aqui -->
+    {% endblock %}
+</div>
+
+<!-- Modal para drill-down -->
+<div class="modal fade" id="drillDownModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-search-plus"></i> Detalhamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="drillDownContent">
+                <div class="text-center">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Carregando detalhes...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="exportarDetalhes()">
+                    <i class="fas fa-download"></i> Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para configurações -->
+<div class="modal fade" id="configModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cog"></i> Configurações
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="configContent">
+                <!-- Conteúdo de configuração será inserido aqui -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="aplicarConfiguracoes()">
+                    <i class="fas fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+// Configurações globais
+const BI_CONFIG = {
+    apiBaseUrl: '/api/bi',
+    refreshInterval: 30000, // 30 segundos
+    chartColors: [
+        '#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8',
+        '#6f42c1', '#fd7e14', '#20c997', '#e83e8c', '#6c757d'
+    ],
+    chartOptions: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+            }
+        },
+        scales: {
+            x: {
+                display: true,
+                title: {
+                    display: true
+                }
+            },
+            y: {
+                display: true,
+                title: {
+                    display: true
+                }
+            }
+        }
+    }
+};
+
+// Utilitários globais
+function formatNumber(num, decimals = 0) {
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    }).format(num);
+}
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+}
+
+function formatPercent(value, decimals = 1) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'percent',
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    }).format(value / 100);
+}
+
+function formatDate(date) {
+    return new Intl.DateTimeFormat('pt-BR').format(new Date(date));
+}
+
+function formatDateTime(date) {
+    return new Intl.DateTimeFormat('pt-BR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(new Date(date));
+}
+
+// Funções de drill-down
+function drillDown(tipo, valor, filtros = {}) {
+    const modal = new bootstrap.Modal(document.getElementById('drillDownModal'));
+    const content = document.getElementById('drillDownContent');
+    
+    // Mostrar loading
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="loading-spinner"></div>
+            <p class="mt-2">Carregando detalhes...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Carregar dados
+    fetch(`${BI_CONFIG.apiBaseUrl}/drill-down`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            tipo: tipo,
+            valor: valor,
+            filtros: filtros
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            content.innerHTML = renderDrillDownContent(tipo, data.dados);
+        } else {
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Erro ao carregar detalhes: ${data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Erro de conexão: ${error.message}
+            </div>
+        `;
+    });
+}
+
+function renderDrillDownContent(tipo, dados) {
+    // Implementar renderização específica por tipo
+    return `
+        <h5>Detalhamento: ${tipo}</h5>
+        <p>Valor: ${dados.valor || 'N/A'}</p>
+        <pre>${JSON.stringify(dados, null, 2)}</pre>
+    `;
+}
+
+// Funções de exportação
+function exportarDados(formato) {
+    const loadingBtn = event.target;
+    const originalText = loadingBtn.innerHTML;
+    
+    // Mostrar loading
+    loadingBtn.innerHTML = '<div class="loading-spinner"></div> Exportando...';
+    loadingBtn.disabled = true;
+    
+    // Obter filtros atuais
+    const filtros = obterFiltrosAtuais();
+    
+    // Fazer requisição de exportação
+    fetch(`${BI_CONFIG.apiBaseUrl}/exportar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            formato: formato,
+            filtros: filtros
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Fazer download do arquivo
+            window.open(`/bi/download/${data.filename}`, '_blank');
+            
+            // Mostrar notificação de sucesso
+            mostrarNotificacao('Exportação concluída com sucesso!', 'success');
+        } else {
+            mostrarNotificacao(`Erro na exportação: ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        mostrarNotificacao(`Erro de conexão: ${error.message}`, 'error');
+    })
+    .finally(() => {
+        // Restaurar botão
+        loadingBtn.innerHTML = originalText;
+        loadingBtn.disabled = false;
+    });
+}
+
+function obterFiltrosAtuais() {
+    // Implementar lógica para obter filtros atuais
+    return {};
+}
+
+function mostrarNotificacao(mensagem, tipo = 'info') {
+    // Implementar sistema de notificações
+    const alertClass = {
+        'success': 'alert-success',
+        'error': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    }[tipo] || 'alert-info';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remover automaticamente após 5 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// Funções de atualização automática
+function iniciarAtualizacaoAutomatica() {
+    if (typeof atualizarDados === 'function') {
+        setInterval(atualizarDados, BI_CONFIG.refreshInterval);
+    }
+}
+
+// Funções de configuração
+function abrirConfiguracoes() {
+    const modal = new bootstrap.Modal(document.getElementById('configModal'));
+    const content = document.getElementById('configContent');
+    
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Configurações de Exibição</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                    <label class="form-check-label" for="autoRefresh">
+                        Atualização automática
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showAnimations" checked>
+                    <label class="form-check-label" for="showAnimations">
+                        Mostrar animações
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6>Configurações de Exportação</h6>
+                <div class="mb-3">
+                    <label for="exportFormat" class="form-label">Formato padrão</label>
+                    <select class="form-select" id="exportFormat">
+                        <option value="pdf">PDF</option>
+                        <option value="xlsx">Excel</option>
+                        <option value="csv">CSV</option>
+                        <option value="json">JSON</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.show();
+}
+
+function aplicarConfiguracoes() {
+    // Implementar aplicação de configurações
+    mostrarNotificacao('Configurações aplicadas com sucesso!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+}
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Inicializar popovers
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+    
+    // Inicializar Select2
+    $('.select2').select2({
+        theme: 'bootstrap-5',
+        width: '100%'
+    });
+    
+    // Inicializar DataTables
+    $('.datatable').DataTable({
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json'
+        },
+        responsive: true,
+        pageLength: 25,
+        order: [[0, 'desc']]
+    });
+    
+    // Inicializar atualização automática
+    iniciarAtualizacaoAutomatica();
+    
+    // Adicionar efeitos de fade-in
+    document.querySelectorAll('.bi-card, .widget-item').forEach(el => {
+        el.classList.add('fade-in');
+    });
+});
+</script>
+{% endblock %}

@@ -26,6 +26,7 @@ from models import (
     Evento,
     Usuario,
 )
+from models.atividade_multipla_data import AtividadeMultiplaData, AtividadeData, CheckinAtividade, FrequenciaAtividade
 from utils import formatar_brasilia, determinar_turno
 from .agendamento_routes import agendamento_routes  # Needed for URL generation  # noqa: F401
 
@@ -288,6 +289,10 @@ def lista_checkins(oficina_id):
 
     # Coleta todos os ministrantes associados à oficina
     ministrantes = [m.nome for m in oficina.ministrantes_associados] if oficina.ministrantes_associados else []
+    if oficina.ministrante_obj and oficina.ministrante_obj.nome not in ministrantes:
+        ministrantes.append(oficina.ministrante_obj.nome)
+    if oficina.formador and oficina.formador.nome not in ministrantes:
+        ministrantes.append(oficina.formador.nome)
 
     return render_template(
         'checkin/lista_checkins.html',
@@ -667,3 +672,112 @@ def admin_scan():
         return redirect(url_for(endpoints.DASHBOARD))
 
     return render_template('checkin/scan_qr.html')
+
+
+@checkin_routes.route('/atividade_multipla/<int:atividade_id>/checkin', methods=['GET', 'POST'])
+@login_required
+def checkin_atividade_multipla(atividade_id):
+    """Realiza check-in em uma atividade com múltiplas datas"""
+    atividade = AtividadeMultiplaData.query.filter_by(
+        id=atividade_id,
+        cliente_id=current_user.id
+    ).first_or_404()
+    
+    if not atividade.permitir_checkin_multiplas_datas:
+        flash('Check-in não permitido para esta atividade.', 'danger')
+        return redirect(url_for('atividade_multipla_routes.visualizar_atividade', id=atividade_id))
+    
+    if request.method == 'POST':
+        try:
+            data_atividade_id = request.form.get('data_atividade_id')
+            palavra_chave = request.form.get('palavra_chave')
+            turno = request.form.get('turno')
+            
+            data_atividade = AtividadeData.query.filter_by(
+                id=data_atividade_id,
+                atividade_id=atividade.id
+            ).first()
+            
+            if not data_atividade:
+                flash('Data da atividade não encontrada.', 'danger')
+                return redirect(url_for('checkin_routes.checkin_atividade_multipla', atividade_id=atividade_id))
+            
+            # Verificar palavra-chave
+            palavra_correta = None
+            if turno == 'manha' and data_atividade.palavra_chave_manha:
+                palavra_correta = data_atividade.palavra_chave_manha
+            elif turno == 'tarde' and data_atividade.palavra_chave_tarde:
+                palavra_correta = data_atividade.palavra_chave_tarde
+            
+            if palavra_correta and palavra_chave != palavra_correta:
+                flash('Palavra-chave incorreta.', 'danger')
+                return redirect(url_for('checkin_routes.checkin_atividade_multipla', atividade_id=atividade_id))
+            
+            # Verificar se já existe checkin para esta data e turno
+            checkin_existente = CheckinAtividade.query.filter_by(
+                atividade_id=atividade.id,
+                data_atividade_id=data_atividade_id,
+                usuario_id=current_user.id,
+                turno=turno
+            ).first()
+            
+            if checkin_existente:
+                flash('Check-in já realizado para este turno.', 'warning')
+                return redirect(url_for('checkin_routes.checkin_atividade_multipla', atividade_id=atividade_id))
+            
+            # Criar checkin
+            checkin = CheckinAtividade(
+                atividade_id=atividade.id,
+                data_atividade_id=data_atividade_id,
+                usuario_id=current_user.id,
+                palavra_chave=palavra_chave,
+                turno=turno,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
+            db.session.add(checkin)
+            
+            # Atualizar frequência
+            frequencia = FrequenciaAtividade.query.filter_by(
+                atividade_id=atividade.id,
+                data_atividade_id=data_atividade_id,
+                usuario_id=current_user.id
+            ).first()
+            
+            if not frequencia:
+                frequencia = FrequenciaAtividade(
+                    atividade_id=atividade.id,
+                    data_atividade_id=data_atividade_id,
+                    usuario_id=current_user.id
+                )
+                db.session.add(frequencia)
+            
+            # Atualizar presença baseada no turno
+            if turno == 'manha':
+                frequencia.presente_manha = True
+                frequencia.data_checkin_manha = datetime.utcnow()
+                frequencia.palavra_chave_usada_manha = palavra_chave
+            elif turno == 'tarde':
+                frequencia.presente_tarde = True
+                frequencia.data_checkin_tarde = datetime.utcnow()
+                frequencia.palavra_chave_usada_tarde = palavra_chave
+            elif turno == 'dia_inteiro':
+                frequencia.presente_dia_inteiro = True
+                frequencia.presente_manha = True
+                frequencia.presente_tarde = True
+                frequencia.data_checkin_manha = datetime.utcnow()
+                frequencia.data_checkin_tarde = datetime.utcnow()
+                frequencia.palavra_chave_usada_manha = palavra_chave
+                frequencia.palavra_chave_usada_tarde = palavra_chave
+            
+            db.session.commit()
+            flash('Check-in realizado com sucesso!', 'success')
+            return redirect(url_for('atividade_multipla_routes.visualizar_atividade', id=atividade_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Erro ao realizar check-in: {str(e)}")
+            flash('Erro ao realizar check-in. Tente novamente.', 'danger')
+    
+    return render_template('atividade_multipla/checkin_atividade.html', atividade=atividade)

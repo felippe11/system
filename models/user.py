@@ -124,6 +124,11 @@ class Cliente(db.Model, UserMixin):
     usuarios = db.relationship(
         "Usuario", secondary="usuario_clientes", back_populates="clientes"
     )
+    
+    # Relacionamento com Lembretes
+    lembretes_oficinas = db.relationship(
+        "LembreteOficina", back_populates="cliente"
+    )
 
     # Novos campos (caminho das imagens):
     logo_certificado = db.Column(db.String(255), nullable=True)  # Logo

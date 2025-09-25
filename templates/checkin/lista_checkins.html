@@ -23,6 +23,13 @@
                         </div>
                     </div>
                     <div class="info-badge">
+                        <i class="fas fa-user-tie badge-icon"></i>
+                        <div class="badge-text">
+                            <strong>Formador:</strong>
+                            {{ oficina.formador.nome if oficina.formador else 'Não informado' }}
+                        </div>
+                    </div>
+                    <div class="info-badge">
                         <i class="fas fa-map-marker-alt badge-icon"></i>
                         <div class="badge-text">
                             <strong>Local:</strong> {{ oficina.cidade }}, {{ oficina.estado }}

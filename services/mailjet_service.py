@@ -1,35 +1,46 @@
+"""Backward-compatible wrapper around the unified email service.
 
-import os
-import base64
-from mailjet_rest import Client
+This module existed historically to talk directly to the Mailjet API. It is kept
+as a thin wrapper so legacy imports continue to function while all logic lives in
+:mod:`services.email_service`.
+"""
 
-API_KEY = os.getenv("MAILJET_API_KEY", "a3b17035fdb5121f9b5295459821cadb")
-SECRET_KEY = os.getenv("MAILJET_SECRET_KEY", "020db9d9867d0d900885893af5893d91")
-SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@example.com")
+from __future__ import annotations
 
-_mailjet = Client(auth=(API_KEY, SECRET_KEY), version='v3.1')
+import warnings
+from typing import Iterable, Optional
 
-def send_via_mailjet(to_email, subject, text=None, html=None, attachments=None):
-    """Envio básico de e-mail usando a API do Mailjet."""
-    message = {
-        "From": {"Email": SENDER},
-        "To": [{"Email": to_email}],
-        "Subject": subject,
-    }
-    if text:
-        message["TextPart"] = text
-    if html:
-        message["HTMLPart"] = html
-    if attachments:
-        files = []
-        for path in attachments:
-            with open(path, "rb") as f:
-                files.append({
-                    "ContentType": "application/octet-stream",
-                    "Filename": os.path.basename(path),
-                    "Base64Content": base64.b64encode(f.read()).decode(),
-                })
-        message["Attachments"] = files
-    data = {"Messages": [message]}
-    return _mailjet.send.create(data=data)
+from services.email_service import send_email
 
+
+def send_via_mailjet(
+    *,
+    to_email: str | Iterable[str],
+    subject: str,
+    text: Optional[str] = None,
+    html: Optional[str] = None,
+    attachments: Optional[Iterable[str]] = None,
+):
+    """Send email using the new unified service.
+
+    Parameters mirror the legacy implementation so existing callers keep
+    working. The function now delegates to :func:`services.email_service.send_email`
+    and therefore supports both Mailjet and SMTP backends transparently.
+    """
+    warnings.warn(
+        "send_via_mailjet is deprecated; use services.email_service.send_email",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    recipients = to_email if isinstance(to_email, (list, tuple, set)) else [to_email]
+    return send_email(
+        subject=subject,
+        to=recipients,
+        text=text,
+        html=html,
+        attachments=attachments,
+    )
+
+
+__all__ = ["send_via_mailjet"]

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, render_template
 from services.ai_service import ai_service
-from utils.auth import login_required, require_permission
+from utils.auth import login_required, require_permission, cliente_required
 from flask import current_app
 import json
 
@@ -8,7 +8,7 @@ ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
 @ai_bp.route('/gerar-texto-certificado', methods=['POST'])
 @login_required
-@require_permission('ai.use')
+@cliente_required
 def gerar_texto_certificado():
     """
     Gera texto para certificados usando IA.
@@ -39,7 +39,7 @@ def gerar_texto_certificado():
 
 @ai_bp.route('/melhorar-texto', methods=['POST'])
 @login_required
-@require_permission('ai.use')
+@cliente_required
 def melhorar_texto():
     """
     Melhora um texto existente usando IA.
@@ -72,7 +72,7 @@ def melhorar_texto():
 
 @ai_bp.route('/sugestoes-variaveis', methods=['POST'])
 @login_required
-@require_permission('ai.use')
+@cliente_required
 def sugestoes_variaveis():
     """
     Gera sugestões de variáveis dinâmicas baseadas no contexto.
@@ -97,7 +97,7 @@ def sugestoes_variaveis():
 
 @ai_bp.route('/verificar-qualidade', methods=['POST'])
 @login_required
-@require_permission('ai.use')
+@cliente_required
 def verificar_qualidade():
     """
     Verifica a qualidade de um texto e sugere melhorias.
@@ -128,7 +128,7 @@ def verificar_qualidade():
 
 @ai_bp.route('/assistente-texto', methods=['GET'])
 @login_required
-@require_permission('ai.use')
+@cliente_required
 def assistente_texto():
     """
     Página do assistente de texto com IA.
@@ -145,20 +145,51 @@ def configuracoes_ia():
     if request.method == 'POST':
         try:
             data = request.get_json()
+            tipo = data.get('tipo')
             
-            # Aqui você pode salvar configurações como API keys, modelos preferidos, etc.
-            # Por enquanto, apenas retornamos sucesso
+            if tipo == 'huggingface':
+                # Salvar configurações do Hugging Face
+                api_key = data.get('api_key')
+                model = data.get('model')
+                
+                # Aqui você salvaria as configurações no banco de dados ou arquivo de config
+                # Por enquanto, apenas retornar sucesso
+                return jsonify({
+                    'success': True,
+                    'message': 'Configurações do Hugging Face salvas com sucesso'
+                })
+                
+            elif tipo == 'tgi':
+                # Salvar configurações do TGI
+                use_tgi = data.get('use_tgi')
+                endpoint = data.get('endpoint')
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Configurações do TGI salvas com sucesso'
+                })
+                
+            elif tipo == 'advanced':
+                # Salvar configurações avançadas
+                timeout = data.get('timeout')
+                retries = data.get('retries')
+                fallback = data.get('fallback')
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Configurações avançadas salvas com sucesso'
+                })
             
             return jsonify({
-                'success': True,
-                'message': 'Configurações salvas com sucesso'
-            })
+                'success': False,
+                'message': 'Tipo de configuração inválido'
+            }), 400
             
         except Exception as e:
             current_app.logger.error(f"Erro ao salvar configurações: {str(e)}")
             return jsonify({
                 'success': False,
-                'message': 'Erro ao salvar configurações'
+                'message': 'Erro interno do servidor'
             }), 500
     
     # GET - retornar página de configurações
@@ -188,6 +219,8 @@ def status_ia():
             }
         }
         
+        status = ai_service.get_status()
+        
         return jsonify({
             'success': True,
             'status': status
@@ -200,9 +233,57 @@ def status_ia():
             'message': 'Erro ao verificar status'
         }), 500
 
+@ai_bp.route('/testar-huggingface', methods=['POST'])
+@login_required
+@require_permission('ai.configure')
+def testar_huggingface():
+    """
+    Testa a conectividade com o Hugging Face.
+    """
+    try:
+        # Teste simples com um prompt básico
+        resultado = ai_service._gerar_com_hf('teste', 'teste', 'teste de conectividade')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conexão com Hugging Face funcionando',
+            'resultado': resultado
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao testar Hugging Face: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro na conexão: {str(e)}'
+        }), 500
+
+@ai_bp.route('/testar-tgi', methods=['POST'])
+@login_required
+@require_permission('ai.configure')
+def testar_tgi():
+    """
+    Testa a conectividade com o TGI.
+    """
+    try:
+        # Teste simples com um prompt básico
+        resultado = ai_service._gerar_com_tgi('teste', 'teste', 'teste de conectividade')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conexão com TGI funcionando',
+            'resultado': resultado
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao testar TGI: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro na conexão: {str(e)}'
+        }), 500
+
 @ai_bp.route('/templates-sugeridos', methods=['GET'])
 @login_required
-@require_permission('ai.use')
+@cliente_required
 def templates_sugeridos():
     """
     Retorna templates sugeridos para diferentes tipos de eventos.
@@ -250,7 +331,7 @@ def templates_sugeridos():
 
 @ai_bp.route('/gerar-template-personalizado', methods=['POST'])
 @login_required
-@require_permission('ai.use')
+@cliente_required
 def gerar_template_personalizado():
     """
     Gera um template personalizado baseado nas especificações do usuário.

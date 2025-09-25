@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}Gerar QR Code - {{ oficina.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-qrcode me-2"></i>
+                        QR Code para Feedback
+                    </h4>
+                    <p class="mb-0 mt-2">Oficina: {{ oficina.titulo }}</p>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Informações da Oficina -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Informações da Oficina:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Título:</strong> {{ oficina.titulo }}</li>
+                                <li><strong>Data:</strong> {{ oficina.data_inicio.strftime('%d/%m/%Y') if oficina.data_inicio else 'Não definida' }}</li>
+                                <li><strong>Horário:</strong> {{ oficina.horario_inicio.strftime('%H:%M') if oficina.horario_inicio else 'Não definido' }}</li>
+                                <li><strong>Local:</strong> {{ oficina.local or 'Não definido' }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Estatísticas:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Total de Inscritos:</strong> {{ inscritos|length }}</li>
+                                <li><strong>Status:</strong> 
+                                    <span class="badge bg-{{ 'success' if oficina.status == 'ativa' else 'secondary' }}">
+                                        {{ oficina.status.title() if oficina.status else 'Não definido' }}
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- QR Code Principal -->
+                    <div class="text-center mb-4">
+                        <h5 class="mb-3">QR Code Geral para Feedback</h5>
+                        <div class="d-inline-block p-4 bg-white border rounded shadow-sm">
+                            <img id="qrCodeGeral" 
+                                 src="{{ url_for('feedback_routes.gerar_qr_code_geral', oficina_id=oficina.id) }}" 
+                                 class="img-fluid" 
+                                 alt="QR Code para Feedback" 
+                                 style="max-width: 300px; width: 100%;">
+                        </div>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Este QR Code permite acesso direto ao formulário de feedback da oficina
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <button class="btn btn-outline-primary w-100" onclick="downloadQRCode()">
+                                <i class="fas fa-download me-2"></i>
+                                Baixar QR Code
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <button class="btn btn-outline-secondary w-100" onclick="imprimirQRCode()">
+                                <i class="fas fa-print me-2"></i>
+                                Imprimir QR Code
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- QR Codes Individuais -->
+                    {% if inscritos %}
+                    <hr class="my-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-users me-2"></i>
+                        QR Codes Individuais por Participante
+                    </h5>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Cada participante pode ter seu próprio QR Code personalizado para feedback
+                    </div>
+
+                    <div class="row">
+                        {% for inscrito in inscritos %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">{{ inscrito.nome }}</h6>
+                                    <p class="card-text small text-muted">{{ inscrito.email }}</p>
+                                    
+                                    <div class="mb-3">
+                                        <img id="qrCode_{{ inscrito.id }}" 
+                                             src="{{ url_for('feedback_routes.gerar_qr_code_individual', usuario_id=inscrito.id, oficina_id=oficina.id) }}" 
+                                             class="img-fluid" 
+                                             alt="QR Code {{ inscrito.nome }}" 
+                                             style="max-width: 150px; width: 100%;">
+                                    </div>
+                                    
+                                    <div class="btn-group w-100" role="group">
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="downloadQRIndividual({{ inscrito.id }}, '{{ inscrito.nome }}')">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" 
+                                                onclick="imprimirQRIndividual({{ inscrito.id }}, '{{ inscrito.nome }}')">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Instruções de Uso -->
+                    <hr class="my-4">
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Como usar os QR Codes:
+                        </h6>
+                        <ol class="mb-0">
+                            <li><strong>QR Code Geral:</strong> Qualquer pessoa pode escanear para acessar o feedback da oficina</li>
+                            <li><strong>QR Codes Individuais:</strong> Cada participante tem acesso direto ao seu formulário de feedback</li>
+                            <li><strong>Impressão:</strong> Recomenda-se imprimir em papel branco com boa qualidade</li>
+                            <li><strong>Exibição:</strong> Coloque em local visível durante ou após a oficina</li>
+                        </ol>
+                    </div>
+
+                    <!-- Voltar -->
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('feedback_routes.feedback_oficina', oficina_id=oficina.id) }}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Voltar para Feedbacks
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function downloadQRCode() {
+    const qrCodeImg = document.getElementById('qrCodeGeral');
+    const link = document.createElement('a');
+    link.href = qrCodeImg.src;
+    link.download = `qr_feedback_${'{{ oficina.titulo|replace(" ", "_") }}'}.png`;
+    link.click();
+}
+
+function imprimirQRCode() {
+    const qrCodeImg = document.getElementById('qrCodeGeral');
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>QR Code - {{ oficina.titulo }}</title>
+                <style>
+                    body { text-align: center; padding: 20px; font-family: Arial, sans-serif; }
+                    .qr-container { margin: 20px 0; }
+                    .qr-container img { max-width: 300px; width: 100%; }
+                    .info { margin-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <h2>QR Code para Feedback</h2>
+                <h3>{{ oficina.titulo }}</h3>
+                <div class="qr-container">
+                    <img src="${qrCodeImg.src}" alt="QR Code">
+                </div>
+                <div class="info">
+                    <p><strong>Data:</strong> {{ oficina.data_inicio.strftime('%d/%m/%Y') if oficina.data_inicio else 'Não definida' }}</p>
+                    <p><strong>Local:</strong> {{ oficina.local or 'Não definido' }}</p>
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function downloadQRIndividual(usuarioId, nome) {
+    const qrCodeImg = document.getElementById(`qrCode_${usuarioId}`);
+    const link = document.createElement('a');
+    link.href = qrCodeImg.src;
+    link.download = `qr_feedback_${nome.replace(' ', '_')}.png`;
+    link.click();
+}
+
+function imprimirQRIndividual(usuarioId, nome) {
+    const qrCodeImg = document.getElementById(`qrCode_${usuarioId}`);
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>QR Code - ${nome}</title>
+                <style>
+                    body { text-align: center; padding: 20px; font-family: Arial, sans-serif; }
+                    .qr-container { margin: 20px 0; }
+                    .qr-container img { max-width: 200px; width: 100%; }
+                    .info { margin-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <h2>QR Code Individual</h2>
+                <h3>${nome}</h3>
+                <div class="qr-container">
+                    <img src="${qrCodeImg.src}" alt="QR Code">
+                </div>
+                <div class="info">
+                    <p><strong>Oficina:</strong> {{ oficina.titulo }}</p>
+                    <p><strong>Data:</strong> {{ oficina.data_inicio.strftime('%d/%m/%Y') if oficina.data_inicio else 'Não definida' }}</p>
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,811 @@
+{% extends "relatorio_bi/base.html" %}
+
+{% set title = "Dashboards" %}
+{% set subtitle = "Gerencie seus dashboards de Business Intelligence" %}
+
+{% block bi_content %}
+<!-- Cabeçalho com Ações -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-tachometer-alt fa-2x text-primary"></i>
+            </div>
+            <div>
+                <h3 class="mb-1">Dashboards</h3>
+                <p class="text-muted mb-0">Gerencie seus dashboards de Business Intelligence</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="d-flex justify-content-end gap-2">
+            <a href="{{ url_for('relatorio_bi_routes.criar_dashboard') }}" 
+               class="btn btn-primary btn-custom">
+                <i class="fas fa-plus"></i> Novo Dashboard
+            </a>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-custom dropdown-toggle" 
+                        type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-cog"></i> Ações
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="importarDashboard()">
+                        <i class="fas fa-upload"></i> Importar Dashboard
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportarTodosDashboards()">
+                        <i class="fas fa-download"></i> Exportar Todos
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="configuracoesGerais()">
+                        <i class="fas fa-sliders-h"></i> Configurações Gerais
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="bi-card mb-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" class="form-control" id="buscaDashboards" 
+                       placeholder="Buscar dashboards...">
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <select class="form-select" id="filtroTipo">
+                <option value="">Todos os tipos</option>
+                <option value="executivo">Executivo</option>
+                <option value="operacional">Operacional</option>
+                <option value="financeiro">Financeiro</option>
+                <option value="qualidade">Qualidade</option>
+            </select>
+        </div>
+        
+        <div class="col-md-3">
+            <select class="form-select" id="filtroVisibilidade">
+                <option value="">Todas as visibilidades</option>
+                <option value="publico">Públicos</option>
+                <option value="privado">Privados</option>
+            </select>
+        </div>
+        
+        <div class="col-md-2">
+            <button class="btn btn-outline-primary w-100" onclick="aplicarFiltros()">
+                <i class="fas fa-filter"></i> Filtrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas Rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="bi-card text-center">
+            <div class="d-flex align-items-center justify-content-center mb-2">
+                <i class="fas fa-tachometer-alt fa-2x text-primary me-3"></i>
+                <div>
+                    <h4 class="mb-0">{{ dashboards|length }}</h4>
+                    <small class="text-muted">Total de Dashboards</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="bi-card text-center">
+            <div class="d-flex align-items-center justify-content-center mb-2">
+                <i class="fas fa-globe fa-2x text-success me-3"></i>
+                <div>
+                    <h4 class="mb-0">{{ dashboards|selectattr('is_public')|list|length }}</h4>
+                    <small class="text-muted">Públicos</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="bi-card text-center">
+            <div class="d-flex align-items-center justify-content-center mb-2">
+                <i class="fas fa-lock fa-2x text-warning me-3"></i>
+                <div>
+                    <h4 class="mb-0">{{ dashboards|rejectattr('is_public')|list|length }}</h4>
+                    <small class="text-muted">Privados</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="bi-card text-center">
+            <div class="d-flex align-items-center justify-content-center mb-2">
+                <i class="fas fa-eye fa-2x text-info me-3"></i>
+                <div>
+                    <h4 class="mb-0">{{ dashboards|sum(attribute='widgets')|length }}</h4>
+                    <small class="text-muted">Total de Widgets</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Dashboards -->
+<div class="row" id="listaDashboards">
+    {% for dashboard in dashboards %}
+    <div class="col-md-6 col-lg-4 mb-4 dashboard-item" 
+         data-nome="{{ dashboard.nome|lower }}" 
+         data-tipo="{{ dashboard.tipo or 'geral' }}"
+         data-visibilidade="{{ 'publico' if dashboard.is_public else 'privado' }}">
+        
+        <div class="bi-card dashboard-card h-100">
+            <!-- Cabeçalho do Card -->
+            <div class="dashboard-card-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="dashboard-info">
+                        <h5 class="dashboard-title">
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            {{ dashboard.nome }}
+                        </h5>
+                        <p class="dashboard-description text-muted mb-2">
+                            {{ dashboard.descricao or 'Dashboard personalizado' }}
+                        </p>
+                    </div>
+                    
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('relatorio_bi_routes.visualizar_dashboard', id=dashboard.id) }}">
+                                <i class="fas fa-eye"></i> Visualizar
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('relatorio_bi_routes.editar_dashboard', id=dashboard.id) }}">
+                                <i class="fas fa-edit"></i> Editar
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="duplicarDashboard({{ dashboard.id }})">
+                                <i class="fas fa-copy"></i> Duplicar
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportarDashboard({{ dashboard.id }})">
+                                <i class="fas fa-download"></i> Exportar
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="compartilharDashboard({{ dashboard.id }})">
+                                <i class="fas fa-share"></i> Compartilhar
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="excluirDashboard({{ dashboard.id }})">
+                                <i class="fas fa-trash"></i> Excluir
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Preview do Dashboard -->
+            <div class="dashboard-preview">
+                <div class="preview-widgets">
+                    {% for widget in dashboard.widgets[:4] %}
+                    <div class="preview-widget">
+                        <div class="widget-icon">
+                            {% if widget.tipo_visualizacao == 'kpi' %}
+                                <i class="fas fa-tachometer-alt"></i>
+                            {% elif widget.tipo_visualizacao == 'grafico_barra' %}
+                                <i class="fas fa-chart-bar"></i>
+                            {% elif widget.tipo_visualizacao == 'grafico_linha' %}
+                                <i class="fas fa-chart-line"></i>
+                            {% elif widget.tipo_visualizacao == 'grafico_pizza' %}
+                                <i class="fas fa-chart-pie"></i>
+                            {% elif widget.tipo_visualizacao == 'tabela' %}
+                                <i class="fas fa-table"></i>
+                            {% else %}
+                                <i class="fas fa-chart-area"></i>
+                            {% endif %}
+                        </div>
+                        <div class="widget-title">{{ widget.titulo }}</div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if dashboard.widgets|length > 4 %}
+                    <div class="preview-widget more-widgets">
+                        <div class="widget-icon">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="widget-title">+{{ dashboard.widgets|length - 4 }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Informações do Dashboard -->
+            <div class="dashboard-meta">
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-muted">
+                            <i class="fas fa-puzzle-piece"></i>
+                            {{ dashboard.widgets|length }} widget{{ 's' if dashboard.widgets|length != 1 else '' }}
+                        </small>
+                    </div>
+                    <div class="col-6 text-end">
+                        <small class="text-muted">
+                            {% if dashboard.is_public %}
+                                <i class="fas fa-globe text-success"></i> Público
+                            {% else %}
+                                <i class="fas fa-lock text-warning"></i> Privado
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar"></i>
+                            {{ dashboard.created_at.strftime('%d/%m/%Y') }}
+                        </small>
+                    </div>
+                    <div class="col-6 text-end">
+                        <small class="text-muted">
+                            <i class="fas fa-sync"></i>
+                            {% if dashboard.refresh_interval %}
+                                {{ dashboard.refresh_interval }}s
+                            {% else %}
+                                Manual
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ações do Dashboard -->
+            <div class="dashboard-actions">
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('relatorio_bi_routes.visualizar_dashboard', id=dashboard.id) }}" 
+                       class="btn btn-primary btn-sm flex-fill">
+                        <i class="fas fa-eye"></i> Visualizar
+                    </a>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            onclick="configurarDashboard({{ dashboard.id }})">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    
+    <!-- Estado Vazio -->
+    {% if dashboards|length == 0 %}
+    <div class="col-12">
+        <div class="bi-card text-center">
+            <i class="fas fa-tachometer-alt fa-4x text-muted mb-4"></i>
+            <h4>Nenhum Dashboard Encontrado</h4>
+            <p class="text-muted mb-4">
+                Você ainda não possui dashboards configurados. 
+                Crie seu primeiro dashboard para começar a visualizar seus dados.
+            </p>
+            <a href="{{ url_for('relatorio_bi_routes.criar_dashboard') }}" 
+               class="btn btn-primary btn-custom">
+                <i class="fas fa-plus"></i> Criar Primeiro Dashboard
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Paginação -->
+{% if dashboards|length > 12 %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="Paginação dos dashboards">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                </li>
+                <li class="page-item active">
+                    <span class="page-link">1</span>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">2</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">3</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Próximo</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este dashboard?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Atenção:</strong> Esta ação não pode ser desfeita. 
+                    Todos os dados e configurações do dashboard serão perdidos.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash"></i> Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// Variáveis globais
+let dashboardParaExcluir = null;
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarBusca();
+    inicializarFiltros();
+});
+
+// Inicializar busca
+function inicializarBusca() {
+    const buscaInput = document.getElementById('buscaDashboards');
+    
+    buscaInput.addEventListener('input', function() {
+        const termo = this.value.toLowerCase();
+        filtrarDashboards();
+    });
+}
+
+// Inicializar filtros
+function inicializarFiltros() {
+    const filtroTipo = document.getElementById('filtroTipo');
+    const filtroVisibilidade = document.getElementById('filtroVisibilidade');
+    
+    filtroTipo.addEventListener('change', filtrarDashboards);
+    filtroVisibilidade.addEventListener('change', filtrarDashboards);
+}
+
+// Filtrar dashboards
+function filtrarDashboards() {
+    const termoBusca = document.getElementById('buscaDashboards').value.toLowerCase();
+    const tipoFiltro = document.getElementById('filtroTipo').value;
+    const visibilidadeFiltro = document.getElementById('filtroVisibilidade').value;
+    
+    const dashboards = document.querySelectorAll('.dashboard-item');
+    
+    dashboards.forEach(dashboard => {
+        const nome = dashboard.dataset.nome;
+        const tipo = dashboard.dataset.tipo;
+        const visibilidade = dashboard.dataset.visibilidade;
+        
+        let mostrar = true;
+        
+        // Filtro por busca
+        if (termoBusca && !nome.includes(termoBusca)) {
+            mostrar = false;
+        }
+        
+        // Filtro por tipo
+        if (tipoFiltro && tipo !== tipoFiltro) {
+            mostrar = false;
+        }
+        
+        // Filtro por visibilidade
+        if (visibilidadeFiltro && visibilidade !== visibilidadeFiltro) {
+            mostrar = false;
+        }
+        
+        dashboard.style.display = mostrar ? 'block' : 'none';
+    });
+    
+    // Atualizar contadores
+    atualizarContadores();
+}
+
+// Atualizar contadores
+function atualizarContadores() {
+    const dashboardsVisiveis = document.querySelectorAll('.dashboard-item[style*="block"], .dashboard-item:not([style*="none"])');
+    const totalVisiveis = dashboardsVisiveis.length;
+    
+    // Atualizar contador na interface se existir
+    const contadorElement = document.querySelector('.total-dashboards');
+    if (contadorElement) {
+        contadorElement.textContent = totalVisiveis;
+    }
+}
+
+// Aplicar filtros
+function aplicarFiltros() {
+    filtrarDashboards();
+}
+
+// Duplicar dashboard
+function duplicarDashboard(dashboardId) {
+    mostrarNotificacao('Duplicando dashboard...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/${dashboardId}/duplicar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarNotificacao('Dashboard duplicado com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            mostrarNotificacao('Erro ao duplicar dashboard: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao duplicar dashboard', 'error');
+    });
+}
+
+// Exportar dashboard
+function exportarDashboard(dashboardId) {
+    mostrarNotificacao('Preparando exportação...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/${dashboardId}/exportar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dashboard_${dashboardId}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        mostrarNotificacao('Dashboard exportado com sucesso!', 'success');
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao exportar dashboard', 'error');
+    });
+}
+
+// Compartilhar dashboard
+function compartilharDashboard(dashboardId) {
+    mostrarNotificacao('Gerando link de compartilhamento...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/${dashboardId}/compartilhar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Copiar link para clipboard
+            navigator.clipboard.writeText(data.link).then(() => {
+                mostrarNotificacao('Link copiado para a área de transferência!', 'success');
+            }).catch(() => {
+                mostrarNotificacao('Link gerado: ' + data.link, 'info');
+            });
+        } else {
+            mostrarNotificacao('Erro ao gerar link: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao compartilhar dashboard', 'error');
+    });
+}
+
+// Excluir dashboard
+function excluirDashboard(dashboardId) {
+    dashboardParaExcluir = dashboardId;
+    
+    const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+    modal.show();
+}
+
+// Confirmar exclusão
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (dashboardParaExcluir) {
+        excluirDashboardConfirmado(dashboardParaExcluir);
+    }
+});
+
+// Excluir dashboard confirmado
+function excluirDashboardConfirmado(dashboardId) {
+    mostrarNotificacao('Excluindo dashboard...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/${dashboardId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarNotificacao('Dashboard excluído com sucesso!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+            
+            // Remover elemento da lista
+            const dashboardElement = document.querySelector(`[data-dashboard-id="${dashboardId}"]`);
+            if (dashboardElement) {
+                dashboardElement.remove();
+            }
+            
+            // Recarregar página após um delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            mostrarNotificacao('Erro ao excluir dashboard: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao excluir dashboard', 'error');
+    });
+}
+
+// Configurar dashboard
+function configurarDashboard(dashboardId) {
+    mostrarNotificacao('Abrindo configurações...', 'info');
+    // Implementar modal de configurações
+}
+
+// Importar dashboard
+function importarDashboard() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            importarDashboardArquivo(file);
+        }
+    };
+    input.click();
+}
+
+// Importar dashboard arquivo
+function importarDashboardArquivo(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const dashboardData = JSON.parse(e.target.result);
+            enviarDashboardImportado(dashboardData);
+        } catch (error) {
+            mostrarNotificacao('Arquivo inválido!', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Enviar dashboard importado
+function enviarDashboardImportado(dashboardData) {
+    mostrarNotificacao('Importando dashboard...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/importar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dashboardData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarNotificacao('Dashboard importado com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            mostrarNotificacao('Erro ao importar dashboard: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao importar dashboard', 'error');
+    });
+}
+
+// Exportar todos os dashboards
+function exportarTodosDashboards() {
+    mostrarNotificacao('Preparando exportação de todos os dashboards...', 'info');
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/exportar-todos`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dashboards_${new Date().toISOString().split('T')[0]}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        mostrarNotificacao('Todos os dashboards foram exportados!', 'success');
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao exportar dashboards', 'error');
+    });
+}
+
+// Configurações gerais
+function configuracoesGerais() {
+    mostrarNotificacao('Abrindo configurações gerais...', 'info');
+    // Implementar modal de configurações gerais
+}
+</script>
+
+<style>
+.dashboard-card {
+    transition: all 0.3s ease;
+    border: 1px solid #dee2e6;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+.dashboard-card-header {
+    padding: 1rem 1rem 0.5rem 1rem;
+}
+
+.dashboard-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.dashboard-description {
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.dashboard-preview {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 0.5rem 1rem;
+}
+
+.preview-widgets {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.preview-widget {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 0.5rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.preview-widget:hover {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+.widget-icon {
+    font-size: 1.2rem;
+    color: #007bff;
+    margin-bottom: 0.25rem;
+}
+
+.widget-title {
+    font-size: 0.7rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.more-widgets {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.more-widgets .widget-icon {
+    color: #6c757d;
+}
+
+.dashboard-meta {
+    padding: 0.5rem 1rem;
+    border-top: 1px solid #dee2e6;
+    background: #f8f9fa;
+}
+
+.dashboard-actions {
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.bi-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.bi-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.btn-custom {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-custom:hover {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .dashboard-card-header {
+        padding: 0.75rem 0.75rem 0.25rem 0.75rem;
+    }
+    
+    .dashboard-preview {
+        margin: 0.25rem 0.75rem;
+        padding: 0.75rem;
+    }
+    
+    .dashboard-meta {
+        padding: 0.25rem 0.75rem;
+    }
+    
+    .dashboard-actions {
+        padding: 0.75rem;
+    }
+    
+    .preview-widgets {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+

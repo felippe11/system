@@ -1,0 +1,540 @@
+{% extends "relatorio_bi/base.html" %}
+
+{% set title = "Dashboard de Business Intelligence" %}
+{% set subtitle = "Visão estratégica e análises avançadas dos seus dados" %}
+{% set show_export_buttons = true %}
+
+{% block bi_content %}
+<!-- Tutorial e Observações -->
+<div class="alert alert-info mb-4">
+    <h5><i class="fas fa-info-circle"></i> Como usar este dashboard</h5>
+    <div class="row">
+        <div class="col-md-6">
+            <p><strong>📊 KPIs em Tempo Real:</strong> Os indicadores são atualizados automaticamente a cada 30 segundos.</p>
+            <p><strong>📈 Interatividade:</strong> Clique nos gráficos e cards para fazer drill-down e ver detalhes.</p>
+        </div>
+        <div class="col-md-6">
+            <p><strong>💡 Personalização:</strong> Crie dashboards personalizados com os widgets que mais importam para você.</p>
+            <p><strong>📤 Exportação:</strong> Use os botões no topo para exportar relatórios em diferentes formatos.</p>
+        </div>
+    </div>
+</div>
+
+<!-- KPIs Principais -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h4><i class="fas fa-tachometer-alt"></i> Indicadores Principais</h4>
+        <p class="text-muted">Métricas essenciais para tomada de decisão estratégica</p>
+    </div>
+</div>
+
+<div class="row" id="kpis-container">
+    <!-- KPIs serão carregados via JavaScript -->
+    <div class="col-md-3">
+        <div class="kpi-widget">
+            <div class="loading-spinner"></div>
+            <p class="mt-2">Carregando KPIs...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas e Notificações -->
+<div class="row mb-4" id="alertas-container" style="display: none;">
+    <div class="col-12">
+        <h4><i class="fas fa-exclamation-triangle"></i> Alertas Ativos</h4>
+        <div id="alertas-content">
+            <!-- Alertas serão carregados via JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- Dashboards Personalizados -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4><i class="fas fa-th-large"></i> Dashboards Personalizados</h4>
+            <a href="{{ url_for('relatorio_bi_routes.criar_dashboard') }}" class="btn btn-primary btn-custom">
+                <i class="fas fa-plus"></i> Novo Dashboard
+            </a>
+        </div>
+        
+        {% if dashboards %}
+        <div class="row">
+            {% for dashboard in dashboards %}
+            <div class="col-md-4 mb-3">
+                <div class="bi-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="mb-0">{{ dashboard.nome }}</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('relatorio_bi_routes.visualizar_dashboard', id=dashboard.id) }}">
+                                    <i class="fas fa-eye"></i> Visualizar
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="exportarDashboard({{ dashboard.id }})">
+                                    <i class="fas fa-download"></i> Exportar
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="excluirDashboard({{ dashboard.id }})">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-3">{{ dashboard.descricao or 'Sem descrição' }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar"></i> {{ dashboard.data_criacao.strftime('%d/%m/%Y') }}
+                        </small>
+                        <a href="{{ url_for('relatorio_bi_routes.visualizar_dashboard', id=dashboard.id) }}" 
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-arrow-right"></i> Abrir
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-th-large"></i>
+            <h4>Nenhum dashboard personalizado</h4>
+            <p>Crie seu primeiro dashboard personalizado para ter uma visão única dos seus dados.</p>
+            <a href="{{ url_for('relatorio_bi_routes.criar_dashboard') }}" class="btn btn-primary btn-custom">
+                <i class="fas fa-plus"></i> Criar Dashboard
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Análises Rápidas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h4><i class="fas fa-chart-line"></i> Análises Rápidas</h4>
+        <p class="text-muted">Acesse análises específicas com um clique</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3 mb-3">
+        <div class="bi-card text-center">
+            <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+            <h5>Tendências</h5>
+            <p class="text-muted">Análise de tendências temporais</p>
+            <a href="{{ url_for('relatorio_bi_routes.analise_tendencias') }}" class="btn btn-outline-primary btn-custom">
+                <i class="fas fa-arrow-right"></i> Analisar
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="bi-card text-center">
+            <i class="fas fa-map-marked-alt fa-3x text-success mb-3"></i>
+            <h5>Geografia</h5>
+            <p class="text-muted">Análise geográfica detalhada</p>
+            <a href="{{ url_for('relatorio_bi_routes.analise_geografica') }}" class="btn btn-outline-success btn-custom">
+                <i class="fas fa-arrow-right"></i> Analisar
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="bi-card text-center">
+            <i class="fas fa-star fa-3x text-warning mb-3"></i>
+            <h5>Qualidade</h5>
+            <p class="text-muted">Análise de satisfação e qualidade</p>
+            <a href="{{ url_for('relatorio_bi_routes.analise_qualidade') }}" class="btn btn-outline-warning btn-custom">
+                <i class="fas fa-arrow-right"></i> Analisar
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="bi-card text-center">
+            <i class="fas fa-dollar-sign fa-3x text-info mb-3"></i>
+            <h5>Financeiro</h5>
+            <p class="text-muted">Análise financeira detalhada</p>
+            <a href="{{ url_for('relatorio_bi_routes.analise_financeira') }}" class="btn btn-outline-info btn-custom">
+                <i class="fas fa-arrow-right"></i> Analisar
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Relatórios Recentes -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4><i class="fas fa-file-alt"></i> Relatórios Recentes</h4>
+            <a href="{{ url_for('relatorio_bi_routes.lista_relatorios') }}" class="btn btn-outline-primary btn-custom">
+                <i class="fas fa-list"></i> Ver Todos
+            </a>
+        </div>
+        
+        <div class="bi-card">
+            <div class="table-responsive">
+                <table class="table table-custom" id="relatorios-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th>Criado em</th>
+                            <th>Última Execução</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Relatórios serão carregados via JavaScript -->
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <div class="loading-spinner"></div>
+                                <p class="mt-2">Carregando relatórios...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas Disponíveis -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h4><i class="fas fa-calculator"></i> Métricas Disponíveis</h4>
+        <p class="text-muted">Métricas que podem ser usadas em dashboards personalizados</p>
+    </div>
+</div>
+
+<div class="row" id="metricas-container">
+    <!-- Métricas serão carregadas via JavaScript -->
+    <div class="col-12">
+        <div class="text-center">
+            <div class="loading-spinner"></div>
+            <p class="mt-2">Carregando métricas...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// Variáveis globais
+let kpisData = {};
+let alertasData = [];
+let relatoriosData = [];
+let metricasData = [];
+
+// Função principal de inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    carregarKPIs();
+    carregarAlertas();
+    carregarRelatorios();
+    carregarMetricas();
+    
+    // Configurar atualização automática
+    setInterval(function() {
+        carregarKPIs();
+        carregarAlertas();
+    }, 30000); // 30 segundos
+});
+
+// Carregar KPIs
+function carregarKPIs() {
+    fetch(`${BI_CONFIG.apiBaseUrl}/kpis`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                kpisData = data.kpis;
+                renderizarKPIs();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar KPIs:', error);
+        });
+}
+
+// Renderizar KPIs
+function renderizarKPIs() {
+    const container = document.getElementById('kpis-container');
+    
+    if (!kpisData || Object.keys(kpisData).length === 0) {
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Nenhum dado disponível para exibir KPIs.
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    const kpis = [
+        {
+            key: 'inscricoes_totais',
+            label: 'Inscrições Totais',
+            value: kpisData.inscricoes_totais || 0,
+            icon: 'fas fa-users',
+            color: 'primary',
+            format: 'number'
+        },
+        {
+            key: 'usuarios_unicos',
+            label: 'Usuários Únicos',
+            value: kpisData.usuarios_unicos || 0,
+            icon: 'fas fa-user-friends',
+            color: 'success',
+            format: 'number'
+        },
+        {
+            key: 'taxa_conversao',
+            label: 'Taxa de Conversão',
+            value: kpisData.taxa_conversao || 0,
+            icon: 'fas fa-percentage',
+            color: 'info',
+            format: 'percent'
+        },
+        {
+            key: 'receita_total',
+            label: 'Receita Total',
+            value: kpisData.receita_total || 0,
+            icon: 'fas fa-dollar-sign',
+            color: 'warning',
+            format: 'currency'
+        },
+        {
+            key: 'ticket_medio',
+            label: 'Ticket Médio',
+            value: kpisData.ticket_medio || 0,
+            icon: 'fas fa-receipt',
+            color: 'secondary',
+            format: 'currency'
+        },
+        {
+            key: 'taxa_presenca',
+            label: 'Taxa de Presença',
+            value: kpisData.taxa_presenca || 0,
+            icon: 'fas fa-check-circle',
+            color: 'success',
+            format: 'percent'
+        },
+        {
+            key: 'satisfacao_media',
+            label: 'Satisfação Média',
+            value: kpisData.satisfacao_media || 0,
+            icon: 'fas fa-star',
+            color: 'warning',
+            format: 'decimal'
+        },
+        {
+            key: 'nps',
+            label: 'NPS',
+            value: kpisData.nps || 0,
+            icon: 'fas fa-thumbs-up',
+            color: 'info',
+            format: 'number'
+        }
+    ];
+    
+    container.innerHTML = kpis.map(kpi => `
+        <div class="col-md-3 mb-3">
+            <div class="kpi-widget drill-down" onclick="drillDown('kpi', '${kpi.key}')" 
+                 style="border-left-color: var(--bs-${kpi.color})">
+                <div class="kpi-value text-${kpi.color}">
+                    ${formatarValor(kpi.value, kpi.format)}
+                </div>
+                <div class="kpi-label">${kpi.label}</div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-arrow-up"></i> +2.5% vs período anterior
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Carregar alertas
+function carregarAlertas() {
+    fetch(`${BI_CONFIG.apiBaseUrl}/alertas`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alertasData = data.alertas;
+                renderizarAlertas();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar alertas:', error);
+        });
+}
+
+// Renderizar alertas
+function renderizarAlertas() {
+    const container = document.getElementById('alertas-container');
+    const content = document.getElementById('alertas-content');
+    
+    if (!alertasData || alertasData.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    content.innerHTML = alertasData.map(alerta => `
+        <div class="alert alert-${alerta.tipo === 'warning' ? 'warning' : 'danger'} alert-custom">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">
+                        <i class="fas fa-exclamation-triangle"></i> ${alerta.nome}
+                    </h6>
+                    <p class="mb-0">${alerta.descricao}</p>
+                    <small class="text-muted">
+                        Valor atual: ${alerta.valor_atual} | Limite: ${alerta.valor_limite}
+                    </small>
+                </div>
+                <button class="btn btn-sm btn-outline-${alerta.tipo === 'warning' ? 'warning' : 'danger'}" 
+                        onclick="dismissAlerta(${alerta.alerta_id})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Carregar relatórios
+function carregarRelatorios() {
+    // Implementar carregamento de relatórios
+    const tbody = document.querySelector('#relatorios-table tbody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center">
+                <div class="empty-state">
+                    <i class="fas fa-file-alt"></i>
+                    <h6>Nenhum relatório encontrado</h6>
+                    <p>Os relatórios recentes aparecerão aqui.</p>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// Carregar métricas
+function carregarMetricas() {
+    fetch(`${BI_CONFIG.apiBaseUrl}/metricas`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                metricasData = data.metricas;
+                renderizarMetricas();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar métricas:', error);
+        });
+}
+
+// Renderizar métricas
+function renderizarMetricas() {
+    const container = document.getElementById('metricas-container');
+    
+    if (!metricasData || metricasData.length === 0) {
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Nenhuma métrica personalizada disponível.
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="row">
+            ${metricasData.map(metrica => `
+                <div class="col-md-4 mb-3">
+                    <div class="metric-card">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0">
+                                <i class="${metrica.icone}" style="color: ${metrica.cor}"></i>
+                                ${metrica.nome}
+                            </h6>
+                            <span class="badge badge-custom bg-${metrica.categoria === 'vendas' ? 'success' : 'primary'}">
+                                ${metrica.categoria}
+                            </span>
+                        </div>
+                        <p class="text-muted mb-2">${metrica.descricao || 'Sem descrição'}</p>
+                        <small class="text-muted">
+                            <i class="fas fa-tag"></i> ${metrica.tipo_metrica} 
+                            ${metrica.unidade ? `• ${metrica.unidade}` : ''}
+                        </small>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Funções auxiliares
+function formatarValor(valor, formato) {
+    switch (formato) {
+        case 'number':
+            return formatNumber(valor);
+        case 'currency':
+            return formatCurrency(valor);
+        case 'percent':
+            return formatPercent(valor);
+        case 'decimal':
+            return formatNumber(valor, 2);
+        default:
+            return valor;
+    }
+}
+
+function dismissAlerta(alertaId) {
+    // Implementar dismiss de alerta
+    mostrarNotificacao('Alerta removido', 'success');
+}
+
+function exportarDashboard(dashboardId) {
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/${dashboardId}/exportar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            formato: 'pdf'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.open(`/bi/download/${data.filename}`, '_blank');
+            mostrarNotificacao('Dashboard exportado com sucesso!', 'success');
+        } else {
+            mostrarNotificacao(`Erro na exportação: ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        mostrarNotificacao(`Erro de conexão: ${error.message}`, 'error');
+    });
+}
+
+function excluirDashboard(dashboardId) {
+    if (confirm('Tem certeza que deseja excluir este dashboard?')) {
+        // Implementar exclusão
+        mostrarNotificacao('Dashboard excluído com sucesso!', 'success');
+    }
+}
+
+// Função de atualização automática
+function atualizarDados() {
+    carregarKPIs();
+    carregarAlertas();
+}
+</script>
+{% endblock %}

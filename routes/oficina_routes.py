@@ -70,6 +70,7 @@ def criar_oficina():
         if current_user.tipo == 'cliente'
         else Ministrante.query.all()
     )
+    formadores_disponiveis = ministrantes_disponiveis
     clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []
     eventos_disponiveis = (
         Evento.query.filter_by(cliente_id=current_user.id).all()
@@ -96,11 +97,13 @@ def criar_oficina():
         context = {
             'estados': estados,
             'ministrantes': ministrantes_disponiveis,
+            'formadores': formadores_disponiveis,
             'clientes': clientes_disponiveis,
             'eventos': eventos_disponiveis,
             'datas': request.form.getlist('data[]'),
             'horarios_inicio': request.form.getlist('horario_inicio[]'),
             'horarios_fim': request.form.getlist('horario_fim[]'),
+            'formador_id': request.form.get('formador_id'),
         }
         if not all([titulo, descricao, vagas, carga_horaria, estado, cidade, evento_id]):
             flash("Erro: Todos os campos obrigatórios devem ser preenchidos!", "danger")
@@ -126,6 +129,7 @@ def criar_oficina():
                 'criar_oficina.html',
                 estados=estados,
                 ministrantes=ministrantes_disponiveis,
+                formadores=formadores_disponiveis,
                 clientes=clientes_disponiveis,
                 eventos=eventos_disponiveis,
                 datas=request.form.getlist('data[]'),
@@ -137,6 +141,25 @@ def criar_oficina():
         cliente_id = (
             request.form.get('cliente_id') if current_user.tipo == 'admin' else current_user.id
         )
+
+        formador_id = request.form.get('formador_id') or None
+        if formador_id:
+            try:
+                formador_id_int = int(formador_id)
+            except (TypeError, ValueError):
+                flash('Formador selecionado é inválido.', 'danger')
+                return render_template('criar_oficina.html', **context)
+
+            formador = Ministrante.query.get(formador_id_int)
+            if not formador:
+                flash('Formador selecionado não foi encontrado.', 'danger')
+                return render_template('criar_oficina.html', **context)
+
+            if current_user.tipo == 'cliente' and formador.cliente_id != current_user.id:
+                flash('Você não pode associar formadores de outros clientes.', 'danger')
+                return render_template('criar_oficina.html', **context)
+
+            formador_id = formador_id_int
 
         # Verifica se o cliente possui habilitação de pagamento
         inscricao_gratuita = (
@@ -159,6 +182,7 @@ def criar_oficina():
                 titulo=titulo,
                 descricao=descricao,
                 ministrante_id=ministrante_id,
+                formador_id=formador_id,
                 vagas=int(vagas),  # Este valor será ajustado no __init__ conforme o tipo_inscricao
                 carga_horaria=carga_horaria,
                 estado=estado,
@@ -249,19 +273,23 @@ def criar_oficina():
                 'criar_oficina.html',
                 estados=estados,
                 ministrantes=ministrantes_disponiveis,
+                formadores=formadores_disponiveis,
                 clientes=clientes_disponiveis,
                 eventos=eventos_disponiveis,
                 datas=request.form.getlist('data[]'),
                 horarios_inicio=request.form.getlist('horario_inicio[]'),
-                horarios_fim=request.form.getlist('horario_fim[]')
+                horarios_fim=request.form.getlist('horario_fim[]'),
+                formador_id=request.form.get('formador_id')
             )
 
     return render_template(
         'criar_oficina.html',
         estados=estados,
         ministrantes=ministrantes_disponiveis,
+        formadores=formadores_disponiveis,
         clientes=clientes_disponiveis,
-        eventos=eventos_disponiveis
+        eventos=eventos_disponiveis,
+        formador_id=None
     )
 
 
@@ -283,22 +311,45 @@ def editar_oficina(oficina_id):
         eventos_disponiveis = Evento.query.all()
 
     clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []
+    formadores = ministrantes
 
     if request.method == 'POST':
         context = {
             'oficina': oficina,
             'estados': estados,
             'ministrantes': ministrantes,
+            'formadores': formadores,
             'clientes': clientes_disponiveis,
             'eventos': eventos_disponiveis,
             'datas': request.form.getlist('data[]'),
             'horarios_inicio': request.form.getlist('horario_inicio[]'),
             'horarios_fim': request.form.getlist('horario_fim[]'),
+            'formador_id': request.form.get('formador_id'),
         }
         oficina.titulo = request.form.get('titulo')
         oficina.descricao = request.form.get('descricao')
         ministrante_id = request.form.get('ministrante_id') or None
         oficina.ministrante_id = ministrante_id
+        formador_id = request.form.get('formador_id') or None
+        if formador_id:
+            try:
+                formador_id_int = int(formador_id)
+            except (TypeError, ValueError):
+                flash('Formador selecionado é inválido.', 'danger')
+                return render_template('editar_oficina.html', **context)
+
+            formador = Ministrante.query.get(formador_id_int)
+            if not formador:
+                flash('Formador selecionado não foi encontrado.', 'danger')
+                return render_template('editar_oficina.html', **context)
+
+            if current_user.tipo == 'cliente' and formador.cliente_id != current_user.id:
+                flash('Você não pode associar formadores de outros clientes.', 'danger')
+                return render_template('editar_oficina.html', **context)
+
+            oficina.formador_id = formador_id_int
+        else:
+            oficina.formador_id = None
         carga_horaria = request.form.get('carga_horaria')
         if not carga_horaria.isdigit():
             flash("O campo 'carga horária' deve conter apenas números.", 'danger')
@@ -419,8 +470,10 @@ def editar_oficina(oficina_id):
                 oficina=oficina,
                 estados=estados,
                 ministrantes=ministrantes,
+                formadores=formadores,
                 clientes=clientes_disponiveis,
-                eventos=eventos_disponiveis
+                eventos=eventos_disponiveis,
+                formador_id=request.form.get('formador_id')
             )
 
     return render_template(
@@ -428,8 +481,10 @@ def editar_oficina(oficina_id):
         oficina=oficina,
         estados=estados,
         ministrantes=ministrantes,
+        formadores=formadores,
         clientes=clientes_disponiveis,
-        eventos=eventos_disponiveis
+        eventos=eventos_disponiveis,
+        formador_id=oficina.formador_id
     )
 
 @oficina_routes.route('/excluir_oficina/<int:oficina_id>', methods=['POST'])

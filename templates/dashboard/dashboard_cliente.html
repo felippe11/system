@@ -429,6 +429,29 @@
         </div>
       </div>
 
+      <!-- Lembretes de Oficinas -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-primary mb-3">
+              <i class="bi bi-bell fs-1"></i>
+            </div>
+            <h5 class="card-title fw-bold">Lembretes</h5>
+            <p class="card-text text-muted">Envie lembretes automáticos ou manuais para participantes</p>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <div class="d-flex gap-2">
+              <a href="{{ url_for('reminder_routes.listar_lembretes') }}" class="btn btn-sm btn-primary flex-grow-1">
+                <i class="bi bi-list me-1"></i> Listar
+              </a>
+              <a href="{{ url_for('reminder_routes.criar_lembrete') }}" class="btn btn-sm btn-outline-primary flex-grow-1">
+                <i class="bi bi-plus me-1"></i> Criar
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Etiquetas -->
       <div class="col-lg-6 col-xl-3">
         <div class="card h-100 shadow-sm hover-shadow border-0">
@@ -950,6 +973,29 @@
     <div class="col-lg-6 col-xl-3">
       <div class="card h-100 shadow-sm hover-shadow border-0">
         <div class="card-body">
+          <div class="text-info mb-3">
+            <i class="bi bi-graph-up-arrow fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Business Intelligence</h5>
+          <p class="card-text text-muted">Dashboards e relatórios avançados com análise de dados</p>
+          <div class="d-grid gap-2">
+            <a href="{{ url_for('relatorio_bi_routes.dashboard_bi') }}" class="btn btn-info mt-2 w-100">
+              <i class="bi bi-graph-up-arrow me-2"></i> Dashboard BI
+            </a>
+            <a href="{{ url_for('relatorio_bi_routes.lista_relatorios') }}" class="btn btn-outline-info mt-1 w-100">
+              <i class="bi bi-file-earmark-text me-2"></i> Relatórios
+            </a>
+            <a href="{{ url_for('relatorio_bi_routes.lista_dashboards') }}" class="btn btn-outline-info mt-1 w-100">
+              <i class="bi bi-grid-3x3-gap me-2"></i> Dashboards
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
           <div class="text-purple mb-3">
             <i class="bi bi-file-earmark-text fs-1"></i>
           </div>
@@ -1008,6 +1054,26 @@
           <a href="{{ url_for('evento_routes.configurar_evento') }}?step=5" class="btn btn-primary w-100">
             <i class="bi bi-award me-2"></i> Configurar Certificado
           </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <!-- Gerenciamento de Feedback -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="mb-0 fw-bold"><i class="bi bi-chat-dots text-info me-2"></i>Feedback Personalizado</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Configure perguntas personalizadas e exporte relatórios de feedback</p>
+          <div class="d-grid gap-2">
+            <a href="{{ url_for('feedback_routes.gerenciar_perguntas') }}" class="btn btn-info w-100">
+              <i class="bi bi-gear me-2"></i> Configurar Perguntas
+            </a>
+            <a href="{{ url_for('feedback_routes.exportar_feedback') }}" class="btn btn-outline-info w-100">
+              <i class="bi bi-download me-2"></i> Exportar Relatórios
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -1152,6 +1218,29 @@
                   </a>
                   <button class="btn btn-outline-warning" onclick="gerenciarAssets()">
                     <i class="bi bi-images me-2"></i>Gerenciar Assets
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assistente de IA -->
+          <div class="col-md-6">
+            <div class="card border-purple border-top border-4 shadow-sm h-100" style="border-color: #8b5cf6 !important;">
+              <div class="card-header text-white" style="background: #8b5cf6;">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-robot me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Assistente de IA</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">Use inteligência artificial para gerar e melhorar textos de certificados e declarações automaticamente.</p>
+                <div class="d-grid gap-2">
+                  <a href="{{ url_for('ai.assistente_texto') }}" class="btn text-white" style="background: #8b5cf6;">
+                    <i class="bi bi-robot me-2"></i>Assistente de Texto
+                  </a>
+                  <button class="btn btn-outline-purple" onclick="abrirConfiguracoesIA()" style="border-color: #8b5cf6; color: #8b5cf6;">
+                    <i class="bi bi-gear me-2"></i>Configurações de IA
                   </button>
                 </div>
               </div>
@@ -2129,6 +2218,38 @@
       </table>
     </div>
 
+    <!-- Controles de Email -->
+    <div class="card mt-4 shadow-sm">
+      <div class="card-header bg-light">
+        <h6 class="fw-bold m-0 d-flex align-items-center">
+          <i class="bi bi-envelope-fill me-2 text-primary"></i> Envio de Emails para Revisores
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <button 
+              id="btnEnviarEmailMassa" 
+              class="btn btn-primary w-100"
+              {% if not revisor_candidaturas_aprovadas %}disabled{% endif %}
+            >
+              <i class="bi bi-envelope-fill me-2"></i>
+              Enviar Email para Todos os Revisores
+            </button>
+            <small class="form-text text-muted">
+              Envia email de aprovação com código de acesso para todos os revisores aprovados
+            </small>
+          </div>
+          <div class="col-md-6">
+            <div class="alert alert-info mb-0">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>{{ revisor_candidaturas_aprovadas|length }}</strong> revisores aprovados encontrados
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <h5 class="fw-bold mt-4">Candidaturas Aprovadas</h5>
     <input type="text" id="searchAprovados" class="form-control mb-3" placeholder="Buscar por nome ou email">
     <div class="table-responsive table-responsive-sm table-responsive-md table-responsive-lg" style="max-height: 400px; overflow-x: auto; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; min-width: 100%;">
@@ -2137,7 +2258,8 @@
           <tr>
             <th class="text-nowrap" style="min-width: 200px;">Nome</th>
             <th class="text-nowrap text-center" style="min-width: 120px;">Código</th>
-            <th class="text-nowrap text-center" style="min-width: 180px;">Ações</th>
+            <th class="text-nowrap text-center" style="min-width: 180px;">Email</th>
+            <th class="text-nowrap text-center" style="min-width: 200px;">Ações</th>
           </tr>
         </thead>
         <tbody id="listaAprovados">
@@ -2148,17 +2270,44 @@
             <code class="bg-light px-2 py-1 rounded">{{ cand.codigo }}</code>
           </td>
           <td class="text-center">
-            <button
-              class="btn btn-sm btn-outline-primary copiar-codigo"
-              data-codigo="{{ cand.codigo }}"
-              title="Copiar código do revisor"
-            >
-              <i class="fas fa-copy me-1"></i>Copiar código
-            </button>
+            {% if cand.email %}
+              <span class="text-success">
+                <i class="bi bi-envelope-check me-1"></i>{{ cand.email }}
+              </span>
+            {% else %}
+              <span class="text-muted">
+                <i class="bi bi-envelope-x me-1"></i>Sem email
+              </span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm" role="group">
+              <button
+                class="btn btn-sm btn-outline-primary copiar-codigo"
+                data-codigo="{{ cand.codigo }}"
+                title="Copiar código do revisor"
+              >
+                <i class="fas fa-copy me-1"></i>Copiar
+              </button>
+              {% if cand.email %}
+              <button
+                class="btn btn-sm btn-outline-success enviar-email-individual"
+                data-cand-id="{{ cand.id }}"
+                data-email="{{ cand.email }}"
+                title="Enviar email individual"
+              >
+                <i class="bi bi-envelope-fill me-1"></i>Enviar Email
+              </button>
+              {% else %}
+              <button class="btn btn-sm btn-outline-secondary" disabled title="Email não disponível">
+                <i class="bi bi-envelope-x me-1"></i>Sem Email
+              </button>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="3" class="text-center text-muted">Nenhum candidato aprovado.</td></tr>
+        <tr><td colspan="4" class="text-center text-muted">Nenhum candidato aprovado.</td></tr>
         {% endfor %}
       </tbody>
       </table>
@@ -2290,6 +2439,11 @@
 
   function gerenciarAssets() {
     window.open('/certificado/upload_personalizacao_certificado', '_blank');
+  }
+
+  function abrirConfiguracoesIA() {
+    // Abrir configurações de IA
+    window.open('/ai/configuracoes', '_blank');
   }
 
   function gerenciarTemplatesDeclaracao() {
@@ -2628,4 +2782,3 @@
 
 </script>
 {% endblock %}{% endblock %}
-

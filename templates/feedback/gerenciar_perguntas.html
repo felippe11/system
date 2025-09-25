@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Perguntas de Feedback{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-question-circle me-2"></i>
+                        Gerenciar Perguntas de Feedback
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <h5>Selecionar Evento</h5>
+                            <select id="eventoSelect" class="form-select">
+                                <option value="">Selecione um evento</option>
+                                {% for evento in eventos %}
+                                <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Selecionar Oficina</h5>
+                            <select id="oficinaSelect" class="form-select" disabled>
+                                <option value="">Selecione uma oficina</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <a href="{{ url_for('feedback_routes.exportar_feedback') }}" class="btn btn-info me-2">
+                                <i class="fas fa-download me-2"></i>
+                                Exportar Relatórios
+                            </a>
+                            <button id="criarPerguntaBtn" class="btn btn-success" onclick="abrirCriarPergunta()">
+                                <i class="fas fa-plus me-2"></i>
+                                Nova Pergunta
+                            </button>
+                            <button id="debugOficinasBtn" class="btn btn-warning ms-2">
+                                <i class="fas fa-bug me-2"></i>
+                                Debug Oficinas
+                            </button>
+                        </div>
+                    </div>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <div id="perguntasContainer">
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Selecione uma oficina para ver as perguntas</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para criar/editar pergunta -->
+<div class="modal fade" id="perguntaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Nova Pergunta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="perguntaForm">
+                    <input type="hidden" id="perguntaId" name="pergunta_id">
+                    <input type="hidden" id="oficinaId" name="oficina_id">
+                    <input type="hidden" id="atividadeId" name="atividade_id">
+                    
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título da Pergunta *</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descricao" class="form-label">Descrição (opcional)</label>
+                        <textarea class="form-control" id="descricao" name="descricao" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tipo" class="form-label">Tipo de Resposta *</label>
+                        <select class="form-select" id="tipo" name="tipo" required>
+                            <option value="">Selecione o tipo</option>
+                            <option value="texto_livre">Texto Livre</option>
+                            <option value="escala_numerica">Escala Numérica (1-5)</option>
+                            <option value="multipla_escolha">Múltipla Escolha</option>
+                            <option value="sim_nao">Sim/Não</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="opcoesContainer" style="display: none;">
+                        <label for="opcoes" class="form-label">Opções (uma por linha)</label>
+                        <textarea class="form-control" id="opcoes" name="opcoes" rows="3" placeholder="Opção 1&#10;Opção 2&#10;Opção 3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="obrigatoria" name="obrigatoria">
+                            <label class="form-check-label" for="obrigatoria">
+                                Pergunta obrigatória
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="ordem" class="form-label">Ordem de Exibição</label>
+                        <input type="number" class="form-control" id="ordem" name="ordem" value="0" min="0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="fecharModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="salvarPergunta">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/feedback-debug.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const eventoSelect = document.getElementById('eventoSelect');
+    const oficinaSelect = document.getElementById('oficinaSelect');
+    const perguntasContainer = document.getElementById('perguntasContainer');
+    const criarPerguntaBtn = document.getElementById('criarPerguntaBtn');
+    const perguntaModalEl = document.getElementById('perguntaModal');
+    const perguntaForm = document.getElementById('perguntaForm');
+    const tipoSelect = document.getElementById('tipo');
+    const opcoesContainer = document.getElementById('opcoesContainer');
+    const opcoesTextarea = document.getElementById('opcoes');
+    const modalTitle = document.getElementById('modalTitle');
+    const perguntaIdInput = document.getElementById('perguntaId');
+    const oficinaIdInput = document.getElementById('oficinaId');
+    const atividadeIdInput = document.getElementById('atividadeId');
+    const obrigatoriaInput = document.getElementById('obrigatoria');
+    const tituloInput = document.getElementById('titulo');
+    const descricaoTextarea = document.getElementById('descricao');
+    const ordemInput = document.getElementById('ordem');
+    const salvarPerguntaBtn = document.getElementById('salvarPergunta');
+    const debugOficinasBtn = document.getElementById('debugOficinasBtn');
+
+    const bootstrapModal = (
+        typeof bootstrap !== 'undefined' &&
+        bootstrap.Modal &&
+        perguntaModalEl
+    ) ? new bootstrap.Modal(perguntaModalEl) : null;
+
+    const showModal = () => {
+        if (bootstrapModal) {
+            bootstrapModal.show();
+            return;
+        }
+        if (!perguntaModalEl) {
+            return;
+        }
+        perguntaModalEl.classList.add('show');
+        perguntaModalEl.style.display = 'block';
+        document.body.classList.add('modal-open');
+    };
+
+    const hideModal = () => {
+        if (bootstrapModal) {
+            bootstrapModal.hide();
+            return;
+        }
+        if (!perguntaModalEl) {
+            return;
+        }
+        perguntaModalEl.classList.remove('show');
+        perguntaModalEl.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    };
+
+    window.fecharModal = hideModal;
+
+    const atualizarOpcoes = (tipo) => {
+        if (!opcoesContainer) {
+            return;
+        }
+        opcoesContainer.style.display =
+            tipo === 'multipla_escolha' ? 'block' : 'none';
+    };
+
+    const renderSelecioneMensagem = () => {
+        if (!perguntasContainer) {
+            return;
+        }
+        perguntasContainer.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Selecione um evento para ver as perguntas</h5>
+                <p class="text-muted">Evento → Oficina → Perguntas</p>
+            </div>
+        `;
+    };
+
+    const carregarOficinas = (eventoId) => {
+        if (!oficinaSelect) {
+            return;
+        }
+        fetch(`/feedback/oficinas-por-evento/${eventoId}`)
+            .then((response) => response.json())
+            .then((data) => {
+                oficinaSelect.innerHTML = '<option value="">Selecione uma oficina</option>';
+                data.oficinas.forEach((oficina) => {
+                    const option = document.createElement('option');
+                    option.value = oficina.id;
+                    option.textContent = oficina.titulo;
+                    oficinaSelect.appendChild(option);
+                });
+                oficinaSelect.disabled = false;
+            })
+            .catch((error) => {
+                console.error('Erro ao carregar oficinas:', error);
+                oficinaSelect.innerHTML = '<option value="">Erro ao carregar oficinas</option>';
+                oficinaSelect.disabled = true;
+            });
+    };
+
+
+    const carregarPerguntas = (oficinaId) => {
+        if (!perguntasContainer) {
+            return;
+        }
+        const url = `/feedback/perguntas/${oficinaId}`;
+        fetch(url)
+            .then((response) => response.text())
+            .then((html) => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const perguntasTable = doc.querySelector('.table-responsive');
+            if (perguntasTable) {
+                perguntasContainer.innerHTML = perguntasTable.outerHTML;
+                    return;
+                }
+                perguntasContainer.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-question-circle fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhuma pergunta encontrada</h5>
+                        <p class="text-muted">Clique em "Nova Pergunta" para criar a primeira pergunta.</p>
+                    </div>
+                `;
+        })
+            .catch((error) => {
+                console.error('Erro ao carregar perguntas:', error);
+            perguntasContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar perguntas. Tente novamente.
+                </div>
+            `;
+        });
+    };
+
+    if (tipoSelect) {
+        atualizarOpcoes(tipoSelect.value);
+        tipoSelect.addEventListener('change', (event) => {
+            atualizarOpcoes(event.target.value);
+        });
+    }
+
+    // Event listener para seleção de evento
+    if (eventoSelect) {
+        eventoSelect.addEventListener('change', (event) => {
+            const eventoId = event.target.value;
+            carregarOficinas(eventoId);
+            // Limpar seleção de oficina
+            if (oficinaSelect) {
+                oficinaSelect.disabled = true;
+                oficinaSelect.innerHTML = '<option value="">Selecione uma oficina</option>';
+            }
+            renderSelecioneMensagem();
+        });
+    }
+
+    if (oficinaSelect) {
+        oficinaSelect.addEventListener('change', (event) => {
+            const oficinaId = event.target.value;
+            if (!oficinaId) {
+                renderSelecioneMensagem();
+                return;
+            }
+            carregarPerguntas(oficinaId);
+        });
+    }
+
+
+    // Botão Nova Pergunta agora usa função abrirCriarPergunta() que abre uma página
+
+    if (salvarPerguntaBtn && perguntaForm) {
+        salvarPerguntaBtn.addEventListener('click', () => {
+            const formData = new FormData(perguntaForm);
+            const data = Object.fromEntries(formData.entries());
+            data.obrigatoria = obrigatoriaInput ? obrigatoriaInput.checked : false;
+            if (data.tipo === 'multipla_escolha' && data.opcoes) {
+                data.opcoes = data.opcoes
+                    .split('\n')
+                    .map((opcao) => opcao.trim())
+                    .filter((opcao) => opcao.length > 0);
+            } else {
+                data.opcoes = [];
+            }
+            const url = data.pergunta_id
+                ? `/feedback/perguntas/${data.pergunta_id}/editar`
+                : `/feedback/perguntas/${data.oficina_id}/criar`;
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            })
+                .then((response) => response.json())
+                .then((result) => {
+                    if (!result.success) {
+                        alert(`Erro: ${result.message}`);
+                        return;
+                    }
+                    hideModal();
+                    carregarPerguntas(
+                        data.oficina_id,
+                        data.atividade_id || ''
+                    );
+                    alert(result.message);
+                })
+                .catch((error) => {
+                    console.error('Erro ao salvar pergunta:', error);
+                    alert('Erro ao salvar pergunta');
+                });
+        });
+    }
+
+    if (debugOficinasBtn) {
+        debugOficinasBtn.addEventListener('click', () => {
+            fetch('/feedback/debug-oficinas')
+                .then((response) => response.json())
+                .then((data) => {
+                    alert(
+                        `Debug Oficinas:
+` +
+                        `Cliente ID: ${data.cliente_id}
+` +
+                        `Tipo: ${data.usuario_tipo}
+` +
+                        `Total: ${data.total_oficinas}
+` +
+                        `Do Cliente: ${data.oficinas_cliente}`
+                    );
+                })
+                .catch((error) => {
+                    console.error('Erro no debug:', error);
+                    alert('Erro ao executar debug');
+                });
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.classList.contains('btn-editar-pergunta')) {
+            return;
+        }
+        const perguntaId = event.target.getAttribute('data-id');
+        fetch(`/feedback/perguntas/detalhes/${perguntaId}`)
+            .then((response) => response.json())
+            .then((pergunta) => {
+                if (!pergunta || !pergunta.id) {
+                    return;
+                }
+                if (modalTitle) {
+                    modalTitle.textContent = 'Editar Pergunta';
+                }
+                if (perguntaIdInput) {
+                    perguntaIdInput.value = pergunta.id;
+                }
+                if (oficinaIdInput) {
+                    oficinaIdInput.value = pergunta.oficina_id;
+                }
+                if (atividadeIdInput) {
+                    atividadeIdInput.value = pergunta.atividade_id || '';
+                }
+                if (tituloInput) {
+                    tituloInput.value = pergunta.titulo || '';
+                }
+                if (descricaoTextarea) {
+                    descricaoTextarea.value = pergunta.descricao || '';
+                }
+                if (tipoSelect) {
+                    tipoSelect.value = pergunta.tipo || '';
+                }
+                if (obrigatoriaInput) {
+                    obrigatoriaInput.checked = !!pergunta.obrigatoria;
+                }
+                if (ordemInput) {
+                    const ordemValor =
+                        pergunta.ordem === 0 || pergunta.ordem
+                            ? pergunta.ordem
+                            : 0;
+                    ordemInput.value = ordemValor;
+                }
+                if (opcoesTextarea) {
+                    const linhas = Array.isArray(pergunta.opcoes)
+                        ? pergunta.opcoes.join('\n')
+                        : '';
+                    opcoesTextarea.value = linhas;
+                }
+                atualizarOpcoes(pergunta.tipo || '');
+                showModal();
+            })
+            .catch((error) => {
+                console.error('Erro ao carregar pergunta:', error);
+                alert('Erro ao carregar pergunta para edição');
+            });
+    });
+
+    if (perguntaModalEl) {
+        perguntaModalEl.addEventListener('hidden.bs.modal', () => {
+            document.body.classList.remove('modal-open');
+        });
+        perguntaModalEl.addEventListener('click', (event) => {
+            if (event.target === perguntaModalEl && !bootstrapModal) {
+                hideModal();
+            }
+        });
+    }
+
+    // Inicialização: mostrar mensagem para selecionar evento
+    renderSelecioneMensagem();
+});
+
+// Função para abrir página de criar pergunta
+function abrirCriarPergunta() {
+    const eventoSelect = document.getElementById('eventoSelect');
+    const oficinaSelect = document.getElementById('oficinaSelect');
+    
+    if (!eventoSelect || !eventoSelect.value) {
+        alert('Por favor, selecione um evento primeiro.');
+        return;
+    }
+    
+    if (!oficinaSelect || !oficinaSelect.value) {
+        alert('Por favor, selecione uma oficina primeiro.');
+        return;
+    }
+    
+    // Construir URL
+    const url = `/feedback/perguntas/${oficinaSelect.value}/criar`;
+    
+    // Abrir em nova aba
+    window.open(url, '_blank');
+}
+</script>
+
+{% endblock %}

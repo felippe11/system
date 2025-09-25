@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Visualizar Lembrete - {{ lembrete.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-eye me-2"></i>
+                        {{ lembrete.titulo }}
+                    </h4>
+                    <div>
+                        <a href="{{ url_for('reminder_routes.listar_lembretes') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Voltar
+                        </a>
+                        {% if lembrete.status.value == 'pendente' and lembrete.tipo.value == 'manual' %}
+                            <button class="btn btn-success" onclick="enviarLembrete({{ lembrete.id }})">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Enviar Agora
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informações do Lembrete -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3">Informações do Lembrete</h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Título:</label>
+                                <p class="form-control-plaintext">{{ lembrete.titulo }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Mensagem:</label>
+                                <div class="border rounded p-3 bg-light">
+                                    {{ lembrete.mensagem|nl2br }}
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Tipo:</label>
+                                    <p>
+                                        <span class="badge {% if lembrete.tipo.value == 'manual' %}bg-primary{% else %}bg-success{% endif %}">
+                                            {% if lembrete.tipo.value == 'manual' %}
+                                                <i class="fas fa-hand-paper me-1"></i> Manual
+                                            {% else %}
+                                                <i class="fas fa-clock me-1"></i> Automático
+                                            {% endif %}
+                                        </span>
+                                    </p>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Status:</label>
+                                    <p>
+                                        <span class="badge 
+                                            {% if lembrete.status.value == 'enviado' %}bg-success
+                                            {% elif lembrete.status.value == 'pendente' %}bg-warning
+                                            {% elif lembrete.status.value == 'falhou' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {% if lembrete.status.value == 'enviado' %}
+                                                <i class="fas fa-check me-1"></i> Enviado
+                                            {% elif lembrete.status.value == 'pendente' %}
+                                                <i class="fas fa-clock me-1"></i> Pendente
+                                            {% elif lembrete.status.value == 'falhou' %}
+                                                <i class="fas fa-times me-1"></i> Falhou
+                                            {% else %}
+                                                <i class="fas fa-ban me-1"></i> Cancelado
+                                            {% endif %}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {% if lembrete.tipo.value == 'automatico' %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Dias de Antecedência:</label>
+                                    <p>{{ lembrete.dias_antecedencia or 'Não definido' }}</p>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Data Agendada:</label>
+                                    <p>
+                                        {% if lembrete.data_envio_agendada %}
+                                            {{ lembrete.data_envio_agendada.strftime('%d/%m/%Y %H:%M') }}
+                                        {% else %}
+                                            Não definida
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Data de Criação:</label>
+                                    <p>{{ lembrete.data_criacao.strftime('%d/%m/%Y %H:%M') }}</p>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Data de Envio:</label>
+                                    <p>
+                                        {% if lembrete.data_envio %}
+                                            {{ lembrete.data_envio.strftime('%d/%m/%Y %H:%M') }}
+                                        {% else %}
+                                            <span class="text-muted">Não enviado</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Estatísticas -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3">Estatísticas de Envio</h5>
+                            
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="card bg-primary text-white">
+                                        <div class="card-body">
+                                            <h3 class="card-title">{{ lembrete.total_destinatarios }}</h3>
+                                            <p class="card-text">Total de Destinatários</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body">
+                                            <h3 class="card-title">{{ lembrete.total_enviados }}</h3>
+                                            <p class="card-text">Enviados</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card bg-danger text-white">
+                                        <div class="card-body">
+                                            <h3 class="card-title">{{ lembrete.total_falhas }}</h3>
+                                            <p class="card-text">Falhas</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if lembrete.total_destinatarios > 0 %}
+                            <div class="mt-3">
+                                <label class="form-label fw-bold">Taxa de Sucesso:</label>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ (lembrete.total_enviados / lembrete.total_destinatarios * 100)|round(1) }}%">
+                                        {{ (lembrete.total_enviados / lembrete.total_destinatarios * 100)|round(1) }}%
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mt-3">
+                                <label class="form-label fw-bold">Configuração de Destinatários:</label>
+                                <div class="alert alert-info">
+                                    {% if lembrete.enviar_todas_oficinas %}
+                                        <i class="fas fa-globe me-2"></i>
+                                        <strong>Enviar para todas as oficinas</strong>
+                                        <br>
+                                        <small>Todos os participantes de todas as oficinas do cliente</small>
+                                    {% else %}
+                                        <i class="fas fa-filter me-2"></i>
+                                        <strong>Envio personalizado</strong>
+                                        <br>
+                                        <small>Oficinas e usuários específicos selecionados</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Envios -->
+                    {% if envios %}
+                    <div class="mt-4">
+                        <h5 class="mb-3">Detalhes dos Envios</h5>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>Email</th>
+                                        <th>Oficina</th>
+                                        <th>Status</th>
+                                        <th>Data Envio</th>
+                                        <th>Erro</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for envio in envios %}
+                                    <tr>
+                                        <td>{{ envio.usuario.nome if envio.usuario else 'N/A' }}</td>
+                                        <td>{{ envio.usuario.email if envio.usuario else 'N/A' }}</td>
+                                        <td>{{ envio.oficina.titulo if envio.oficina else 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if envio.status.value == 'enviado' %}bg-success
+                                                {% elif envio.status.value == 'pendente' %}bg-warning
+                                                {% elif envio.status.value == 'falhou' %}bg-danger
+                                                {% else %}bg-secondary{% endif %}">
+                                                {% if envio.status.value == 'enviado' %}
+                                                    <i class="fas fa-check me-1"></i> Enviado
+                                                {% elif envio.status.value == 'pendente' %}
+                                                    <i class="fas fa-clock me-1"></i> Pendente
+                                                {% elif envio.status.value == 'falhou' %}
+                                                    <i class="fas fa-times me-1"></i> Falhou
+                                                {% else %}
+                                                    <i class="fas fa-ban me-1"></i> Cancelado
+                                                {% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if envio.data_envio %}
+                                                {{ envio.data_envio.strftime('%d/%m/%Y %H:%M') }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if envio.erro_mensagem %}
+                                                <small class="text-danger">{{ envio.erro_mensagem }}</small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function enviarLembrete(lembreteId) {
+    if (confirm('Tem certeza que deseja enviar este lembrete?')) {
+        fetch(`/lembretes/${lembreteId}/enviar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Lembrete enviado com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro ao enviar lembrete: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao enviar lembrete');
+        });
+    }
+}
+</script>
+{% endblock %}

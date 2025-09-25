@@ -1,4 +1,7 @@
+import io
 import os
+
+import pandas as pd
 import pytest
 from werkzeug.security import generate_password_hash
 
@@ -17,9 +20,11 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
+
 from models.user import Cliente
 from models.event import Evento, RespostaFormulario
 from models.event import Formulario, CampoFormulario
+
 from models.review import Submission
 
 
@@ -76,6 +81,7 @@ def test_novo_trabalho_with_and_without_form(client, app):
     assert resp.status_code == 200
     assert b"executar_formulario_trabalhos.py" in resp.data
 
+
     with app.app_context():
         cliente = Cliente.query.filter_by(email="cli@test").first()
         formulario = Formulario(
@@ -88,9 +94,11 @@ def test_novo_trabalho_with_and_without_form(client, app):
         db.session.add_all([formulario, campo, evento])
         db.session.commit()
 
+
     resp = client.get("/trabalhos/novo")
     assert resp.status_code == 200
     assert b"Adicionar Novo Trabalho" in resp.data
+
 
 
 def test_cliente_pode_criar_trabalho_sem_usuario_vinculado(client, app):

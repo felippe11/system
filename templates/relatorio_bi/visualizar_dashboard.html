@@ -1,0 +1,786 @@
+{% extends "relatorio_bi/base.html" %}
+
+{% set title = dashboard.nome %}
+{% set subtitle = dashboard.descricao %}
+
+{% block bi_content %}
+<!-- Dashboard Interativo -->
+<div class="row">
+    <div class="col-12">
+        <!-- Cabeçalho do Dashboard -->
+        <div class="bi-card mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-1">
+                        <i class="fas fa-tachometer-alt"></i> {{ dashboard.nome }}
+                    </h3>
+                    <p class="text-muted mb-0">{{ dashboard.descricao or 'Dashboard personalizado' }}</p>
+                </div>
+                
+                <div class="dashboard-controls">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-primary btn-sm" onclick="atualizarDashboard()">
+                            <i class="fas fa-sync"></i> Atualizar
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="exportarDashboard()">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="compartilharDashboard()">
+                            <i class="fas fa-share"></i> Compartilhar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filtros Globais -->
+        <div class="bi-card mb-3">
+            <h5><i class="fas fa-filter"></i> Filtros</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="filtroEvento" class="form-label">Evento</label>
+                    <select class="form-select" id="filtroEvento" onchange="aplicarFiltros()">
+                        <option value="">Todos os eventos</option>
+                        {% for evento in eventos %}
+                        <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="filtroPeriodo" class="form-label">Período</label>
+                    <select class="form-select" id="filtroPeriodo" onchange="aplicarFiltros()">
+                        <option value="hoje">Hoje</option>
+                        <option value="semana">Esta semana</option>
+                        <option value="mes" selected>Este mês</option>
+                        <option value="trimestre">Este trimestre</option>
+                        <option value="ano">Este ano</option>
+                        <option value="custom">Personalizado</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="filtroDataInicio" class="form-label">Data Início</label>
+                    <input type="date" class="form-control" id="filtroDataInicio" onchange="aplicarFiltros()">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="filtroDataFim" class="form-label">Data Fim</label>
+                    <input type="date" class="form-control" id="filtroDataFim" onchange="aplicarFiltros()">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Área dos Widgets -->
+        <div class="dashboard-widgets" id="dashboardWidgets">
+            <!-- Widgets serão carregados aqui via JavaScript -->
+        </div>
+        
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Atualizando dados...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Configuração de Widget -->
+<div class="modal fade" id="configWidgetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cog"></i> Configurar Widget
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="configWidgetContent">
+                <!-- Conteúdo será carregado aqui -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarConfiguracaoWidget()">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Exportação -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-download"></i> Exportar Dashboard
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="exportFormat" class="form-label">Formato</label>
+                    <select class="form-select" id="exportFormat">
+                        <option value="pdf">PDF</option>
+                        <option value="xlsx">Excel (XLSX)</option>
+                        <option value="csv">CSV</option>
+                        <option value="json">JSON</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="exportPeriod" class="form-label">Período</label>
+                    <select class="form-select" id="exportPeriod">
+                        <option value="current">Dados atuais</option>
+                        <option value="last_30_days">Últimos 30 dias</option>
+                        <option value="last_90_days">Últimos 90 dias</option>
+                        <option value="custom">Personalizado</option>
+                    </select>
+                </div>
+                
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="includeCharts" checked>
+                    <label class="form-check-label" for="includeCharts">
+                        Incluir gráficos
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="iniciarExportacao()">
+                    <i class="fas fa-download"></i> Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Compartilhamento -->
+<div class="modal fade" id="shareModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-share"></i> Compartilhar Dashboard
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="shareLink" class="form-label">Link de Compartilhamento</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="shareLink" readonly>
+                        <button class="btn btn-outline-secondary" onclick="copiarLink()">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="shareExpiry" class="form-label">Expira em</label>
+                    <select class="form-select" id="shareExpiry">
+                        <option value="1">1 dia</option>
+                        <option value="7" selected>7 dias</option>
+                        <option value="30">30 dias</option>
+                        <option value="never">Nunca</option>
+                    </select>
+                </div>
+                
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="sharePublic">
+                    <label class="form-check-label" for="sharePublic">
+                        Tornar público
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="gerarLinkCompartilhamento()">
+                    <i class="fas fa-link"></i> Gerar Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// Variáveis globais
+let dashboardData = {{ dashboard_data | tojson }};
+let widgetsData = {{ widgets_data | tojson }};
+let filtrosAtivos = {};
+let intervalAtualizacao = null;
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarDashboard();
+    configurarAtualizacaoAutomatica();
+});
+
+// Inicializar dashboard
+function inicializarDashboard() {
+    renderizarWidgets();
+    aplicarFiltrosPadrao();
+}
+
+// Renderizar widgets
+function renderizarWidgets() {
+    const container = document.getElementById('dashboardWidgets');
+    
+    if (!widgetsData || widgetsData.length === 0) {
+        container.innerHTML = `
+            <div class="bi-card text-center">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h5>Nenhum widget configurado</h5>
+                <p class="text-muted">Este dashboard não possui widgets configurados.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Agrupar widgets por linha
+    const linhas = {};
+    widgetsData.forEach(widget => {
+        const linha = widget.posicao_y || 0;
+        if (!linhas[linha]) {
+            linhas[linha] = [];
+        }
+        linhas[linha].push(widget);
+    });
+    
+    // Renderizar linhas
+    container.innerHTML = Object.keys(linhas).sort().map(linhaId => {
+        const widgetsLinha = linhas[linhaId];
+        return `
+            <div class="row mb-3">
+                ${widgetsLinha.map(widget => `
+                    <div class="col-md-${widget.largura * 4}">
+                        <div class="widget-container" data-widget-id="${widget.id}">
+                            ${renderizarWidget(widget)}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }).join('');
+}
+
+// Renderizar widget individual
+function renderizarWidget(widget) {
+    const widgetHtml = `
+        <div class="bi-card widget-card">
+            <div class="widget-header">
+                <h6 class="widget-title">${widget.titulo}</h6>
+                <div class="widget-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="configurarWidget(${widget.id})">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="atualizarWidget(${widget.id})">
+                        <i class="fas fa-sync"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="widget-content" id="widget-${widget.id}">
+                ${renderizarConteudoWidget(widget)}
+            </div>
+        </div>
+    `;
+    
+    return widgetHtml;
+}
+
+// Renderizar conteúdo do widget
+function renderizarConteudoWidget(widget) {
+    const dados = widget.data || {};
+    
+    switch (widget.tipo_visualizacao) {
+        case 'kpi':
+            return `
+                <div class="kpi-widget">
+                    <div class="kpi-value ${dados.cor || 'text-primary'}">${dados.valor || 'N/A'}</div>
+                    <div class="kpi-label">${dados.label || 'Métrica'}</div>
+                    ${dados.tendencia ? `
+                        <div class="kpi-trend ${dados.tendencia > 0 ? 'text-success' : 'text-danger'}">
+                            <i class="fas fa-arrow-${dados.tendencia > 0 ? 'up' : 'down'}"></i>
+                            ${Math.abs(dados.tendencia)}%
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+        case 'grafico_barra':
+            return `
+                <div class="chart-widget">
+                    <canvas id="chart-${widget.id}" width="400" height="200"></canvas>
+                </div>
+            `;
+            
+        case 'grafico_linha':
+            return `
+                <div class="chart-widget">
+                    <canvas id="chart-${widget.id}" width="400" height="200"></canvas>
+                </div>
+            `;
+            
+        case 'grafico_pizza':
+            return `
+                <div class="chart-widget">
+                    <canvas id="chart-${widget.id}" width="400" height="200"></canvas>
+                </div>
+            `;
+            
+        case 'tabela':
+            return `
+                <div class="table-widget">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    ${dados.colunas ? dados.colunas.map(col => `<th>${col}</th>`).join('') : ''}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dados.linhas ? dados.linhas.map(linha => `
+                                    <tr>
+                                        ${linha.map(celula => `<td>${celula}</td>`).join('')}
+                                    </tr>
+                                `).join('') : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+        default:
+            return `
+                <div class="text-center text-muted">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Tipo de widget não suportado</p>
+                </div>
+            `;
+    }
+}
+
+// Aplicar filtros padrão
+function aplicarFiltrosPadrao() {
+    // Configurar período padrão (este mês)
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    
+    document.getElementById('filtroDataInicio').value = inicioMes.toISOString().split('T')[0];
+    document.getElementById('filtroDataFim').value = hoje.toISOString().split('T')[0];
+    
+    aplicarFiltros();
+}
+
+// Aplicar filtros
+function aplicarFiltros() {
+    const evento = document.getElementById('filtroEvento').value;
+    const periodo = document.getElementById('filtroPeriodo').value;
+    const dataInicio = document.getElementById('filtroDataInicio').value;
+    const dataFim = document.getElementById('filtroDataFim').value;
+    
+    filtrosAtivos = {
+        evento_id: evento || null,
+        periodo: periodo,
+        data_inicio: dataInicio,
+        data_fim: dataFim
+    };
+    
+    atualizarDashboard();
+}
+
+// Atualizar dashboard
+function atualizarDashboard() {
+    mostrarLoading(true);
+    
+    fetch(`${BI_CONFIG.apiBaseUrl}/dashboards/{{ dashboard.id }}/dados`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(filtrosAtivos)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            widgetsData = data.widgets_data;
+            renderizarWidgets();
+            
+            // Renderizar gráficos após um pequeno delay
+            setTimeout(() => {
+                renderizarGraficos();
+            }, 100);
+        } else {
+            mostrarNotificacao('Erro ao atualizar dashboard: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao atualizar dashboard', 'error');
+    })
+    .finally(() => {
+        mostrarLoading(false);
+    });
+}
+
+// Renderizar gráficos
+function renderizarGraficos() {
+    widgetsData.forEach(widget => {
+        if (widget.tipo_visualizacao.includes('grafico')) {
+            const canvas = document.getElementById(`chart-${widget.id}`);
+            if (canvas) {
+                renderizarGrafico(canvas, widget);
+            }
+        }
+    });
+}
+
+// Renderizar gráfico individual
+function renderizarGrafico(canvas, widget) {
+    const ctx = canvas.getContext('2d');
+    const dados = widget.data || {};
+    
+    // Limpar canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Implementar renderização baseada no tipo
+    switch (widget.tipo_visualizacao) {
+        case 'grafico_barra':
+            renderizarGraficoBarras(ctx, dados);
+            break;
+        case 'grafico_linha':
+            renderizarGraficoLinha(ctx, dados);
+            break;
+        case 'grafico_pizza':
+            renderizarGraficoPizza(ctx, dados);
+            break;
+    }
+}
+
+// Renderizar gráfico de barras
+function renderizarGraficoBarras(ctx, dados) {
+    const labels = dados.labels || ['A', 'B', 'C', 'D'];
+    const values = dados.values || [10, 20, 30, 40];
+    
+    const maxValue = Math.max(...values);
+    const barWidth = ctx.canvas.width / labels.length * 0.8;
+    const barSpacing = ctx.canvas.width / labels.length * 0.2;
+    
+    ctx.fillStyle = '#007bff';
+    
+    labels.forEach((label, index) => {
+        const barHeight = (values[index] / maxValue) * (ctx.canvas.height - 40);
+        const x = index * (barWidth + barSpacing) + barSpacing / 2;
+        const y = ctx.canvas.height - barHeight - 20;
+        
+        ctx.fillRect(x, y, barWidth, barHeight);
+        
+        // Label
+        ctx.fillStyle = '#333';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + barWidth / 2, ctx.canvas.height - 5);
+        ctx.fillStyle = '#007bff';
+    });
+}
+
+// Renderizar gráfico de linha
+function renderizarGraficoLinha(ctx, dados) {
+    const labels = dados.labels || ['Jan', 'Fev', 'Mar', 'Abr'];
+    const values = dados.values || [10, 20, 15, 30];
+    
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    const range = maxValue - minValue;
+    
+    ctx.strokeStyle = '#007bff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    values.forEach((value, index) => {
+        const x = (index / (labels.length - 1)) * (ctx.canvas.width - 40) + 20;
+        const y = ctx.canvas.height - 20 - ((value - minValue) / range) * (ctx.canvas.height - 40);
+        
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+    
+    ctx.stroke();
+}
+
+// Renderizar gráfico de pizza
+function renderizarGraficoPizza(ctx, dados) {
+    const labels = dados.labels || ['A', 'B', 'C'];
+    const values = dados.values || [30, 40, 30];
+    
+    const total = values.reduce((sum, value) => sum + value, 0);
+    const centerX = ctx.canvas.width / 2;
+    const centerY = ctx.canvas.height / 2;
+    const radius = Math.min(centerX, centerY) - 20;
+    
+    let currentAngle = 0;
+    const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1'];
+    
+    values.forEach((value, index) => {
+        const sliceAngle = (value / total) * 2 * Math.PI;
+        
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fill();
+        
+        currentAngle += sliceAngle;
+    });
+}
+
+// Configurar widget
+function configurarWidget(widgetId) {
+    const modal = new bootstrap.Modal(document.getElementById('configWidgetModal'));
+    const content = document.getElementById('configWidgetContent');
+    
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="loading-spinner"></div>
+            <p>Carregando configurações...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Simular carregamento de configurações
+    setTimeout(() => {
+        content.innerHTML = `
+            <div class="mb-3">
+                <label for="widgetTitle" class="form-label">Título</label>
+                <input type="text" class="form-control" id="widgetTitle" value="Widget ${widgetId}">
+            </div>
+            
+            <div class="mb-3">
+                <label for="widgetMetric" class="form-label">Métrica</label>
+                <select class="form-select" id="widgetMetric">
+                    <option value="inscricoes">Inscrições</option>
+                    <option value="checkins">Check-ins</option>
+                    <option value="receita">Receita</option>
+                    <option value="satisfacao">Satisfação</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="widgetRefresh" class="form-label">Atualização (segundos)</label>
+                <select class="form-select" id="widgetRefresh">
+                    <option value="30">30 segundos</option>
+                    <option value="60" selected>1 minuto</option>
+                    <option value="300">5 minutos</option>
+                    <option value="0">Manual</option>
+                </select>
+            </div>
+        `;
+    }, 1000);
+}
+
+// Salvar configuração do widget
+function salvarConfiguracaoWidget() {
+    mostrarNotificacao('Configuração salva!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('configWidgetModal')).hide();
+}
+
+// Atualizar widget específico
+function atualizarWidget(widgetId) {
+    const widgetElement = document.querySelector(`[data-widget-id="${widgetId}"]`);
+    const content = widgetElement.querySelector('.widget-content');
+    
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="loading-spinner"></div>
+            <p>Atualizando...</p>
+        </div>
+    `;
+    
+    // Simular atualização
+    setTimeout(() => {
+        atualizarDashboard();
+    }, 1000);
+}
+
+// Configurar atualização automática
+function configurarAtualizacaoAutomatica() {
+    const refreshInterval = {{ dashboard.refresh_interval or 60 }};
+    
+    if (refreshInterval > 0) {
+        intervalAtualizacao = setInterval(() => {
+            atualizarDashboard();
+        }, refreshInterval * 1000);
+    }
+}
+
+// Exportar dashboard
+function exportarDashboard() {
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+}
+
+// Iniciar exportação
+function iniciarExportacao() {
+    const formato = document.getElementById('exportFormat').value;
+    const periodo = document.getElementById('exportPeriod').value;
+    const incluirGraficos = document.getElementById('includeCharts').checked;
+    
+    mostrarNotificacao('Iniciando exportação...', 'info');
+    
+    // Implementar exportação
+    setTimeout(() => {
+        mostrarNotificacao('Exportação concluída!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+    }, 2000);
+}
+
+// Compartilhar dashboard
+function compartilharDashboard() {
+    const modal = new bootstrap.Modal(document.getElementById('shareModal'));
+    modal.show();
+}
+
+// Gerar link de compartilhamento
+function gerarLinkCompartilhamento() {
+    const expiracao = document.getElementById('shareExpiry').value;
+    const publico = document.getElementById('sharePublic').checked;
+    
+    // Simular geração de link
+    const link = `${window.location.origin}/dashboard/{{ dashboard.id }}/shared/abc123`;
+    document.getElementById('shareLink').value = link;
+    
+    mostrarNotificacao('Link gerado com sucesso!', 'success');
+}
+
+// Copiar link
+function copiarLink() {
+    const linkInput = document.getElementById('shareLink');
+    linkInput.select();
+    document.execCommand('copy');
+    mostrarNotificacao('Link copiado!', 'success');
+}
+
+// Mostrar/ocultar loading
+function mostrarLoading(mostrar) {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = mostrar ? 'flex' : 'none';
+}
+
+// Limpar intervalos ao sair da página
+window.addEventListener('beforeunload', function() {
+    if (intervalAtualizacao) {
+        clearInterval(intervalAtualizacao);
+    }
+});
+</script>
+
+<style>
+.dashboard-widgets {
+    min-height: 400px;
+}
+
+.widget-card {
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.widget-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.widget-title {
+    margin: 0;
+    font-weight: 600;
+}
+
+.widget-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.widget-content {
+    min-height: 200px;
+}
+
+.kpi-widget {
+    text-align: center;
+    padding: 1rem;
+}
+
+.kpi-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.kpi-label {
+    color: #6c757d;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.kpi-trend {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.chart-widget {
+    padding: 1rem;
+}
+
+.table-widget {
+    padding: 1rem;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.dashboard-controls .btn-group {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .dashboard-controls {
+        margin-top: 1rem;
+    }
+    
+    .dashboard-controls .btn-group {
+        width: 100%;
+    }
+    
+    .dashboard-controls .btn {
+        flex: 1;
+    }
+}
+</style>
+{% endblock %}
+

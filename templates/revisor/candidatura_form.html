@@ -1,120 +1,428 @@
 {% extends "base.html" %}
-{% from 'partials/card.html' import render_card %}
-{% block title %}{{ formulario.nome }} - Processo Seletivo{% endblock %}
+{% block title %}{{ formulario.nome }} - Processo Seletivo de Revisores{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+  .candidatura-hero {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+    color: white;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .candidatura-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
+  }
+  
+  .candidatura-hero .container {
+    position: relative;
+    z-index: 2;
+  }
+  
+  .form-container {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-top: -2rem;
+    position: relative;
+    z-index: 3;
+  }
+  
+  .form-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 2rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .form-body {
+    padding: 2rem;
+  }
+  
+  .field-group {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+  }
+  
+  .field-group:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(42, 45, 114, 0.1);
+  }
+  
+  .field-group.focused {
+    border-color: var(--primary-color);
+    background: white;
+    box-shadow: 0 4px 20px rgba(42, 45, 114, 0.15);
+  }
+  
+  .field-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .field-label .required {
+    color: #dc3545;
+    font-size: 1.2em;
+  }
+  
+  .field-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    font-style: italic;
+  }
+  
+  .input-group-custom {
+    position: relative;
+  }
+  
+  .input-group-custom .input-group-text {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0.5rem 0 0 0.5rem;
+    font-size: 1.1rem;
+  }
+  
+  .input-group-custom .form-control,
+  .input-group-custom .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 0 0.5rem 0.5rem 0;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .input-group-custom .form-control:focus,
+  .input-group-custom .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(42, 45, 114, 0.25);
+  }
+  
+  .file-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: #f8f9fa;
+  }
+  
+  .file-upload-area:hover {
+    border-color: var(--primary-color);
+    background: rgba(42, 45, 114, 0.05);
+  }
+  
+  .file-upload-area.dragover {
+    border-color: var(--primary-color);
+    background: rgba(42, 45, 114, 0.1);
+  }
+  
+  .file-preview {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .checkbox-group, .radio-group {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  
+  .form-check {
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .form-check:hover {
+    border-color: var(--primary-color);
+    background: rgba(42, 45, 114, 0.05);
+  }
+  
+  .form-check-input:checked + .form-check-label {
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+  
+  .submit-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 2rem;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+  }
+  
+  .btn-submit {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(42, 45, 114, 0.3);
+  }
+  
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(42, 45, 114, 0.4);
+    color: white;
+  }
+  
+  .btn-submit:disabled {
+    opacity: 0.6;
+    transform: none;
+    box-shadow: 0 4px 15px rgba(42, 45, 114, 0.3);
+  }
+  
+  .progress-indicator {
+    background: #e9ecef;
+    height: 4px;
+    border-radius: 2px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .progress-bar {
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  
+  .char-counter {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 1rem;
+    font-size: 0.8rem;
+    color: #6c757d;
+    background: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+  }
+  
+  .validation-feedback {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .is-valid {
+    border-color: #28a745 !important;
+  }
+  
+  .is-invalid {
+    border-color: #dc3545 !important;
+  }
+  
+  .valid-feedback {
+    color: #28a745;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .invalid-feedback {
+    color: #dc3545;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  @media (max-width: 768px) {
+    .candidatura-hero {
+      padding: 2rem 0;
+    }
+    
+    .form-container {
+      margin-top: -1rem;
+    }
+    
+    .form-header, .form-body, .submit-section {
+      padding: 1.5rem;
+    }
+    
+    .field-group {
+      padding: 1rem;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <div class="row justify-content-center">
+<!-- Hero Section -->
+<div class="candidatura-hero">
+  <div class="container">
+    <div class="row justify-content-center text-center">
     <div class="col-lg-8">
-      <div class="text-center mb-4">
-        <h1 class="h2 text-primary mb-3">
-          <i class="bi bi-file-earmark-text me-2"></i>{{ formulario.nome }}
+        <h1 class="display-4 fw-bold mb-3">
+          <i class="bi bi-person-check-fill me-3"></i>
+          {{ formulario.nome }}
         </h1>
-        <p class="text-muted lead">Preencha todos os campos obrigatórios para submeter sua candidatura</p>
+        <p class="lead mb-4">
+          Participe do nosso processo seletivo e torne-se um revisor qualificado
+        </p>
+        {% if processo.descricao %}
+        <div class="alert alert-light alert-dismissible fade show" role="alert">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Sobre este processo:</strong> {{ processo.descricao }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
       </div>
       
-      <!-- Informações do processo -->
-      {% if formulario.descricao %}
-      {% set info_processo %}
-        <div class="d-flex align-items-start">
-          <i class="bi bi-info-circle text-primary fs-4 me-3 mt-1"></i>
+<!-- Formulário -->
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="form-container">
+        <!-- Header do Formulário -->
+        <div class="form-header">
+          <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h6 class="mb-2">Sobre este processo seletivo:</h6>
-            <strong class="small">{{ processo.descricao }}</strong>
+              <h2 class="h4 mb-2">
+                <i class="bi bi-file-earmark-text me-2"></i>
+                Formulário de Candidatura
+              </h2>
+              <p class="text-muted mb-0">Preencha todos os campos obrigatórios marcados com *</p>
+            </div>
+            <div class="text-end">
+              <small class="text-muted">Progresso</small>
+              <div class="progress-indicator">
+                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+              </div>
+            </div>
           </div>
         </div>
-      {% endset %}
-      {{ render_card('Informações Importantes', info_processo, '', 'card shadow-sm border-0 mb-4 bg-light') }}
-      {% endif %}
       
-
-      
-      <!-- Formulário de candidatura -->
-      {% set form_content %}
+        <!-- Corpo do Formulário -->
         <form method="POST" enctype="multipart/form-data" id="candidaturaForm" novalidate>
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           
-
-          
-          <!-- Campos do formulário -->
-          <div class="row">
+          <div class="form-body">
             {% for campo in campos %}
-              <div class="col-12 mb-3">
-                <label for="campo_{{ campo.id }}" class="form-label">
+            <div class="field-group" data-field-type="{{ campo.tipo }}">
+              <label class="field-label" for="campo-{{ campo.id }}">
+                <i class="bi bi-{% if campo.tipo == 'text' %}type{% elif campo.tipo == 'email' %}envelope{% elif campo.tipo == 'textarea' %}file-text{% elif campo.tipo == 'file' %}paperclip{% elif campo.tipo == 'date' %}calendar{% elif campo.tipo == 'number' %}123{% elif campo.tipo == 'dropdown' %}list{% elif campo.tipo == 'checkbox' %}check-square{% elif campo.tipo == 'radio' %}circle{% else %}input{% endif %}"></i>
                   {{ campo.nome }}
                   {% if campo.obrigatorio %}
-                    <span class="text-danger">*</span>
+                  <span class="required">*</span>
                   {% endif %}
                 </label>
             
             {% if campo.descricao %}
-                   <small class="form-text text-muted d-block mb-2">{{ campo.descricao }}</small>
+              <div class="field-description">
+                <i class="bi bi-info-circle me-1"></i>
+                {{ campo.descricao }}
+              </div>
                  {% endif %}
             
-            <div class="form-field-container">
-              {% if campo.tipo == 'text' %}
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-type"></i></span>
-                <input type="text" id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+              <div class="input-group-custom">
+                {% if campo.tipo == 'text' or campo.tipo == 'email' %}
+                <span class="input-group-text">
+                  <i class="bi bi-{% if campo.tipo == 'email' %}envelope{% else %}type{% endif %}"></i>
+                </span>
+                <input type="{{ campo.tipo }}" 
+                       id="campo-{{ campo.id }}" 
+                       name="{{ campo.id }}" 
                        class="form-control campo-input" 
                        placeholder="Digite {{ campo.nome.lower() }}"
                        {% if campo.obrigatorio %}required{% endif %}>
-              </div>
               
               {% elif campo.tipo == 'textarea' %}
-              <div class="position-relative">
-                <textarea id="campo-{{ campo.id }}" name="{{ campo.id }}" 
-                          class="form-control campo-input" rows="4"
+                <div class="position-relative w-100">
+                  <textarea id="campo-{{ campo.id }}" 
+                            name="{{ campo.id }}" 
+                            class="form-control campo-input" 
+                            rows="4"
                           placeholder="Digite {{ campo.nome.lower() }}"
                           {% if campo.obrigatorio %}required{% endif %}></textarea>
-                <small class="text-muted position-absolute bottom-0 end-0 me-2 mb-1">
+                  <div class="char-counter">
                   <span id="charCount-{{ campo.id }}">0</span> caracteres
-                </small>
+                  </div>
               </div>
               
               {% elif campo.tipo == 'number' %}
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-123"></i></span>
-                <input type="number" id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                <span class="input-group-text">
+                  <i class="bi bi-123"></i>
+                </span>
+                <input type="number" 
+                       id="campo-{{ campo.id }}" 
+                       name="{{ campo.id }}" 
                        class="form-control campo-input" 
                        placeholder="Digite um número"
                        {% if campo.obrigatorio %}required{% endif %}>
-              </div>
               
               {% elif campo.tipo == 'file' %}
-              <div class="file-upload-container">
-                <input type="file" id="campo-{{ campo.id }}" name="file_{{ campo.id }}" 
-                       class="form-control campo-input file-input" 
-                       {% if campo.obrigatorio %}required{% endif %}
-                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                <div class="file-upload-info mt-2">
+                <div class="file-upload-area w-100" onclick="document.getElementById('campo-{{ campo.id }}').click()">
+                  <i class="bi bi-cloud-upload fs-1 text-muted mb-3"></i>
+                  <h5 class="mb-2">Clique para selecionar arquivo</h5>
+                  <p class="text-muted mb-0">ou arraste e solte aqui</p>
                   <small class="text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
                     Formatos aceitos: PDF, DOC, DOCX, JPG, PNG (máx. 10MB)
                   </small>
-                  <div class="file-preview mt-2" id="preview-{{ campo.id }}" style="display: none;">
-                    <div class="alert alert-success py-2">
-                      <i class="bi bi-check-circle me-2"></i>
-                      <span class="file-name"></span>
-                      <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-file">
+                  <input type="file" 
+                         id="campo-{{ campo.id }}" 
+                         name="file_{{ campo.id }}" 
+                         class="d-none campo-input" 
+                         {% if campo.obrigatorio %}required{% endif %}
+                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                </div>
+                <div class="file-preview mt-3" id="preview-{{ campo.id }}" style="display: none;">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-file-earmark-check text-success me-2"></i>
+                    <span class="file-name flex-grow-1"></span>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-file">
                         <i class="bi bi-x"></i>
                       </button>
-                    </div>
-                  </div>
                 </div>
               </div>
               
               {% elif campo.tipo == 'date' %}
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-calendar-date"></i></span>
-                <input type="date" id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                <span class="input-group-text">
+                  <i class="bi bi-calendar-date"></i>
+                </span>
+                <input type="date" 
+                       id="campo-{{ campo.id }}" 
+                       name="{{ campo.id }}" 
                        class="form-control campo-input" 
                        {% if campo.obrigatorio %}required{% endif %}>
-              </div>
               
               {% elif campo.tipo == 'dropdown' %}
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-list"></i></span>
-                <select id="campo-{{ campo.id }}" name="{{ campo.id }}"
+                <span class="input-group-text">
+                  <i class="bi bi-list"></i>
+                </span>
+                <select id="campo-{{ campo.id }}" 
+                        name="{{ campo.id }}"
                         class="form-select campo-input"
                         {% if campo.obrigatorio %}required{% endif %}>
                   <option value="" disabled selected>Selecione uma opção</option>
@@ -122,13 +430,15 @@
                   <option value="{{ opcao.strip() }}">{{ opcao.strip() }}</option>
                   {% endfor %}
                 </select>
-              </div>
+                
               {% elif campo.tipo == 'checkbox' %}
-              <div class="checkbox-group">
+                <div class="checkbox-group w-100">
                 {% for opcao in campo.opcoes.split(',') %}
                 <div class="form-check">
-                  <input class="form-check-input campo-input" type="checkbox"
-                         id="check-{{ campo.id }}-{{ loop.index }}" name="{{ campo.id }}"
+                    <input class="form-check-input campo-input" 
+                           type="checkbox"
+                           id="check-{{ campo.id }}-{{ loop.index }}" 
+                           name="{{ campo.id }}"
                          value="{{ opcao.strip() }}">
                   <label class="form-check-label" for="check-{{ campo.id }}-{{ loop.index }}">
                     {{ opcao.strip() }}
@@ -136,48 +446,66 @@
                 </div>
                 {% endfor %}
               </div>
+                
               {% elif campo.tipo == 'radio' %}
-              <div class="radio-group">
+                <div class="radio-group w-100">
                 {% for opcao in campo.opcoes.split(',') %}
                 <div class="form-check">
-                  <input class="form-check-input campo-input" type="radio"
-                         id="radio-{{ campo.id }}-{{ loop.index }}" name="{{ campo.id }}"
-                         value="{{ opcao.strip() }}"{% if campo.obrigatorio %} required{% endif %}>
+                    <input class="form-check-input campo-input" 
+                           type="radio"
+                           id="radio-{{ campo.id }}-{{ loop.index }}" 
+                           name="{{ campo.id }}"
+                           value="{{ opcao.strip() }}"
+                           {% if campo.obrigatorio %}required{% endif %}>
                   <label class="form-check-label" for="radio-{{ campo.id }}-{{ loop.index }}">
                     {{ opcao.strip() }}
                   </label>
                 </div>
                 {% endfor %}
               </div>
+                
               {% else %}
-              <div class="input-group">
-                <input type="{{ campo.tipo }}" id="campo-{{ campo.id }}" name="{{ campo.id }}"
+                <span class="input-group-text">
+                  <i class="bi bi-input-cursor-text"></i>
+                </span>
+                <input type="{{ campo.tipo }}" 
+                       id="campo-{{ campo.id }}" 
+                       name="{{ campo.id }}"
                        class="form-control campo-input"
                        {% if campo.obrigatorio %}required{% endif %}>
+                {% endif %}
               </div>
-              {% endif %}
               
                  <!-- Feedback de validação -->
-                 <div class="invalid-feedback"></div>
+              <div class="validation-feedback">
+                <div class="invalid-feedback">
+                  <i class="bi bi-exclamation-triangle me-1"></i>
+                  <span class="error-message"></span>
+                </div>
                  <div class="valid-feedback">
-                   <i class="bi bi-check-circle me-1"></i>Campo preenchido corretamente
+                  <i class="bi bi-check-circle me-1"></i>
+                  Campo preenchido corretamente
                  </div>
                </div>
                </div>
              {% endfor %}
            </div>
            
-           <!-- Botão de envio -->
-           <div class="d-flex justify-content-center mt-4">
-             <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
-               <i class="bi bi-send me-2"></i>Enviar Candidatura
+          <!-- Seção de Envio -->
+          <div class="submit-section">
+            <div class="d-flex flex-column align-items-center">
+              <p class="text-muted mb-3">
+                <i class="bi bi-shield-check me-2"></i>
+                Suas informações estão seguras e serão usadas apenas para este processo seletivo
+              </p>
+              <button type="submit" class="btn btn-submit" id="submitBtn">
+                <i class="bi bi-send me-2"></i>
+                Enviar Candidatura
              </button>
            </div>
-          
-
+          </div>
         </form>
-      {% endset %}
-      {{ render_card('Formulário de Candidatura', form_content, '', 'card shadow-sm border-0') }}
+      </div>
     </div>
   </div>
 </div>
@@ -186,19 +514,68 @@
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('candidaturaForm');
   const campos = document.querySelectorAll('.campo-input');
+  const progressBar = document.getElementById('progressBar');
+  const submitBtn = document.getElementById('submitBtn');
+  
+  // Inicializar progresso
+  updateProgress();
   
   // Validação em tempo real
   campos.forEach(campo => {
     campo.addEventListener('input', function() {
       validateField(this);
+      updateProgress();
     });
     
     campo.addEventListener('change', function() {
       validateField(this);
+      updateProgress();
       
       // Preview de arquivo
       if (this.type === 'file' && this.files.length > 0) {
         showFilePreview(this);
+      }
+    });
+    
+    // Foco nos grupos de campo
+    campo.addEventListener('focus', function() {
+      const fieldGroup = this.closest('.field-group');
+      if (fieldGroup) {
+        fieldGroup.classList.add('focused');
+      }
+    });
+    
+    campo.addEventListener('blur', function() {
+      const fieldGroup = this.closest('.field-group');
+      if (fieldGroup) {
+        fieldGroup.classList.remove('focused');
+      }
+    });
+  });
+  
+  // Drag and drop para upload de arquivos
+  document.querySelectorAll('.file-upload-area').forEach(area => {
+    area.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      this.classList.add('dragover');
+    });
+    
+    area.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      this.classList.remove('dragover');
+    });
+    
+    area.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const input = this.querySelector('input[type="file"]');
+        input.files = files;
+        showFilePreview(input);
+        validateField(input);
+        updateProgress();
       }
     });
   });
@@ -206,23 +583,29 @@ document.addEventListener('DOMContentLoaded', function() {
   // Validação de campo
   function validateField(field) {
     const isValid = field.checkValidity();
+    const fieldGroup = field.closest('.field-group');
+    const feedback = fieldGroup.querySelector('.validation-feedback');
+    const errorMessage = feedback.querySelector('.error-message');
     
     if (isValid) {
       field.classList.remove('is-invalid');
       field.classList.add('is-valid');
+      feedback.querySelector('.invalid-feedback').style.display = 'none';
+      feedback.querySelector('.valid-feedback').style.display = 'flex';
     } else {
       field.classList.remove('is-valid');
       field.classList.add('is-invalid');
+      feedback.querySelector('.valid-feedback').style.display = 'none';
+      feedback.querySelector('.invalid-feedback').style.display = 'flex';
       
-      const feedback = field.parentNode.querySelector('.invalid-feedback');
-      if (feedback) {
         if (field.validity.valueMissing) {
-          feedback.textContent = 'Este campo é obrigatório.';
+        errorMessage.textContent = 'Este campo é obrigatório.';
         } else if (field.validity.typeMismatch) {
-          feedback.textContent = 'Por favor, insira um valor válido.';
+        errorMessage.textContent = 'Por favor, insira um valor válido.';
+      } else if (field.validity.patternMismatch) {
+        errorMessage.textContent = 'Formato inválido.';
         } else {
-          feedback.textContent = 'Valor inválido.';
-        }
+        errorMessage.textContent = 'Valor inválido.';
       }
     }
   }
@@ -230,7 +613,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Preview de arquivo
   function showFilePreview(input) {
     const file = input.files[0];
-    const preview = document.getElementById('preview-' + input.id.split('-')[1]);
+    const fieldGroup = input.closest('.field-group');
+    const preview = fieldGroup.querySelector('.file-preview');
     const fileName = preview.querySelector('.file-name');
     const removeBtn = preview.querySelector('.remove-file');
     
@@ -266,71 +650,111 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-
+  // Atualizar progresso
+  function updateProgress() {
+    const totalFields = campos.length;
+    let completedFields = 0;
+    
+    campos.forEach(campo => {
+      if (campo.checkValidity() && campo.value.trim() !== '') {
+        completedFields++;
+      }
+    });
+    
+    const progress = (completedFields / totalFields) * 100;
+    progressBar.style.width = progress + '%';
+    
+    // Atualizar estado do botão
+    if (completedFields === totalFields) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="bi bi-send me-2"></i>Enviar Candidatura';
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i class="bi bi-hourglass-split me-2"></i>Preencha todos os campos (${completedFields}/${totalFields})`;
+    }
+  }
   
   // Validação do formulário antes do envio
   form.addEventListener('submit', function(e) {
     e.preventDefault();
     
     let isValid = true;
+    let firstInvalidField = null;
+    
     campos.forEach(campo => {
       validateField(campo);
       if (!campo.checkValidity()) {
         isValid = false;
+        if (!firstInvalidField) {
+          firstInvalidField = campo;
+        }
       }
     });
     
     if (isValid) {
+      // Mostrar loading no botão
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Enviando...';
+      
       if (confirm('Tem certeza que deseja enviar sua candidatura? Após o envio, não será possível fazer alterações.')) {
         this.submit();
+      } else {
+        // Restaurar botão se cancelado
+        submitBtn.disabled = false;
+        updateProgress();
       }
     } else {
-      alert('Por favor, corrija os erros no formulário antes de enviar.');
+      // Scroll para o primeiro campo inválido
+      if (firstInvalidField) {
+        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalidField.focus();
+      }
+      
+      // Mostrar toast de erro
+      showToast('Por favor, corrija os erros no formulário antes de enviar.', 'error');
     }
   });
+  
+  // Sistema de toast
+  function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toast-container') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.style.cssText = `
+      margin-bottom: 10px;
+      min-width: 300px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    
+    toast.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 5000);
+  }
+  
+  function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    `;
+    document.body.appendChild(container);
+    return container;
+  }
 });
 </script>
 
-<style>
-.campo-container {
-  transition: all 0.3s ease;
-}
-
-.campo-container:hover {
-  transform: translateY(-2px);
-}
-
-.file-upload-container {
-  position: relative;
-}
-
-.file-input:focus {
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-}
-
-.progress {
-  transition: all 0.3s ease;
-}
-
-.form-control.is-valid,
-.form-select.is-valid {
-  border-color: #198754;
-  background-image: none;
-}
-
-.form-control.is-invalid,
-.form-select.is-invalid {
-  border-color: #dc3545;
-  background-image: none;
-}
-
-.valid-feedback {
-  display: none;
-}
-
-.form-control.is-valid ~ .valid-feedback,
-.form-select.is-valid ~ .valid-feedback {
-  display: block;
-}
-</style>
 {% endblock %}

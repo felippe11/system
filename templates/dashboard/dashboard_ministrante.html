@@ -27,6 +27,7 @@
           <div class="card-body">
             <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
             <p><strong>Vagas:</strong> {{ oficina.vagas }}</p>
+            <p><strong>Formador:</strong> {{ oficina.formador.nome if oficina.formador else 'Não informado' }}</p>
 
             <!-- Quantitativo de inscritos -->
             <p><strong>Quantidade de inscritos:</strong> {{ oficina.inscritos|length }}</p>

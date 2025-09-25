@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Pergunta de Feedback - {{ oficina.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Nova Pergunta de Feedback
+                    </h4>
+                    <p class="text-muted mb-0">Oficina: {{ oficina.titulo }}</p>
+                </div>
+                
+                <div class="card-body">
+                    <form id="perguntaForm">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="titulo" class="form-label">
+                                        Título da Pergunta <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="titulo" name="titulo" required
+                                           placeholder="Ex: Como você avalia a qualidade do conteúdo?">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="descricao" class="form-label">Descrição (Opcional)</label>
+                                    <textarea class="form-control" id="descricao" name="descricao" rows="3"
+                                              placeholder="Adicione uma descrição ou contexto para a pergunta..."></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="tipo" class="form-label">
+                                        Tipo de Pergunta <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="tipo" name="tipo" required>
+                                        <option value="">Selecione o tipo de pergunta</option>
+                                        <option value="texto_livre">Texto Livre</option>
+                                        <option value="escala_numerica">Escala Numérica (1-5)</option>
+                                        <option value="multipla_escolha">Múltipla Escolha</option>
+                                        <option value="sim_nao">Sim/Não</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3" id="opcoes-container" style="display: none;">
+                                    <label for="opcoes" class="form-label">Opções de Resposta</label>
+                                    <div id="opcoes-list">
+                                        <div class="input-group mb-2">
+                                            <input type="text" class="form-control opcao-input" placeholder="Opção 1">
+                                            <button type="button" class="btn btn-outline-danger" onclick="removerOpcao(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="adicionarOpcao()">
+                                        <i class="fas fa-plus me-1"></i>
+                                        Adicionar Opção
+                                    </button>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="obrigatoria" name="obrigatoria" checked>
+                                        <label class="form-check-label" for="obrigatoria">
+                                            Pergunta obrigatória
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="ordem" class="form-label">Ordem de Exibição</label>
+                                    <input type="number" class="form-control" id="ordem" name="ordem" value="0" min="0">
+                                    <div class="form-text">Perguntas com menor número aparecem primeiro</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Preview da Pergunta</h6>
+                                    </div>
+                                    <div class="card-body" id="preview-container">
+                                        <p class="text-muted">Configure a pergunta para ver o preview</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('feedback_routes.gerenciar_perguntas_oficina', oficina_id=oficina.id) }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>
+                                Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                Salvar Pergunta
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoSelect = document.getElementById('tipo');
+    const opcoesContainer = document.getElementById('opcoes-container');
+    const previewContainer = document.getElementById('preview-container');
+    
+    // Atualizar preview quando campos mudarem
+    document.getElementById('perguntaForm').addEventListener('input', atualizarPreview);
+    
+    // Mostrar/ocultar opções baseado no tipo
+    tipoSelect.addEventListener('change', function() {
+        if (this.value === 'multipla_escolha') {
+            opcoesContainer.style.display = 'block';
+        } else {
+            opcoesContainer.style.display = 'none';
+        }
+        atualizarPreview();
+    });
+    
+    // Enviar formulário
+    document.getElementById('perguntaForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        salvarPergunta();
+    });
+});
+
+function adicionarOpcao() {
+    const opcoesList = document.getElementById('opcoes-list');
+    const opcaoCount = opcoesList.children.length + 1;
+    
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="text" class="form-control opcao-input" placeholder="Opção ${opcaoCount}">
+        <button type="button" class="btn btn-outline-danger" onclick="removerOpcao(this)">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    
+    opcoesList.appendChild(div);
+    atualizarPreview();
+}
+
+function removerOpcao(button) {
+    const opcoesList = document.getElementById('opcoes-list');
+    if (opcoesList.children.length > 1) {
+        button.parentElement.remove();
+        atualizarPreview();
+    }
+}
+
+function atualizarPreview() {
+    const titulo = document.getElementById('titulo').value;
+    const descricao = document.getElementById('descricao').value;
+    const tipo = document.getElementById('tipo').value;
+    const obrigatoria = document.getElementById('obrigatoria').checked;
+    
+    let preview = '';
+    
+    if (titulo) {
+        preview += `<h6>${titulo}`;
+        if (obrigatoria) {
+            preview += ' <span class="badge bg-danger">Obrigatória</span>';
+        }
+        preview += '</h6>';
+    }
+    
+    if (descricao) {
+        preview += `<p class="text-muted small">${descricao}</p>`;
+    }
+    
+    if (tipo) {
+        preview += '<div class="mt-3">';
+        
+        switch (tipo) {
+            case 'texto_livre':
+                preview += '<textarea class="form-control" rows="3" placeholder="Digite sua resposta aqui..."></textarea>';
+                break;
+            case 'escala_numerica':
+                preview += '<div class="d-flex justify-content-between">';
+                for (let i = 1; i <= 5; i++) {
+                    preview += `<label class="form-check-label"><input type="radio" name="preview" class="form-check-input me-1">${i}</label>`;
+                }
+                preview += '</div>';
+                break;
+            case 'multipla_escolha':
+                const opcoes = Array.from(document.querySelectorAll('.opcao-input')).map(input => input.value).filter(val => val);
+                if (opcoes.length > 0) {
+                    opcoes.forEach(opcao => {
+                        preview += `<div class="form-check"><input type="radio" name="preview" class="form-check-input me-2"><label class="form-check-label">${opcao}</label></div>`;
+                    });
+                } else {
+                    preview += '<p class="text-muted">Adicione opções de resposta</p>';
+                }
+                break;
+            case 'sim_nao':
+                preview += '<div class="form-check"><input type="radio" name="preview" class="form-check-input me-2"><label class="form-check-label">Sim</label></div>';
+                preview += '<div class="form-check"><input type="radio" name="preview" class="form-check-input me-2"><label class="form-check-label">Não</label></div>';
+                break;
+        }
+        
+        preview += '</div>';
+    }
+    
+    if (!preview) {
+        preview = '<p class="text-muted">Configure a pergunta para ver o preview</p>';
+    }
+    
+    previewContainer.innerHTML = preview;
+}
+
+function salvarPergunta() {
+    const formData = new FormData(document.getElementById('perguntaForm'));
+    const data = {
+        titulo: formData.get('titulo'),
+        descricao: formData.get('descricao'),
+        tipo: formData.get('tipo'),
+        obrigatoria: formData.get('obrigatoria') === 'on',
+        ordem: parseInt(formData.get('ordem')) || 0
+    };
+    
+    // Coletar opções se for múltipla escolha
+    if (data.tipo === 'multipla_escolha') {
+        const opcoes = Array.from(document.querySelectorAll('.opcao-input'))
+            .map(input => input.value)
+            .filter(val => val.trim());
+        
+        if (opcoes.length === 0) {
+            alert('Adicione pelo menos uma opção para múltipla escolha');
+            return;
+        }
+        
+        data.opcoes = opcoes;
+    }
+    
+    fetch(`/feedback/perguntas/{{ oficina.id }}/criar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '{{ url_for("feedback_routes.gerenciar_perguntas_oficina", oficina_id=oficina.id) }}';
+        } else {
+            alert('Erro ao criar pergunta: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar pergunta');
+    });
+}
+</script>
+{% endblock %}

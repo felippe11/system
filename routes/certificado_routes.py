@@ -10,6 +10,7 @@ from flask import (
     after_this_request,
     jsonify,
 )
+import os
 from utils import endpoints
 
 from flask_login import login_required, current_user
@@ -36,7 +37,7 @@ from models.certificado import (
     VariavelDinamica,
 )
 from models.event import ConfiguracaoCertificadoAvancada
-from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
+from services.pdf_service import gerar_certificado_personalizado, gerar_pdf_template  # ajuste conforme a localização
 
 from services.declaracao_service import gerar_declaracao_personalizada
 from services import certificado_service
@@ -3015,3 +3016,31 @@ def excluir_template_personalizado(template_id):
     except Exception as e:
         logger.error(f"Erro ao excluir template: {str(e)}")
         return jsonify({'success': False, 'message': 'Erro ao excluir template'}), 500
+
+@certificado_routes.route('/gerar_pdf_template', methods=['POST'])
+@login_required
+@cliente_required
+def gerar_pdf_template_route():
+    """Gera PDF a partir de um template personalizado."""
+    try:
+        data = request.get_json()
+        
+        if not data or 'elements' not in data:
+            return jsonify({'success': False, 'message': 'Dados do template são obrigatórios'}), 400
+        
+        # Gerar PDF usando o serviço
+        pdf_path = gerar_pdf_template(data)
+        
+        if pdf_path and os.path.exists(pdf_path):
+            return send_file(
+                pdf_path,
+                as_attachment=True,
+                download_name=f"{data.get('name', 'template')}.pdf",
+                mimetype='application/pdf'
+            )
+        else:
+            return jsonify({'success': False, 'message': 'Erro ao gerar PDF'}), 500
+            
+    except Exception as e:
+        logger.error(f"Erro ao gerar PDF do template: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro interno do servidor'}), 500

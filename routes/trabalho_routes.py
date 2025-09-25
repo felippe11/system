@@ -1,6 +1,9 @@
 import json
 import os
+import secrets
+import unicodedata
 import uuid
+from io import BytesIO
 from utils import endpoints
 
 import pandas as pd
@@ -11,6 +14,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     url_for,
 )
 from flask_login import current_user
@@ -32,6 +36,7 @@ from models import (
 from models.event import RespostaCampoFormulario, RespostaFormulario
 from models.review import Assignment
 from sqlalchemy import func
+from sqlalchemy.exc import DataError
 from services.submission_service import SubmissionService
 from utils.mfa import mfa_required
 
@@ -236,6 +241,254 @@ def meus_trabalhos():
 def get_trabalhos_form():
     """Return the 'Formulário de Trabalhos' or ``None`` if absent."""
     return Formulario.query.filter_by(nome="Formulário de Trabalhos").first()
+
+
+def _normalize_key(value: str) -> str:
+    """Normalize header names to compare coluna/campo names."""
+    if not isinstance(value, str):
+        return ""
+    normalized = unicodedata.normalize("NFKD", value)
+    normalized = "".join(
+        ch for ch in normalized if unicodedata.category(ch) != "Mn"
+    )
+    normalized = normalized.lower()
+    for sep in [" ", "-", "/", "\\", "."]:
+        normalized = normalized.replace(sep, "_")
+    normalized = "".join(ch for ch in normalized if ch.isalnum() or ch == "_")
+    while "__" in normalized:
+        normalized = normalized.replace("__", "_")
+    return normalized.strip("_")
+
+
+@trabalho_routes.route("/trabalhos/modelo", methods=["GET"])
+@login_required
+def download_template_trabalhos():
+    """Gera planilha modelo com as colunas do formulário de trabalhos."""
+    if current_user.tipo != "cliente":
+        flash("Acesso negado.", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+
+    formulario = get_trabalhos_form()
+    if not formulario:
+        flash("Formulário de trabalhos não configurado.", "warning")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    colunas = [campo.nome for campo in formulario.campos]
+    if not colunas:
+        colunas = ["Título"]
+
+    df = pd.DataFrame(columns=colunas)
+
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Trabalhos")
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="modelo_trabalhos.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@trabalho_routes.route("/trabalhos/importar", methods=["POST"])
+@login_required
+def importar_trabalhos_excel():
+    """Importa múltiplos trabalhos a partir de uma planilha Excel."""
+    if current_user.tipo != "cliente":
+        flash("Acesso negado.", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+
+    formulario = get_trabalhos_form()
+    if not formulario:
+        flash("Formulário de trabalhos não configurado.", "warning")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    evento_id = request.form.get("evento_id", type=int)
+    if not evento_id:
+        flash("Selecione um evento para importar os trabalhos.", "warning")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    if not evento:
+        flash("Evento inválido.", "danger")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    arquivo = request.files.get("arquivo_excel")
+    if not arquivo or not arquivo.filename:
+        flash("Selecione um arquivo Excel para importação.", "warning")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    filename = arquivo.filename.lower()
+    if not filename.endswith((".xlsx", ".xls")):
+        flash("Formato de arquivo inválido. Utilize uma planilha .xlsx ou .xls.", "danger")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    try:
+        df = pd.read_excel(arquivo)
+    except Exception as exc:  # noqa: BLE001
+        current_app.logger.exception("Erro ao ler planilha de trabalhos")
+        flash(f"Não foi possível ler o arquivo: {exc}", "danger")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    if df.empty:
+        flash("A planilha enviada não contém dados.", "warning")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    normalized_columns = {
+        _normalize_key(coluna): coluna for coluna in df.columns if coluna is not None
+    }
+
+    missing_required = [
+        campo.nome
+        for campo in formulario.campos
+        if campo.obrigatorio and _normalize_key(campo.nome) not in normalized_columns
+    ]
+    if missing_required:
+        flash(
+            "Colunas obrigatórias ausentes na planilha: "
+            + ", ".join(missing_required),
+            "danger",
+        )
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    total_importados = 0
+
+    usuario_autor = None
+    if getattr(current_user, "id", None) is not None:
+        usuario_autor = db.session.get(Usuario, current_user.id)
+
+    try:
+        with db.session.begin_nested():
+            for index, row in df.iterrows():
+                if row.isna().all():
+                    continue
+
+                linha_excel = index + 2  # considerar cabeçalho
+                valores_campos = {}
+                titulo = None
+
+                for campo in formulario.campos:
+                    coluna_key = _normalize_key(campo.nome)
+                    coluna_original = normalized_columns.get(coluna_key)
+                    valor_raw = row[coluna_original] if coluna_original else None
+                    if pd.isna(valor_raw):
+                        valor_raw = ""
+                    valor = str(valor_raw).strip() if valor_raw is not None else ""
+
+                    if campo.obrigatorio and not valor:
+                        raise ValueError(
+                            f"O campo '{campo.nome}' é obrigatório (linha {linha_excel})."
+                        )
+
+                    valores_campos[campo.id] = valor
+
+                    if not titulo and valor and campo.tipo in ["text", "textarea"]:
+                        titulo = valor
+
+                if not valores_campos:
+                    continue
+
+                if all(not valor for valor in valores_campos.values()):
+                    continue
+
+                if not titulo:
+                    coluna_titulo = normalized_columns.get(_normalize_key("Título"))
+                    if coluna_titulo:
+                        valor_titulo = row[coluna_titulo]
+                        if not pd.isna(valor_titulo):
+                            titulo = str(valor_titulo).strip()
+
+                titulo = titulo or f"Trabalho importado {total_importados + 1}"
+
+                payload_por_campo = {
+                    campo.nome: valores_campos.get(campo.id, "")
+                    for campo in formulario.campos
+                }
+                payload_normalizado = {
+                    _normalize_key(chave): valor
+                    for chave, valor in payload_por_campo.items()
+                }
+
+                codigo_hash = generate_password_hash(secrets.token_urlsafe(12))
+
+                submission = Submission(
+                    title=titulo,
+                    author_id=usuario_autor.id if usuario_autor else None,
+                    evento_id=evento.id,
+                    status="submitted",
+                    code_hash=codigo_hash,
+                    attributes=payload_por_campo,
+                )
+                db.session.add(submission)
+                db.session.flush()
+
+                resposta_formulario = RespostaFormulario(
+                    formulario_id=formulario.id,
+                    usuario_id=usuario_autor.id if usuario_autor else None,
+                    evento_id=evento.id,
+                    trabalho_id=submission.id,
+                )
+                db.session.add(resposta_formulario)
+                db.session.flush()
+
+                for campo in formulario.campos:
+                    valor = valores_campos.get(campo.id, "")
+                    resposta_campo = RespostaCampoFormulario(
+                        resposta_formulario_id=resposta_formulario.id,
+                        campo_id=campo.id,
+                        valor=valor,
+                    )
+                    db.session.add(resposta_campo)
+
+                work_metadata = WorkMetadata(
+                    data=payload_por_campo,
+                    titulo=payload_normalizado.get("titulo"),
+                    categoria=payload_normalizado.get("categoria"),
+                    rede_ensino=payload_normalizado.get("rede_de_ensino"),
+                    etapa_ensino=payload_normalizado.get("etapa_de_ensino"),
+                    pdf_url=payload_normalizado.get("url_do_pdf")
+                    or payload_normalizado.get("pdf_url"),
+                    evento_id=evento.id,
+                )
+                db.session.add(work_metadata)
+
+                total_importados += 1
+
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), "danger")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+    except DataError as exc:
+        db.session.rollback()
+        detalhes = getattr(getattr(exc, "orig", None), "diag", None)
+        if detalhes and getattr(detalhes, "column_name", None):
+            mensagem = (
+                "Erro ao salvar dados. Verifique o tamanho máximo do campo '"
+                + detalhes.column_name
+                + "'."
+            )
+        else:
+            mensagem = "Erro ao salvar os dados importados."
+        flash(mensagem, "danger")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        current_app.logger.exception("Erro ao importar trabalhos em massa")
+        flash(f"Erro ao importar trabalhos: {exc}", "danger")
+        return redirect(url_for("trabalho_routes.novo_trabalho"))
+
+    if total_importados == 0:
+        flash(
+            "Nenhum trabalho foi importado. Verifique se a planilha possui dados preenchidos.",
+            "warning",
+        )
+    else:
+        flash(f"{total_importados} trabalhos importados com sucesso!", "success")
+
+    return redirect(url_for("trabalho_routes.listar_trabalhos"))
 
 
 @trabalho_routes.route("/trabalhos")
@@ -967,4 +1220,3 @@ def undo_all_distributions():
         )
 
     return render_template("distribuicao.html")
-

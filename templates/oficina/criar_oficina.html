@@ -20,7 +20,7 @@
         </div>
         <div class="step-indicator" data-step="2">
           <div class="step-number">2</div>
-          <div class="step-label">Ministrantes</div>
+          <div class="step-label">Equipe</div>
         </div>
         <div class="step-indicator" data-step="3">
           <div class="step-number">3</div>
@@ -116,12 +116,27 @@
           </div>
         </div>
 
-        <!-- Etapa 2: Ministrantes -->
+        <!-- Etapa 2: Equipe -->
         <div class="step" id="step-2" style="display: none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <i class="bi bi-people me-2"></i>Ministrantes
+              <i class="bi bi-people me-2"></i>Equipe (Ministrantes e Formador)
             </h5>
+          </div>
+
+          {% set selected_formador = formador_id if formador_id is defined else request.form.get('formador_id') %}
+
+          <div class="mb-4">
+            <label for="formador_id" class="form-label fw-bold">Formador responsável:</label>
+            <select name="formador_id" id="formador_id" class="form-select form-select-lg border border-secondary bg-white">
+              <option value="">-- Selecione um Formador --</option>
+              {% for formador in formadores %}
+                <option value="{{ formador.id }}" {% if selected_formador and selected_formador|int == formador.id %}selected{% endif %}>
+                  {{ formador.nome }}
+                </option>
+              {% endfor %}
+            </select>
+            <small class="text-muted mt-2 d-block">O formador será exibido em todos os locais onde esta atividade aparecer.</small>
           </div>
           
           <div class="mb-4">

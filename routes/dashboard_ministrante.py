@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models import Oficina, Configuracao
 from models.user import Ministrante
+from sqlalchemy import or_
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,13 @@ def dashboard_ministrante():
         return redirect(url_for('evento_routes.home'))
 
     # Buscar as oficinas deste ministrante
-    oficinas_do_ministrante = Oficina.query.filter_by(ministrante_id=ministrante_logado.id).all()
+    oficinas_do_ministrante = Oficina.query.filter(
+        or_(
+            Oficina.ministrante_id == ministrante_logado.id,
+            Oficina.formador_id == ministrante_logado.id,
+            Oficina.ministrantes_associados.any(Ministrante.id == ministrante_logado.id)
+        )
+    ).all()
     # Carrega a configuração e define habilitar_feedback
     config = Configuracao.query.first()
     habilitar_feedback = config.habilitar_feedback if config else False
