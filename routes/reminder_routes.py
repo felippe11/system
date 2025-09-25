@@ -1,7 +1,16 @@
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    flash,
+    redirect,
+    url_for,
+    current_app,
+)
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from models import (
     LembreteOficina, 
     LembreteEnvio, 
@@ -10,6 +19,7 @@ from models import (
     Oficina,
     Usuario,
     Cliente,
+    Inscricao,
     db
 )
 from services.email_service import EmailService
@@ -21,18 +31,42 @@ logger = logging.getLogger(__name__)
 reminder_routes = Blueprint('reminder_routes', __name__)
 
 
+def _resolve_cliente_id(explicit_id=None):
+    """Resolve o identificador do cliente considerando o contexto atual."""
+    if explicit_id:
+        return explicit_id
+
+    tipo_usuario = getattr(current_user, "tipo", None)
+
+    if tipo_usuario == "cliente":
+        return current_user.id
+
+    cliente_attr = getattr(current_user, "cliente_id", None)
+    if cliente_attr:
+        return cliente_attr
+
+    cliente_param = request.args.get("cliente_id", type=int)
+    if cliente_param:
+        return cliente_param
+
+    return None
+
+
 @reminder_routes.route('/lembretes')
 @login_required
 def listar_lembretes():
     """Lista todos os lembretes do cliente."""
-    cliente_id = current_user.cliente_id
-    
-    # Buscar lembretes do cliente
+    cliente_id = _resolve_cliente_id()
+
+    if not cliente_id:
+        flash("Nenhum cliente selecionado para listar lembretes.", "warning")
+        return redirect(url_for('dashboard_routes.dashboard_admin'))
+
     lembretes = LembreteOficina.query.filter_by(cliente_id=cliente_id).order_by(
         LembreteOficina.data_criacao.desc()
     ).all()
-    
-    return render_template('lembretes/listar.html', lembretes=lembretes)
+
+    return render_template('lembretes/listar.html', lembretes=lembretes, cliente_id=cliente_id)
 
 
 @reminder_routes.route('/lembretes/criar', methods=['GET', 'POST'])
@@ -40,26 +74,32 @@ def listar_lembretes():
 def criar_lembrete():
     """Cria um novo lembrete."""
     if request.method == 'GET':
-        cliente_id = current_user.cliente_id
+        cliente_id = _resolve_cliente_id()
+
+        if not cliente_id:
+            flash("Nenhum cliente selecionado para criar lembretes.", "warning")
+            return redirect(url_for('reminder_routes.listar_lembretes'))
         
         # Buscar oficinas do cliente
         oficinas = Oficina.query.filter_by(cliente_id=cliente_id).order_by(
             Oficina.titulo.asc()
         ).all()
         
-        # Buscar usuários do cliente
-        usuarios = Usuario.query.filter_by(cliente_id=cliente_id).order_by(
-            Usuario.nome.asc()
-        ).all()
-        
-        return render_template('lembretes/criar.html', oficinas=oficinas, usuarios=usuarios)
+        return render_template('lembretes/criar.html', oficinas=oficinas, cliente_id=cliente_id)
     
     # POST - Criar lembrete
     try:
         data = request.get_json()
+        cliente_id = _resolve_cliente_id(data.get('cliente_id'))
+
+        if not cliente_id:
+            return jsonify({
+                'success': False,
+                'message': 'Cliente não informado para criação do lembrete.'
+            }), 400
         
         lembrete = LembreteOficina(
-            cliente_id=current_user.cliente_id,
+            cliente_id=cliente_id,
             titulo=data['titulo'],
             mensagem=data['mensagem'],
             tipo=TipoLembrete(data['tipo']),
@@ -185,7 +225,10 @@ def deletar_lembrete(lembrete_id):
 @login_required
 def api_oficinas_para_lembrete():
     """API para buscar oficinas do cliente para lembretes."""
-    cliente_id = current_user.cliente_id
+    cliente_id = request.args.get('cliente_id', type=int) or _resolve_cliente_id()
+
+    if not cliente_id:
+        return jsonify({'success': False, 'message': 'Cliente não informado.'}), 400
     
     oficinas = Oficina.query.filter_by(cliente_id=cliente_id).order_by(
         Oficina.titulo.asc()
@@ -208,21 +251,46 @@ def api_oficinas_para_lembrete():
 @login_required
 def api_usuarios_para_lembrete():
     """API para buscar usuários do cliente para lembretes."""
-    cliente_id = current_user.cliente_id
-    
-    usuarios = Usuario.query.filter_by(cliente_id=cliente_id).order_by(
-        Usuario.nome.asc()
-    ).all()
-    
-    usuarios_data = []
-    for usuario in usuarios:
-        usuarios_data.append({
-            'id': usuario.id,
-            'nome': usuario.nome,
-            'email': usuario.email,
-            'total_inscricoes': len(usuario.inscricoes) if hasattr(usuario, 'inscricoes') else 0
-        })
-    
+    cliente_id = request.args.get('cliente_id', type=int) or _resolve_cliente_id()
+    if not cliente_id:
+        return jsonify({'success': False, 'message': 'Cliente não informado.'}), 400
+
+    search = (request.args.get('q') or '').strip().lower()
+
+    usuarios_query = (
+        db.session.query(
+            Usuario.id,
+            Usuario.nome,
+            Usuario.email,
+            func.count(Inscricao.id).label('total_inscricoes')
+        )
+        .join(Inscricao, and_(Inscricao.usuario_id == Usuario.id, Inscricao.cliente_id == cliente_id))
+        .filter(Inscricao.oficina_id.isnot(None))
+        .filter(Usuario.ativo.is_(True))
+        .filter(~Usuario.tipo.in_(['revisor', 'admin', 'cliente', 'superadmin']))
+        .group_by(Usuario.id, Usuario.nome, Usuario.email)
+        .order_by(func.lower(Usuario.nome))
+    )
+
+    if search:
+        like_pattern = f"%{search}%"
+        usuarios_query = usuarios_query.filter(
+            or_(
+                func.lower(Usuario.nome).like(like_pattern),
+                func.lower(Usuario.email).like(like_pattern)
+            )
+        )
+
+    usuarios_data = [
+        {
+            'id': row.id,
+            'nome': row.nome,
+            'email': row.email,
+            'total_inscricoes': int(row.total_inscricoes or 0)
+        }
+        for row in usuarios_query.all()
+    ]
+
     return jsonify({'usuarios': usuarios_data})
 
 

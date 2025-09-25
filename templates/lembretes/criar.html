@@ -85,6 +85,10 @@
                                 
                                 <div id="selecaoUsuarios" class="mb-3">
                                     <label class="form-label">Selecionar Usuários Específicos (Opcional)</label>
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="search" class="form-control" id="usuarioSearch" placeholder="Pesquisar por nome ou e-mail">
+                                    </div>
                                     <div id="usuariosContainer" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
                                         <div class="text-center text-muted">
                                             <i class="fas fa-spinner fa-spin"></i> Carregando usuários...
@@ -123,6 +127,8 @@
 <script>
 let oficinas = [];
 let usuarios = [];
+const CLIENTE_ID = {{ cliente_id | tojson }};
+let usuarioSearchTimeout = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     carregarOficinas();
@@ -137,6 +143,16 @@ document.addEventListener('DOMContentLoaded', function() {
             selecaoOficinas.style.display = 'block';
         }
     });
+    
+    const searchInput = document.getElementById('usuarioSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(usuarioSearchTimeout);
+            usuarioSearchTimeout = setTimeout(() => {
+                carregarUsuarios(this.value.trim());
+            }, 300);
+        });
+    }
     
     // Event listener para formulário
     document.getElementById('lembreteForm').addEventListener('submit', function(e) {
@@ -157,7 +173,16 @@ function toggleTipoEnvio() {
 }
 
 function carregarOficinas() {
-    fetch('/api/oficinas-para-lembrete')
+    let url = '/api/oficinas-para-lembrete';
+    const params = new URLSearchParams();
+    if (CLIENTE_ID) {
+        params.append('cliente_id', CLIENTE_ID);
+    }
+    if (params.toString()) {
+        url += `?${params.toString()}`;
+    }
+
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             oficinas = data.oficinas;
@@ -170,11 +195,23 @@ function carregarOficinas() {
         });
 }
 
-function carregarUsuarios() {
-    fetch('/api/usuarios-para-lembrete')
+function carregarUsuarios(searchTerm = '') {
+    let url = '/api/usuarios-para-lembrete';
+    const params = new URLSearchParams();
+    if (CLIENTE_ID) {
+        params.append('cliente_id', CLIENTE_ID);
+    }
+    if (searchTerm) {
+        params.append('q', searchTerm);
+    }
+    if (params.toString()) {
+        url += `?${params.toString()}`;
+    }
+
+    fetch(url)
         .then(response => response.json())
         .then(data => {
-            usuarios = data.usuarios;
+            usuarios = data.usuarios || [];
             renderizarUsuarios();
         })
         .catch(error => {
@@ -259,7 +296,8 @@ function criarLembrete() {
         oficina_ids: oficinasSelecionadas,
         usuario_ids: usuariosSelecionados,
         dias_antecedencia: formData.get('dias_antecedencia') ? parseInt(formData.get('dias_antecedencia')) : null,
-        data_envio_agendada: formData.get('data_envio_agendada') || null
+        data_envio_agendada: formData.get('data_envio_agendada') || null,
+        cliente_id: CLIENTE_ID
     };
     
     // Validações
