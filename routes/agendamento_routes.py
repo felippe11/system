@@ -35,13 +35,16 @@ from models import (
 )
 from models.event import NotificacaoAgendamento
 from utils import obter_estados
-from fpdf import FPDF
 import pandas as pd
 import qrcode
 import io
 from PIL import Image
 from types import SimpleNamespace
 from . import routes
+from font_utils import (
+    create_pdf_with_safe_fonts,
+    set_font_safe as apply_font_safe,
+)
 
 
 # Aliases for backward compatibility used later in this module
@@ -1147,25 +1150,15 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         data_fim: Data final do período do relatório
         caminho_pdf: Caminho onde o PDF será salvo
     """
-    pdf = FPDF()
+    pdf, default_font = create_pdf_with_safe_fonts()
     pdf.add_page()
 
-    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
-    fonts_registered = False
-    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
+    logger.info("Fonte padrão para relatórios configurada como %s", default_font)
 
-    # Função auxiliar para definir fonte - sempre Arial
-    def set_font_safe(style='', size=12):
-        """Define fonte Arial com fallback robusto"""
-        try:
-            pdf.set_font('Arial', style, size)
-        except Exception as e:
-            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
-            try:
-                pdf.set_font('Helvetica', style, size)
-            except Exception:
-                # Último recurso - fonte básica
-                pdf.set_font('Times', '', size)
+    def set_font_safe(style: str = '', size: int = 12) -> None:
+        """Aplica a fonte padrão com fallback seguro."""
+
+        apply_font_safe(pdf, default_font, style, size)
 
     # Configurar fonte inicial
     set_font_safe('B', 16)
@@ -1452,25 +1445,15 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
         data_fim: Data final do período do relatório
         caminho_pdf: Caminho onde o PDF será salvo
     """
-    pdf = FPDF()
+    pdf, default_font = create_pdf_with_safe_fonts()
     pdf.add_page()
-    
-    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
-    fonts_registered = False
-    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
 
-    # Função auxiliar para definir fonte - sempre Arial
-    def set_font_safe(style='', size=12):
-        """Define fonte Arial com fallback robusto"""
-        try:
-            pdf.set_font('Arial', style, size)
-        except Exception as e:
-            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
-            try:
-                pdf.set_font('Helvetica', style, size)
-            except Exception:
-                # Último recurso - fonte básica
-                pdf.set_font('Times', '', size)
+    logger.info("Fonte padrão para relatórios configurada como %s", default_font)
+
+    def set_font_safe(style: str = '', size: int = 12) -> None:
+        """Aplica a fonte padrão com fallback seguro."""
+
+        apply_font_safe(pdf, default_font, style, size)
     
     # Configurar fonte inicial
     set_font_safe('B', 16)
@@ -1599,25 +1582,15 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         agendamentos: Lista de objetos ``AgendamentoVisita``
         caminho_pdf: Caminho onde o PDF será salvo
     """
-    pdf = FPDF()
+    pdf, default_font = create_pdf_with_safe_fonts()
     pdf.add_page()
-    
-    # SOLUÇÃO ROBUSTA: Usar sempre Arial para evitar problemas de fontes
-    fonts_registered = False
-    logger.info("Usando Arial como fonte padrão para garantir compatibilidade total.")
 
-    # Função auxiliar para definir fonte - sempre Arial
-    def set_font_safe(style='', size=12):
-        """Define fonte Arial com fallback robusto"""
-        try:
-            pdf.set_font('Arial', style, size)
-        except Exception as e:
-            logger.warning(f"Erro ao definir fonte Arial: {e}. Tentando fonte padrão.")
-            try:
-                pdf.set_font('Helvetica', style, size)
-            except Exception:
-                # Último recurso - fonte básica
-                pdf.set_font('Times', '', size)
+    logger.info("Fonte padrão para relatórios configurada como %s", default_font)
+
+    def set_font_safe(style: str = '', size: int = 12) -> None:
+        """Aplica a fonte padrão com fallback seguro."""
+
+        apply_font_safe(pdf, default_font, style, size)
     
     # Configurar fonte inicial
     set_font_safe('B', 16)
@@ -3415,7 +3388,117 @@ def resetar_configuracoes_agendamento():
         
         # Redirecionar para o dashboard
         return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS, _anchor='configuracoes'))
-    
+
+
+def _parse_date_param(value):
+    if not value:
+        return None
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _format_datetime(value):
+    if not value:
+        return ''
+    return value.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _format_date(value):
+    if not value:
+        return ''
+    return value.strftime('%Y-%m-%d')
+
+
+def _buscar_agendamentos_para_exportacao(cliente_id, evento_id=None, data_inicio=None, data_fim=None, status=None):
+    data_inicio_date = _parse_date_param(data_inicio)
+    data_fim_date = _parse_date_param(data_fim)
+
+    query = (
+        db.session.query(
+            AgendamentoVisita,
+            HorarioVisitacao,
+            Evento,
+            Usuario
+        )
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .outerjoin(Usuario, AgendamentoVisita.professor_id == Usuario.id)
+        .filter(AgendamentoVisita.cliente_id == cliente_id)
+    )
+
+    if evento_id:
+        try:
+            query = query.filter(Evento.id == int(evento_id))
+        except (ValueError, TypeError):
+            pass
+
+    if data_inicio_date:
+        query = query.filter(HorarioVisitacao.data >= data_inicio_date)
+
+    if data_fim_date:
+        query = query.filter(HorarioVisitacao.data <= data_fim_date)
+
+    if status and status.lower() not in ('todos', 'todas'):
+        status_param = status.lower().strip()
+        if status_param.endswith('s'):
+            status_param = status_param[:-1]
+        query = query.filter(func.lower(AgendamentoVisita.status) == status_param)
+
+    query = query.order_by(HorarioVisitacao.data.asc(), HorarioVisitacao.horario_inicio.asc())
+
+    resultados = []
+    for agendamento, horario, evento, professor in query.all():
+        inicio = horario.horario_inicio.strftime('%H:%M') if horario.horario_inicio else ''
+        fim = horario.horario_fim.strftime('%H:%M') if horario.horario_fim else ''
+        horario_formatado = f"{inicio} - {fim}" if inicio or fim else ''
+
+        telefone = agendamento.responsavel_whatsapp or ''
+        email_destino = (professor.email if professor and professor.email else agendamento.responsavel_email) or ''
+
+        resultados.append({
+            'id': agendamento.id,
+            'data': _format_date(horario.data),
+            'horario': horario_formatado,
+            'evento': evento.nome if evento else '',
+            'escola': agendamento.escola_nome or '',
+            'codigo_inep': agendamento.escola_codigo_inep or '',
+            'rede_ensino': agendamento.rede_ensino or '',
+            'estado': agendamento.estado or '',
+            'municipio': agendamento.municipio or '',
+            'bairro': agendamento.bairro or '',
+            'responsavel': agendamento.responsavel_nome or '',
+            'email': email_destino,
+            'telefone': telefone,
+            'turma': agendamento.turma or '',
+            'alunos': agendamento.quantidade_alunos or 0,
+            'nivel_ensino': agendamento.nivel_ensino or '',
+            'status': (agendamento.status or '').lower(),
+            'data_criacao': _format_datetime(agendamento.data_agendamento),
+            'data_cancelamento': _format_datetime(agendamento.data_cancelamento),
+            'motivo_recusa': agendamento.motivo_recusa or '',
+            'checkin_realizado': 'Sim' if agendamento.checkin_realizado else 'Não',
+            'data_checkin': _format_datetime(agendamento.data_checkin),
+            'responsavel_nome': agendamento.responsavel_nome or '',
+            'responsavel_cargo': agendamento.responsavel_cargo or '',
+            'responsavel_whatsapp': agendamento.responsavel_whatsapp or '',
+            'responsavel_email': agendamento.responsavel_email or '',
+            'acompanhantes_nomes': agendamento.acompanhantes_nomes or '',
+            'acompanhantes_qtd': agendamento.acompanhantes_qtd or 0,
+            'salas_selecionadas': agendamento.salas_selecionadas or '',
+            'compromisso_1': 'Sim' if agendamento.compromisso_1 else 'Não',
+            'compromisso_2': 'Sim' if agendamento.compromisso_2 else 'Não',
+            'compromisso_3': 'Sim' if agendamento.compromisso_3 else 'Não',
+            'compromisso_4': 'Sim' if agendamento.compromisso_4 else 'Não',
+            'observacoes': agendamento.observacoes or '',
+        })
+
+    return resultados
+
+
 @agendamento_routes.route('/exportar-agendamentos')
 @login_required
 def exportar_agendamentos():
@@ -3436,124 +3519,21 @@ def exportar_agendamentos():
             flash("Formato de exportação inválido. Use 'csv' ou 'excel'.", "danger")
             return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
         
-        # Buscar dados para exportação
-        # Em uma implementação real, você buscaria os agendamentos do banco de dados
-        # baseado nos filtros fornecidos
-        
-        # Como não sabemos a estrutura exata do seu modelo,
-        # vamos criar dados simulados para demonstração
-        
-        # Dados simulados para exportação
-        agendamentos_dados = [
-            {
-                'id': 1,
-                'data': '2025-03-20',
-                'horario': '09:00 - 11:00',
-                'evento': 'Feira de Ciências 2025',
-                'escola': 'Escola Modelo',
-                'codigo_inep': '12345678',
-                'rede_ensino': 'Municipal',
-                'estado': 'SP',
-                'municipio': 'São Paulo',
-                'bairro': 'Centro',
-                'responsavel': 'João Silva',
-                'email': 'joao.silva@email.com',
-                'telefone': '(11) 98765-4321',
-                'turma': '5º Ano A',
-                'alunos': 25,
-                'nivel_ensino': 'Fundamental I',
-                'status': 'confirmado',
-                'data_criacao': '2025-02-15 14:30:22',
-                'data_cancelamento': '',
-                'motivo_recusa': '',
-                'checkin_realizado': 'Sim',
-                'data_checkin': '2025-03-20 09:15:00',
-                'responsavel_nome': 'João Silva',
-                'responsavel_cargo': 'Professor',
-                'responsavel_whatsapp': '(11) 98765-4321',
-                'responsavel_email': 'joao.silva@email.com',
-                'acompanhantes_nomes': 'Maria Santos, Pedro Oliveira',
-                'acompanhantes_qtd': 2,
-                'salas_selecionadas': 'Sala 1, Sala 2',
-                'compromisso_1': 'Sim',
-                'compromisso_2': 'Sim',
-                'compromisso_3': 'Não',
-                'compromisso_4': 'Sim',
-                'observacoes': 'Turma com alunos especiais'
-            },
-            {
-                'id': 2,
-                'data': '2025-03-21',
-                'horario': '14:00 - 16:00',
-                'evento': 'Feira de Ciências 2025',
-                'escola': 'Colégio Exemplo',
-                'codigo_inep': '87654321',
-                'rede_ensino': 'Estadual',
-                'estado': 'SP',
-                'municipio': 'São Paulo',
-                'bairro': 'Vila Madalena',
-                'responsavel': 'Maria Oliveira',
-                'email': 'maria.oliveira@email.com',
-                'telefone': '(11) 91234-5678',
-                'turma': '8º Ano B',
-                'alunos': 30,
-                'nivel_ensino': 'Fundamental II',
-                'status': 'confirmado',
-                'data_criacao': '2025-02-16 10:15:45',
-                'data_cancelamento': '',
-                'motivo_recusa': '',
-                'checkin_realizado': 'Não',
-                'data_checkin': '',
-                'responsavel_nome': 'Maria Oliveira',
-                'responsavel_cargo': 'Coordenadora',
-                'responsavel_whatsapp': '(11) 91234-5678',
-                'responsavel_email': 'maria.oliveira@email.com',
-                'acompanhantes_nomes': 'Ana Costa',
-                'acompanhantes_qtd': 1,
-                'salas_selecionadas': 'Sala 3',
-                'compromisso_1': 'Sim',
-                'compromisso_2': 'Não',
-                'compromisso_3': 'Sim',
-                'compromisso_4': 'Não',
-                'observacoes': ''
-            },
-            {
-                'id': 3,
-                'data': '2025-03-22',
-                'horario': '09:00 - 11:00',
-                'evento': 'Feira de Ciências 2025',
-                'escola': 'Instituto Educacional',
-                'codigo_inep': '11223344',
-                'rede_ensino': 'Privada',
-                'estado': 'SP',
-                'municipio': 'São Paulo',
-                'bairro': 'Jardins',
-                'responsavel': 'Carlos Santos',
-                'email': 'carlos.santos@email.com',
-                'telefone': '(11) 95555-1234',
-                'turma': '2º Ano EM',
-                'alunos': 35,
-                'nivel_ensino': 'Ensino Médio',
-                'status': 'cancelado',
-                'data_criacao': '2025-02-17 09:22:10',
-                'data_cancelamento': '2025-03-21 15:30:00',
-                'motivo_recusa': 'Problemas de transporte',
-                'checkin_realizado': 'Não',
-                'data_checkin': '',
-                'responsavel_nome': 'Carlos Santos',
-                'responsavel_cargo': 'Professor',
-                'responsavel_whatsapp': '(11) 95555-1234',
-                'responsavel_email': 'carlos.santos@email.com',
-                'acompanhantes_nomes': '',
-                'acompanhantes_qtd': 0,
-                'salas_selecionadas': 'Sala 4',
-                'compromisso_1': 'Não',
-                'compromisso_2': 'Não',
-                'compromisso_3': 'Não',
-                'compromisso_4': 'Não',
-                'observacoes': 'Cancelado por problemas de transporte'
-            }
-        ]
+        cliente_id = getattr(current_user, 'cliente_id', None)
+        if getattr(current_user, 'tipo', None) == 'cliente':
+            cliente_id = current_user.id
+
+        if not cliente_id:
+            flash('Não foi possível determinar o cliente para exportação.', 'danger')
+            return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
+
+        agendamentos_dados = _buscar_agendamentos_para_exportacao(
+            cliente_id=cliente_id,
+            evento_id=evento_id,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            status=status,
+        )
         
         # Exportar para CSV
         if formato == 'csv':
