@@ -37,7 +37,7 @@ from models.certificado import (
     VariavelDinamica,
 )
 from models.event import ConfiguracaoCertificadoAvancada
-from services.pdf_service import gerar_certificado_personalizado, gerar_pdf_template  # ajuste conforme a localização
+from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 
 from services.declaracao_service import gerar_declaracao_personalizada
 from services import certificado_service
