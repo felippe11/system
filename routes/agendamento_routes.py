@@ -4122,15 +4122,14 @@ def editar_cadastro_pendente(agendamento_id):
         salas_selecionadas=salas_selecionadas
     )
 
+
 @agendamento_routes.route('/editar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def editar_agendamento(agendamento_id):
     """Editar um agendamento de visita existente."""
 
-    # Busca o agendamento no banco de dados
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
-    
-    # Verifica permissões (apenas o próprio professor, administradores ou clientes podem editar)
+
     if (
         current_user.tipo not in ['admin', 'cliente']
         and agendamento.professor_id
@@ -4139,415 +4138,25 @@ def editar_agendamento(agendamento_id):
         flash('Você não tem permissão para editar este agendamento.', 'danger')
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
 
-
-def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agregados, professores_confirmados, agendamentos, data_inicio, data_fim, caminho_xlsx):
-    """
-    Gera um relatório geral completo em XLSX com múltiplas abas contendo todas as informações de agendamentos.
-    
-    Args:
-        eventos: Lista de objetos Evento
-        estatisticas: Dicionário com estatísticas por evento
-        totais: Dicionário com totais gerais
-        dados_agregados: Dicionário com dados agregados (escolas, professores, etc.)
-        professores_confirmados: Lista de professores com agendamentos confirmados
-        agendamentos: Lista de objetos AgendamentoVisita
-        data_inicio: Data inicial do período do relatório
-        data_fim: Data final do período do relatório
-        caminho_xlsx: Caminho onde o XLSX será salvo
-    """
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        from openpyxl.utils.dataframe import dataframe_to_rows
-        import pandas as pd
-        
-        # Criar workbook
-        wb = openpyxl.Workbook()
-        
-        # Remover a planilha padrão
-        wb.remove(wb.active)
-        
-        # Estilos
-        header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="4B5563", end_color="4B5563", fill_type="solid")
-        border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
-        )
-        center_alignment = Alignment(horizontal='center', vertical='center')
-        
-        # Aba 1: Resumo Geral
-        ws_resumo = wb.create_sheet("Resumo Geral")
-        
-        # Título e período
-        ws_resumo['A1'] = 'Relatório Geral de Agendamentos'
-        ws_resumo['A1'].font = Font(bold=True, size=16)
-        ws_resumo['A2'] = f'Período: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}'
-        ws_resumo['A3'] = f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}'
-        
-        # Totais gerais
-        row = 5
-        ws_resumo[f'A{row}'] = 'TOTAIS GERAIS'
-        ws_resumo[f'A{row}'].font = header_font
-        ws_resumo[f'A{row}'].fill = header_fill
-        
-        row += 1
-        total_agendamentos = totais.get('total_agendamentos', 0)
-        total_visitantes = totais.get('total_visitantes', 0)
-        confirmados = totais.get('confirmados', 0)
-        realizados = totais.get('realizados', 0)
-        cancelados = totais.get('cancelados', 0)
-        
-        ws_resumo[f'A{row}'] = 'Total de Agendamentos:'
-        ws_resumo[f'B{row}'] = total_agendamentos
-        row += 1
-        ws_resumo[f'A{row}'] = 'Total de Visitantes:'
-        ws_resumo[f'B{row}'] = total_visitantes
-        row += 1
-        ws_resumo[f'A{row}'] = 'Agendamentos Confirmados:'
-        ws_resumo[f'B{row}'] = confirmados
-        row += 1
-        ws_resumo[f'A{row}'] = 'Agendamentos Realizados:'
-        ws_resumo[f'B{row}'] = realizados
-        row += 1
-        ws_resumo[f'A{row}'] = 'Agendamentos Cancelados:'
-        ws_resumo[f'B{row}'] = cancelados
-        
-        # Taxas
-        if total_agendamentos > 0:
-            taxa_cancelamento = (cancelados / total_agendamentos) * 100
-            row += 1
-            ws_resumo[f'A{row}'] = 'Taxa de Cancelamento:'
-            ws_resumo[f'B{row}'] = f'{taxa_cancelamento:.1f}%'
-        
-        if confirmados + realizados > 0:
-            taxa_conclusao = (realizados / (confirmados + realizados)) * 100
-            row += 1
-            ws_resumo[f'A{row}'] = 'Taxa de Conclusão:'
-            ws_resumo[f'B{row}'] = f'{taxa_conclusao:.1f}%'
-        
-        # Aba 2: Agendamentos Detalhados
-        ws_agendamentos = wb.create_sheet("Agendamentos")
-        
-        # Cabeçalhos
-        headers = [
-            'ID', 'Data da Visita', 'Horário', 'Evento', 'Escola/Instituição',
-            'Código INEP', 'Rede de Ensino', 'Estado', 'Município', 'Bairro',
-            'Professor/Responsável', 'E-mail', 'Telefone', 'Turma', 
-            'Quantidade de Alunos', 'Nível de Ensino', 'Status', 'Data do Agendamento',
-            'Data Cancelamento', 'Motivo Recusa', 'Check-in Realizado', 'Data Check-in',
-            'Responsável Nome', 'Responsável Cargo', 'Responsável WhatsApp', 'Responsável Email',
-            'Acompanhantes Nomes', 'Quantidade Acompanhantes', 'Salas Selecionadas',
-            'Compromisso 1', 'Compromisso 2', 'Compromisso 3', 'Compromisso 4',
-            'Tem Necessidades Especiais', 'Observações'
-        ]
-        
-        for col, header in enumerate(headers, 1):
-            cell = ws_agendamentos.cell(row=1, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center_alignment
-            cell.border = border
-        
-        # Dados dos agendamentos
-        for row_idx, agendamento in enumerate(agendamentos, 2):
-            try:
-                # Buscar informações do horário e evento
-                horario = agendamento.horario
-                evento = horario.evento if horario else None
-                professor = agendamento.professor
-                
-                # Mapear nível de ensino
-                niveis_ensino = {
-                    1: 'Fundamental I',
-                    2: 'Fundamental II', 
-                    3: 'Ensino Médio',
-                    4: 'EJA',
-                    5: 'Superior'
-                }
-                nivel_ensino = niveis_ensino.get(agendamento.nivel_ensino, 'Não informado')
-                
-                # Verificar necessidades especiais
-                tem_necessidades = 'Não'
-                if hasattr(agendamento, 'alunos'):
-                    for aluno in agendamento.alunos:
-                        if hasattr(aluno, 'necessidades_especiais') and aluno.necessidades_especiais:
-                            tem_necessidades = 'Sim'
-                            break
-                
-                # Obter município e bairro do agendamento
-                municipio_agendamento = agendamento.municipio or 'N/A'
-                bairro_agendamento = agendamento.bairro or 'N/A'
-                
-                data = [
-                    agendamento.id,
-                    horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
-                    f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
-                    evento.nome if evento else 'N/A',
-                    agendamento.escola_nome or 'N/A',
-                    agendamento.escola_codigo_inep or 'N/A',
-                    agendamento.rede_ensino or 'N/A',
-                    agendamento.estado or 'N/A',
-                    municipio_agendamento,
-                    bairro_agendamento,
-                    professor.nome if professor else agendamento.professor_nome or 'N/A',
-                    professor.email if professor else agendamento.professor_email or 'N/A',
-                    agendamento.professor_telefone or 'N/A',
-                    agendamento.turma or 'N/A',
-                    agendamento.quantidade_alunos or 0,
-                    nivel_ensino,
-                    agendamento.status.title() if agendamento.status else 'N/A',
-                    agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_agendamento else 'N/A',
-                    agendamento.data_cancelamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_cancelamento else 'N/A',
-                    agendamento.motivo_recusa or 'N/A',
-                    'Sim' if agendamento.checkin_realizado else 'Não',
-                    agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else 'N/A',
-                    agendamento.responsavel_nome or 'N/A',
-                    agendamento.responsavel_cargo or 'N/A',
-                    agendamento.responsavel_whatsapp or 'N/A',
-                    agendamento.responsavel_email or 'N/A',
-                    agendamento.acompanhantes_nomes or 'N/A',
-                    agendamento.acompanhantes_qtd or 0,
-                    agendamento.salas_selecionadas or 'N/A',
-                    'Sim' if agendamento.compromisso_1 else 'Não',
-                    'Sim' if agendamento.compromisso_2 else 'Não',
-                    'Sim' if agendamento.compromisso_3 else 'Não',
-                    'Sim' if agendamento.compromisso_4 else 'Não',
-                    tem_necessidades,
-                    agendamento.observacoes or ''
-                ]
-                
-                for col_idx, value in enumerate(data, 1):
-                    cell = ws_agendamentos.cell(row=row_idx, column=col_idx, value=value)
-                    cell.border = border
-                    if col_idx in [1, 10, 11]:  # ID, Status, Data do Agendamento
-                        cell.alignment = center_alignment
-                        
-            except Exception as e:
-                logger.error(f"Erro ao processar agendamento {agendamento.id}: {e}")
-                continue
-        
-        # Aba 3: Estatísticas por Evento
-        if eventos and estatisticas:
-            ws_eventos = wb.create_sheet("Estatísticas por Evento")
-            
-            # Cabeçalhos
-            headers_eventos = ['Evento', 'Confirmados', 'Realizados', 'Cancelados', 'Total Visitantes', 'Taxa de Conclusão']
-            for col, header in enumerate(headers_eventos, 1):
-                cell = ws_eventos.cell(row=1, column=col, value=header)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = center_alignment
-                cell.border = border
-            
-            # Dados por evento
-            for row_idx, evento in enumerate(eventos, 2):
-                stats = estatisticas.get(evento.id, {})
-                confirmados_evento = stats.get('confirmados', 0)
-                realizados_evento = stats.get('realizados', 0)
-                cancelados_evento = stats.get('cancelados', 0)
-                visitantes_evento = stats.get('visitantes', 0)
-                
-                taxa_conclusao_evento = 0
-                if confirmados_evento + realizados_evento > 0:
-                    taxa_conclusao_evento = (realizados_evento / (confirmados_evento + realizados_evento)) * 100
-                
-                data_evento = [
-                    evento.nome,
-                    confirmados_evento,
-                    realizados_evento,
-                    cancelados_evento,
-                    visitantes_evento,
-                    f'{taxa_conclusao_evento:.1f}%'
-                ]
-                
-                for col_idx, value in enumerate(data_evento, 1):
-                    cell = ws_eventos.cell(row=row_idx, column=col_idx, value=value)
-                    cell.border = border
-                    if col_idx > 1:  # Números e percentuais
-                        cell.alignment = center_alignment
-        
-        # Aba 4: Estatísticas por Escola
-        if dados_agregados and 'escolas' in dados_agregados:
-            ws_escolas = wb.create_sheet("Estatísticas por Escola")
-            
-            # Cabeçalhos
-            headers_escolas = ['Escola/Instituição', 'Total Agendamentos', 'Total Alunos', 'Realizados', 'Pendentes']
-            for col, header in enumerate(headers_escolas, 1):
-                cell = ws_escolas.cell(row=1, column=col, value=header)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = center_alignment
-                cell.border = border
-            
-            # Dados por escola
-            for row_idx, escola_stat in enumerate(dados_agregados['escolas'], 2):
-                data_escola = [
-                    escola_stat.nome,
-                    escola_stat.total_agendamentos,
-                    escola_stat.total_alunos or 0,
-                    escola_stat.realizados,
-                    escola_stat.pendentes
-                ]
-                
-                for col_idx, value in enumerate(data_escola, 1):
-                    cell = ws_escolas.cell(row=row_idx, column=col_idx, value=value)
-                    cell.border = border
-                    if col_idx > 1:  # Números
-                        cell.alignment = center_alignment
-        
-        # Aba 5: Estatísticas por Professor
-        if dados_agregados and 'professores' in dados_agregados:
-            ws_professores = wb.create_sheet("Estatísticas por Professor")
-            
-            # Cabeçalhos
-            headers_professores = ['Professor/Responsável', 'Total Agendamentos', 'Total Alunos']
-            for col, header in enumerate(headers_professores, 1):
-                cell = ws_professores.cell(row=1, column=col, value=header)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = center_alignment
-                cell.border = border
-            
-            # Dados por professor
-            for row_idx, prof_stat in enumerate(dados_agregados['professores'], 2):
-                data_professor = [
-                    prof_stat.nome,
-                    prof_stat.total_agendamentos,
-                    prof_stat.total_alunos or 0
-                ]
-                
-                for col_idx, value in enumerate(data_professor, 1):
-                    cell = ws_professores.cell(row=row_idx, column=col_idx, value=value)
-                    cell.border = border
-                    if col_idx > 1:  # Números
-                        cell.alignment = center_alignment
-        
-        # Ajustar largura das colunas em todas as abas
-        for ws in wb.worksheets:
-            for column in ws.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                ws.column_dimensions[column_letter].width = adjusted_width
-        
-        # Salvar o arquivo
-        wb.save(caminho_xlsx)
-        
-    except ImportError:
-        # Fallback usando pandas se openpyxl não estiver disponível
-        import pandas as pd
-        
-        # Criar DataFrame com dados dos agendamentos
-        agendamentos_data = []
-        for agendamento in agendamentos:
-            try:
-                horario = agendamento.horario
-                evento = horario.evento if horario else None
-                professor = agendamento.professor
-                
-                niveis_ensino = {
-                    1: 'Fundamental I',
-                    2: 'Fundamental II', 
-                    3: 'Ensino Médio',
-                    4: 'EJA',
-                    5: 'Superior'
-                }
-                nivel_ensino = niveis_ensino.get(agendamento.nivel_ensino, 'Não informado')
-                
-                agendamentos_data.append({
-                    'ID': agendamento.id,
-                    'Data da Visita': horario.data.strftime('%d/%m/%Y') if horario and horario.data else 'N/A',
-                    'Horário': f"{horario.horario_inicio.strftime('%H:%M')} - {horario.horario_fim.strftime('%H:%M')}" if horario and horario.horario_inicio and horario.horario_fim else 'N/A',
-                    'Evento': evento.nome if evento else 'N/A',
-                    'Escola/Instituição': agendamento.escola_nome or 'N/A',
-                    'Código INEP': agendamento.escola_codigo_inep or 'N/A',
-                    'Rede de Ensino': agendamento.rede_ensino or 'N/A',
-                    'Estado': agendamento.estado or 'N/A',
-                    'Município': agendamento.municipio or 'N/A',
-                    'Bairro': agendamento.bairro or 'N/A',
-                    'Professor/Responsável': professor.nome if professor else agendamento.professor_nome or 'N/A',
-                    'E-mail': professor.email if professor else agendamento.professor_email or 'N/A',
-                    'Telefone': agendamento.professor_telefone or 'N/A',
-                    'Turma': agendamento.turma or 'N/A',
-                    'Quantidade de Alunos': agendamento.quantidade_alunos or 0,
-                    'Nível de Ensino': nivel_ensino,
-                    'Status': agendamento.status.title() if agendamento.status else 'N/A',
-                    'Data do Agendamento': agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_agendamento else 'N/A',
-                    'Data Cancelamento': agendamento.data_cancelamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_cancelamento else 'N/A',
-                    'Motivo Recusa': agendamento.motivo_recusa or 'N/A',
-                    'Check-in Realizado': 'Sim' if agendamento.checkin_realizado else 'Não',
-                    'Data Check-in': agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else 'N/A',
-                    'Responsável Nome': agendamento.responsavel_nome or 'N/A',
-                    'Responsável Cargo': agendamento.responsavel_cargo or 'N/A',
-                    'Responsável WhatsApp': agendamento.responsavel_whatsapp or 'N/A',
-                    'Responsável Email': agendamento.responsavel_email or 'N/A',
-                    'Acompanhantes Nomes': agendamento.acompanhantes_nomes or 'N/A',
-                    'Quantidade Acompanhantes': agendamento.acompanhantes_qtd or 0,
-                    'Salas Selecionadas': agendamento.salas_selecionadas or 'N/A',
-                    'Compromisso 1': 'Sim' if agendamento.compromisso_1 else 'Não',
-                    'Compromisso 2': 'Sim' if agendamento.compromisso_2 else 'Não',
-                    'Compromisso 3': 'Sim' if agendamento.compromisso_3 else 'Não',
-                    'Compromisso 4': 'Sim' if agendamento.compromisso_4 else 'Não',
-                    'Observações': agendamento.observacoes or ''
-                })
-            except Exception as e:
-                logger.error(f"Erro ao processar agendamento {agendamento.id}: {e}")
-                continue
-        
-        # Criar DataFrame e salvar
-        df = pd.DataFrame(agendamentos_data)
-        
-        with pd.ExcelWriter(caminho_xlsx, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Agendamentos', index=False)
-            
-            # Adicionar resumo geral
-            resumo_data = {
-                'Métrica': ['Total de Agendamentos', 'Total de Visitantes', 'Confirmados', 'Realizados', 'Cancelados'],
-                'Valor': [
-                    totais.get('total_agendamentos', 0),
-                    totais.get('total_visitantes', 0),
-                    totais.get('confirmados', 0),
-                    totais.get('realizados', 0),
-                    totais.get('cancelados', 0)
-                ]
-            }
-            df_resumo = pd.DataFrame(resumo_data)
-            df_resumo.to_excel(writer, sheet_name='Resumo Geral', index=False)
-    
-    except Exception as e:
-        logger.error(f"Erro ao gerar XLSX: {e}")
-        raise
-    
-    # Busca horários disponíveis para edição utilizando vagas restantes
     horarios_disponiveis = (
         HorarioVisitacao.query
         .filter(HorarioVisitacao.vagas_disponiveis > 0)
         .all()
     )
-    # Adiciona o horário atual do agendamento, caso ele não esteja mais disponível
     if agendamento.horario not in horarios_disponiveis:
         horarios_disponiveis.append(agendamento.horario)
-    
-    # Carrega as possíveis salas para visitação
+
     from models import SalaVisitacao
+
     salas = SalaVisitacao.query.all()
-    
-    # Pega as salas já selecionadas
+
     salas_selecionadas = []
     if agendamento.salas_selecionadas:
-        salas_selecionadas = [int(sala_id) for sala_id in agendamento.salas_selecionadas.split(',')]
-    
+        salas_selecionadas = [
+            int(sala_id) for sala_id in agendamento.salas_selecionadas.split(',')
+        ]
+
     if request.method == 'POST':
-        # Captura os dados do formulário
         horario_id = request.form.get('horario_id')
         escola_nome = request.form.get('escola_nome')
         escola_codigo_inep = request.form.get('escola_codigo_inep')
@@ -4555,8 +4164,7 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
         nivel_ensino = request.form.get('nivel_ensino')
         quantidade_alunos = request.form.get('quantidade_alunos')
         salas_ids = request.form.getlist('salas')
-        
-        # Validação básica
+
         if not all([horario_id, escola_nome, turma, nivel_ensino, quantidade_alunos]):
             flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
             return render_template(
@@ -4566,28 +4174,24 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
                 salas=salas,
                 salas_selecionadas=salas_selecionadas
             )
-        
+
         try:
-            # Atualiza os dados do agendamento
             agendamento.horario_id = horario_id
             agendamento.escola_nome = escola_nome
             agendamento.escola_codigo_inep = escola_codigo_inep
             agendamento.turma = turma
             agendamento.nivel_ensino = nivel_ensino
             agendamento.quantidade_alunos = int(quantidade_alunos)
-            
-            # Atualiza as salas selecionadas
             agendamento.salas_selecionadas = ','.join(salas_ids) if salas_ids else None
-            
+
             db.session.commit()
             flash('Agendamento atualizado com sucesso!', 'success')
             return redirect(url_for('agendamento_routes.listar_agendamentos'))
-            
-        except Exception as e:
+
+        except Exception as e:  # pragma: no cover - commit pode falhar em produção
             db.session.rollback()
             flash(f'Erro ao atualizar agendamento: {str(e)}', 'danger')
-    
-    # Renderiza o template com os dados do agendamento
+
     return render_template(
         'editar_agendamento.html',
         agendamento=agendamento,
@@ -4595,7 +4199,454 @@ def gerar_xlsx_relatorio_geral_completo(eventos, estatisticas, totais, dados_agr
         salas=salas,
         salas_selecionadas=salas_selecionadas
     )
-    
+
+
+def gerar_xlsx_relatorio_geral_completo(
+    eventos,
+    estatisticas,
+    totais,
+    dados_agregados,
+    professores_confirmados,
+    agendamentos,
+    data_inicio,
+    data_fim,
+    caminho_xlsx,
+):
+    """Gera um XLSX consolidado com todas as informações de agendamentos."""
+    from datetime import datetime, date, time
+    from decimal import Decimal
+
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    except ImportError as exc:  # pragma: no cover - dependência opcional
+        logger.error("openpyxl é obrigatório para gerar relatórios XLSX: %s", exc)
+        raise
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+    center_alignment = Alignment(horizontal="center", vertical="center")
+    left_alignment = Alignment(horizontal="left", vertical="center")
+
+    def _format_value(value):
+        if isinstance(value, Decimal):
+            return float(value)
+        return value
+
+    def _write_headers(ws, headers):
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_alignment
+            cell.border = border
+
+    def _write_row(ws, row_index, headers, row_data):
+        for col_idx, header in enumerate(headers, 1):
+            value = _format_value(row_data.get(header))
+            cell = ws.cell(row=row_index, column=col_idx, value=value)
+            cell.border = border
+            cell.alignment = center_alignment if isinstance(value, bool) else left_alignment
+
+    def _auto_fit(ws):
+        for column_cells in ws.columns:
+            column_cells = list(column_cells)
+            if not column_cells:
+                continue
+            max_length = 0
+            for cell in column_cells:
+                value = cell.value
+                if value is None:
+                    continue
+                if isinstance(value, datetime):
+                    rendered = value.strftime('%Y-%m-%d %H:%M')
+                elif isinstance(value, date):
+                    rendered = value.strftime('%Y-%m-%d')
+                elif isinstance(value, time):
+                    rendered = value.strftime('%H:%M')
+                else:
+                    rendered = str(value)
+                if len(rendered) > max_length:
+                    max_length = len(rendered)
+            ws.column_dimensions[column_cells[0].column_letter].width = min(max_length + 2, 60)
+
+    dados_agregados = dados_agregados or {}
+
+    total_agendamentos = len(agendamentos)
+    total_visitantes = sum((ag.quantidade_alunos or 0) for ag in agendamentos)
+
+    status_counts = {"pendentes": 0, "confirmados": 0, "realizados": 0, "cancelados": 0}
+    total_checkins = 0
+    visitantes_confirmados = 0
+
+    agendamento_columns = [column.name for column in AgendamentoVisita.__table__.columns]
+    extra_columns = [
+        "evento_id",
+        "evento_nome",
+        "evento_status",
+        "evento_publico",
+        "evento_localizacao",
+        "evento_data_inicio",
+        "evento_data_fim",
+        "evento_hora_inicio",
+        "evento_hora_fim",
+        "cliente_responsavel_id",
+        "cliente_responsavel_nome",
+        "cliente_responsavel_email",
+        "horario_data",
+        "horario_hora_inicio",
+        "horario_hora_fim",
+        "horario_capacidade_total",
+        "horario_vagas_disponiveis",
+        "horario_fechado",
+        "professor_nome",
+        "professor_email",
+        "professor_cpf",
+        "professor_formacao",
+        "professor_tipo",
+        "professor_ativo",
+        "total_alunos_registrados",
+        "alunos_presentes",
+        "alunos_com_necessidade",
+        "tem_necessidades_especiais",
+        "materiais_apoio_utilizados",
+    ]
+    headers_agendamentos = agendamento_columns + extra_columns
+
+    agendamentos_rows = []
+    alunos_rows = []
+    necessidade_por_tipo = {}
+    materiais_global_contagem = {}
+
+    for agendamento in agendamentos:
+        status_lower = (agendamento.status or "").lower()
+        if status_lower == "pendente":
+            status_counts["pendentes"] += 1
+        elif status_lower == "confirmado":
+            status_counts["confirmados"] += 1
+        elif status_lower == "realizado":
+            status_counts["realizados"] += 1
+        elif status_lower == "cancelado":
+            status_counts["cancelados"] += 1
+
+        if agendamento.checkin_realizado:
+            total_checkins += 1
+
+        row = {
+            column: _format_value(getattr(agendamento, column, None))
+            for column in agendamento_columns
+        }
+
+        horario = agendamento.horario
+        evento = horario.evento if horario else None
+        cliente_relacionado = evento.cliente if evento else agendamento.cliente
+        professor = agendamento.professor
+
+        row.update(
+            {
+                "evento_id": getattr(evento, "id", None),
+                "evento_nome": getattr(evento, "nome", None),
+                "evento_status": getattr(evento, "status", None),
+                "evento_publico": getattr(evento, "publico", None),
+                "evento_localizacao": getattr(evento, "localizacao", None),
+                "evento_data_inicio": getattr(evento, "data_inicio", None),
+                "evento_data_fim": getattr(evento, "data_fim", None),
+                "evento_hora_inicio": getattr(evento, "hora_inicio", None),
+                "evento_hora_fim": getattr(evento, "hora_fim", None),
+                "cliente_responsavel_id": getattr(cliente_relacionado, "id", None),
+                "cliente_responsavel_nome": getattr(cliente_relacionado, "nome", None),
+                "cliente_responsavel_email": getattr(cliente_relacionado, "email", None),
+                "horario_data": getattr(horario, "data", None),
+                "horario_hora_inicio": getattr(horario, "horario_inicio", None),
+                "horario_hora_fim": getattr(horario, "horario_fim", None),
+                "horario_capacidade_total": getattr(horario, "capacidade_total", None),
+                "horario_vagas_disponiveis": getattr(horario, "vagas_disponiveis", None),
+                "horario_fechado": getattr(horario, "fechado", None),
+                "professor_nome": getattr(professor, "nome", None),
+                "professor_email": getattr(professor, "email", None),
+                "professor_cpf": getattr(professor, "cpf", None),
+                "professor_formacao": getattr(professor, "formacao", None),
+                "professor_tipo": getattr(professor, "tipo", None),
+                "professor_ativo": getattr(professor, "ativo", None),
+            }
+        )
+
+        alunos = list(getattr(agendamento, "alunos", []) or [])
+        total_registrados = len(alunos)
+        presentes = sum(1 for aluno in alunos if getattr(aluno, "presente", False))
+        com_necessidade = 0
+        materiais_usados = set()
+
+        for aluno in alunos:
+            necessidade_rel = getattr(aluno, "necessidade_especial", None)
+            tipo_display = None
+            descricao_necessidade = None
+            if necessidade_rel:
+                tipo_display = necessidade_rel.get_tipo_display()
+                descricao_necessidade = necessidade_rel.descricao
+            elif getattr(aluno, "tipo_necessidade_especial", None):
+                tipo_display = aluno.tipo_necessidade_especial
+                descricao_necessidade = getattr(aluno, "descricao_necessidade_especial", None)
+
+            if tipo_display:
+                com_necessidade += 1
+                necessidade_por_tipo[tipo_display] = necessidade_por_tipo.get(tipo_display, 0) + 1
+
+            materiais_rel = getattr(aluno, "materiais_apoio", None)
+            materiais_aluno = []
+            if materiais_rel is not None:
+                try:
+                    materiais_iter = materiais_rel.all()
+                except AttributeError:
+                    materiais_iter = materiais_rel
+                for material in materiais_iter:
+                    nome_material = getattr(material, "nome", None)
+                    if nome_material:
+                        materiais_aluno.append(nome_material)
+                        materiais_usados.add(nome_material)
+                        materiais_global_contagem[nome_material] = materiais_global_contagem.get(nome_material, 0) + 1
+
+            alunos_rows.append(
+                {
+                    "Agendamento ID": agendamento.id,
+                    "Aluno ID": getattr(aluno, "id", None),
+                    "Nome": getattr(aluno, "nome", None),
+                    "CPF": getattr(aluno, "cpf", None),
+                    "Presente": getattr(aluno, "presente", None),
+                    "Tipo Necessidade": tipo_display,
+                    "Descrição Necessidade": descricao_necessidade,
+                    "Materiais de Apoio": ", ".join(sorted(set(materiais_aluno))) if materiais_aluno else None,
+                }
+            )
+
+        row["total_alunos_registrados"] = total_registrados
+        row["alunos_presentes"] = presentes
+        row["alunos_com_necessidade"] = com_necessidade
+        row["tem_necessidades_especiais"] = "Sim" if com_necessidade else "Não"
+        row["materiais_apoio_utilizados"] = ", ".join(sorted(materiais_usados)) if materiais_usados else None
+
+        if status_lower in {"confirmado", "realizado"}:
+            visitantes_confirmados += presentes
+
+        agendamentos_rows.append(row)
+
+    totais = dict(totais or {})
+    totais.setdefault("total_agendamentos", total_agendamentos)
+    totais.setdefault("total_visitantes", total_visitantes)
+    totais.setdefault("pendentes", status_counts["pendentes"])
+    totais.setdefault("confirmados", status_counts["confirmados"])
+    totais.setdefault("realizados", status_counts["realizados"])
+    totais.setdefault("cancelados", status_counts["cancelados"])
+    totais.setdefault("checkins", total_checkins)
+    totais.setdefault("visitantes_confirmados", visitantes_confirmados)
+
+    wb = Workbook()
+    ws_resumo = wb.active
+    ws_resumo.title = "Resumo"
+
+    ws_resumo["A1"] = "Relatório Geral de Agendamentos"
+    ws_resumo.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
+    ws_resumo["A1"].font = Font(bold=True, size=16)
+    ws_resumo["A2"] = "Período"
+    ws_resumo["B2"] = f"{data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}"
+    ws_resumo["A3"] = "Gerado em"
+    ws_resumo["B3"] = datetime.utcnow().strftime('%d/%m/%Y %H:%M')
+
+    summary_header_row = 5
+    for col in (1, 2):
+        header_cell = ws_resumo.cell(row=summary_header_row, column=col)
+        header_cell.font = header_font
+        header_cell.fill = header_fill
+        header_cell.alignment = center_alignment
+        header_cell.border = border
+    ws_resumo.cell(row=summary_header_row, column=1, value="Indicador")
+    ws_resumo.cell(row=summary_header_row, column=2, value="Valor")
+
+    summary_rows = [
+        ("Total de Agendamentos", totais.get("total_agendamentos")),
+        ("Total de Visitantes Declarados", totais.get("total_visitantes")),
+        ("Pendentes", totais.get("pendentes")),
+        ("Confirmados", totais.get("confirmados")),
+        ("Realizados", totais.get("realizados")),
+        ("Cancelados", totais.get("cancelados")),
+        ("Check-ins Realizados", totais.get("checkins")),
+        ("Visitantes com Presença Registrada", totais.get("visitantes_confirmados")),
+    ]
+
+    necessidades_resumo = dados_agregados.get("necessidades_especiais")
+    if necessidades_resumo:
+        summary_rows.extend(
+            [
+                ("Alunos com Necessidades Especiais", necessidades_resumo.get("total")),
+                ("Agendamentos com Necessidades Especiais", necessidades_resumo.get("agendamentos")),
+                ("Percentual Necessidades Especiais (%)", necessidades_resumo.get("percentual")),
+            ]
+        )
+
+    for offset, (label, value) in enumerate(summary_rows, start=1):
+        row_index = summary_header_row + offset
+        cell_label = ws_resumo.cell(row=row_index, column=1, value=label)
+        cell_label.border = border
+        cell_label.alignment = left_alignment
+        cell_value = ws_resumo.cell(row=row_index, column=2, value=_format_value(value))
+        cell_value.border = border
+        cell_value.alignment = left_alignment
+
+    ws_agendamentos = wb.create_sheet("Agendamentos")
+    _write_headers(ws_agendamentos, headers_agendamentos)
+    for row_index, row_data in enumerate(agendamentos_rows, start=2):
+        _write_row(ws_agendamentos, row_index, headers_agendamentos, row_data)
+    _auto_fit(ws_agendamentos)
+
+    if alunos_rows:
+        ws_alunos = wb.create_sheet("Alunos")
+        headers_alunos = [
+            "Agendamento ID",
+            "Aluno ID",
+            "Nome",
+            "CPF",
+            "Presente",
+            "Tipo Necessidade",
+            "Descrição Necessidade",
+            "Materiais de Apoio",
+        ]
+        _write_headers(ws_alunos, headers_alunos)
+        for row_index, row_data in enumerate(alunos_rows, start=2):
+            _write_row(ws_alunos, row_index, headers_alunos, row_data)
+        _auto_fit(ws_alunos)
+
+    if professores_confirmados:
+        ws_prof_conf = wb.create_sheet("Professores Confirmados")
+        headers_prof = ["Professor ID", "Nome", "E-mail", "WhatsApp"]
+        _write_headers(ws_prof_conf, headers_prof)
+        for row_index, professor in enumerate(professores_confirmados, start=2):
+            row_data = {
+                "Professor ID": getattr(professor, "id", getattr(professor, "professor_id", None)),
+                "Nome": getattr(professor, "nome", None),
+                "E-mail": getattr(professor, "email", None),
+                "WhatsApp": getattr(professor, "responsavel_whatsapp", None),
+            }
+            _write_row(ws_prof_conf, row_index, headers_prof, row_data)
+        _auto_fit(ws_prof_conf)
+
+    if eventos and estatisticas:
+        ws_eventos = wb.create_sheet("Estatísticas Eventos")
+        headers_eventos = [
+            "Evento ID",
+            "Evento",
+            "Pendentes",
+            "Confirmados",
+            "Realizados",
+            "Cancelados",
+            "Check-ins",
+            "Visitantes Confirmados",
+        ]
+        _write_headers(ws_eventos, headers_eventos)
+        for row_index, evento in enumerate(eventos, start=2):
+            stats = estatisticas.get(evento.id, {})
+            row_data = {
+                "Evento ID": evento.id,
+                "Evento": evento.nome,
+                "Pendentes": stats.get("pendentes", 0),
+                "Confirmados": stats.get("confirmados", 0),
+                "Realizados": stats.get("realizados", 0),
+                "Cancelados": stats.get("cancelados", 0),
+                "Check-ins": stats.get("checkins", 0),
+                "Visitantes Confirmados": stats.get("visitantes_confirmados", 0),
+            }
+            _write_row(ws_eventos, row_index, headers_eventos, row_data)
+        _auto_fit(ws_eventos)
+
+    escolas_stats = dados_agregados.get("escolas")
+    if escolas_stats:
+        ws_escolas = wb.create_sheet("Estatísticas Escolas")
+        headers_escolas = [
+            "Escola/Instituição",
+            "Total Agendamentos",
+            "Total Alunos",
+            "Realizados",
+            "Pendentes",
+        ]
+        _write_headers(ws_escolas, headers_escolas)
+        for row_index, escola in enumerate(escolas_stats, start=2):
+            row_data = {
+                "Escola/Instituição": getattr(escola, "nome", None),
+                "Total Agendamentos": getattr(escola, "total_agendamentos", None),
+                "Total Alunos": getattr(escola, "total_alunos", None),
+                "Realizados": getattr(escola, "realizados", None),
+                "Pendentes": getattr(escola, "pendentes", None),
+            }
+            _write_row(ws_escolas, row_index, headers_escolas, row_data)
+        _auto_fit(ws_escolas)
+
+    professores_stats = dados_agregados.get("professores")
+    if professores_stats:
+        ws_prof_stats = wb.create_sheet("Estatísticas Professores")
+        headers_prof_stats = ["Professor/Responsável", "Total Agendamentos", "Total Alunos"]
+        _write_headers(ws_prof_stats, headers_prof_stats)
+        for row_index, professor in enumerate(professores_stats, start=2):
+            row_data = {
+                "Professor/Responsável": getattr(professor, "nome", None),
+                "Total Agendamentos": getattr(professor, "total_agendamentos", None),
+                "Total Alunos": getattr(professor, "total_alunos", None),
+            }
+            _write_row(ws_prof_stats, row_index, headers_prof_stats, row_data)
+        _auto_fit(ws_prof_stats)
+
+    niveis_stats = dados_agregados.get("niveis_ensino")
+    if niveis_stats:
+        ws_niveis = wb.create_sheet("Níveis de Ensino")
+        headers_niveis = ["Nível", "Total Agendamentos"]
+        _write_headers(ws_niveis, headers_niveis)
+        for row_index, nivel in enumerate(niveis_stats, start=2):
+            row_data = {
+                "Nível": getattr(nivel, "nome", None),
+                "Total Agendamentos": getattr(nivel, "total", None),
+            }
+            _write_row(ws_niveis, row_index, headers_niveis, row_data)
+        _auto_fit(ws_niveis)
+
+    if necessidade_por_tipo:
+        ws_necessidades = wb.create_sheet("Necessidades por Tipo")
+        headers_necessidades = ["Tipo", "Quantidade de Alunos"]
+        _write_headers(ws_necessidades, headers_necessidades)
+        for row_index, (tipo, quantidade) in enumerate(sorted(necessidade_por_tipo.items()), start=2):
+            row_data = {"Tipo": tipo, "Quantidade de Alunos": quantidade}
+            _write_row(ws_necessidades, row_index, headers_necessidades, row_data)
+        _auto_fit(ws_necessidades)
+
+    materiais_stats = dados_agregados.get("materiais_apoio")
+    if materiais_global_contagem or materiais_stats:
+        ws_materiais = wb.create_sheet("Materiais de Apoio")
+        headers_materiais = ["Material", "Total de Utilizações"]
+        _write_headers(ws_materiais, headers_materiais)
+        if materiais_global_contagem:
+            items = sorted(materiais_global_contagem.items())
+        else:
+            items = [
+                (getattr(material, "nome", None), getattr(material, "total_uso", None))
+                for material in materiais_stats
+            ]
+        for row_index, (nome, total) in enumerate(items, start=2):
+            row_data = {"Material": nome, "Total de Utilizações": total}
+            _write_row(ws_materiais, row_index, headers_materiais, row_data)
+        _auto_fit(ws_materiais)
+
+    for ws in wb.worksheets:
+        _auto_fit(ws)
+
+    try:
+        wb.save(caminho_xlsx)
+    except Exception as exc:  # pragma: no cover - escrita em disco
+        logger.error("Erro ao salvar relatório XLSX em %s: %s", caminho_xlsx, exc)
+        raise
+
 @agendamento_routes.route(
     '/atualizar_status/<int:agendamento_id>', methods=['PUT', 'POST']
 )

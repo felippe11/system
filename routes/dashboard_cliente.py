@@ -7,6 +7,8 @@ from flask import (
     flash,
     jsonify,
     session,
+    send_file,
+    abort,
 )
 from flask_login import login_required, current_user
 from extensions import db
@@ -16,9 +18,11 @@ from utils.barema import normalize_barema_requisitos
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import func, and_, or_, desc
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 import json
+from io import BytesIO
 from models import (
     Evento,
     Oficina,
@@ -1030,198 +1034,150 @@ def testar_barema(evento_id, categoria):
         total_max=total_max
     )
 
-@dashboard_routes.route('/metricas_baremas')
-@login_required
-def metricas_baremas():
-    """Página de métricas das respostas dos baremas por trabalho/categoria."""
-    if current_user.tipo not in ('cliente', 'admin'):
-        return redirect(url_for(endpoints.DASHBOARD))
-    
-    # Filtros da requisição
-    categoria_filtro = request.args.get('categoria', '')
-    periodo_inicio = request.args.get('periodo_inicio', '')
-    periodo_fim = request.args.get('periodo_fim', '')
-    criterio_filtro = request.args.get('criterio', '')
-    
-    # Buscar todas as avaliações de baremas com joins necessários
-    avaliacoes_query = db.session.query(AvaliacaoBarema).join(
-        Submission, AvaliacaoBarema.trabalho_id == Submission.id
+def _coletar_metricas_baremas_dados(usuario, categoria_filtro='', periodo_inicio='', periodo_fim='', criterio_filtro='', cliente_id_override=None):
+    from models.review import CategoriaBarema
+
+    cliente_id_base = cliente_id_override
+    if usuario.tipo == 'cliente':
+        cliente_id_base = usuario.id
+
+    avaliacoes_query = (
+        db.session.query(AvaliacaoBarema)
+        .options(
+            joinedload(AvaliacaoBarema.criterios_avaliacao),
+            joinedload(AvaliacaoBarema.trabalho),
+        )
+        .join(Submission, AvaliacaoBarema.trabalho_id == Submission.id)
     )
-    
-    # Filtrar por eventos do cliente
-    if current_user.tipo == 'cliente':
-        avaliacoes_query = avaliacoes_query.join(Evento, Submission.evento_id == Evento.id).filter(Evento.cliente_id == current_user.id)
-    
-    # Aplicar filtros se fornecidos
+
+    if cliente_id_base:
+        avaliacoes_query = (
+            avaliacoes_query
+            .join(Evento, Submission.evento_id == Evento.id)
+            .filter(Evento.cliente_id == cliente_id_base)
+        )
+    elif usuario.tipo == 'cliente':
+        avaliacoes_query = (
+            avaliacoes_query
+            .join(Evento, Submission.evento_id == Evento.id)
+            .filter(Evento.cliente_id == usuario.id)
+        )
+
     if categoria_filtro:
         avaliacoes_query = avaliacoes_query.filter(AvaliacaoBarema.categoria == categoria_filtro)
-    
+
     if periodo_inicio:
         try:
             data_inicio = datetime.strptime(periodo_inicio, '%Y-%m-%d')
             avaliacoes_query = avaliacoes_query.filter(AvaliacaoBarema.data_avaliacao >= data_inicio)
         except ValueError:
             pass
-    
+
     if periodo_fim:
         try:
             data_fim = datetime.strptime(periodo_fim, '%Y-%m-%d')
             avaliacoes_query = avaliacoes_query.filter(AvaliacaoBarema.data_avaliacao <= data_fim)
         except ValueError:
             pass
-    
+
     avaliacoes = avaliacoes_query.all()
-    
-    # Buscar todas as categorias existentes nas avaliações
+
     categorias_existentes = db.session.query(AvaliacaoBarema.categoria).distinct().all()
     categorias = [cat[0] for cat in categorias_existentes if cat[0]]
-    
-    # Adicionar categorias padrão se não existirem
+
     categorias_padrao = ['Prática Educacional', 'Pesquisa Inovadora', 'Produto Inovador']
     for cat in categorias_padrao:
         if cat not in categorias:
             categorias.append(cat)
-    
-    # Buscar todos os critérios de avaliação
-    from models.avaliacao import AvaliacaoCriterio
-    from models.review import CategoriaBarema
-    
+
     criterios_query = db.session.query(AvaliacaoCriterio).join(
         AvaliacaoBarema, AvaliacaoCriterio.avaliacao_id == AvaliacaoBarema.id
     ).join(Submission, AvaliacaoBarema.trabalho_id == Submission.id)
-    
-    # Filtrar critérios por eventos do cliente
-    if current_user.tipo == 'cliente':
-        criterios_query = criterios_query.join(Evento, Submission.evento_id == Evento.id).filter(Evento.cliente_id == current_user.id)
-    
-    # Aplicar filtros aos critérios
+
+    if cliente_id_base:
+        criterios_query = criterios_query.join(Evento, Submission.evento_id == Evento.id).filter(Evento.cliente_id == cliente_id_base)
+    elif usuario.tipo == 'cliente':
+        criterios_query = criterios_query.join(Evento, Submission.evento_id == Evento.id).filter(Evento.cliente_id == usuario.id)
+
     if categoria_filtro:
         criterios_query = criterios_query.filter(AvaliacaoBarema.categoria == categoria_filtro)
-    
+
     if periodo_inicio:
         try:
             data_inicio = datetime.strptime(periodo_inicio, '%Y-%m-%d')
             criterios_query = criterios_query.filter(AvaliacaoBarema.data_avaliacao >= data_inicio)
         except ValueError:
             pass
-    
+
     if periodo_fim:
         try:
             data_fim = datetime.strptime(periodo_fim, '%Y-%m-%d')
             criterios_query = criterios_query.filter(AvaliacaoBarema.data_avaliacao <= data_fim)
         except ValueError:
             pass
-    
-    criterios_avaliacoes = criterios_query.all()
-    
-    # Buscar baremas por categoria para obter os nomes dos critérios
+
+    criterios_avaliacoes = criterios_query.options(joinedload(AvaliacaoCriterio.avaliacao)).all()
+
     baremas_por_categoria = {}
     for categoria in categorias:
-        # Buscar eventos do cliente para esta categoria
         eventos_cliente = []
-        if current_user.tipo == 'cliente':
-            eventos_cliente = db.session.query(Evento.id).filter(Evento.cliente_id == current_user.id).all()
-            eventos_cliente = [e[0] for e in eventos_cliente]
-        
+        if cliente_id_base:
+            eventos_cliente = [e[0] for e in db.session.query(Evento.id).filter(Evento.cliente_id == cliente_id_base).all()]
+        elif usuario.tipo == 'cliente':
+            eventos_cliente = [e[0] for e in db.session.query(Evento.id).filter(Evento.cliente_id == usuario.id).all()]
+
+        barema_categoria = None
         if eventos_cliente:
-            barema_categoria = db.session.query(CategoriaBarema).filter(
-                CategoriaBarema.categoria == categoria,
-                CategoriaBarema.evento_id.in_(eventos_cliente),
-                CategoriaBarema.ativo == True
-            ).first()
-            
-            if barema_categoria and barema_categoria.criterios:
-                baremas_por_categoria[categoria] = barema_categoria.criterios
-    
-    # Obter lista de todos os critérios únicos
-    criterios_unicos = list(set([c.criterio_id for c in criterios_avaliacoes]))
-    criterios_unicos.sort()
-    
-    # Calcular estatísticas por categoria
+            barema_categoria = (
+                db.session.query(CategoriaBarema)
+                .filter(
+                    CategoriaBarema.categoria == categoria,
+                    CategoriaBarema.evento_id.in_(eventos_cliente),
+                    CategoriaBarema.ativo == True,
+                )
+                .first()
+            )
+        if not barema_categoria:
+            barema_categoria = (
+                db.session.query(CategoriaBarema)
+                .filter(
+                    CategoriaBarema.categoria == categoria,
+                    CategoriaBarema.ativo == True,
+                )
+                .first()
+            )
+
+        if barema_categoria and barema_categoria.criterios:
+            baremas_por_categoria[categoria] = barema_categoria.criterios
+
+    criterios_unicos = sorted(set(c.criterio_id for c in criterios_avaliacoes))
+
     estatisticas = {}
-    
     for categoria in categorias:
         avaliacoes_categoria = [av for av in avaliacoes if av.categoria == categoria]
-        
-        if avaliacoes_categoria:
-            notas = [av.nota_final for av in avaliacoes_categoria if av.nota_final is not None]
-            estatisticas[categoria] = {
-                'total_avaliacoes': len(avaliacoes_categoria),
-                'nota_media': round(sum(notas) / len(notas), 2) if notas else 0,
-                'nota_maxima': max(notas) if notas else 0,
-                'nota_minima': min(notas) if notas else 0,
-                'avaliacoes': avaliacoes_categoria[:10]  # Últimas 10 avaliações para a tabela
-            }
-        else:
-            estatisticas[categoria] = {
-                'total_avaliacoes': 0,
-                'nota_media': 0,
-                'nota_maxima': 0,
-                'nota_minima': 0,
-                'avaliacoes': []
-            }
-    
-    # Calcular estatísticas por critério organizadas por categoria
+        notas = [av.nota_final for av in avaliacoes_categoria if av.nota_final is not None]
+        estatisticas[categoria] = {
+            'total_avaliacoes': len(avaliacoes_categoria),
+            'nota_media': round(sum(notas) / len(notas), 2) if notas else 0,
+            'nota_maxima': max(notas) if notas else 0,
+            'nota_minima': min(notas) if notas else 0,
+            'avaliacoes': avaliacoes_categoria[:10],
+        }
+
     estatisticas_criterios_por_categoria = {}
-    
     for categoria in categorias:
         estatisticas_criterios_por_categoria[categoria] = {}
-        
-        # Obter critérios específicos desta categoria do barema
         criterios_categoria = baremas_por_categoria.get(categoria, {})
-        
         for criterio_key, criterio_dados in criterios_categoria.items():
-            # Buscar avaliações deste critério específico para esta categoria
             criterios_do_criterio = [
-                c for c in criterios_avaliacoes 
+                c for c in criterios_avaliacoes
                 if c.criterio_id == criterio_key and c.avaliacao.categoria == categoria
             ]
-            
-            if criterios_do_criterio:
-                notas_criterio = [c.nota for c in criterios_do_criterio if c.nota is not None]
-                
-                estatisticas_criterios_por_categoria[categoria][criterio_key] = {
-                    'nome': criterio_dados.get('nome', criterio_key),
-                    'descricao': criterio_dados.get('descricao', ''),
-                    'pontuacao_max': criterio_dados.get('pontuacao_max', 10),
-                    'total_avaliacoes': len(criterios_do_criterio),
-                    'nota_media': round(sum(notas_criterio) / len(notas_criterio), 2) if notas_criterio else 0,
-                    'nota_maxima': max(notas_criterio) if notas_criterio else 0,
-                    'nota_minima': min(notas_criterio) if notas_criterio else 0,
-                    'distribuicao_notas': {
-                        '0-2': len([n for n in notas_criterio if 0 <= n <= 2]),
-                        '3-5': len([n for n in notas_criterio if 3 <= n <= 5]),
-                        '6-8': len([n for n in notas_criterio if 6 <= n <= 8]),
-                        '9-10': len([n for n in notas_criterio if 9 <= n <= 10])
-                    }
-                }
-            else:
-                # Critério sem avaliações
-                estatisticas_criterios_por_categoria[categoria][criterio_key] = {
-                    'nome': criterio_dados.get('nome', criterio_key),
-                    'descricao': criterio_dados.get('descricao', ''),
-                    'pontuacao_max': criterio_dados.get('pontuacao_max', 10),
-                    'total_avaliacoes': 0,
-                    'nota_media': 0,
-                    'nota_maxima': 0,
-                    'nota_minima': 0,
-                    'distribuicao_notas': {
-                        '0-2': 0,
-                        '3-5': 0,
-                        '6-8': 0,
-                        '9-10': 0
-                    }
-                }
-    
-    # Manter estatísticas gerais por critério para compatibilidade
-    estatisticas_criterios = {}
-    for criterio_id in criterios_unicos:
-        criterios_do_criterio = [c for c in criterios_avaliacoes if c.criterio_id == criterio_id]
-        
-        if criterios_do_criterio:
             notas_criterio = [c.nota for c in criterios_do_criterio if c.nota is not None]
-            
-            estatisticas_criterios[criterio_id] = {
+            estatisticas_criterios_por_categoria[categoria][criterio_key] = {
+                'nome': criterio_dados.get('nome', criterio_key),
+                'descricao': criterio_dados.get('descricao', ''),
+                'pontuacao_max': criterio_dados.get('pontuacao_max', 10),
                 'total_avaliacoes': len(criterios_do_criterio),
                 'nota_media': round(sum(notas_criterio) / len(notas_criterio), 2) if notas_criterio else 0,
                 'nota_maxima': max(notas_criterio) if notas_criterio else 0,
@@ -1230,35 +1186,348 @@ def metricas_baremas():
                     '0-2': len([n for n in notas_criterio if 0 <= n <= 2]),
                     '3-5': len([n for n in notas_criterio if 3 <= n <= 5]),
                     '6-8': len([n for n in notas_criterio if 6 <= n <= 8]),
-                    '9-10': len([n for n in notas_criterio if 9 <= n <= 10])
-                }
+                    '9-10': len([n for n in notas_criterio if 9 <= n <= 10]),
+                },
             }
-    
-    # Dados para gráficos
+
+    estatisticas_criterios = {}
+    for criterio_id in criterios_unicos:
+        criterios_do_criterio = [c for c in criterios_avaliacoes if c.criterio_id == criterio_id]
+        notas_criterio = [c.nota for c in criterios_do_criterio if c.nota is not None]
+        estatisticas_criterios[criterio_id] = {
+            'total_avaliacoes': len(criterios_do_criterio),
+            'nota_media': round(sum(notas_criterio) / len(notas_criterio), 2) if notas_criterio else 0,
+            'nota_maxima': max(notas_criterio) if notas_criterio else 0,
+            'nota_minima': min(notas_criterio) if notas_criterio else 0,
+            'distribuicao_notas': {
+                '0-2': len([n for n in notas_criterio if 0 <= n <= 2]),
+                '3-5': len([n for n in notas_criterio if 3 <= n <= 5]),
+                '6-8': len([n for n in notas_criterio if 6 <= n <= 8]),
+                '9-10': len([n for n in notas_criterio if 9 <= n <= 10]),
+            },
+        }
+
     dados_grafico = {
         'categorias': list(estatisticas.keys()),
         'total_avaliacoes': [estatisticas[cat]['total_avaliacoes'] for cat in categorias],
-        'notas_medias': [estatisticas[cat]['nota_media'] for cat in categorias]
+        'notas_medias': [estatisticas[cat]['nota_media'] for cat in categorias],
     }
-    
-    # Dados para gráficos de critérios
+
     dados_grafico_criterios = {
         'criterios': criterios_unicos,
-        'notas_medias_criterios': [estatisticas_criterios.get(c, {}).get('nota_media', 0) for c in criterios_unicos]
+        'notas_medias_criterios': [estatisticas_criterios.get(c, {}).get('nota_media', 0) for c in criterios_unicos],
     }
-    
+
+    # Construir relatório descritivo por trabalho
+    relatorios_trabalhos_map = {}
+    for avaliacao in avaliacoes:
+        criterios_formatados = []
+        for criterio in avaliacao.criterios_avaliacao:
+            if criterio_filtro and criterio.criterio_id != criterio_filtro:
+                continue
+            criterio_info = baremas_por_categoria.get(avaliacao.categoria, {}).get(criterio.criterio_id, {})
+            criterios_formatados.append({
+                'id': criterio.criterio_id,
+                'nome': criterio_info.get('nome', criterio.criterio_id),
+                'nota': criterio.nota,
+                'observacao': criterio.observacao or '',
+            })
+
+        if criterio_filtro and not criterios_formatados:
+            continue
+
+        submission = avaliacao.trabalho
+        if not submission:
+            continue
+
+        trabalho_entry = relatorios_trabalhos_map.setdefault(
+            submission.id,
+            {
+                'trabalho_id': submission.id,
+                'titulo': submission.title or f'Trabalho {submission.id}',
+                'categoria': avaliacao.categoria,
+                'codigo': getattr(submission, 'locator', ''),
+                'avaliacoes': [],
+                'notas_finais': [],
+            },
+        )
+
+        alias = f"Revisor {len(trabalho_entry['avaliacoes']) + 1}"
+        nota_final = avaliacao.nota_final if avaliacao.nota_final is not None else None
+        if nota_final is not None:
+            trabalho_entry['notas_finais'].append(nota_final)
+
+        trabalho_entry['avaliacoes'].append({
+            'alias': alias,
+            'nota_final': nota_final,
+            'data_avaliacao': avaliacao.data_avaliacao.strftime('%d/%m/%Y %H:%M') if avaliacao.data_avaliacao else '',
+            'criterios': criterios_formatados,
+        })
+
+    relatorios_trabalhos = []
+    for trabalho in relatorios_trabalhos_map.values():
+        notas = trabalho.pop('notas_finais')
+        trabalho['total_avaliacoes'] = len(trabalho['avaliacoes'])
+        if notas:
+            trabalho['nota_media'] = round(sum(notas) / len(notas), 2)
+            trabalho['nota_maxima'] = max(notas)
+            trabalho['nota_minima'] = min(notas)
+        else:
+            trabalho['nota_media'] = 0
+            trabalho['nota_maxima'] = 0
+            trabalho['nota_minima'] = 0
+        relatorios_trabalhos.append(trabalho)
+
+    relatorios_trabalhos.sort(key=lambda item: item['titulo'].lower())
+
+    return {
+        'estatisticas': estatisticas,
+        'estatisticas_criterios': estatisticas_criterios,
+        'estatisticas_criterios_por_categoria': estatisticas_criterios_por_categoria,
+        'baremas_por_categoria': baremas_por_categoria,
+        'dados_grafico': dados_grafico,
+        'dados_grafico_criterios': dados_grafico_criterios,
+        'categorias': categorias,
+        'criterios_unicos': criterios_unicos,
+        'relatorios_trabalhos': relatorios_trabalhos,
+        'cliente_id_base': cliente_id_base,
+    }
+
+
+@dashboard_routes.route('/metricas_baremas')
+@login_required
+def metricas_baremas():
+    """Página de métricas das respostas dos baremas por trabalho/categoria."""
+    if current_user.tipo not in ('cliente', 'admin'):
+        return redirect(url_for(endpoints.DASHBOARD))
+
+    categoria_filtro = request.args.get('categoria', '')
+    periodo_inicio = request.args.get('periodo_inicio', '')
+    periodo_fim = request.args.get('periodo_fim', '')
+    criterio_filtro = request.args.get('criterio', '')
+    cliente_id_param = request.args.get('cliente_id', type=int)
+
+    dados = _coletar_metricas_baremas_dados(
+        current_user,
+        categoria_filtro=categoria_filtro,
+        periodo_inicio=periodo_inicio,
+        periodo_fim=periodo_fim,
+        criterio_filtro=criterio_filtro,
+        cliente_id_override=cliente_id_param,
+    )
+
     return render_template(
         'dashboard/metricas_baremas.html',
-        estatisticas=estatisticas,
-        estatisticas_criterios=estatisticas_criterios,
-        estatisticas_criterios_por_categoria=estatisticas_criterios_por_categoria,
-        baremas_por_categoria=baremas_por_categoria,
-        dados_grafico=dados_grafico,
-        dados_grafico_criterios=dados_grafico_criterios,
-        categorias=categorias,
-        criterios_unicos=criterios_unicos,
         categoria_filtro=categoria_filtro,
         criterio_filtro=criterio_filtro,
         periodo_inicio=periodo_inicio,
-        periodo_fim=periodo_fim
+        periodo_fim=periodo_fim,
+        cliente_id_atual=dados['cliente_id_base'],
+        **dados,
+    )
+
+
+@dashboard_routes.route('/metricas_baremas/export/<string:formato>')
+@login_required
+def exportar_metricas_baremas(formato):
+    if current_user.tipo not in ('cliente', 'admin'):
+        abort(403)
+
+    categoria_filtro = request.args.get('categoria', '')
+    periodo_inicio = request.args.get('periodo_inicio', '')
+    periodo_fim = request.args.get('periodo_fim', '')
+    criterio_filtro = request.args.get('criterio', '')
+    cliente_id_param = request.args.get('cliente_id', type=int)
+
+    dados = _coletar_metricas_baremas_dados(
+        current_user,
+        categoria_filtro=categoria_filtro,
+        periodo_inicio=periodo_inicio,
+        periodo_fim=periodo_fim,
+        criterio_filtro=criterio_filtro,
+        cliente_id_override=cliente_id_param,
+    )
+
+    filtros = {
+        'categoria': categoria_filtro or 'Todas',
+        'criterio': criterio_filtro or 'Todos',
+        'periodo_inicio': periodo_inicio,
+        'periodo_fim': periodo_fim,
+    }
+
+    if formato.lower() == 'xlsx':
+        return _exportar_metricas_baremas_xlsx(dados, filtros)
+    if formato.lower() == 'pdf':
+        return _exportar_metricas_baremas_pdf(dados, filtros)
+
+    abort(400)
+
+
+def _exportar_metricas_baremas_xlsx(dados, filtros):
+    try:
+        import xlsxwriter
+    except ImportError as exc:
+        abort(500, description=f'Biblioteca XLSX ausente: {exc}')
+
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#1d4ed8', 'color': 'white'})
+    wrap_format = workbook.add_format({'text_wrap': True})
+
+    resumo_ws = workbook.add_worksheet('Resumo')
+    resumo_headers = ['ID', 'Título', 'Categoria', 'Avaliações', 'Nota Média', 'Nota Máxima', 'Nota Mínima']
+    for col, header in enumerate(resumo_headers):
+        resumo_ws.write(0, col, header, header_format)
+
+    for row, rel in enumerate(dados['relatorios_trabalhos'], start=1):
+        resumo_ws.write(row, 0, rel['trabalho_id'])
+        resumo_ws.write(row, 1, rel['titulo'])
+        resumo_ws.write(row, 2, rel['categoria'])
+        resumo_ws.write(row, 3, rel['total_avaliacoes'])
+        resumo_ws.write(row, 4, rel['nota_media'])
+        resumo_ws.write(row, 5, rel['nota_maxima'])
+        resumo_ws.write(row, 6, rel['nota_minima'])
+
+    resumo_ws.set_column(0, 0, 12)
+    resumo_ws.set_column(1, 1, 40)
+    resumo_ws.set_column(2, 2, 20)
+
+    detalhado_ws = workbook.add_worksheet('Avaliações')
+    detalhado_headers = [
+        'Trabalho ID', 'Título', 'Categoria', 'Revisor', 'Data Avaliação', 'Nota Final',
+        'Critério', 'Nota Critério', 'Observação'
+    ]
+    for col, header in enumerate(detalhado_headers):
+        detalhado_ws.write(0, col, header, header_format)
+
+    detalhado_ws.set_column(0, 0, 12)
+    detalhado_ws.set_column(1, 1, 40)
+    detalhado_ws.set_column(2, 2, 20)
+    detalhado_ws.set_column(3, 4, 15)
+    detalhado_ws.set_column(6, 6, 30)
+    detalhado_ws.set_column(8, 8, 50)
+
+    row = 1
+    for rel in dados['relatorios_trabalhos']:
+        for avaliacao in rel['avaliacoes']:
+            criterios = avaliacao['criterios'] or [{}]
+            for criterio in criterios:
+                detalhado_ws.write(row, 0, rel['trabalho_id'])
+                detalhado_ws.write(row, 1, rel['titulo'])
+                detalhado_ws.write(row, 2, rel['categoria'])
+                detalhado_ws.write(row, 3, avaliacao['alias'])
+                detalhado_ws.write(row, 4, avaliacao['data_avaliacao'])
+                detalhado_ws.write(row, 5, avaliacao['nota_final'] if avaliacao['nota_final'] is not None else '')
+                detalhado_ws.write(row, 6, criterio.get('nome', ''))
+                detalhado_ws.write(row, 7, criterio.get('nota', ''))
+                detalhado_ws.write(row, 8, criterio.get('observacao', ''), wrap_format)
+                row += 1
+
+    workbook.close()
+    output.seek(0)
+
+    filename = f"metricas_baremas_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+def _exportar_metricas_baremas_pdf(dados, filtros):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle,
+        PageBreak,
+    )
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        title='Relatório de Métricas dos Baremas',
+    )
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    header = styles['Heading1']
+    header.alignment = 1
+    elements.append(Paragraph('Relatório de Métricas dos Baremas', header))
+    elements.append(Spacer(1, 12))
+
+    filtros_texto = f"Categoria: {filtros['categoria']} | Critério: {filtros['criterio']}"
+    if filtros.get('periodo_inicio') or filtros.get('periodo_fim'):
+        filtros_texto += f" | Período: {filtros.get('periodo_inicio') or '-'} a {filtros.get('periodo_fim') or '-'}"
+    elements.append(Paragraph(filtros_texto, styles['Normal']))
+    elements.append(Spacer(1, 18))
+
+    for idx, rel in enumerate(dados['relatorios_trabalhos']):
+        elements.append(Paragraph(f"Trabalho #{rel['trabalho_id']} - {rel['titulo']}", styles['Heading2']))
+        info_table = Table([
+            ['Categoria', rel['categoria'], 'Avaliações', rel['total_avaliacoes']],
+            ['Nota média', rel['nota_media'], 'Nota máxima', rel['nota_maxima']],
+            ['Nota mínima', rel['nota_minima'], '', ''],
+        ], colWidths=[90, 180, 90, 120])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+        ]))
+        elements.append(info_table)
+        elements.append(Spacer(1, 10))
+
+        for avaliacao in rel['avaliacoes']:
+            elements.append(Paragraph(
+                f"{avaliacao['alias']} - Nota final: {avaliacao['nota_final'] if avaliacao['nota_final'] is not None else 'N/A'}", styles['Heading4']
+            ))
+            elements.append(Paragraph(f"Data da avaliação: {avaliacao['data_avaliacao'] or '-'}", styles['Normal']))
+
+            if avaliacao['criterios']:
+                criterio_data = [['Critério', 'Nota', 'Observações']]
+                for criterio in avaliacao['criterios']:
+                    criterio_data.append([
+                        criterio.get('nome', ''),
+                        criterio.get('nota', ''),
+                        criterio.get('observacao', ''),
+                    ])
+                criterio_table = Table(criterio_data, colWidths=[200, 50, 220])
+                criterio_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1d4ed8')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 9),
+                    ('BOX', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ]))
+                elements.append(criterio_table)
+            else:
+                elements.append(Paragraph('Sem critérios registrados para esta avaliação.', styles['Italic']))
+
+            elements.append(Spacer(1, 8))
+
+        if idx < len(dados['relatorios_trabalhos']) - 1:
+            elements.append(PageBreak())
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    filename = f"metricas_baremas_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/pdf',
     )

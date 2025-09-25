@@ -643,6 +643,103 @@ html {
         {% endfor %}
     </div>
 
+    {% if relatorios_trabalhos %}
+    <div class="metric-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="fas fa-file-alt me-2"></i>Relatório Descritivo por Trabalho</h4>
+            <div class="btn-group" role="group">
+                <a class="btn btn-outline-secondary" href="{{ url_for('dashboard_routes.exportar_metricas_baremas', formato='pdf', categoria=categoria_filtro, periodo_inicio=periodo_inicio, periodo_fim=periodo_fim, criterio=criterio_filtro, cliente_id=cliente_id_atual) }}">
+                    <i class="fas fa-file-pdf me-1"></i>PDF
+                </a>
+                <a class="btn btn-outline-secondary" href="{{ url_for('dashboard_routes.exportar_metricas_baremas', formato='xlsx', categoria=categoria_filtro, periodo_inicio=periodo_inicio, periodo_fim=periodo_fim, criterio=criterio_filtro, cliente_id=cliente_id_atual) }}">
+                    <i class="fas fa-file-excel me-1"></i>XLSX
+                </a>
+            </div>
+        </div>
+
+        <div class="accordion" id="relatorioTrabalhos">
+            {% for rel in relatorios_trabalhos %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingTrabalho{{ loop.index }}">
+                    <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#trabalho{{ loop.index }}" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="trabalho{{ loop.index }}">
+                        <div>
+                            <div class="fw-semibold">{{ rel.titulo }}</div>
+                            <small class="text-muted">Trabalho #{{ rel.trabalho_id }} &middot; Categoria: {{ rel.categoria }}</small>
+                        </div>
+                    </button>
+                </h2>
+                <div id="trabalho{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="headingTrabalho{{ loop.index }}" data-bs-parent="#relatorioTrabalhos">
+                    <div class="accordion-body">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <div class="metric-label">Avaliações Recebidas</div>
+                                <div class="metric-value" style="font-size:1.6rem;">{{ rel.total_avaliacoes }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-label">Nota Média</div>
+                                <div class="metric-value text-success" style="font-size:1.6rem;">{{ rel.nota_media }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-label">Nota Máxima</div>
+                                <div class="metric-value" style="font-size:1.2rem;">{{ rel.nota_maxima }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-label">Nota Mínima</div>
+                                <div class="metric-value" style="font-size:1.2rem;">{{ rel.nota_minima }}</div>
+                            </div>
+                        </div>
+
+                        {% if rel.avaliacoes %}
+                            {% for avaliacao in rel.avaliacoes %}
+                            <div class="card shadow-sm border-0 mb-3">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ avaliacao.alias }}</strong>
+                                        <small class="d-block text-muted">Data da avaliação: {{ avaliacao.data_avaliacao or '-' }}</small>
+                                    </div>
+                                    <span class="badge bg-primary">
+                                        Nota final: {{ avaliacao.nota_final if avaliacao.nota_final is not none else 'N/A' }}
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    {% if avaliacao.criterios %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Critério</th>
+                                                    <th style="width:120px;">Nota</th>
+                                                    <th>Observações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for criterio in avaliacao.criterios %}
+                                                <tr>
+                                                    <td>{{ criterio.nome }}</td>
+                                                    <td>{{ criterio.nota }}</td>
+                                                    <td>{{ criterio.observacao or '-' }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mb-0">Sem critérios registrados para esta avaliação.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted mb-0">Nenhuma avaliação disponível para este trabalho.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Seção de Estatísticas por Critério -->
     {% if estatisticas_criterios_por_categoria %}
     <div class="metric-card mb-4">
