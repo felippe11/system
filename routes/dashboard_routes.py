@@ -11,7 +11,8 @@ from flask import (
     jsonify
 )
 from flask_login import login_required, current_user, login_user
-from utils.taxa_service import calcular_taxa_cliente, calcular_taxas_clientes
+from utils.taxa_service import calcular_taxas_clientes
+from sqlalchemy import func
 from services.template_service import TemplateService
 from utils import endpoints
 
@@ -122,46 +123,97 @@ def dashboard_admin():
     )
     from extensions import db
 
-    total_eventos = Evento.query.count()
-    total_oficinas = Oficina.query.count()
-    total_inscricoes = Inscricao.query.count()
+    estado_filter = (request.args.get("estado") or "").strip().upper()
+    cidade_filter = (request.args.get("cidade") or "").strip()
+    cidade_filter_upper = cidade_filter.upper()
 
-    # Calculo de vagas oferecidas considerando o tipo de inscrição
-    oficinas = Oficina.query.options(db.joinedload(Oficina.inscritos)).all()
-    total_vagas = 0
-    for of in oficinas:
-        if of.tipo_inscricao == "com_inscricao_com_limite":
-            total_vagas += of.vagas
-        elif of.tipo_inscricao == "com_inscricao_sem_limite":
-            total_vagas += len(of.inscritos)
+    # Mapear localidades a partir das oficinas existentes
+    from collections import defaultdict
 
-    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0    # Obter todos os clientes com suas configurações (para taxas diferenciadas)
-    clientes = Cliente.query.options(db.joinedload(Cliente.configuracao)).all()
+    oficina_locais = db.session.query(
+        Oficina.cliente_id, Oficina.estado, Oficina.cidade
+    ).all()
+
+    cidades_por_estado = defaultdict(set)
+    estados_disponiveis = set()
+    for cliente_id, estado, cidade in oficina_locais:
+        if estado:
+            estados_disponiveis.add(estado.upper())
+            if cidade:
+                cidades_por_estado[estado.upper()].add(cidade)
+        elif cidade:
+            cidades_por_estado[""].add(cidade)
+
+    estados_opcoes = sorted(estados_disponiveis)
+    cidades_por_estado_map = {
+        uf: sorted(cidades)
+        for uf, cidades in cidades_por_estado.items()
+    }
+    if estado_filter and estado_filter in cidades_por_estado_map:
+        cidades_opcoes_iniciais = list(cidades_por_estado_map[estado_filter])
+    else:
+        cidades_opcoes_iniciais = sorted(
+            {cidade for cidades in cidades_por_estado_map.values() for cidade in cidades}
+        )
+
+    cliente_query = Cliente.query.options(db.joinedload(Cliente.configuracao))
+    if estado_filter or cidade_filter_upper:
+        cliente_query = cliente_query.join(Oficina, Oficina.cliente_id == Cliente.id)
+        if estado_filter:
+            cliente_query = cliente_query.filter(func.upper(Oficina.estado) == estado_filter)
+        if cidade_filter_upper:
+            cliente_query = cliente_query.filter(func.upper(Oficina.cidade) == cidade_filter_upper)
+        cliente_query = cliente_query.distinct()
+
+    clientes = cliente_query.all()
     propostas = Proposta.query.order_by(Proposta.data_criacao.desc()).all()
     configuracao = Configuracao.query.first()
-    
+
     # Garantir que todos os clientes tenham uma configuração
     for cliente in clientes:
-        if not hasattr(cliente, 'configuracao') or cliente.configuracao is None:
+        if not getattr(cliente, "configuracao", None):
             from models import ConfiguracaoCliente
+
             nova_config = ConfiguracaoCliente(cliente_id=cliente.id)
             db.session.add(nova_config)
             db.session.commit()
-            cliente.configuracao = nova_config    # ------------------------------------------------------------------
+            cliente.configuracao = nova_config
+
     # Dados financeiros gerais
     # ------------------------------------------------------------------
     taxa_geral = float(configuracao.taxa_percentual_inscricao or 0) if configuracao else 0.0
 
-    inscricoes_pagas = (
-        Inscricao.query
-        .join(Evento)
-        .filter(
-            Inscricao.status_pagamento == "approved",
-            Evento.inscricao_gratuita.is_(False)
+    cliente_ids = [cliente.id for cliente in clientes]
+
+    if cliente_ids:
+        evento_query = Evento.query.filter(Evento.cliente_id.in_(cliente_ids))
+        oficinas_query = Oficina.query.options(db.joinedload(Oficina.inscritos)).filter(
+            Oficina.cliente_id.in_(cliente_ids)
         )
-        .options(db.joinedload(Inscricao.evento))
-        .all()
-    )
+        inscricoes_query = Inscricao.query.join(Evento).filter(
+            Evento.cliente_id.in_(cliente_ids)
+        )
+        inscricoes_pagas_query = (
+            Inscricao.query
+            .join(Evento)
+            .filter(
+                Inscricao.status_pagamento == "approved",
+                Evento.inscricao_gratuita.is_(False),
+                Evento.cliente_id.in_(cliente_ids),
+            )
+            .options(db.joinedload(Inscricao.evento))
+        )
+        inscricoes_pagas = inscricoes_pagas_query.all()
+        oficinas = oficinas_query.all()
+        total_eventos = evento_query.count()
+        total_oficinas = len(oficinas)
+        total_inscricoes = inscricoes_query.count()
+    else:
+        inscricoes_pagas = []
+        oficinas = []
+        total_eventos = 0
+        total_oficinas = 0
+        total_inscricoes = 0
 
     financeiro_clientes = {}
     for ins in inscricoes_pagas:
@@ -176,6 +228,8 @@ def dashboard_admin():
                 "receita_total": 0.0,
                 "taxas": 0.0,
                 "eventos": {},
+                "usando_taxa_diferenciada": False,
+                "taxa_aplicada": taxa_geral,
             },
         )
 
@@ -198,14 +252,24 @@ def dashboard_admin():
         einfo["quantidade"] += 1
         einfo["receita"] += preco
         cinfo["receita_total"] += preco
-      # Aplicar o cálculo de taxas utilizando o serviço centralizado    calcular_taxas_clientes(clientes, financeiro_clientes, taxa_geral)
+
+    if financeiro_clientes:
+        calcular_taxas_clientes(clientes, financeiro_clientes, taxa_geral)
 
     total_eventos_receita = sum(len(c["eventos"]) for c in financeiro_clientes.values())
     receita_total = sum(c["receita_total"] for c in financeiro_clientes.values())
     receita_taxas = sum(c["taxas"] for c in financeiro_clientes.values())
 
-    estado_filter = request.args.get("estado")
-    cidade_filter = request.args.get("cidade")
+    total_vagas = 0
+    for of in oficinas:
+        if of.tipo_inscricao == "com_inscricao_com_limite":
+            total_vagas += of.vagas
+        elif of.tipo_inscricao == "com_inscricao_sem_limite":
+            total_vagas += len(of.inscritos)
+
+    percentual_adesao = (
+        (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
+    )
 
     return render_template(
         "dashboard/dashboard_admin.html",
@@ -222,6 +286,9 @@ def dashboard_admin():
         receita_taxas=receita_taxas,
         estado_filter=estado_filter,
         cidade_filter=cidade_filter,
+        estados_opcoes=estados_opcoes,
+        cidades_opcoes=cidades_opcoes_iniciais,
+        cidades_por_estado=cidades_por_estado_map,
     )
 
 
