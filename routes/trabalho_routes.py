@@ -355,6 +355,10 @@ def importar_trabalhos_excel():
 
     total_importados = 0
 
+    usuario_autor = None
+    if getattr(current_user, "id", None) is not None:
+        usuario_autor = db.session.get(Usuario, current_user.id)
+
     try:
         with db.session.begin_nested():
             for index, row in df.iterrows():
@@ -398,21 +402,31 @@ def importar_trabalhos_excel():
 
                 titulo = titulo or f"Trabalho importado {total_importados + 1}"
 
+                payload_por_campo = {
+                    campo.nome: valores_campos.get(campo.id, "")
+                    for campo in formulario.campos
+                }
+                payload_normalizado = {
+                    _normalize_key(chave): valor
+                    for chave, valor in payload_por_campo.items()
+                }
+
                 codigo_hash = generate_password_hash(secrets.token_urlsafe(12))
 
                 submission = Submission(
                     title=titulo,
-                    author_id=current_user.id,
+                    author_id=usuario_autor.id if usuario_autor else None,
                     evento_id=evento.id,
                     status="submitted",
                     code_hash=codigo_hash,
+                    attributes=payload_por_campo,
                 )
                 db.session.add(submission)
                 db.session.flush()
 
                 resposta_formulario = RespostaFormulario(
                     formulario_id=formulario.id,
-                    usuario_id=current_user.id,
+                    usuario_id=usuario_autor.id if usuario_autor else None,
                     evento_id=evento.id,
                     trabalho_id=submission.id,
                 )
@@ -427,6 +441,18 @@ def importar_trabalhos_excel():
                         valor=valor,
                     )
                     db.session.add(resposta_campo)
+
+                work_metadata = WorkMetadata(
+                    data=payload_por_campo,
+                    titulo=payload_normalizado.get("titulo"),
+                    categoria=payload_normalizado.get("categoria"),
+                    rede_ensino=payload_normalizado.get("rede_de_ensino"),
+                    etapa_ensino=payload_normalizado.get("etapa_de_ensino"),
+                    pdf_url=payload_normalizado.get("url_do_pdf")
+                    or payload_normalizado.get("pdf_url"),
+                    evento_id=evento.id,
+                )
+                db.session.add(work_metadata)
 
                 total_importados += 1
 
