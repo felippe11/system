@@ -43,7 +43,7 @@ from models import (
 )
 from models.avaliacao import AvaliacaoBarema, AvaliacaoCriterio
 from models.event import RespostaFormulario
-from models.review import Submission
+from models.review import Submission, Assignment
 from routes.revisor_routes import resolve_categoria_trabalho
 
 # Modelos opcionais usados no dashboard de agendamentos. Em alguns ambientes
@@ -975,13 +975,18 @@ def criar_editar_barema(evento_id, categoria):
         while f'criterio_{i}_nome' in request.form:
             criterio_nome = request.form.get(f'criterio_{i}_nome')
             criterio_max = request.form.get(f'criterio_{i}_max', type=float)
+            criterio_min = request.form.get(f'criterio_{i}_min', type=float)
             criterio_descricao = request.form.get(f'criterio_{i}_descricao', '')
 
             if criterio_nome and criterio_max:
+                min_value = criterio_min if isinstance(criterio_min, (int, float)) else 0
+                if min_value is None or min_value < 0:
+                    min_value = 0
                 criterios[criterio_nome] = {
                     'nome': criterio_nome,
                     'pontuacao_max': criterio_max,
-                    'pontuacao_min': 0,
+                    'pontuacao_min': min_value,
+                    'nota_minima_justificativa': min_value,
                     'descricao': criterio_descricao
                 }
             i += 1
@@ -1110,6 +1115,7 @@ def _coletar_metricas_baremas_dados(usuario, categoria_filtro='', periodo_inicio
         .options(
             joinedload(AvaliacaoBarema.criterios_avaliacao),
             joinedload(AvaliacaoBarema.trabalho),
+            joinedload(AvaliacaoBarema.revisor),
         )
         .join(Submission, AvaliacaoBarema.trabalho_id == Submission.id)
     )
@@ -1145,6 +1151,22 @@ def _coletar_metricas_baremas_dados(usuario, categoria_filtro='', periodo_inicio
             pass
 
     avaliacoes = avaliacoes_query.all()
+
+    submission_ids = {avaliacao.trabalho_id for avaliacao in avaliacoes if avaliacao.trabalho_id}
+    assignment_lookup: dict[tuple[int, int], Assignment] = {}
+    if submission_ids:
+        assignment_query = (
+            db.session.query(Assignment, RespostaFormulario.trabalho_id)
+            .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+            .filter(RespostaFormulario.trabalho_id.in_(submission_ids))
+        )
+        if cliente_id_base:
+            assignment_query = assignment_query.join(Evento, RespostaFormulario.evento_id == Evento.id).filter(Evento.cliente_id == cliente_id_base)
+        elif usuario.tipo == 'cliente':
+            assignment_query = assignment_query.join(Evento, RespostaFormulario.evento_id == Evento.id).filter(Evento.cliente_id == usuario.id)
+
+        for assignment, trabalho_id in assignment_query.all():
+            assignment_lookup[(trabalho_id, assignment.reviewer_id)] = assignment
 
     categorias_existentes = db.session.query(AvaliacaoBarema.categoria).distinct().all()
     categorias = [cat[0] for cat in categorias_existentes if cat[0]]
@@ -1316,17 +1338,33 @@ def _coletar_metricas_baremas_dados(usuario, categoria_filtro='', periodo_inicio
             },
         )
 
-        alias = f"Revisor {len(trabalho_entry['avaliacoes']) + 1}"
+        revisor_nome = avaliacao.nome_revisor
+        if not revisor_nome and avaliacao.revisor:
+            revisor_nome = avaliacao.revisor.nome
+        alias = revisor_nome or f"Revisor {len(trabalho_entry['avaliacoes']) + 1}"
+        revisor_email = avaliacao.revisor.email if getattr(avaliacao, 'revisor', None) else ''
+        revisor_id = avaliacao.revisor_id if getattr(avaliacao, 'revisor_id', None) else None
+
+        assignment_info = assignment_lookup.get((submission.id, revisor_id)) if revisor_id else None
+        is_reevaluation = bool(getattr(assignment_info, 'is_reevaluation', False))
+
         nota_final = avaliacao.nota_final if avaliacao.nota_final is not None else None
         if nota_final is not None:
             trabalho_entry['notas_finais'].append(nota_final)
 
         trabalho_entry['avaliacoes'].append({
             'alias': alias,
+            'revisor_nome_exibicao': alias,
+            'revisor_email': revisor_email,
+            'revisor_id': revisor_id,
             'nota_final': nota_final,
             'data_avaliacao': avaliacao.data_avaliacao.strftime('%d/%m/%Y %H:%M') if avaliacao.data_avaliacao else '',
+            'is_reevaluation': is_reevaluation,
             'criterios': criterios_formatados,
         })
+
+    todas_notas_finais: list[float] = []
+    resumo_revisores: dict[tuple[int | None, str | None], dict] = {}
 
     relatorios_trabalhos = []
     for trabalho in relatorios_trabalhos_map.values():
@@ -1336,6 +1374,7 @@ def _coletar_metricas_baremas_dados(usuario, categoria_filtro='', periodo_inicio
             trabalho['nota_media'] = round(sum(notas) / len(notas), 2)
             trabalho['nota_maxima'] = max(notas)
             trabalho['nota_minima'] = min(notas)
+            todas_notas_finais.extend(notas)
         else:
             trabalho['nota_media'] = 0
             trabalho['nota_maxima'] = 0
@@ -1343,6 +1382,45 @@ def _coletar_metricas_baremas_dados(usuario, categoria_filtro='', periodo_inicio
         relatorios_trabalhos.append(trabalho)
 
     relatorios_trabalhos.sort(key=lambda item: item['titulo'].lower())
+
+    for trabalho in relatorios_trabalhos:
+        for avaliacao in trabalho['avaliacoes']:
+            revisor_nome = avaliacao.get('revisor_nome_exibicao')
+            revisor_email = avaliacao.get('revisor_email')
+            revisor_id = avaliacao.get('revisor_id')
+            key = (revisor_id, revisor_email or revisor_nome)
+            resumo = resumo_revisores.setdefault(key, {
+                'revisor_id': revisor_id,
+                'nome': revisor_nome or 'Revisor desconhecido',
+                'email': revisor_email or '',
+                'total_trabalhos': 0,
+                'notas_finais': [],
+                'reavaliacoes': 0,
+            })
+            resumo['total_trabalhos'] += 1
+            nota_final = avaliacao.get('nota_final')
+            if nota_final is not None:
+                resumo['notas_finais'].append(nota_final)
+            if is_reevaluation:
+                resumo['reavaliacoes'] += 1
+
+    resumo_revisores_list = []
+    for item in resumo_revisores.values():
+        notas_revisor = item.pop('notas_finais')
+        if notas_revisor:
+            item['nota_media'] = round(sum(notas_revisor) / len(notas_revisor), 2)
+        else:
+            item['nota_media'] = 0
+        resumo_revisores_list.append(item)
+
+    resumo_revisores_list.sort(key=lambda entry: entry['nome'].lower())
+
+    total_avaliacoes_global = len(todas_notas_finais)
+    nota_media_global = (
+        round(sum(todas_notas_finais) / total_avaliacoes_global, 2)
+        if total_avaliacoes_global
+        else 0
+    )
 
     return {
         'estatisticas': estatisticas,
@@ -1355,6 +1433,9 @@ def _coletar_metricas_baremas_dados(usuario, categoria_filtro='', periodo_inicio
         'criterios_unicos': criterios_unicos,
         'relatorios_trabalhos': relatorios_trabalhos,
         'cliente_id_base': cliente_id_base,
+        'nota_media_global': nota_media_global,
+        'total_avaliacoes_global': total_avaliacoes_global,
+        'resumo_revisores': resumo_revisores_list,
     }
 
 
@@ -1457,9 +1538,19 @@ def _exportar_metricas_baremas_xlsx(dados, filtros):
     resumo_ws.set_column(1, 1, 40)
     resumo_ws.set_column(2, 2, 20)
 
+    footer_row = len(dados['relatorios_trabalhos']) + 1
+    if footer_row > 1:
+        resumo_ws.write(footer_row, 0, 'Média Geral', header_format)
+        resumo_ws.write(footer_row, 1, '')
+        resumo_ws.write(footer_row, 2, '')
+        resumo_ws.write(footer_row, 3, dados['total_avaliacoes_global'])
+        resumo_ws.write(footer_row, 4, dados['nota_media_global'])
+        resumo_ws.write(footer_row, 5, '')
+        resumo_ws.write(footer_row, 6, '')
+
     detalhado_ws = workbook.add_worksheet('Avaliações')
     detalhado_headers = [
-        'Trabalho ID', 'Título', 'Categoria', 'Revisor', 'Data Avaliação', 'Nota Final',
+        'Trabalho ID', 'Título', 'Categoria', 'Revisor', 'E-mail', 'Reavaliação?', 'Data Avaliação', 'Nota Final',
         'Critério', 'Nota Critério', 'Observação'
     ]
     for col, header in enumerate(detalhado_headers):
@@ -1468,9 +1559,11 @@ def _exportar_metricas_baremas_xlsx(dados, filtros):
     detalhado_ws.set_column(0, 0, 12)
     detalhado_ws.set_column(1, 1, 40)
     detalhado_ws.set_column(2, 2, 20)
-    detalhado_ws.set_column(3, 4, 15)
-    detalhado_ws.set_column(6, 6, 30)
-    detalhado_ws.set_column(8, 8, 50)
+    detalhado_ws.set_column(3, 4, 18)
+    detalhado_ws.set_column(5, 5, 14)
+    detalhado_ws.set_column(6, 7, 15)
+    detalhado_ws.set_column(8, 8, 30)
+    detalhado_ws.set_column(10, 10, 50)
 
     row = 1
     for rel in dados['relatorios_trabalhos']:
@@ -1480,12 +1573,14 @@ def _exportar_metricas_baremas_xlsx(dados, filtros):
                 detalhado_ws.write(row, 0, rel['trabalho_id'])
                 detalhado_ws.write(row, 1, rel['titulo'])
                 detalhado_ws.write(row, 2, rel['categoria'])
-                detalhado_ws.write(row, 3, avaliacao['alias'])
-                detalhado_ws.write(row, 4, avaliacao['data_avaliacao'])
-                detalhado_ws.write(row, 5, avaliacao['nota_final'] if avaliacao['nota_final'] is not None else '')
-                detalhado_ws.write(row, 6, criterio.get('nome', ''))
-                detalhado_ws.write(row, 7, criterio.get('nota', ''))
-                detalhado_ws.write(row, 8, criterio.get('observacao', ''), wrap_format)
+                detalhado_ws.write(row, 3, avaliacao.get('revisor_nome_exibicao', avaliacao['alias']))
+                detalhado_ws.write(row, 4, avaliacao.get('revisor_email', ''))
+                detalhado_ws.write(row, 5, 'Sim' if avaliacao.get('is_reevaluation') else 'Não')
+                detalhado_ws.write(row, 6, avaliacao['data_avaliacao'])
+                detalhado_ws.write(row, 7, avaliacao['nota_final'] if avaliacao['nota_final'] is not None else '')
+                detalhado_ws.write(row, 8, criterio.get('nome', ''))
+                detalhado_ws.write(row, 9, criterio.get('nota', ''))
+                detalhado_ws.write(row, 10, criterio.get('observacao', ''), wrap_format)
                 row += 1
 
     workbook.close()
@@ -1553,10 +1648,14 @@ def _exportar_metricas_baremas_pdf(dados, filtros):
         elements.append(Spacer(1, 10))
 
         for avaliacao in rel['avaliacoes']:
+            nome_revisor = avaliacao.get('revisor_nome_exibicao', avaliacao['alias'])
             elements.append(Paragraph(
-                f"{avaliacao['alias']} - Nota final: {avaliacao['nota_final'] if avaliacao['nota_final'] is not None else 'N/A'}", styles['Heading4']
+                f"{nome_revisor} - Nota final: {avaliacao['nota_final'] if avaliacao['nota_final'] is not None else 'N/A'}", styles['Heading4']
             ))
-            elements.append(Paragraph(f"Data da avaliação: {avaliacao['data_avaliacao'] or '-'}", styles['Normal']))
+            detalhes_revisor = [f"Data da avaliação: {avaliacao['data_avaliacao'] or '-'}"]
+            if avaliacao.get('revisor_email'):
+                detalhes_revisor.append(f"E-mail: {avaliacao['revisor_email']}")
+            elements.append(Paragraph(' | '.join(detalhes_revisor), styles['Normal']))
 
             if avaliacao['criterios']:
                 criterio_data = [['Critério', 'Nota', 'Observações']]
@@ -1589,6 +1688,215 @@ def _exportar_metricas_baremas_pdf(dados, filtros):
     buffer.seek(0)
 
     filename = f"metricas_baremas_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/pdf',
+    )
+
+
+@dashboard_routes.route('/metricas_baremas/export_revisores/<string:formato>')
+@login_required
+def exportar_metricas_revisores(formato):
+    if current_user.tipo not in ('cliente', 'admin'):
+        abort(403)
+
+    categoria_filtro = request.args.get('categoria', '')
+    periodo_inicio = request.args.get('periodo_inicio', '')
+    periodo_fim = request.args.get('periodo_fim', '')
+    criterio_filtro = request.args.get('criterio', '')
+    cliente_id_param = request.args.get('cliente_id', type=int)
+
+    dados = _coletar_metricas_baremas_dados(
+        current_user,
+        categoria_filtro=categoria_filtro,
+        periodo_inicio=periodo_inicio,
+        periodo_fim=periodo_fim,
+        criterio_filtro=criterio_filtro,
+        cliente_id_override=cliente_id_param,
+    )
+
+    filtros = {
+        'categoria': categoria_filtro or 'Todas',
+        'criterio': criterio_filtro or 'Todos',
+        'periodo_inicio': periodo_inicio,
+        'periodo_fim': periodo_fim,
+    }
+
+    if formato.lower() == 'xlsx':
+        return _exportar_revisores_metricas_xlsx(dados, filtros)
+    if formato.lower() == 'pdf':
+        return _exportar_revisores_metricas_pdf(dados, filtros)
+
+    abort(400)
+
+
+def _exportar_revisores_metricas_xlsx(dados, filtros):
+    try:
+        import xlsxwriter
+    except ImportError as exc:
+        abort(500, description=f'Biblioteca XLSX ausente: {exc}')
+
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#0f172a', 'color': 'white'})
+    wrap_format = workbook.add_format({'text_wrap': True})
+
+    por_trabalho_ws = workbook.add_worksheet('Revisores por Trabalho')
+    headers = ['Trabalho ID', 'Título', 'Categoria', 'Revisor', 'E-mail', 'Reavaliação?', 'Data Avaliação', 'Nota Final']
+    for col, header in enumerate(headers):
+        por_trabalho_ws.write(0, col, header, header_format)
+
+    por_trabalho_ws.set_column(0, 0, 12)
+    por_trabalho_ws.set_column(1, 1, 45)
+    por_trabalho_ws.set_column(2, 2, 22)
+    por_trabalho_ws.set_column(3, 4, 28)
+    por_trabalho_ws.set_column(5, 5, 16)
+    por_trabalho_ws.set_column(6, 7, 16)
+
+    row = 1
+    for rel in dados['relatorios_trabalhos']:
+        for avaliacao in rel['avaliacoes']:
+            nota_final = avaliacao.get('nota_final')
+            por_trabalho_ws.write(row, 0, rel['trabalho_id'])
+            por_trabalho_ws.write(row, 1, rel['titulo'])
+            por_trabalho_ws.write(row, 2, rel['categoria'])
+            por_trabalho_ws.write(row, 3, avaliacao.get('revisor_nome_exibicao', avaliacao['alias']))
+            por_trabalho_ws.write(row, 4, avaliacao.get('revisor_email', ''))
+            por_trabalho_ws.write(row, 5, 'Sim' if avaliacao.get('is_reevaluation') else 'Não')
+            por_trabalho_ws.write(row, 6, avaliacao.get('data_avaliacao', ''))
+            por_trabalho_ws.write(row, 7, nota_final if nota_final is not None else '')
+            row += 1
+
+    resumo_ws = workbook.add_worksheet('Resumo Revisores')
+    resumo_headers = ['Revisor', 'E-mail', 'Total Trabalhos', 'Reavaliações', 'Nota Média']
+    for col, header in enumerate(resumo_headers):
+        resumo_ws.write(0, col, header, header_format)
+
+    resumo_ws.set_column(0, 1, 35)
+    resumo_ws.set_column(2, 3, 18)
+    resumo_ws.set_column(4, 4, 18)
+
+    for idx, resumo in enumerate(dados['resumo_revisores'], start=1):
+        resumo_ws.write(idx, 0, resumo['nome'])
+        resumo_ws.write(idx, 1, resumo['email'])
+        resumo_ws.write(idx, 2, resumo['total_trabalhos'])
+        resumo_ws.write(idx, 3, resumo.get('reavaliacoes', 0))
+        resumo_ws.write(idx, 4, resumo['nota_media'])
+
+    filtros_ws = workbook.add_worksheet('Filtros Aplicados')
+    filtros_ws.write(0, 0, 'Categoria', header_format)
+    filtros_ws.write(0, 1, filtros['categoria'])
+    filtros_ws.write(1, 0, 'Critério', header_format)
+    filtros_ws.write(1, 1, filtros['criterio'])
+    filtros_ws.write(2, 0, 'Período Início', header_format)
+    filtros_ws.write(2, 1, filtros.get('periodo_inicio') or '-')
+    filtros_ws.write(3, 0, 'Período Fim', header_format)
+    filtros_ws.write(3, 1, filtros.get('periodo_fim') or '-')
+    filtros_ws.set_column(0, 0, 20)
+    filtros_ws.set_column(1, 1, 35, wrap_format)
+
+    workbook.close()
+    output.seek(0)
+
+    filename = f"revisores_baremas_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+def _exportar_revisores_metricas_pdf(dados, filtros):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle,
+        PageBreak,
+    )
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        title='Relatório de Revisores por Trabalho',
+    )
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph('Revisores por Trabalho', styles['Heading1']))
+    elements.append(Spacer(1, 12))
+
+    filtros_texto = f"Categoria: {filtros['categoria']} | Critério: {filtros['criterio']}"
+    if filtros.get('periodo_inicio') or filtros.get('periodo_fim'):
+        filtros_texto += f" | Período: {filtros.get('periodo_inicio') or '-'} a {filtros.get('periodo_fim') or '-'}"
+    elements.append(Paragraph(filtros_texto, styles['Normal']))
+    elements.append(Spacer(1, 16))
+
+    if dados['resumo_revisores']:
+        resumo_table_data = [['Revisor', 'E-mail', 'Total Trabalhos', 'Reavaliações', 'Nota Média']]
+        for resumo in dados['resumo_revisores']:
+            resumo_table_data.append([
+                resumo['nome'],
+                resumo['email'] or '-',
+                resumo['total_trabalhos'],
+                resumo.get('reavaliacoes', 0),
+                resumo['nota_media'],
+            ])
+        resumo_table = Table(resumo_table_data, colWidths=[150, 150, 70, 70, 60])
+        resumo_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+        ]))
+        elements.append(Paragraph('Resumo por Revisor', styles['Heading2']))
+        elements.append(resumo_table)
+        elements.append(Spacer(1, 18))
+
+    for idx, rel in enumerate(dados['relatorios_trabalhos']):
+        elements.append(Paragraph(f"Trabalho #{rel['trabalho_id']} - {rel['titulo']}", styles['Heading2']))
+        tabela_data = [['Revisor', 'E-mail', 'Reavaliação?', 'Data Avaliação', 'Nota Final']]
+        for avaliacao in rel['avaliacoes']:
+            tabela_data.append([
+                avaliacao.get('revisor_nome_exibicao', avaliacao['alias']),
+                avaliacao.get('revisor_email', '-') or '-',
+                'Sim' if avaliacao.get('is_reevaluation') else 'Não',
+                avaliacao.get('data_avaliacao', '-') or '-',
+                avaliacao.get('nota_final', '-') if avaliacao.get('nota_final') is not None else '-',
+            ])
+
+        tabela = Table(tabela_data, colWidths=[150, 140, 70, 80, 60])
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1d4ed8')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOX', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        elements.append(tabela)
+        elements.append(Spacer(1, 14))
+
+        if idx < len(dados['relatorios_trabalhos']) - 1:
+            elements.append(PageBreak())
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    filename = f"revisores_baremas_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
     return send_file(
         buffer,
         as_attachment=True,

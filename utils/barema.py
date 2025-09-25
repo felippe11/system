@@ -106,7 +106,12 @@ def normalize_barema_requisitos(barema: Any) -> Dict[str, Dict[str, Any]]:
                 )
                 min_val = _extract_numeric(
                     data,
-                    ("min", "pontuacao_min", "pontuacaoMin"),
+                    (
+                        "min",
+                        "pontuacao_min",
+                        "pontuacaoMin",
+                        "nota_minima_justificativa",
+                    ),
                     0,
                 )
 

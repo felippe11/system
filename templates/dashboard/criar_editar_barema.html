@@ -53,13 +53,19 @@
                                     {% if barema and barema.criterios %}
                                         {% for nome_criterio, dados_criterio in barema.criterios.items() %}
                                         <div class="criterio-item border rounded p-3 mb-3">
-                                            <div class="row">
-                                                <div class="col-md-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-3">
                                                     <label class="form-label">Nome do Critério</label>
                                                     <input type="text" class="form-control" name="criterio_{{ loop.index0 }}_nome" 
                                                            value="{{ nome_criterio }}" required>
                                                 </div>
-                                                <div class="col-md-3">
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Nota mínima</label>
+                                                    <input type="number" class="form-control" name="criterio_{{ loop.index0 }}_min" 
+                                                           value="{{ dados_criterio.get('nota_minima_justificativa', dados_criterio.get('pontuacao_min', 0)) }}" min="0" step="0.1">
+                                                    <small class="text-muted">Exige justificativa ≤ valor (use 0 para não exigir)</small>
+                                                </div>
+                                                <div class="col-md-2">
                                                     <label class="form-label">Pontuação Máxima</label>
                                                     <input type="number" class="form-control" name="criterio_{{ loop.index0 }}_max" 
                                                            value="{{ dados_criterio.get('pontuacao_max', dados_criterio.get('max', 0)) }}" min="0" step="0.1" required>
@@ -81,13 +87,19 @@
                                     {% else %}
                                         <!-- Critérios padrão se não houver barema existente -->
                                         <div class="criterio-item border rounded p-3 mb-3">
-                                            <div class="row">
-                                                <div class="col-md-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-3">
                                                     <label class="form-label">Nome do Critério</label>
                                                     <input type="text" class="form-control" name="criterio_0_nome" 
                                                            value="Relevância e Inovação" required>
                                                 </div>
-                                                <div class="col-md-3">
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Nota mínima</label>
+                                                    <input type="number" class="form-control" name="criterio_0_min" 
+                                                           value="0" min="0" step="0.1">
+                                                    <small class="text-muted">Exige justificativa ≤ valor (use 0 para não exigir)</small>
+                                                </div>
+                                                <div class="col-md-2">
                                                     <label class="form-label">Pontuação Máxima</label>
                                                     <input type="number" class="form-control" name="criterio_0_max" 
                                                            value="10" min="0" step="0.1" required>
@@ -107,13 +119,19 @@
                                         </div>
                                         
                                         <div class="criterio-item border rounded p-3 mb-3">
-                                            <div class="row">
-                                                <div class="col-md-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-3">
                                                     <label class="form-label">Nome do Critério</label>
                                                     <input type="text" class="form-control" name="criterio_1_nome" 
                                                            value="Qualidade Técnica" required>
                                                 </div>
-                                                <div class="col-md-3">
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Nota mínima</label>
+                                                    <input type="number" class="form-control" name="criterio_1_min" 
+                                                           value="0" min="0" step="0.1">
+                                                    <small class="text-muted">Exige justificativa ≤ valor (use 0 para não exigir)</small>
+                                                </div>
+                                                <div class="col-md-2">
                                                     <label class="form-label">Pontuação Máxima</label>
                                                     <input type="number" class="form-control" name="criterio_1_max" 
                                                            value="10" min="0" step="0.1" required>
@@ -167,13 +185,19 @@ function adicionarCriterio() {
     const container = document.getElementById('criterios-container');
     const criterioHtml = `
         <div class="criterio-item border rounded p-3 mb-3">
-            <div class="row">
-                <div class="col-md-4">
+            <div class="row g-3">
+                <div class="col-md-3">
                     <label class="form-label">Nome do Critério</label>
                     <input type="text" class="form-control" name="criterio_${criterioIndex}_nome" 
                            placeholder="Ex: Clareza da Apresentação" required>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label class="form-label">Nota mínima</label>
+                    <input type="number" class="form-control" name="criterio_${criterioIndex}_min" 
+                           value="0" min="0" step="0.1">
+                    <small class="text-muted">Deixe 0 para não exigir</small>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">Pontuação Máxima</label>
                     <input type="number" class="form-control" name="criterio_${criterioIndex}_max" 
                            value="10" min="0" step="0.1" required>

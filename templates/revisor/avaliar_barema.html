@@ -2,6 +2,10 @@
 
 {% block title %}Avaliar Trabalho - {{ categoria }}{% endblock %}
 
+{% set criterios_pendentes = criterios_pendentes or [] %}
+{% set notas_preenchidas = notas_preenchidas or {} %}
+{% set observacoes_preenchidas = observacoes_preenchidas or {} %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="row">
@@ -50,8 +54,15 @@
                             </div>
                             <div class="card-body">
                                 {% if criterios %}
+                                    {% if criterios_pendentes %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Preencha a justificativa para os critérios destacados antes de enviar a avaliação.
+                                    </div>
+                                    {% endif %}
                                     {% for criterio in criterios %}
-                                    <div class="criterio-item mb-4 p-3 border rounded">
+                                    {% set pendente = criterio.id in criterios_pendentes %}
+                                    <div class="criterio-item mb-4 p-3 border rounded {% if pendente %}criterio-alerta{% endif %}">
                                         <div class="row">
                                             <div class="col-md-8">
                                                 <h6 class="criterio-titulo">
@@ -63,9 +74,16 @@
                                                 {% if criterio.descricao %}
                                                     <p class="criterio-descricao text-muted mb-2">{{ criterio.descricao }}</p>
                                                 {% endif %}
-                                                {% if criterio.nota_maxima %}
-                                                    <small class="text-info">Nota máxima: {{ criterio.nota_maxima }}</small>
-                                                {% endif %}
+                                                <div class="d-flex flex-wrap gap-3 small text-muted">
+                                                    {% if criterio.nota_maxima %}
+                                                        <span class="text-info">Nota máxima: {{ criterio.nota_maxima|round(2) }}</span>
+                                                    {% endif %}
+                                                    {% if criterio.justificativa_minima and criterio.justificativa_minima > 0 %}
+                                                        <span class="text-warning">
+                                                            Justificativa obrigatória para notas ≤ {{ criterio.justificativa_minima|round(2) }}
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                             <div class="col-md-4">
                                                 <div class="form-group">
@@ -77,6 +95,8 @@
                                                            min="0" 
                                                            max="{{ criterio.nota_maxima or 10 }}" 
                                                            step="0.1"
+                                                           value="{{ notas_preenchidas.get(criterio.id, '') }}"
+                                                           data-justificativa-min="{{ criterio.justificativa_minima }}"
                                                            required>
                                                 </div>
                                             </div>
@@ -84,12 +104,16 @@
                                         <div class="row mt-2">
                                             <div class="col-md-12">
                                                 <div class="form-group">
-                                                    <label for="observacao_{{ criterio.id }}">Observações (opcional):</label>
+                                                    <label for="observacao_{{ criterio.id }}">Justificativa / Observações</label>
                                                     <textarea class="form-control" 
                                                               id="observacao_{{ criterio.id }}" 
                                                               name="observacao_{{ criterio.id }}"
                                                               rows="2" 
-                                                              placeholder="Comentários sobre este critério..."></textarea>
+                                                              data-criterio-id="{{ criterio.id }}"
+                                                              placeholder="Comentários sobre este critério...">{{ observacoes_preenchidas.get(criterio.id, '') }}</textarea>
+                                                    <small class="text-muted justificativa-hint {% if not pendente %}d-none{% endif %}">
+                                                        Este campo torna-se obrigatório para notas iguais ou inferiores à mínima configurada.
+                                                    </small>
                                                 </div>
                                             </div>
                                         </div>
@@ -169,6 +193,11 @@
     background-color: #e9ecef;
 }
 
+.criterio-alerta {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, 0.2);
+}
+
 .criterio-titulo {
     color: #495057;
     font-weight: 600;
@@ -183,6 +212,10 @@
     font-weight: bold;
     font-size: 1.1em;
 }
+
+.is-required {
+    border-color: #dc3545 !important;
+}
 </style>
 
 <script>
@@ -190,50 +223,106 @@
 function calcularNotaFinal() {
     let total = 0;
     const inputs = document.querySelectorAll('input[name^="criterio_"]');
-    
+
     inputs.forEach(input => {
         const valor = parseFloat(input.value) || 0;
         total += valor;
     });
-    
-    document.getElementById('notaFinal').value = total.toFixed(1);
+
+    const notaFinal = document.getElementById('notaFinal');
+    if (notaFinal) {
+        notaFinal.value = total.toFixed(1);
+    }
 }
 
-// Adicionar event listeners para cálculo automático
+function atualizarJustificativa(input) {
+    const minJustificativa = parseFloat(input.dataset.justificativaMin);
+    const criterioItem = input.closest('.criterio-item');
+    if (!criterioItem) {
+        return;
+    }
+
+    const textarea = criterioItem.querySelector('textarea[data-criterio-id]');
+    const hint = criterioItem.querySelector('.justificativa-hint');
+    const valorNota = parseFloat(input.value);
+
+    const precisaJustificativa = (
+        !Number.isNaN(minJustificativa) &&
+        minJustificativa > 0 &&
+        !Number.isNaN(valorNota) &&
+        valorNota <= minJustificativa
+    );
+
+    const deveDestacar = precisaJustificativa && (!textarea || !textarea.value.trim());
+
+    if (textarea) {
+        textarea.required = precisaJustificativa;
+        textarea.classList.toggle('is-required', deveDestacar);
+    }
+
+    if (hint) {
+        hint.classList.toggle('d-none', !precisaJustificativa);
+    }
+
+    criterioItem.classList.toggle('criterio-alerta', deveDestacar);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const inputs = document.querySelectorAll('input[name^="criterio_"]');
-    
+    const textareas = document.querySelectorAll('textarea[data-criterio-id]');
+
+    const handleInputChange = (input) => {
+        calcularNotaFinal();
+        atualizarJustificativa(input);
+    };
+
     inputs.forEach(input => {
-        input.addEventListener('input', calcularNotaFinal);
-        input.addEventListener('change', calcularNotaFinal);
+        input.addEventListener('input', () => handleInputChange(input));
+        input.addEventListener('change', () => handleInputChange(input));
+        atualizarJustificativa(input);
     });
-    
-    // Calcular nota inicial
+
+    textareas.forEach(area => {
+        area.addEventListener('input', () => {
+            if (area.required && area.value.trim()) {
+                area.classList.remove('is-required');
+            }
+            const container = area.closest('.criterio-item');
+            if (container) {
+                const inputRelacionado = container.querySelector('input[name^="criterio_"]');
+                if (inputRelacionado) {
+                    atualizarJustificativa(inputRelacionado);
+                }
+            }
+        });
+    });
+
     calcularNotaFinal();
 });
 
-// Validação do formulário
-document.getElementById('formAvaliacao').addEventListener('submit', function(e) {
-    const inputs = document.querySelectorAll('input[name^="criterio_"]');
-    let temNotaVazia = false;
-    
-    inputs.forEach(input => {
-        if (!input.value || input.value === '') {
-            temNotaVazia = true;
+const formularioAvaliacao = document.getElementById('formAvaliacao');
+if (formularioAvaliacao) {
+    formularioAvaliacao.addEventListener('submit', function(e) {
+        const inputs = document.querySelectorAll('input[name^="criterio_"]');
+        let temNotaVazia = false;
+
+        inputs.forEach(input => {
+            if (!input.value || input.value === '') {
+                temNotaVazia = true;
+            }
+        });
+
+        if (temNotaVazia) {
+            if (!confirm('Alguns critérios não foram avaliados. Deseja continuar mesmo assim?')) {
+                e.preventDefault();
+                return false;
+            }
         }
+
+        return true;
     });
-    
-    if (temNotaVazia) {
-        if (!confirm('Alguns critérios não foram avaliados. Deseja continuar mesmo assim?')) {
-            e.preventDefault();
-            return false;
-        }
-    }
-    
-    return true;
-});
+}
 </script>
 
 
 {% endblock %}
-

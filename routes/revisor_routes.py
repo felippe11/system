@@ -218,7 +218,6 @@ def edit_process(process_id: int):
 
     selected_event_ids: List[int] = [e.id for e in processo.eventos]
 
-
     if request.method == "POST":
         try:
             dados = parse_revisor_form(request)
@@ -1318,18 +1317,125 @@ def avaliar_barema(trabalho_id, categoria):
     criterios_dict = barema.criterios if hasattr(barema, "criterios") else {}
     criterios = []
     for nome, detalhes in criterios_dict.items():
+        nome_criterio = detalhes.get("nome", nome) if isinstance(detalhes, dict) else nome
+        descricao = detalhes.get("descricao", "") if isinstance(detalhes, dict) else ""
+        nota_maxima = detalhes.get("pontuacao_max", detalhes.get("max", 10)) if isinstance(detalhes, dict) else 10
+        justificativa_minima = 0
+        if isinstance(detalhes, dict):
+            raw_min = detalhes.get("nota_minima_justificativa")
+            if raw_min is None:
+                raw_min = detalhes.get("pontuacao_min", detalhes.get("min", 0))
+            try:
+                justificativa_minima = float(raw_min)
+            except (TypeError, ValueError):
+                justificativa_minima = 0
+        try:
+            nota_maxima = float(nota_maxima)
+        except (TypeError, ValueError):
+            nota_maxima = 10
+        if justificativa_minima < 0:
+            justificativa_minima = 0
+
         criterio = {
             "id": nome,
-            "nome": detalhes.get("nome", nome) if isinstance(detalhes, dict) else nome,
-            "descricao": detalhes.get("descricao", "") if isinstance(detalhes, dict) else "",
-            "nota_maxima": detalhes.get("pontuacao_max", detalhes.get("max", 10))
-            if isinstance(detalhes, dict)
-            else 10,
+            "nome": nome_criterio,
+            "descricao": descricao,
+            "nota_maxima": nota_maxima,
             "peso": detalhes.get("peso", 1) if isinstance(detalhes, dict) else 1,
+            "justificativa_minima": justificativa_minima,
         }
         criterios.append(criterio)
 
+    avaliacao_referencial_id = None
+    if current_user.is_authenticated and getattr(current_user, "id", None):
+        avaliacao_referencial_id = getattr(current_user, "id", None)
+    if avaliacao_referencial_id is None and assignment and assignment.reviewer_id:
+        avaliacao_referencial_id = assignment.reviewer_id
+
+    avaliacao_existente = None
+    if avaliacao_referencial_id:
+        avaliacao_existente = AvaliacaoBarema.query.filter_by(
+            trabalho_id=trabalho_id,
+            revisor_id=avaliacao_referencial_id,
+            barema_id=barema.id,
+        ).first()
+
+    notas_preexistentes: dict[str, str] = {}
+    observacoes_preexistentes: dict[str, str] = {}
+    if avaliacao_existente:
+        for criterio_avaliado in avaliacao_existente.criterios_avaliacao:
+            notas_preexistentes[criterio_avaliado.criterio_id] = (
+                f"{criterio_avaliado.nota:g}" if criterio_avaliado.nota is not None else ""
+            )
+            observacoes_preexistentes[criterio_avaliado.criterio_id] = (
+                criterio_avaliado.observacao or ""
+            )
+
     if request.method == "POST":
+        notas_informadas: dict[str, str] = {}
+        observacoes_informadas: dict[str, str] = {}
+        notas_convertidas: dict[str, float] = {}
+        criterios_sem_justificativa: list[str] = []
+
+        for criterio in criterios:
+            campo_nota = f"criterio_{criterio['id']}"
+            campo_obs = f"observacao_{criterio['id']}"
+            nota_bruta = (request.form.get(campo_nota) or "").strip()
+            observacao_bruta = (request.form.get(campo_obs) or "").strip()
+
+            notas_informadas[criterio['id']] = nota_bruta
+            observacoes_informadas[criterio['id']] = observacao_bruta
+
+            if nota_bruta == "":
+                continue
+
+            try:
+                nota_valor = float(nota_bruta)
+            except ValueError:
+                flash(
+                    f"Informe uma nota válida para o critério '{criterio['nome']}'.",
+                    "warning",
+                )
+                return render_template(
+                    "revisor/avaliar_barema.html",
+                    trabalho=trabalho,
+                    barema=barema,
+                    criterios=criterios,
+                    categoria=categoria_real,
+                    codigo_candidatura=codigo_candidatura,
+                    notas_preenchidas=notas_informadas,
+                    observacoes_preenchidas=observacoes_informadas,
+                    criterios_pendentes=[criterio['id']],
+                )
+
+            notas_convertidas[criterio['id']] = nota_valor
+            justificativa_minima = criterio.get("justificativa_minima") or 0
+            if justificativa_minima > 0 and nota_valor <= justificativa_minima and not observacao_bruta:
+                criterios_sem_justificativa.append(criterio['id'])
+
+        if criterios_sem_justificativa:
+            nomes = [
+                criterio['nome']
+                for criterio in criterios
+                if criterio['id'] in criterios_sem_justificativa
+            ]
+            flash(
+                "Preencha a justificativa/observações para as notas iguais ou inferiores à mínima: "
+                + ", ".join(nomes),
+                "warning",
+            )
+            return render_template(
+                "revisor/avaliar_barema.html",
+                trabalho=trabalho,
+                barema=barema,
+                criterios=criterios,
+                categoria=categoria_real,
+                codigo_candidatura=codigo_candidatura,
+                notas_preenchidas=notas_informadas,
+                observacoes_preenchidas=observacoes_informadas,
+                criterios_pendentes=criterios_sem_justificativa,
+            )
+
         nome_revisor = None
         revisor_usuario = None
 
@@ -1404,30 +1510,28 @@ def avaliar_barema(trabalho_id, categoria):
             avaliacao.nome_revisor = nome_revisor
 
         for criterio in criterios:
-            nota = request.form.get(f"criterio_{criterio['id']}")
-            observacao = request.form.get(f"observacao_{criterio['id']}", "")
+            nota_valor = notas_convertidas.get(criterio["id"])
+            observacao = observacoes_informadas.get(criterio["id"], "")
 
-            if nota:
+            if nota_valor is not None:
                 avaliacao_criterio = AvaliacaoCriterio.query.filter_by(
                     avaliacao_id=avaliacao.id,
                     criterio_id=criterio["id"],
                 ).first()
 
                 if avaliacao_criterio:
-                    avaliacao_criterio.nota = float(nota)
+                    avaliacao_criterio.nota = nota_valor
                     avaliacao_criterio.observacao = observacao
                 else:
                     avaliacao_criterio = AvaliacaoCriterio(
                         avaliacao_id=avaliacao.id,
                         criterio_id=criterio["id"],
-                        nota=float(nota),
+                        nota=nota_valor,
                         observacao=observacao,
                     )
                     db.session.add(avaliacao_criterio)
 
-        nota_final = sum(
-            float(request.form.get(f"criterio_{c['id']}", 0)) for c in criterios
-        )
+        nota_final = sum(notas_convertidas.values())
         avaliacao.nota_final = nota_final
         avaliacao.data_avaliacao = datetime.now()
 
@@ -1457,6 +1561,9 @@ def avaliar_barema(trabalho_id, categoria):
         criterios=criterios,
         categoria=categoria_real,
         codigo_candidatura=codigo_candidatura,
+        notas_preenchidas=notas_preexistentes,
+        observacoes_preenchidas=observacoes_preexistentes,
+        criterios_pendentes=[],
     )
 
 @revisor_routes.route("/revisor/avaliar/<int:submission_id>", methods=["GET", "POST"])
@@ -1633,4 +1740,3 @@ def send_email_mass():
             "success": False, 
             "message": f"Erro interno: {str(e)}"
         }), 500
-

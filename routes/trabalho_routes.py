@@ -48,7 +48,7 @@ from models import (
     WorkMetadata,
 )
 from models.event import RespostaCampoFormulario, RespostaFormulario
-from models.review import Assignment
+from models.review import Assignment, RevisorProcess, RevisorCandidatura
 from sqlalchemy import func
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm import joinedload
@@ -570,6 +570,63 @@ def _build_export_dataframe(trabalhos):
     return df
 
 
+def _build_reviewer_filter_options(candidaturas):
+    question_value_map: dict[str, dict[str, str]] = defaultdict(dict)
+
+    for candidatura in candidaturas:
+        respostas = getattr(candidatura, 'respostas', None) or {}
+        if not isinstance(respostas, dict):
+            continue
+
+        for pergunta, valor in respostas.items():
+            if not pergunta:
+                continue
+
+            valores = valor if isinstance(valor, list) else [valor]
+            for item in valores:
+                value_key = _filter_value_key(item)
+                if value_key not in question_value_map[pergunta]:
+                    question_value_map[pergunta][value_key] = _format_filter_label(item)
+
+    filter_options = []
+    for pergunta in sorted(question_value_map.keys()):
+        options = question_value_map[pergunta]
+        sorted_options = sorted(
+            options.items(),
+            key=lambda entry: (
+                1 if entry[0] == EMPTY_FILTER_VALUE else 0,
+                entry[1].lower(),
+            ),
+        )
+        filter_options.append(
+            {
+                "question": pergunta,
+                "options": [
+                    {"value": key, "label": label}
+                    for key, label in sorted_options
+                ],
+            }
+        )
+
+    return filter_options
+
+
+def _get_reviewer_filter_options_for_user(user):
+    target_cliente_id = None
+    if getattr(user, 'tipo', None) == 'cliente':
+        target_cliente_id = getattr(user, 'id', None)
+
+    candidaturas_query = RevisorCandidatura.query.join(
+        RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id
+    )
+
+    if target_cliente_id:
+        candidaturas_query = candidaturas_query.filter(RevisorProcess.cliente_id == target_cliente_id)
+
+    candidaturas = candidaturas_query.all()
+    return _build_reviewer_filter_options(candidaturas)
+
+
 def _extract_filters_from_request():
     filters_payload = request.values.get("filters")
 
@@ -834,12 +891,14 @@ def listar_trabalhos():
         return render_template("trabalhos/formulario_nao_encontrado.html")
     
     dataset = _prepare_trabalhos_dataset(formulario)
+    reviewer_filter_options = _get_reviewer_filter_options_for_user(current_user)
 
     return render_template(
         "trabalhos/listar_trabalhos.html",
         trabalhos=dataset["trabalhos"],
         trabalho_filter_options=dataset["filter_options"],
         reviewers_without_assignments=dataset["reviewers_without_assignments"],
+        reviewer_filter_options=reviewer_filter_options,
     )
 
 
@@ -1363,13 +1422,31 @@ def distribuicao():
 def get_available_reviewers():
     """API endpoint to get available reviewers for distribution."""
     # Authentication removed to allow access for distribution functionality
-    
+
     # CSRF validation removed for API endpoints
-    
+
     try:
+        target_cliente_id = request.args.get('cliente_id', type=int)
+        if not target_cliente_id and current_user.is_authenticated and getattr(current_user, 'tipo', None) == 'cliente':
+            target_cliente_id = getattr(current_user, 'id', None)
+
+        # Preload candidaturas para filtros
+        candidaturas_query = RevisorCandidatura.query.join(
+            RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id
+        )
+
+        if target_cliente_id:
+            candidaturas_query = candidaturas_query.filter(RevisorProcess.cliente_id == target_cliente_id)
+
+        candidaturas = candidaturas_query.all()
+        candidaturas_por_email: dict[str, RevisorCandidatura] = {}
+        for candidatura in candidaturas:
+            if candidatura.email:
+                candidaturas_por_email.setdefault(candidatura.email.lower(), candidatura)
+
         # Get reviewers (users with tipo 'revisor')
         reviewers = Usuario.query.filter_by(tipo="revisor").all()
-        
+
         reviewer_list = []
         for reviewer in reviewers:
             # Count current assignments
@@ -1377,17 +1454,22 @@ def get_available_reviewers():
                 reviewer_id=reviewer.id,
                 completed=False
             ).count()
-            
+
+            candidatura = None
+            if reviewer.email:
+                candidatura = candidaturas_por_email.get(reviewer.email.lower())
+
             reviewer_data = {
                 "id": reviewer.id,
                 "nome": reviewer.nome,
                 "email": reviewer.email,
                 "current_assignments": current_assignments,
                 "expertise": getattr(reviewer, 'expertise', ''),
-                "available": True  # Could add logic for availability
+                "available": True,  # Could add logic for availability
+                "respostas": candidatura.respostas if candidatura and isinstance(candidatura.respostas, dict) else {},
             }
             reviewer_list.append(reviewer_data)
-        
+
         return {
             "success": True,
             "reviewers": reviewer_list,
@@ -1413,7 +1495,8 @@ def manual_distribution():
         assignments = data.get('assignments', [])
         deadline = data.get('deadline')  # Get deadline from top level
         notes = data.get('notes', '')
-        
+        default_re_evaluation = bool(data.get('re_evaluation', False))
+
         if not work_ids or not assignments:
             return {"error": "Work IDs and assignments are required"}, 400
         
@@ -1431,10 +1514,11 @@ def manual_distribution():
         for assignment_data in assignments:
             work_id = assignment_data.get('workId')  # Changed from 'work_id' to 'workId'
             reviewer_id = assignment_data.get('reviewerId')  # Changed from 'reviewer_id' to 'reviewerId'
-            
+            assignment_re_evaluation = bool(assignment_data.get('re_evaluation', default_re_evaluation))
+
             if not all([work_id, reviewer_id]):
                 continue
-            
+
             # Check if assignment already exists
             existing = Assignment.query.filter_by(
                 resposta_formulario_id=work_id,
@@ -1449,10 +1533,11 @@ def manual_distribution():
                 resposta_formulario_id=work_id,
                 reviewer_id=reviewer_id,
                 deadline=deadline,  # Use deadline from top level
-                distribution_type='manual',
+                distribution_type='manual_reevaluation' if assignment_re_evaluation else 'manual',
                 distribution_date=db.func.now(),
-                distributed_by=None,
-                notes=notes
+                distributed_by=getattr(current_user, 'id', None),
+                notes=notes,
+                is_reevaluation=assignment_re_evaluation,
             )
             db.session.add(assignment)
             assignments_created += 1

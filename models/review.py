@@ -350,6 +350,7 @@ class Assignment(db.Model):
     distribution_date = db.Column(db.DateTime, nullable=True)
     distributed_by = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     notes = db.Column(db.Text, nullable=True)
+    is_reevaluation = db.Column(db.Boolean, nullable=False, default=False)
 
     resposta_formulario = db.relationship(
         "RespostaFormulario", backref=db.backref("assignments", lazy=True)
