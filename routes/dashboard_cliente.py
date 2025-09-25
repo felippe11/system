@@ -20,10 +20,21 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 import json
 from models import (
-    Evento, Oficina, Inscricao, Checkin,
-    ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
-    EventoInscricaoTipo, Configuracao, ReviewerApplication,
-    RevisorCandidatura, RevisorProcess, Formulario,
+    Evento,
+    Oficina,
+    Inscricao,
+    Checkin,
+    ConfiguracaoCliente,
+    AgendamentoVisita,
+    HorarioVisitacao,
+    Usuario,
+    EventoInscricaoTipo,
+    Configuracao,
+    ReviewerApplication,
+    RevisorCandidatura,
+    RevisorProcess,
+    Formulario,
+    WorkMetadata,
 )
 from models.avaliacao import AvaliacaoBarema, AvaliacaoCriterio
 from models.event import RespostaFormulario
@@ -794,11 +805,11 @@ def gerenciar_baremas(evento_id):
     """Página para gerenciar baremas por categoria de um evento."""
     if current_user.tipo not in ('cliente', 'admin'):
         return redirect(url_for(endpoints.DASHBOARD))
-    
+
     evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
-    
+
     # Buscar categorias disponíveis do formulário de trabalhos
-    categorias = []
+    categorias_formulario = []
     try:
         from models.formulario import CampoFormulario
         campo_categoria = CampoFormulario.query.filter_by(
@@ -806,14 +817,65 @@ def gerenciar_baremas(evento_id):
             formulario_id=9  # Formulário de Trabalhos
         ).first()
         if campo_categoria and campo_categoria.opcoes:
-            categorias = [opt.strip() for opt in campo_categoria.opcoes.split(',')]
+            categorias_formulario = [
+                opt.strip() for opt in campo_categoria.opcoes.split(',') if opt.strip()
+            ]
     except ImportError:
-        categorias = ['Prática Educacional', 'Pesquisa Inovadora', 'Produto Inovador']
-    
+        categorias_formulario = [
+            'Prática Educacional',
+            'Pesquisa Inovadora',
+            'Produto Inovador',
+        ]
+
+    # Consolidar categorias vindas do formulário, metadados e submissões importadas
+    categorias_map = {}
+
+    for categoria in categorias_formulario:
+        categoria_limpa = categoria.strip()
+        if not categoria_limpa:
+            continue
+        chave = categoria_limpa.lower()
+        categorias_map.setdefault(chave, categoria_limpa)
+
+    # Categorias vindas dos metadados de trabalhos importados
+    metadata_categorias = (
+        db.session.query(WorkMetadata.categoria)
+        .filter(WorkMetadata.evento_id == evento_id)
+        .filter(WorkMetadata.categoria.isnot(None))
+        .distinct()
+        .all()
+    )
+    for (categoria_metadata,) in metadata_categorias:
+        if categoria_metadata is None:
+            continue
+        categoria_limpa = str(categoria_metadata).strip()
+        if categoria_limpa:
+            chave = categoria_limpa.lower()
+            categorias_map.setdefault(chave, categoria_limpa)
+
+    # Categorias declaradas diretamente nas submissões (planilhas Excel)
+    submission_attrs = (
+        db.session.query(Submission.attributes)
+        .filter(Submission.evento_id == evento_id)
+        .all()
+    )
+    for (attributes,) in submission_attrs:
+        if not isinstance(attributes, dict):
+            continue
+        categoria_attr = attributes.get('categoria') or attributes.get('Categoria')
+        if not categoria_attr:
+            continue
+        categoria_limpa = str(categoria_attr).strip()
+        if categoria_limpa:
+            chave = categoria_limpa.lower()
+            categorias_map.setdefault(chave, categoria_limpa)
+
+    categorias = list(categorias_map.values())
+
     # Buscar baremas existentes para este evento
     from models.review import CategoriaBarema
     baremas_existentes = CategoriaBarema.query.filter_by(evento_id=evento_id).all()
-    
+
     return render_template('dashboard/gerenciar_baremas.html', 
                          evento=evento, 
                          categorias=categorias,

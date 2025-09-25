@@ -19,6 +19,40 @@
   <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTaxa">
     <i class="bi bi-cash-coin"></i> Taxa do sistema
   </button>
+
+  <!-- Filtros por estado e cidade -->
+  <form method="GET" class="mt-4 mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-4 col-md-6">
+        <label for="estadoSelect" class="form-label">Filtrar por Estado</label>
+        <select id="estadoSelect" name="estado" class="form-select">
+          <option value="">Todos os Estados</option>
+          {% for uf in estados_opcoes %}
+            <option value="{{ uf }}" {% if uf == estado_filter %}selected{% endif %}>{{ uf }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-4 col-md-6">
+        <label for="cidadeSelect" class="form-label">Filtrar por Cidade</label>
+        <select id="cidadeSelect" name="cidade" class="form-select">
+          <option value="">Todas as Cidades</option>
+          {% for cidade in cidades_opcoes %}
+            <option value="{{ cidade }}" {% if cidade.upper() == cidade_filter.upper() %}selected{% endif %}>{{ cidade }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-4 col-md-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-funnel-fill me-1"></i> Aplicar filtros
+        </button>
+        {% if estado_filter or cidade_filter %}
+        <a href="{{ url_for('dashboard_routes.dashboard_admin') }}" class="btn btn-outline-secondary">
+          Limpar
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
   
   
 
@@ -574,53 +608,48 @@
   });
 </script>
 
-<!-- Script para buscar estados e cidades via API do IBGE -->
+<!-- Script para sincronizar cidades disponíveis conforme o estado selecionado -->
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const estadoSelect = document.getElementById('estadoSelect');
     const cidadeSelect = document.getElementById('cidadeSelect');
-    const estadoFilter = "{{ estado_filter|default('') }}";
-    const cidadeFilter = "{{ cidade_filter|default('') }}";
+    if (!estadoSelect || !cidadeSelect) {
+      return;
+    }
 
-    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
-      .then(response => response.json())
-      .then(data => {
-        data.sort((a, b) => a.nome.localeCompare(b.nome));
-        data.forEach(estado => {
-          const option = document.createElement('option');
-          option.value = estado.sigla;
-          option.text = estado.nome;
-          if (estado.sigla === estadoFilter) {
-            option.selected = true;
-          }
-          estadoSelect.add(option);
-        });
-        if (estadoSelect.value) {
-          estadoSelect.dispatchEvent(new Event('change'));
+    const cidadesPorEstado = {{ cidades_por_estado | tojson }};
+    const cidadesTodas = {{ cidades_opcoes | tojson }};
+    let selectedCidade = {{ cidade_filter | tojson }};
+
+    function popularCidades(uf, cidadeSelecionada) {
+      cidadeSelect.innerHTML = '';
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = 'Todas as Cidades';
+      cidadeSelect.appendChild(defaultOption);
+
+      const cidadesBase = uf ? (cidadesPorEstado[uf] || []) : cidadesTodas;
+      const cidades = cidadesBase.slice().sort((a, b) => a.localeCompare(b));
+      cidades.forEach(cidade => {
+        const option = document.createElement('option');
+        option.value = cidade;
+        option.textContent = cidade;
+        if (cidadeSelecionada && cidade.toUpperCase() === cidadeSelecionada.toUpperCase()) {
+          option.selected = true;
         }
-      })
-      .catch(error => console.error('Erro ao buscar estados:', error));
+        cidadeSelect.appendChild(option);
+      });
+    }
+
+    popularCidades(estadoSelect.value || '', selectedCidade);
 
     estadoSelect.addEventListener('change', function() {
-      const uf = this.value;
-      cidadeSelect.innerHTML = '<option value="">Todas as Cidades</option>';
-      if (uf) {
-        fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/' + uf + '/municipios')
-          .then(response => response.json())
-          .then(data => {
-            data.sort((a, b) => a.nome.localeCompare(b.nome));
-            data.forEach(cidade => {
-              const option = document.createElement('option');
-              option.value = cidade.nome;
-              option.text = cidade.nome;
-              if (cidade.nome === cidadeFilter) {
-                option.selected = true;
-              }
-              cidadeSelect.add(option);
-            });
-          })
-          .catch(error => console.error('Erro ao buscar cidades:', error));
-      }
+      selectedCidade = '';
+      popularCidades(this.value || '', selectedCidade);
+    });
+
+    cidadeSelect.addEventListener('change', function() {
+      selectedCidade = this.value;
     });
   });
 </script>
