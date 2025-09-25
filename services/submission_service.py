@@ -14,19 +14,33 @@ class SubmissionService:
     """Serviço unificado para gerenciamento de submissões e atribuição de revisores."""
     
     @staticmethod
-    def create_submission(title: str, author_id: int, evento_id: int, 
-                         file_path: str = None, content: str = None, 
-                         abstract: str = None, area_id: int = None) -> Submission:
+    def create_submission(title: str, author_id: Optional[int], evento_id: int,
+                         file_path: str = None, content: str = None,
+                         abstract: str = None, area_id: int = None,
+                         attributes: Optional[dict] = None) -> Submission:
         """Cria uma nova submissão com validações."""
-        
+
         # Permitir múltiplas submissões do mesmo usuário para o mesmo evento
         # Validação de submissão única removida para permitir flexibilidade
-        
+
         # Validar se evento existe
         evento = Evento.query.get(evento_id)
         if not evento:
             raise ValueError("Evento não encontrado")
-        
+
+        resolved_author_id = author_id
+        if resolved_author_id is not None:
+            author = db.session.get(Usuario, resolved_author_id)
+            if not author:
+                logger.warning(
+                    "Autor %s não encontrado na tabela de usuários; "
+                    "continuando sem vínculo de autor.",
+                    resolved_author_id,
+                )
+                resolved_author_id = None
+
+        submission_attributes = attributes or {}
+
         # Validar tamanho do arquivo se fornecido
         if file_path:
             import os
@@ -44,14 +58,15 @@ class SubmissionService:
         
         submission = Submission(
             title=title,
-            author_id=author_id,
+            author_id=resolved_author_id,
             evento_id=evento_id,
             file_path=file_path,
             content=content,
             abstract=abstract,
             area_id=area_id,
             status='submitted',
-            code_hash=code_hash
+            code_hash=code_hash,
+            attributes=submission_attributes,
         )
         
         db.session.add(submission)
