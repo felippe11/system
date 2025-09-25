@@ -8,15 +8,31 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                         <h4 class="mb-0">
                             <i class="fas fa-file-alt text-primary me-2"></i>
                             Meus Trabalhos
                         </h4>
-                        <a href="{{ url_for('trabalho_routes.novo_trabalho') }}" class="btn btn-primary">
-                            <i class="fas fa-plus me-1"></i>
-                            Adicionar Trabalho
-                        </a>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <div class="btn-group" role="group" aria-label="Exportar trabalhos">
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
+                                        id="exportXlsxBtn"
+                                        data-export-url="{{ url_for('trabalho_routes.exportar_trabalhos_xlsx') }}">
+                                    <i class="bi bi-file-earmark-excel me-1"></i> Exportar XLSX
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
+                                        id="exportPdfBtn"
+                                        data-export-url="{{ url_for('trabalho_routes.exportar_trabalhos_pdf') }}">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+                                </button>
+                            </div>
+                            <a href="{{ url_for('trabalho_routes.novo_trabalho') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                Adicionar Trabalho
+                            </a>
+                        </div>
                     </div>
                     
                     <!-- Distribution Controls -->
@@ -64,6 +80,82 @@
                         {% endif %}
                     {% endwith %}
 
+                    <div class="card border-0 shadow-sm mb-4" id="workFilterCard">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-funnel-fill text-primary"></i>
+                                Filtros dos Trabalhos
+                            </h5>
+                            <small class="text-muted">Use as respostas do formulário para refinar a lista</small>
+                        </div>
+                        <div class="card-body" id="workFilterConfig" data-options='{{ trabalho_filter_options | tojson | safe }}'>
+                            {% if trabalho_filter_options %}
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-4">
+                                    <label for="workFilterQuestion" class="form-label fw-medium">Pergunta</label>
+                                    <select class="form-select" id="workFilterQuestion">
+                                        <option value="">Selecione uma pergunta...</option>
+                                        {% for item in trabalho_filter_options %}
+                                        <option value="{{ item.question }}">{{ item.question }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-medium">Respostas</label>
+                                    <div id="workFilterValueContainer" class="d-flex flex-wrap gap-2 align-items-center border rounded p-3 bg-light">
+                                        <span class="text-muted">Escolha uma pergunta para visualizar as respostas disponíveis.</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <button type="button" class="btn btn-primary" id="workAddFilter" disabled>
+                                    <i class="bi bi-plus-circle me-1"></i> Adicionar filtro
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="workClearFilters" disabled>
+                                    <i class="bi bi-x-circle me-1"></i> Limpar filtros
+                                </button>
+                            </div>
+                            <div class="mt-3">
+                                <h6 class="fw-semibold mb-2">Filtros aplicados</h6>
+                                <div id="workActiveFilters" class="d-flex flex-wrap gap-2">
+                                    <span class="text-muted">Nenhum filtro aplicado.</span>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small id="workFilterStats" class="text-muted"></small>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Ainda não há respostas suficientes para configurar filtros dinâmicos.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if reviewers_without_assignments %}
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white d-flex align-items-center gap-2">
+                            <i class="bi bi-people text-primary"></i>
+                            <span class="fw-semibold">Revisores sem trabalhos atribuídos</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">Atribua trabalhos para aproveitar melhor estes revisores disponíveis.</p>
+                            <ul class="list-unstyled mb-0">
+                                {% for reviewer in reviewers_without_assignments %}
+                                <li class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bi bi-person-circle text-primary"></i>
+                                    <span>{{ reviewer.nome }}</span>
+                                    {% if reviewer.email %}
+                                    <small class="text-muted">{{ reviewer.email }}</small>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% if trabalhos %}
                         <div class="mb-3">
                             <p class="text-muted">
@@ -73,7 +165,7 @@
                         </div>
                         
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-striped table-hover" id="trabalhosTable">
                                 <thead class="table-dark">
                                     <tr>
                                         <th width="50">
@@ -95,7 +187,7 @@
                                 </thead>
                                 <tbody>
                                     {% for trabalho in trabalhos %}
-                                        <tr>
+                                        <tr class="work-row" data-respostas='{{ (trabalho.respostas or {}) | tojson | safe }}'>
                                             <td>
                                                 <div class="form-check">
                                                     <input class="form-check-input work-checkbox" 
@@ -414,12 +506,19 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedCount: !!selectedCount
         });
     
+    function isRowVisible(checkbox) {
+        const row = checkbox.closest('tr');
+        return !row || row.style.display !== 'none';
+    }
+
     function updateSelectionCount() {
-        const checkedBoxes = document.querySelectorAll('input[name="trabalho_ids"]:checked');
-        const count = checkedBoxes.length;
-        
+        const visibleCheckedBoxes = Array.from(
+            document.querySelectorAll('input[name="trabalho_ids"]:checked')
+        ).filter(isRowVisible);
+        const count = visibleCheckedBoxes.length;
+
         selectedCount.textContent = count;
-        
+
         if (count > 0) {
             distributionControls.style.display = 'block';
             manualDistributionBtn.disabled = false;
@@ -431,39 +530,46 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Update select all checkbox state
-        const totalCheckboxes = workCheckboxes.length;
+        const visibleCheckboxes = Array.from(workCheckboxes).filter(isRowVisible);
+        const totalCheckboxes = visibleCheckboxes.length;
         if (count === 0) {
             selectAllCheckbox.indeterminate = false;
             selectAllCheckbox.checked = false;
-        } else if (count === totalCheckboxes) {
+        } else if (count === totalCheckboxes && totalCheckboxes > 0) {
             selectAllCheckbox.indeterminate = false;
             selectAllCheckbox.checked = true;
         } else {
             selectAllCheckbox.indeterminate = true;
         }
     }
-    
+
+    window.workSelectionUpdater = updateSelectionCount;
+
     // Individual checkbox change
     workCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectionCount);
     });
-    
+
     // Select all checkbox
     selectAllCheckbox.addEventListener('change', function() {
         workCheckboxes.forEach(checkbox => {
-            checkbox.checked = this.checked;
+            if (isRowVisible(checkbox)) {
+                checkbox.checked = this.checked;
+            }
         });
         updateSelectionCount();
     });
-    
+
     // Select all button
     selectAllBtn.addEventListener('click', function() {
         workCheckboxes.forEach(checkbox => {
-            checkbox.checked = true;
+            if (isRowVisible(checkbox)) {
+                checkbox.checked = true;
+            }
         });
         updateSelectionCount();
     });
-    
+
     // Clear selection button
     clearSelectionBtn.addEventListener('click', function() {
         workCheckboxes.forEach(checkbox => {
@@ -475,12 +581,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Distribution buttons
     manualDistributionBtn.addEventListener('click', function() {
         const selectedWorks = Array.from(document.querySelectorAll('.work-checkbox:checked'))
+            .filter(isRowVisible)
             .map(cb => cb.value);
         openManualDistributionModal(selectedWorks);
     });
     
     automaticDistributionBtn.addEventListener('click', function() {
         const selectedWorks = Array.from(document.querySelectorAll('.work-checkbox:checked'))
+            .filter(isRowVisible)
             .map(cb => cb.value);
         openAutomaticDistributionModal(selectedWorks);
     });
@@ -526,6 +634,321 @@ function openAutomaticDistributionModal(workIds) {
     
     modal.show();
 }
+
+document.addEventListener('DOMContentLoaded', initializeWorkFilters);
+document.addEventListener('DOMContentLoaded', attachExportHandlers);
+
+function initializeWorkFilters() {
+    const configContainer = document.getElementById('workFilterConfig');
+    if (!configContainer) {
+        return;
+    }
+
+    let metadata = [];
+    try {
+        metadata = JSON.parse(configContainer.dataset.options || '[]');
+    } catch (error) {
+        metadata = [];
+    }
+
+    const questionSelect = document.getElementById('workFilterQuestion');
+    const valueContainer = document.getElementById('workFilterValueContainer');
+    const addButton = document.getElementById('workAddFilter');
+    const clearButton = document.getElementById('workClearFilters');
+    const activeFiltersContainer = document.getElementById('workActiveFilters');
+    const statsElement = document.getElementById('workFilterStats');
+    const table = document.getElementById('trabalhosTable');
+
+    if (
+        !questionSelect ||
+        !valueContainer ||
+        !addButton ||
+        !clearButton ||
+        !activeFiltersContainer ||
+        !table
+    ) {
+        return;
+    }
+
+    const questionOptionsMap = {};
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return value
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    metadata.forEach((item) => {
+        if (item && item.question) {
+            questionOptionsMap[item.question] = Array.isArray(item.options)
+                ? item.options
+                : [];
+        }
+    });
+
+    const filterState = { activeFilters: [] };
+    configContainer._filterState = filterState;
+
+    function normalizeValue(value) {
+        if (value === null || value === undefined) {
+            return '__EMPTY__';
+        }
+        if (Array.isArray(value) || typeof value === 'object') {
+            try {
+                return JSON.stringify(value);
+            } catch (error) {
+                return String(value);
+            }
+        }
+        const text = value.toString().trim();
+        return text === '' ? '__EMPTY__' : text;
+    }
+
+    function renderValueOptions(question) {
+        const options = questionOptionsMap[question] || [];
+        valueContainer.innerHTML = '';
+
+        if (!options.length) {
+            valueContainer.innerHTML = '<span class="text-muted">Nenhuma resposta encontrada para esta pergunta.</span>';
+            addButton.disabled = true;
+            return;
+        }
+
+        options.forEach((option, index) => {
+            const optionId = `workFilterValue_${index}`;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'form-check form-check-inline';
+            wrapper.innerHTML = `
+                <input class="form-check-input" type="checkbox" id="${optionId}" value="${escapeHtml(option.value)}">
+                <label class="form-check-label" for="${optionId}">${escapeHtml(option.label)}</label>
+            `;
+            valueContainer.appendChild(wrapper);
+        });
+
+        addButton.disabled = true;
+    }
+
+    function getSelectedValues() {
+        return Array.from(
+            valueContainer.querySelectorAll('input[type="checkbox"]:checked')
+        ).map((input) => input.value);
+    }
+
+    function renderActiveFilters() {
+        const activeFilters = filterState.activeFilters;
+        if (!activeFilters.length) {
+            activeFiltersContainer.innerHTML = '<span class="text-muted">Nenhum filtro aplicado.</span>';
+            clearButton.disabled = true;
+            return;
+        }
+
+        activeFiltersContainer.innerHTML = '';
+        clearButton.disabled = false;
+
+        activeFilters.forEach((filter, index) => {
+            const labels = filter.values
+                .map((value) => {
+                    const option = (questionOptionsMap[filter.question] || []).find(
+                        (candidate) => candidate.value === value
+                    );
+                    return option ? option.label : value;
+                })
+                .join(', ');
+
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary d-flex align-items-center gap-2';
+            badge.innerHTML = `
+                <span>${escapeHtml(filter.question)}: ${escapeHtml(labels)}</span>
+                <button type="button" class="btn-close btn-close-white" aria-label="Remover filtro" data-filter-index="${index}"></button>
+            `;
+            activeFiltersContainer.appendChild(badge);
+        });
+    }
+
+    function applyFilters() {
+        const rows = Array.from(table.querySelectorAll('tbody tr.work-row'));
+        let visibleCount = 0;
+
+        rows.forEach((row) => {
+            if (!filterState.activeFilters.length) {
+                row.style.display = '';
+                visibleCount += 1;
+                return;
+            }
+
+            let rowMatches = true;
+            const rawDataset = row.getAttribute('data-respostas');
+            let respostas = {};
+            if (rawDataset) {
+                try {
+                    respostas = JSON.parse(rawDataset);
+                } catch (error) {
+                    respostas = {};
+                }
+            }
+
+            for (const filter of filterState.activeFilters) {
+                const resposta = respostas && Object.prototype.hasOwnProperty.call(respostas, filter.question)
+                    ? respostas[filter.question]
+                    : null;
+
+                const valoresResposta = Array.isArray(resposta)
+                    ? resposta
+                    : [resposta];
+
+                const respostasNormalizadas = valoresResposta.map((valor) => normalizeValue(valor));
+
+                const match = filter.values.some((value) => respostasNormalizadas.includes(value));
+                if (!match) {
+                    rowMatches = false;
+                    break;
+                }
+            }
+
+            row.style.display = rowMatches ? '' : 'none';
+            if (rowMatches) {
+                visibleCount += 1;
+            } else {
+                const checkbox = row.querySelector('.work-checkbox');
+                if (checkbox && checkbox.checked) {
+                    checkbox.checked = false;
+                }
+            }
+        });
+
+        if (typeof window.workSelectionUpdater === 'function') {
+            window.workSelectionUpdater();
+        }
+
+        if (statsElement) {
+            const totalRows = rows.length;
+            if (!filterState.activeFilters.length) {
+                statsElement.textContent = '';
+            } else {
+                statsElement.textContent = `Mostrando ${visibleCount} de ${totalRows} trabalho(s).`;
+            }
+        }
+    }
+
+    questionSelect.addEventListener('change', (event) => {
+        const question = event.target.value;
+        if (question) {
+            renderValueOptions(question);
+        } else {
+            valueContainer.innerHTML = '<span class="text-muted">Escolha uma pergunta para visualizar as respostas disponíveis.</span>';
+            addButton.disabled = true;
+        }
+    });
+
+    valueContainer.addEventListener('change', () => {
+        addButton.disabled = getSelectedValues().length === 0;
+    });
+
+    addButton.addEventListener('click', () => {
+        const question = questionSelect.value;
+        const values = getSelectedValues();
+        if (!question || !values.length) {
+            return;
+        }
+
+        const uniqueValues = Array.from(new Set(values));
+        const existingIndex = filterState.activeFilters.findIndex(
+            (filter) => filter.question === question
+        );
+
+        if (existingIndex >= 0) {
+            filterState.activeFilters[existingIndex].values = uniqueValues;
+        } else {
+            filterState.activeFilters.push({ question, values: uniqueValues });
+        }
+
+        valueContainer
+            .querySelectorAll('input[type="checkbox"]')
+            .forEach((input) => {
+                input.checked = false;
+            });
+        addButton.disabled = true;
+
+        renderActiveFilters();
+        applyFilters();
+    });
+
+    activeFiltersContainer.addEventListener('click', (event) => {
+        const target = event.target;
+        if (
+            target instanceof HTMLElement &&
+            target.matches('button[data-filter-index]')
+        ) {
+            const index = Number(target.getAttribute('data-filter-index'));
+            if (!Number.isNaN(index)) {
+                filterState.activeFilters.splice(index, 1);
+                renderActiveFilters();
+                applyFilters();
+            }
+        }
+    });
+
+    clearButton.addEventListener('click', () => {
+        filterState.activeFilters.splice(0, filterState.activeFilters.length);
+        renderActiveFilters();
+        applyFilters();
+        questionSelect.value = '';
+        valueContainer.innerHTML = '<span class="text-muted">Escolha uma pergunta para visualizar as respostas disponíveis.</span>';
+        addButton.disabled = true;
+        clearButton.disabled = true;
+    });
+
+    renderActiveFilters();
+    applyFilters();
+}
+
+function getActiveWorkFilters() {
+    const configContainer = document.getElementById('workFilterConfig');
+    if (
+        configContainer &&
+        configContainer._filterState &&
+        Array.isArray(configContainer._filterState.activeFilters)
+    ) {
+        return configContainer._filterState.activeFilters;
+    }
+    return [];
+}
+
+function attachExportHandlers() {
+    const xlsxBtn = document.getElementById('exportXlsxBtn');
+    const pdfBtn = document.getElementById('exportPdfBtn');
+
+    if (xlsxBtn) {
+        xlsxBtn.addEventListener('click', () => {
+            openWorkExport(xlsxBtn.dataset.exportUrl);
+        });
+    }
+
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', () => {
+            openWorkExport(pdfBtn.dataset.exportUrl);
+        });
+    }
+}
+
+function openWorkExport(baseUrl) {
+    if (!baseUrl) {
+        return;
+    }
+    const filters = getActiveWorkFilters();
+    const hasFilters = Array.isArray(filters) && filters.length > 0;
+    const query = hasFilters
+        ? `?filters=${encodeURIComponent(JSON.stringify(filters))}`
+        : '';
+    window.open(`${baseUrl}${query}`, '_blank', 'noopener');
+}
+
 
 function populateSelectedWorks(containerId, workIds) {
     const container = document.getElementById(containerId);

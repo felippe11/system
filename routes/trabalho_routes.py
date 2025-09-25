@@ -3,6 +3,8 @@ import os
 import secrets
 import unicodedata
 import uuid
+from collections import defaultdict
+from datetime import datetime
 from io import BytesIO
 from utils import endpoints
 
@@ -22,6 +24,18 @@ from utils.auth import login_required
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
 from extensions import db, csrf
 from models import (
     AuditLog,
@@ -37,6 +51,7 @@ from models.event import RespostaCampoFormulario, RespostaFormulario
 from models.review import Assignment
 from sqlalchemy import func
 from sqlalchemy.exc import DataError
+from sqlalchemy.orm import joinedload
 from services.submission_service import SubmissionService
 from utils.mfa import mfa_required
 
@@ -258,6 +273,321 @@ def _normalize_key(value: str) -> str:
     while "__" in normalized:
         normalized = normalized.replace("__", "_")
     return normalized.strip("_")
+
+
+EMPTY_FILTER_VALUE = "__EMPTY__"
+
+
+def _coerce_field_value(raw_value):
+    """Try to deserialize JSON-like values while preserving originals."""
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, str):
+        stripped = raw_value.strip()
+        if stripped.startswith("[") or stripped.startswith("{"):
+            try:
+                return json.loads(stripped)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                return raw_value
+        return raw_value
+    return raw_value
+
+
+def _stringify_field_value(value):
+    """Return a user-friendly string representation for display."""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        processed = []
+        for item in value:
+            if item is None:
+                continue
+            text = str(item).strip()
+            if text:
+                processed.append(text)
+        return ", ".join(processed)
+    if isinstance(value, dict):
+        try:
+            return json.dumps(value, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return str(value)
+    return str(value)
+
+
+def _sanitize_filter_value(value):
+    """Convert filter values to comparable strings."""
+    if value is None:
+        return ""
+    if isinstance(value, (list, dict)):
+        try:
+            return json.dumps(value, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return str(value)
+    return str(value).strip()
+
+
+def _filter_value_key(value):
+    sanitized = _sanitize_filter_value(value)
+    return sanitized if sanitized else EMPTY_FILTER_VALUE
+
+
+def _format_filter_label(value):
+    sanitized = _sanitize_filter_value(value)
+    return sanitized if sanitized else "Não informado"
+
+
+def _legacy_field_key(name: str) -> str:
+    if not isinstance(name, str):
+        return ""
+    return name.lower().replace(" ", "_")
+
+
+def _build_filter_options(question_value_map):
+    filter_options = []
+    for question in sorted(question_value_map.keys()):
+        options_map = question_value_map[question]
+        sorted_options = sorted(
+            options_map.items(),
+            key=lambda item: (
+                1 if item[0] == EMPTY_FILTER_VALUE else 0,
+                item[1].lower(),
+            ),
+        )
+        filter_options.append(
+            {
+                "question": question,
+                "options": [
+                    {"value": value_key, "label": label}
+                    for value_key, label in sorted_options
+                ],
+            }
+        )
+    return filter_options
+
+
+def _apply_trabalho_filters(trabalhos, filters):
+    if not filters:
+        return trabalhos
+
+    filtered = []
+    for trabalho in trabalhos:
+        respostas = trabalho.get("respostas", {}) or {}
+        include = True
+        for filtro in filters:
+            question = filtro.get("question")
+            valores = filtro.get("values") or []
+            if not question or not valores:
+                continue
+
+            resposta = respostas.get(question)
+            valores_resposta = resposta if isinstance(resposta, list) else [resposta]
+            normalizados = {_filter_value_key(valor) for valor in valores_resposta}
+
+            if not any(value in normalizados for value in valores):
+                include = False
+                break
+
+        if include:
+            filtered.append(trabalho)
+
+    return filtered
+
+
+def _prepare_trabalhos_dataset(formulario):
+    respostas = (
+        RespostaFormulario.query.options(
+            joinedload(RespostaFormulario.respostas_campos).joinedload(
+                RespostaCampoFormulario.campo
+            ),
+            joinedload(RespostaFormulario.evento),
+        )
+        .filter_by(formulario_id=formulario.id)
+        .order_by(RespostaFormulario.data_submissao.desc())
+        .all()
+    )
+
+    trabalho_ids = [resposta.id for resposta in respostas]
+
+    from models.user import Usuario
+
+    assignments_with_reviewers = db.session.query(
+        Assignment.resposta_formulario_id,
+        Usuario.nome.label("reviewer_name"),
+    ).join(
+        Usuario, Assignment.reviewer_id == Usuario.id
+    ).filter(
+        Assignment.resposta_formulario_id.in_(trabalho_ids)
+    ).all()
+
+    assignment_dict: dict[int, list[str]] = defaultdict(list)
+    for assignment in assignments_with_reviewers:
+        assignment_dict[assignment.resposta_formulario_id].append(
+            assignment.reviewer_name
+        )
+
+    question_value_labels: dict[str, dict[str, str]] = defaultdict(dict)
+    trabalhos = []
+    for resposta in respostas:
+        trabalho = {
+            "id": resposta.id,
+            "data_submissao": resposta.data_submissao,
+            "evento_id": resposta.evento_id,
+            "evento_nome": resposta.evento.nome if resposta.evento else None,
+        }
+
+        reviewer_names = assignment_dict.get(resposta.id, [])
+        trabalho["distribution_status"] = (
+            "Distribuído" if reviewer_names else "Não Distribuído"
+        )
+        trabalho["assignment_count"] = len(reviewer_names)
+        trabalho["reviewer_names"] = reviewer_names
+
+        respostas_dict = {}
+        for resposta_campo in resposta.respostas_campos:
+            campo_nome = resposta_campo.campo.nome or ""
+            coerced_value = _coerce_field_value(resposta_campo.valor)
+            respostas_dict[campo_nome] = coerced_value
+
+            trabalho[_legacy_field_key(campo_nome)] = _stringify_field_value(
+                coerced_value
+            )
+
+            valores_iteraveis = (
+                coerced_value if isinstance(coerced_value, list) else [coerced_value]
+            )
+            for valor in valores_iteraveis:
+                value_key = _filter_value_key(valor)
+                if value_key not in question_value_labels[campo_nome]:
+                    question_value_labels[campo_nome][value_key] = _format_filter_label(
+                        valor
+                    )
+
+        trabalho["respostas"] = respostas_dict
+        trabalhos.append(trabalho)
+
+    trabalho_filter_options = _build_filter_options(question_value_labels)
+
+    reviewers = (
+        Usuario.query.filter_by(tipo="revisor").order_by(Usuario.nome.asc()).all()
+    )
+    assignment_totals = dict(
+        db.session.query(Assignment.reviewer_id, func.count(Assignment.id))
+        .group_by(Assignment.reviewer_id)
+        .all()
+    )
+    reviewers_without_assignments = [
+        {
+            "id": reviewer.id,
+            "nome": reviewer.nome,
+            "email": reviewer.email,
+        }
+        for reviewer in reviewers
+        if assignment_totals.get(reviewer.id, 0) == 0
+    ]
+
+    return {
+        "trabalhos": trabalhos,
+        "filter_options": trabalho_filter_options,
+        "reviewers_without_assignments": reviewers_without_assignments,
+    }
+
+
+def _build_export_dataframe(trabalhos):
+    question_order = []
+    seen_questions = set()
+    for trabalho in trabalhos:
+        respostas = trabalho.get("respostas") or {}
+        for question in respostas.keys():
+            if question not in seen_questions:
+                seen_questions.add(question)
+                question_order.append(question)
+
+    base_columns = [
+        "ID",
+        "Título",
+        "Categoria",
+        "Rede de Ensino",
+        "Etapa de Ensino",
+        "Evento",
+        "Data de Cadastro",
+        "Status Distribuição",
+        "Total Revisores",
+        "Revisores",
+    ]
+    base_column_set = set(base_columns)
+
+    rows = []
+    for trabalho in trabalhos:
+        respostas = trabalho.get("respostas") or {}
+
+        data_submissao = trabalho.get("data_submissao")
+        if data_submissao:
+            data_formatada = data_submissao.strftime("%d/%m/%Y %H:%M")
+        else:
+            data_formatada = ""
+
+        row = {
+            "ID": trabalho.get("id"),
+            "Título": trabalho.get("título")
+            or _stringify_field_value(respostas.get("Título")),
+            "Categoria": trabalho.get("categoria")
+            or _stringify_field_value(respostas.get("Categoria")),
+            "Rede de Ensino": trabalho.get("rede_de_ensino")
+            or _stringify_field_value(respostas.get("Rede de Ensino")),
+            "Etapa de Ensino": trabalho.get("etapa_de_ensino")
+            or _stringify_field_value(respostas.get("Etapa de Ensino")),
+            "Evento": trabalho.get("evento_nome") or "",
+            "Data de Cadastro": data_formatada,
+            "Status Distribuição": trabalho.get("distribution_status"),
+            "Total Revisores": trabalho.get("assignment_count"),
+            "Revisores": ", ".join(trabalho.get("reviewer_names") or []),
+        }
+
+        for question in question_order:
+            if question in base_column_set:
+                continue
+            row[question] = _stringify_field_value(respostas.get(question))
+
+        rows.append(row)
+
+    ordered_columns = base_columns + [
+        question
+        for question in question_order
+        if question not in base_column_set
+    ]
+
+    if not rows:
+        return pd.DataFrame(columns=ordered_columns)
+
+    df = pd.DataFrame(rows)
+
+    # Garantir a ordem das colunas
+    for column in ordered_columns:
+        if column not in df.columns:
+            df[column] = ""
+    df = df[ordered_columns]
+
+    return df
+
+
+def _extract_filters_from_request():
+    filters_payload = request.values.get("filters")
+
+    if filters_payload is None and request.is_json:
+        body = request.get_json(silent=True) or {}
+        filters_payload = body.get("filters")
+
+    if isinstance(filters_payload, str):
+        try:
+            return json.loads(filters_payload)
+        except json.JSONDecodeError:
+            current_app.logger.warning("Não foi possível interpretar os filtros recebidos.")
+            return []
+
+    if isinstance(filters_payload, list):
+        return filters_payload
+
+    return []
 
 
 @trabalho_routes.route("/trabalhos/modelo", methods=["GET"])
@@ -503,56 +833,165 @@ def listar_trabalhos():
     if not formulario:
         return render_template("trabalhos/formulario_nao_encontrado.html")
     
-    # Buscar TODAS as respostas do formulário (não apenas do cliente atual)
-    # O cliente precisa ver todos os trabalhos para poder distribuí-los
-    respostas = RespostaFormulario.query.filter_by(
-        formulario_id=formulario.id
-    ).order_by(RespostaFormulario.data_submissao.desc()).all()
-    
-    # Buscar informações de distribuição para cada trabalho
-    trabalho_ids = [resposta.id for resposta in respostas]
-    
-    # Buscar assignments com informações dos revisores
-    from models.user import Usuario
-    assignments_with_reviewers = db.session.query(
-        Assignment.resposta_formulario_id,
-        Usuario.nome.label('reviewer_name')
-    ).join(
-        Usuario, Assignment.reviewer_id == Usuario.id
-    ).filter(
-        Assignment.resposta_formulario_id.in_(trabalho_ids)
-    ).all()
-    
-    # Organizar assignments por trabalho
-    assignment_dict = {}
-    for assignment in assignments_with_reviewers:
-        trabalho_id = assignment.resposta_formulario_id
-        if trabalho_id not in assignment_dict:
-            assignment_dict[trabalho_id] = []
-        assignment_dict[trabalho_id].append(assignment.reviewer_name)
-    
-    # Organizar dados dos trabalhos
-    trabalhos = []
-    for resposta in respostas:
-        trabalho = {'id': resposta.id, 'data_submissao': resposta.data_submissao}
-        
-        # Adicionar status de distribuição e revisores
-        reviewer_names = assignment_dict.get(resposta.id, [])
-        if reviewer_names:
-            trabalho['distribution_status'] = 'Distribuído'
-            trabalho['assignment_count'] = len(reviewer_names)
-            trabalho['reviewer_names'] = reviewer_names
-        else:
-            trabalho['distribution_status'] = 'Não Distribuído'
-            trabalho['assignment_count'] = 0
-            trabalho['reviewer_names'] = []
-        
-        for resposta_campo in resposta.respostas_campos:
-            campo_nome = resposta_campo.campo.nome
-            trabalho[campo_nome.lower().replace(' ', '_')] = resposta_campo.valor
-        trabalhos.append(trabalho)
-    
-    return render_template("trabalhos/listar_trabalhos.html", trabalhos=trabalhos)
+    dataset = _prepare_trabalhos_dataset(formulario)
+
+    return render_template(
+        "trabalhos/listar_trabalhos.html",
+        trabalhos=dataset["trabalhos"],
+        trabalho_filter_options=dataset["filter_options"],
+        reviewers_without_assignments=dataset["reviewers_without_assignments"],
+    )
+
+
+@trabalho_routes.route("/trabalhos/export/xlsx")
+@login_required
+def exportar_trabalhos_xlsx():
+    if current_user.tipo not in ["cliente", "admin"]:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    formulario = get_trabalhos_form()
+    if not formulario:
+        flash("Formulário de trabalhos não configurado.", "warning")
+        return redirect(url_for("trabalho_routes.listar_trabalhos"))
+
+    dataset = _prepare_trabalhos_dataset(formulario)
+    filtros = _extract_filters_from_request()
+    trabalhos_filtrados = _apply_trabalho_filters(dataset["trabalhos"], filtros)
+
+    dataframe = _build_export_dataframe(trabalhos_filtrados)
+
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        dataframe.to_excel(writer, index=False, sheet_name="Trabalhos")
+    buffer.seek(0)
+
+    filename = f"trabalhos_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@trabalho_routes.route("/trabalhos/export/pdf")
+@login_required
+def exportar_trabalhos_pdf():
+    if current_user.tipo not in ["cliente", "admin"]:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    formulario = get_trabalhos_form()
+    if not formulario:
+        flash("Formulário de trabalhos não configurado.", "warning")
+        return redirect(url_for("trabalho_routes.listar_trabalhos"))
+
+    dataset = _prepare_trabalhos_dataset(formulario)
+    filtros = _extract_filters_from_request()
+    trabalhos_filtrados = _apply_trabalho_filters(dataset["trabalhos"], filtros)
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=1.5 * cm,
+        rightMargin=1.5 * cm,
+        topMargin=1.5 * cm,
+        bottomMargin=1.5 * cm,
+    )
+
+    styles = getSampleStyleSheet()
+    elements = [Paragraph("Relatório de Trabalhos", styles["Title"])]
+
+    resumo_texto = f"Total de trabalhos: {len(trabalhos_filtrados)}"
+    elements.append(Spacer(1, 0.3 * cm))
+    elements.append(Paragraph(resumo_texto, styles["Normal"]))
+
+    if filtros:
+        filtros_legiveis = []
+        options_lookup = {
+            (item["question"], option["value"]): option["label"]
+            for item in dataset["filter_options"]
+            for option in item.get("options", [])
+        }
+        for filtro in filtros:
+            pergunta = filtro.get("question")
+            valores = filtro.get("values") or []
+            if not pergunta or not valores:
+                continue
+            labels = [
+                options_lookup.get((pergunta, valor), valor)
+                for valor in valores
+            ]
+            filtros_legiveis.append(f"{pergunta}: {', '.join(labels)}")
+        if filtros_legiveis:
+            elements.append(Spacer(1, 0.2 * cm))
+            elements.append(
+                Paragraph(
+                    "Filtros aplicados: " + " | ".join(filtros_legiveis),
+                    styles["Italic"],
+                )
+            )
+
+    elements.append(Spacer(1, 0.4 * cm))
+
+    header = ["ID", "Título", "Categoria", "Rede", "Status", "Revisores"]
+    tabela_dados = [header]
+
+    if trabalhos_filtrados:
+        for trabalho in trabalhos_filtrados:
+            respostas = trabalho.get("respostas") or {}
+            tabela_dados.append(
+                [
+                    trabalho.get("id") or "",
+                    trabalho.get("título")
+                    or _stringify_field_value(respostas.get("Título"))
+                    or "",
+                    trabalho.get("categoria")
+                    or _stringify_field_value(respostas.get("Categoria"))
+                    or "",
+                    trabalho.get("rede_de_ensino")
+                    or _stringify_field_value(respostas.get("Rede de Ensino"))
+                    or "",
+                    trabalho.get("distribution_status") or "",
+                    ", ".join(trabalho.get("reviewer_names") or []),
+                ]
+            )
+    else:
+        tabela_dados.append(["-", "Sem dados disponíveis", "", "", "", ""])
+
+    tabela = Table(
+        tabela_dados,
+        colWidths=[1.5 * cm, 5.5 * cm, 3.5 * cm, 3.0 * cm, 2.5 * cm, 4.5 * cm],
+        repeatRows=1,
+    )
+    tabela.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0d6efd")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
+                ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    elements.append(tabela)
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    filename = f"trabalhos_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/pdf",
+    )
 
 
 @trabalho_routes.route("/trabalhos/novo", methods=["GET", "POST"])

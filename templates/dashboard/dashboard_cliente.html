@@ -2171,10 +2171,63 @@
       </div>
     </div>
 
+    <div class="card mt-4 shadow-sm">
+      <div class="card-header bg-light d-flex align-items-center justify-content-between">
+        <h6 class="fw-bold m-0 d-flex align-items-center gap-2">
+          <i class="bi bi-funnel-fill text-primary"></i>
+          Configuração Rápida de Filtros
+        </h6>
+        <small class="text-muted">Filtre candidatos pelas respostas do formulário</small>
+      </div>
+      <div class="card-body" id="revisorFilters" data-options='{{ revisor_filter_options | tojson | safe }}'>
+        {% if revisor_filter_options %}
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label for="revisorFilterQuestion" class="form-label fw-medium">Pergunta</label>
+            <select class="form-select" id="revisorFilterQuestion">
+              <option value="">Selecione uma pergunta...</option>
+              {% for item in revisor_filter_options %}
+              <option value="{{ item.question }}">{{ item.question }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-medium">Respostas</label>
+            <div id="revisorFilterValueContainer" class="d-flex flex-wrap gap-2 align-items-center border rounded p-3 bg-light">
+              <span class="text-muted">Selecione uma pergunta para ver as opções disponíveis.</span>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" class="btn btn-primary" id="revisorAddFilter" disabled>
+            <i class="bi bi-plus-circle me-1"></i> Adicionar filtro
+          </button>
+          <button type="button" class="btn btn-outline-secondary" id="revisorClearFilters" disabled>
+            <i class="bi bi-x-circle me-1"></i> Limpar filtros
+          </button>
+        </div>
+        <div class="mt-3">
+          <h6 class="fw-semibold mb-2">Filtros aplicados</h6>
+          <div id="revisorActiveFilters" class="d-flex flex-wrap gap-2">
+            <span class="text-muted">Nenhum filtro aplicado.</span>
+          </div>
+        </div>
+        <div class="mt-2">
+          <small id="revisorFilterStats" class="text-muted"></small>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+          <i class="bi bi-info-circle me-2"></i>
+          Nenhuma resposta de formulário disponível para configuração de filtros neste momento.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
     <h5 class="fw-bold mt-4">Candidaturas via Formulário</h5>
 
     <div class="table-responsive table-responsive-sm table-responsive-md table-responsive-lg" style="max-height: 400px; overflow-x: auto; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; min-width: 100%;">
-      <table class="table table-sm table-hover mb-0" style="min-width: 600px;">
+      <table class="table table-sm table-hover mb-0" style="min-width: 600px;" id="revisorCandidatesTable">
         <thead class="table-light sticky-top">
           <tr>
             <th class="text-nowrap" style="min-width: 150px;">Nome</th>
@@ -2185,7 +2238,7 @@
         </thead>
         <tbody>
         {% for cand in revisor_candidaturas %}
-        <tr>
+        <tr class="revisor-row" data-respostas='{{ (cand.respostas or {}) | tojson | safe }}'>
           <td class="text-truncate" style="max-width: 200px;" title="{{ cand.nome or cand.email }}">{{ cand.nome or cand.email }}</td>
           <td class="text-center">{{ cand.etapa_atual }}</td>
           <td class="text-center">
@@ -2722,6 +2775,259 @@
     `;
     
     containerResumo.style.display = 'block';
+  }
+
+  document.addEventListener('DOMContentLoaded', initializeRevisorFilters);
+
+  function initializeRevisorFilters() {
+    const filtersContainer = document.getElementById('revisorFilters');
+    if (!filtersContainer) {
+      return;
+    }
+
+    let filterMetadata = [];
+    try {
+      filterMetadata = JSON.parse(filtersContainer.dataset.options || '[]');
+    } catch (error) {
+      filterMetadata = [];
+    }
+
+    const questionSelect = document.getElementById('revisorFilterQuestion');
+    const valueContainer = document.getElementById('revisorFilterValueContainer');
+    const addButton = document.getElementById('revisorAddFilter');
+    const clearButton = document.getElementById('revisorClearFilters');
+    const activeFiltersContainer = document.getElementById('revisorActiveFilters');
+    const statsElement = document.getElementById('revisorFilterStats');
+    const candidateTable = document.getElementById('revisorCandidatesTable');
+
+    if (
+      !questionSelect ||
+      !valueContainer ||
+      !addButton ||
+      !clearButton ||
+      !activeFiltersContainer ||
+      !candidateTable
+    ) {
+      return;
+    }
+
+    const questionOptionsMap = {};
+    filterMetadata.forEach((item) => {
+      if (item && item.question) {
+        questionOptionsMap[item.question] = Array.isArray(item.options)
+          ? item.options
+          : [];
+      }
+    });
+
+    let activeFilters = [];
+
+    function normalizeValue(value) {
+      if (value === null || value === undefined) {
+        return '__EMPTY__';
+      }
+      if (Array.isArray(value) || typeof value === 'object') {
+        try {
+          return JSON.stringify(value);
+        } catch (error) {
+          return String(value);
+        }
+      }
+      const text = value.toString().trim();
+      return text === '' ? '__EMPTY__' : text;
+    }
+
+    function renderValueOptions(question) {
+      const options = questionOptionsMap[question] || [];
+      valueContainer.innerHTML = '';
+
+      if (!options.length) {
+        valueContainer.innerHTML = '<span class="text-muted">Nenhuma resposta encontrada para esta pergunta.</span>';
+        addButton.disabled = true;
+        return;
+      }
+
+      options.forEach((option, index) => {
+        const optionId = `revisorFilterValue_${index}`;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'form-check form-check-inline';
+        wrapper.innerHTML = `
+          <input class="form-check-input" type="checkbox" id="${optionId}" value="${option.value}">
+          <label class="form-check-label" for="${optionId}">${option.label}</label>
+        `;
+        valueContainer.appendChild(wrapper);
+      });
+
+      addButton.disabled = true;
+    }
+
+    function getSelectedValues() {
+      return Array.from(
+        valueContainer.querySelectorAll('input[type="checkbox"]:checked')
+      ).map((input) => input.value);
+    }
+
+    function renderActiveFilters() {
+      if (!activeFilters.length) {
+        activeFiltersContainer.innerHTML = '<span class="text-muted">Nenhum filtro aplicado.</span>';
+        clearButton.disabled = true;
+        return;
+      }
+
+      activeFiltersContainer.innerHTML = '';
+      clearButton.disabled = false;
+
+      activeFilters.forEach((filter, index) => {
+        const labels = filter.values
+          .map((value) => {
+            const option = (questionOptionsMap[filter.question] || []).find(
+              (candidate) => candidate.value === value
+            );
+            return option ? option.label : value;
+          })
+          .join(', ');
+
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-primary d-flex align-items-center gap-2';
+        badge.innerHTML = `
+          <span>${filter.question}: ${labels}</span>
+          <button type="button" class="btn-close btn-close-white" aria-label="Remover filtro" data-filter-index="${index}"></button>
+        `;
+        activeFiltersContainer.appendChild(badge);
+      });
+    }
+
+    function applyFilters() {
+      const rows = Array.from(candidateTable.querySelectorAll('tbody tr.revisor-row'));
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        if (!activeFilters.length) {
+          row.style.display = '';
+          visibleCount += 1;
+          return;
+        }
+
+        let respostas = {};
+        const rawDataset = row.getAttribute('data-respostas');
+        if (rawDataset) {
+          try {
+            respostas = JSON.parse(rawDataset);
+          } catch (error) {
+            respostas = {};
+          }
+        }
+
+        let matchesAll = true;
+
+        for (const filter of activeFilters) {
+          const resposta = respostas && Object.prototype.hasOwnProperty.call(respostas, filter.question)
+            ? respostas[filter.question]
+            : null;
+
+          const valoresResposta = Array.isArray(resposta)
+            ? resposta
+            : [resposta];
+
+          const respostasNormalizadas = valoresResposta.map((valor) => normalizeValue(valor));
+
+          const hasMatch = filter.values.some((value) =>
+            respostasNormalizadas.includes(value)
+          );
+
+          if (!hasMatch) {
+            matchesAll = false;
+            break;
+          }
+        }
+
+        row.style.display = matchesAll ? '' : 'none';
+        if (matchesAll) {
+          visibleCount += 1;
+        }
+      });
+
+      if (statsElement) {
+        const totalRows = candidateTable.querySelectorAll('tbody tr.revisor-row').length;
+        if (!activeFilters.length) {
+          statsElement.textContent = '';
+        } else {
+          statsElement.textContent = `Mostrando ${visibleCount} de ${totalRows} candidatura(s).`;
+        }
+      }
+    }
+
+    questionSelect.addEventListener('change', (event) => {
+      const question = event.target.value;
+      if (question) {
+        renderValueOptions(question);
+      } else {
+        valueContainer.innerHTML = '<span class="text-muted">Selecione uma pergunta para ver as opções disponíveis.</span>';
+        addButton.disabled = true;
+      }
+    });
+
+    valueContainer.addEventListener('change', () => {
+      const hasSelection = getSelectedValues().length > 0;
+      addButton.disabled = !hasSelection;
+    });
+
+    addButton.addEventListener('click', () => {
+      const question = questionSelect.value;
+      const values = getSelectedValues();
+      if (!question || !values.length) {
+        return;
+      }
+
+      const uniqueValues = Array.from(new Set(values));
+      const existingIndex = activeFilters.findIndex(
+        (filter) => filter.question === question
+      );
+
+      if (existingIndex >= 0) {
+        activeFilters[existingIndex].values = uniqueValues;
+      } else {
+        activeFilters.push({ question, values: uniqueValues });
+      }
+
+      valueContainer
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach((input) => {
+          input.checked = false;
+        });
+      addButton.disabled = true;
+
+      renderActiveFilters();
+      applyFilters();
+    });
+
+    activeFiltersContainer.addEventListener('click', (event) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.matches('button[data-filter-index]')
+      ) {
+        const index = Number(target.getAttribute('data-filter-index'));
+        if (!Number.isNaN(index)) {
+          activeFilters.splice(index, 1);
+          renderActiveFilters();
+          applyFilters();
+        }
+      }
+    });
+
+    clearButton.addEventListener('click', () => {
+      activeFilters = [];
+      renderActiveFilters();
+      applyFilters();
+      questionSelect.value = '';
+      valueContainer.innerHTML = '<span class="text-muted">Selecione uma pergunta para ver as opções disponíveis.</span>';
+      addButton.disabled = true;
+      clearButton.disabled = true;
+    });
+
+    renderActiveFilters();
+    applyFilters();
   }
 
   // Carregar alertas e resumo orçamentário quando a página carregar

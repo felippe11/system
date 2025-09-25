@@ -15,6 +15,7 @@ from extensions import db
 import logging
 from utils import endpoints
 from utils.barema import normalize_barema_requisitos
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import func, and_, or_, desc
@@ -316,6 +317,10 @@ def dashboard_cliente():
         )
         data['revisor_candidaturas_aprovadas'] = revisor_candidaturas_aprovadas
 
+        data['revisor_filter_options'] = _build_revisor_filter_options(
+            revisor_candidaturas
+        )
+
         formulario_trabalho = Formulario.query.filter_by(
             nome='Formulário de Trabalhos'
         ).first()
@@ -329,6 +334,65 @@ def dashboard_cliente():
         usuario=current_user,
         **data,
     )
+
+
+def _build_revisor_filter_options(candidaturas):
+    """Create filter metadata based on reviewer application responses."""
+    question_values: dict[str, dict[str, str]] = defaultdict(dict)
+
+    for candidatura in candidaturas:
+        respostas = getattr(candidatura, 'respostas', None) or {}
+        if not isinstance(respostas, dict):
+            continue
+
+        for pergunta, valor in respostas.items():
+            if not pergunta:
+                continue
+
+            raw_values = valor if isinstance(valor, list) else [valor]
+            for raw_value in raw_values:
+                sanitized_value = _sanitize_filter_value(raw_value)
+                value_key = sanitized_value or '__EMPTY__'
+                if value_key not in question_values[pergunta]:
+                    question_values[pergunta][value_key] = (
+                        sanitized_value if sanitized_value else 'Não informado'
+                    )
+
+    filter_options = []
+    for pergunta in sorted(question_values.keys()):
+        options_map = question_values[pergunta]
+
+        sorted_options = sorted(
+            options_map.items(),
+            key=lambda item: (
+                1 if item[0] == '__EMPTY__' else 0,
+                item[1].lower(),
+            ),
+        )
+
+        filter_options.append(
+            {
+                'question': pergunta,
+                'options': [
+                    {'value': value_key, 'label': label}
+                    for value_key, label in sorted_options
+                ],
+            }
+        )
+
+    return filter_options
+
+
+def _sanitize_filter_value(value):
+    """Normalize filter values for consistent comparisons."""
+    if value is None:
+        return ''
+    if isinstance(value, (list, dict)):
+        try:
+            return json.dumps(value, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return str(value)
+    return str(value).strip()
     
 def obter_configuracao_do_cliente(cliente_id):
     config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
