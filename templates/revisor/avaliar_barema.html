@@ -67,16 +67,13 @@
                                             <div class="col-md-8">
                                                 <h6 class="criterio-titulo">
                                                     {{ criterio.nome }}
-                                                    {% if criterio.peso %}
-                                                        <small class="text-muted">(Peso: {{ criterio.peso }})</small>
-                                                    {% endif %}
                                                 </h6>
                                                 {% if criterio.descricao %}
                                                     <p class="criterio-descricao text-muted mb-2">{{ criterio.descricao }}</p>
                                                 {% endif %}
                                                 <div class="d-flex flex-wrap gap-3 small text-muted">
                                                     {% if criterio.nota_maxima %}
-                                                        <span class="text-info">Nota máxima: {{ criterio.nota_maxima|round(2) }}</span>
+                                                        <span style="color: #003366; font-weight: bold; background-color: #faeec5; padding: 4px 8px; border-radius: 4px;">Nota máxima: {{ criterio.nota_maxima|round(2) }}</span>
                                                     {% endif %}
                                                     {% if criterio.justificativa_minima and criterio.justificativa_minima > 0 %}
                                                         <span class="text-warning">
