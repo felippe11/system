@@ -1,0 +1,1100 @@
+{% extends "base.html" %}
+
+{% block title %}Distribuição Manual{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .selected-work-card {
+        max-height: 420px;
+        overflow-y: auto;
+    }
+    .selected-work-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .selected-work-item:last-child {
+        border-bottom: none;
+    }
+    .selected-work-item .work-meta {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    .reviewer-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background-color: #fff;
+    }
+    .reviewer-item + .reviewer-item {
+        margin-top: 0.75rem;
+    }
+    .manual-filter-card {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+    .manual-filter-card .form-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .manual-filter-card small {
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+    #manualReviewerFilterValueContainer {
+        max-height: 140px;
+        overflow-y: auto;
+    }
+    #reviewersList {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    #assignmentsList {
+        max-height: 220px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background-color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-user-edit text-primary me-2"></i>
+                Distribuição Manual de Trabalhos
+            </h2>
+            <p class="text-muted mb-0">
+                {{ selected_works|length }} trabalho(s) selecionado(s) para atribuição manual.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('trabalho_routes.listar_trabalhos') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Voltar para a lista de trabalhos
+            </a>
+        </div>
+    </div>
+
+    {% if manual_mode == 'reevaluation' %}
+    <div class="alert alert-warning" role="alert">
+        <i class="fas fa-undo me-2"></i>
+        Modo de reavaliação ativo. As atribuições criadas solicitarão novas avaliações aos revisores selecionados.
+    </div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-1 text-primary"></i>
+                        Trabalhos Selecionados
+                    </h5>
+                </div>
+                <div class="card-body selected-work-card" id="selectedWorksList"></div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <small class="text-muted" id="selectedWorkSummary"></small>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllWorksBtn">
+                            Selecionar todos
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearWorksSelectionBtn">
+                            Limpar seleção
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-1 text-primary"></i>
+                        Distribuir revisores
+                    </h5>
+                    <span class="badge bg-light text-dark" id="assignmentCounter">0 atribuição(ões) planejadas</span>
+                </div>
+                <div class="card-body">
+                    <div id="manualDistributionAlert" class="alert alert-warning d-none" role="alert"></div>
+
+                    <div class="row g-3 align-items-end mb-2">
+                        <div class="col-lg-6">
+                            <label class="form-label" for="globalDeadline">Prazo global para os revisores</label>
+                            <input type="date" class="form-control" id="globalDeadline">
+                            <small class="text-muted">Defina essa data para que todos os revisores vejam o mesmo prazo nos painéis deles.</small>
+                        </div>
+                        <div class="col-lg-3 d-grid">
+                            <button type="button" class="btn btn-outline-primary mt-4" id="applyGlobalDeadline" disabled>
+                                <i class="fas fa-calendar-check me-1"></i>
+                                Aplicar para todos
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <label class="form-label" for="reviewerSearch">Buscar revisor</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" id="reviewerSearch" class="form-control" placeholder="Nome ou e-mail do revisor">
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label" for="manualDeadline">Prazo para revisão</label>
+                            <input type="date" class="form-control" id="manualDeadline" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-12">
+                            <label class="form-label" for="manualNotes">Observações (opcional)</label>
+                            <textarea class="form-control" id="manualNotes" rows="2" placeholder="Inclua orientações adicionais para os revisores"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-12">
+                            <div class="manual-filter-card" id="manualReviewerFilter" data-options='{{ reviewer_filter_options | tojson | safe }}'>
+                                {% if reviewer_filter_options %}
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label" for="manualReviewerFilterQuestion">Pergunta</label>
+                                        <select class="form-select form-select-sm" id="manualReviewerFilterQuestion">
+                                            <option value="">Selecione...</option>
+                                            {% for item in reviewer_filter_options %}
+                                            <option value="{{ item.question }}">{{ item.question }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-7">
+                                        <label class="form-label">Respostas</label>
+                                        <div id="manualReviewerFilterValueContainer" class="bg-white border rounded p-2">
+                                            <span class="text-muted small">Escolha uma pergunta para listar respostas.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <button type="button" class="btn btn-sm btn-primary" id="manualReviewerAddFilter" disabled>
+                                        <i class="bi bi-plus-circle me-1"></i>Adicionar filtro
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="manualReviewerClearFilters" disabled>
+                                        <i class="bi bi-x-circle me-1"></i>Limpar filtros
+                                    </button>
+                                </div>
+                                <div class="mt-3">
+                                    <h6 class="fw-semibold mb-2" style="font-size:0.9rem;">Filtros aplicados</h6>
+                                    <div id="manualReviewerActiveFilters" class="d-flex flex-wrap gap-2">
+                                        <span class="text-muted small">Nenhum filtro aplicado.</span>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <p class="text-muted small mb-0">Nenhum filtro adicional disponível para revisores.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-lg-6">
+                            <h6 class="fw-semibold mb-2"><i class="fas fa-user-check me-1 text-success"></i>Revisores disponíveis</h6>
+                            <div id="reviewersList" class="bg-light border rounded p-2">
+                                <p class="text-muted text-center mb-0">Carregando revisores...</p>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-semibold mb-2"><i class="fas fa-clipboard-list me-1 text-primary"></i>Atribuições planejadas</h6>
+                            <div id="assignmentsList" class="p-3">
+                                <p class="text-muted text-center mb-0">Nenhuma atribuição criada ainda</p>
+                            </div>
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="button" class="btn btn-outline-secondary" id="clearAssignmentsBtn" disabled>
+                                    <i class="fas fa-eraser me-1"></i>Limpar atribuições
+                                </button>
+                                <button type="button" class="btn btn-success" id="executeManualDistribution" disabled>
+                                    <i class="fas fa-check me-1"></i>Confirmar distribuição
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-star me-1 text-warning"></i>
+                Avaliações registradas
+            </h5>
+            <small class="text-muted">Acompanhamento das avaliações existentes para os trabalhos selecionados</small>
+        </div>
+        <div class="card-body p-0">
+            {% if assignments %}
+            <div class="table-responsive">
+                <table class="table table-striped mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Trabalho</th>
+                            <th>Revisor</th>
+                            <th>Prazo</th>
+                            <th>Status</th>
+                            <th>Avaliação</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in assignments %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.work_title }}</strong><br>
+                                <small class="text-muted">ID {{ item.work_id }}</small>
+                            </td>
+                            <td>
+                                {% if item.reviewer_name %}
+                                <div>{{ item.reviewer_name }}</div>
+                                {% endif %}
+                                {% if item.reviewer_email %}
+                                <small class="text-muted">{{ item.reviewer_email }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.deadline %}
+                                {{ item.deadline.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                <span class="text-muted">Sem prazo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.completed %}
+                                <span class="badge bg-success">Concluída</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Pendente</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.avaliacao_id %}
+                                <div class="d-flex flex-column">
+                                    {% if item.avaliacao_nota is not none %}
+                                    <span><strong>Nota:</strong> {{ '%.2f'|format(item.avaliacao_nota) }}</span>
+                                    {% endif %}
+                                    {% if item.avaliacao_data %}
+                                    <small class="text-muted">{{ item.avaliacao_data.strftime('%d/%m/%Y %H:%M') }}</small>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <span class="text-muted">Sem avaliação</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group" role="group">
+                                    {% if item.avaliacao_id %}
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('trabalho_routes.visualizar_avaliacao_revisor', avaliacao_id=item.avaliacao_id) }}">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <form method="post" action="{{ url_for('trabalho_routes.excluir_avaliacao_revisor', avaliacao_id=item.avaliacao_id) }}" class="ms-1" onsubmit="return confirm('Deseja realmente excluir esta avaliação? Esta ação é irreversível.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="{{ next_url }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                        <i class="fas fa-eye-slash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="py-5 text-center">
+                <i class="fas fa-clipboard-check fa-2x text-muted mb-2"></i>
+                <p class="text-muted mb-0">Nenhuma atribuição existente para os trabalhos selecionados.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<div id="manualDistributionConfig"
+     data-mode="{{ manual_mode }}"
+     data-selected-works='{{ selected_works | tojson | safe }}'
+     data-reviewer-filter-options='{{ reviewer_filter_options | tojson | safe }}'
+     data-reviewers='{{ reviewers | tojson | safe }}'></div>
+<script>
+(function() {
+    const configEl = document.getElementById('manualDistributionConfig');
+    if (!configEl) {
+        return;
+    }
+
+    let manualDistributionMode = configEl.dataset.mode === 'reevaluation' ? 'reevaluation' : 'assign';
+    let selectedWorks = [];
+    let selectedWorkLookup = {};
+    let activeWorkIds = new Set();
+    let manualAssignments = [];
+    let manualReviewerFilterOptions = [];
+    let manualReviewerActiveFilters = [];
+    let allManualReviewers = [];
+    let filteredManualReviewers = [];
+    let reviewerSearchTerm = '';
+    let selectedWorkIdsSnapshot = [];
+
+    const manualReviewerFilterElements = {
+        questionSelect: null,
+        valueContainer: null,
+        addButton: null,
+        clearButton: null,
+        activeContainer: null,
+    };
+
+    function parseJsonDataset(value, fallback) {
+        if (!value) {
+            return fallback;
+        }
+        try {
+            return JSON.parse(value);
+        } catch (error) {
+            console.warn('Não foi possível interpretar os dados da página.', error);
+            return fallback;
+        }
+    }
+
+    function escapeHtml(rawValue) {
+        if (rawValue === null || rawValue === undefined) {
+            return '';
+        }
+        return String(rawValue)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function escapeAttribute(rawValue) {
+        if (rawValue === null || rawValue === undefined) {
+            return '';
+        }
+        return String(rawValue)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function initializeSelectedWorks(works) {
+        selectedWorks = Array.isArray(works) ? works : [];
+        selectedWorkLookup = {};
+        activeWorkIds = new Set();
+        selectedWorkIdsSnapshot = [];
+        selectedWorks.forEach((work) => {
+            if (work && work.id !== undefined) {
+                const id = String(work.id);
+                selectedWorkLookup[id] = work;
+                activeWorkIds.add(id);
+                selectedWorkIdsSnapshot.push(work.id);
+            }
+        });
+        renderSelectedWorksList();
+        updateSelectedWorkSummary();
+    }
+
+    function renderSelectedWorksList() {
+        const container = document.getElementById('selectedWorksList');
+        if (!container) {
+            return;
+        }
+        if (!selectedWorks.length) {
+            container.innerHTML = '<p class="text-muted mb-0">Nenhum trabalho selecionado.</p>';
+            return;
+        }
+        let html = '';
+        selectedWorks.forEach((work) => {
+            const id = work.id;
+            const idKey = String(id);
+            const plannedAssignments = manualAssignments.filter(
+                (assignment) => assignment.workId === Number(id)
+            );
+            const reviewers = Array.isArray(work.reviewer_names) && work.reviewer_names.length
+                ? escapeHtml(work.reviewer_names.join(', '))
+                : 'Nenhum revisor atribuído';
+            const distributionStatus = work.distribution_status || 'Não distribuído';
+            const plannedCount = plannedAssignments.length;
+            const plannedLabel = plannedCount
+                ? `<span class="badge bg-primary ms-2">${plannedCount} nova(s)</span>`
+                : '';
+            html += `
+                <div class="selected-work-item">
+                    <div class="form-check">
+                        <input class="form-check-input selected-work-checkbox" type="checkbox" value="${idKey}" id="selectedWork_${idKey}" ${activeWorkIds.has(idKey) ? 'checked' : ''}>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">${escapeHtml(work.title)}</div>
+                        <div class="work-meta">
+                            <span class="me-2"><i class="fas fa-tag me-1"></i>${escapeHtml(work.category || 'Sem categoria')}</span>
+                            <span class="me-2"><i class="fas fa-users me-1"></i>${reviewers}${plannedLabel}</span>
+                            <span><i class="fas fa-info-circle me-1"></i>${escapeHtml(distributionStatus)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        updateSelectedWorkSummary();
+    }
+
+    function updateSelectedWorkSummary() {
+        const summaryEl = document.getElementById('selectedWorkSummary');
+        if (!summaryEl) {
+            return;
+        }
+        summaryEl.textContent = `${activeWorkIds.size} de ${selectedWorks.length} trabalho(s) selecionado(s)`;
+    }
+
+    function setDefaultDeadline() {
+        const deadlineInput = document.getElementById('manualDeadline');
+        const globalDeadlineInput = document.getElementById('globalDeadline');
+        if (!deadlineInput || deadlineInput.value) {
+            return;
+        }
+        const today = new Date();
+        today.setDate(today.getDate() + 7);
+        deadlineInput.value = today.toISOString().split('T')[0];
+        if (globalDeadlineInput && !globalDeadlineInput.value) {
+            globalDeadlineInput.value = deadlineInput.value;
+        }
+    }
+
+    function loadAvailableReviewers() {
+        fetch('/api/reviewers', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                if (!response.ok) {
+                    throw new Error('Falha ao carregar revisores');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) {
+                    return;
+                }
+                if (data.success) {
+                    allManualReviewers = Array.isArray(data.reviewers) ? data.reviewers : [];
+                    applyManualReviewerFilters();
+                } else {
+                    console.error('Erro ao carregar revisores:', data.message);
+                    const container = document.getElementById('reviewersList');
+                    if (container) {
+                        container.innerHTML = '<p class="text-danger text-center mb-0">Erro ao carregar revisores.</p>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar revisores:', error);
+                const container = document.getElementById('reviewersList');
+                if (container) {
+                    container.innerHTML = '<p class="text-danger text-center mb-0">Erro ao carregar revisores.</p>';
+                }
+            });
+    }
+
+    function populateReviewersList(reviewers) {
+        const container = document.getElementById('reviewersList');
+        if (!container) {
+            return;
+        }
+        if (!Array.isArray(reviewers) || reviewers.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center mb-0">Nenhum revisor disponível.</p>';
+            return;
+        }
+        let html = '';
+        reviewers.forEach((reviewer) => {
+            const safeName = escapeHtml(reviewer.nome || 'Sem nome');
+            const safeEmail = escapeHtml(reviewer.email || 'Sem e-mail');
+            const assignmentsInfo = reviewer.current_assignments || 0;
+            const reviewerNameAttr = escapeAttribute(reviewer.nome || reviewer.email || 'Revisor');
+            html += `
+                <div class="reviewer-item" data-reviewer-id="${reviewer.id}">
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">${safeName}</div>
+                        <small class="text-muted">${safeEmail}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-info mb-2">${assignmentsInfo} em andamento</span><br>
+                        <button class="btn btn-sm btn-outline-primary assign-reviewer-btn" type="button"
+                                data-reviewer-id="${reviewer.id}"
+                                data-reviewer-name="${reviewerNameAttr}">
+                            <i class="fas fa-plus"></i> Atribuir
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function normalizeManualReviewerValue(value) {
+        if (value === null || value === undefined) {
+            return '__EMPTY__';
+        }
+        if (Array.isArray(value) || typeof value === 'object') {
+            try {
+                return JSON.stringify(value);
+            } catch (error) {
+                return String(value);
+            }
+        }
+        const text = value.toString().trim();
+        return text === '' ? '__EMPTY__' : text;
+    }
+
+    function reviewerMatchesFilters(reviewer) {
+        if (!manualReviewerActiveFilters.length) {
+            return true;
+        }
+        const respostas = reviewer.respostas || {};
+        return manualReviewerActiveFilters.every(filter => {
+            const resposta = Object.prototype.hasOwnProperty.call(respostas, filter.question)
+                ? respostas[filter.question]
+                : null;
+            const valoresResposta = Array.isArray(resposta) ? resposta : [resposta];
+            const respostaNormalizada = valoresResposta.map(normalizeManualReviewerValue);
+            return filter.values.some(value => respostaNormalizada.includes(value));
+        });
+    }
+
+    function applyManualReviewerFilters() {
+        let reviewers = Array.isArray(allManualReviewers) ? [...allManualReviewers] : [];
+        if (reviewerSearchTerm) {
+            reviewers = reviewers.filter(reviewer => {
+                const name = (reviewer.nome || '').toLowerCase();
+                const email = (reviewer.email || '').toLowerCase();
+                return name.includes(reviewerSearchTerm) || email.includes(reviewerSearchTerm);
+            });
+        }
+        reviewers = reviewers.filter(reviewerMatchesFilters);
+        filteredManualReviewers = reviewers;
+        populateReviewersList(filteredManualReviewers);
+    }
+
+    function renderManualReviewerValueOptions(question) {
+        const container = manualReviewerFilterElements.valueContainer;
+        if (!container) {
+            return;
+        }
+        container.innerHTML = '';
+        if (!question) {
+            container.innerHTML = '<span class="text-muted small">Escolha uma pergunta para listar respostas.</span>';
+            if (manualReviewerFilterElements.addButton) {
+                manualReviewerFilterElements.addButton.disabled = true;
+            }
+            return;
+        }
+        const item = manualReviewerFilterOptions.find(option => option.question === question);
+        if (!item || !Array.isArray(item.options) || item.options.length === 0) {
+            container.innerHTML = '<span class="text-muted small">Nenhuma resposta disponível para esta pergunta.</span>';
+            if (manualReviewerFilterElements.addButton) {
+                manualReviewerFilterElements.addButton.disabled = true;
+            }
+            return;
+        }
+        item.options.forEach((option, index) => {
+            const optionId = `manualReviewerFilterValue_${index}`;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'form-check form-check-inline';
+            wrapper.innerHTML = `
+                <input class="form-check-input" type="checkbox" id="${optionId}" value="${escapeHtml(option.value)}">
+                <label class="form-check-label" for="${optionId}">${escapeHtml(option.label)}</label>
+            `;
+            container.appendChild(wrapper);
+        });
+        if (manualReviewerFilterElements.addButton) {
+            manualReviewerFilterElements.addButton.disabled = true;
+        }
+    }
+
+    function renderManualReviewerActiveFilters() {
+        const container = manualReviewerFilterElements.activeContainer;
+        const clearButton = manualReviewerFilterElements.clearButton;
+        if (!container) {
+            return;
+        }
+        if (!manualReviewerActiveFilters.length) {
+            container.innerHTML = '<span class="text-muted small">Nenhum filtro aplicado.</span>';
+            if (clearButton) {
+                clearButton.disabled = true;
+            }
+            return;
+        }
+        container.innerHTML = '';
+        manualReviewerActiveFilters.forEach((filter, index) => {
+            const optionConfig = manualReviewerFilterOptions.find(item => item.question === filter.question);
+            const labels = filter.values.map(value => {
+                if (!optionConfig) {
+                    return value;
+                }
+                const optionMatch = optionConfig.options.find(option => option.value === value);
+                return optionMatch ? optionMatch.label : value;
+            }).join(', ');
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary d-flex align-items-center gap-2';
+            badge.innerHTML = `
+                <span>${escapeHtml(filter.question)}: ${escapeHtml(labels)}</span>
+                <button type="button" class="btn-close btn-close-white" data-filter-index="${index}"></button>
+            `;
+            container.appendChild(badge);
+        });
+        if (clearButton) {
+            clearButton.disabled = false;
+        }
+    }
+
+    function initializeManualReviewerFilters() {
+        const container = document.getElementById('manualReviewerFilter');
+        if (!container) {
+            return;
+        }
+        manualReviewerFilterOptions = parseJsonDataset(
+            container.dataset.options,
+            []
+        );
+        manualReviewerActiveFilters = [];
+        manualReviewerFilterElements.questionSelect = document.getElementById('manualReviewerFilterQuestion');
+        manualReviewerFilterElements.valueContainer = document.getElementById('manualReviewerFilterValueContainer');
+        manualReviewerFilterElements.addButton = document.getElementById('manualReviewerAddFilter');
+        manualReviewerFilterElements.clearButton = document.getElementById('manualReviewerClearFilters');
+        manualReviewerFilterElements.activeContainer = document.getElementById('manualReviewerActiveFilters');
+        const { questionSelect, valueContainer, addButton, clearButton, activeContainer } = manualReviewerFilterElements;
+        if (!manualReviewerFilterOptions.length) {
+            if (addButton) {
+                addButton.disabled = true;
+            }
+            if (clearButton) {
+                clearButton.disabled = true;
+            }
+            return;
+        }
+        if (questionSelect) {
+            questionSelect.addEventListener('change', (event) => {
+                renderManualReviewerValueOptions(event.target.value);
+            });
+        }
+        if (valueContainer) {
+            valueContainer.addEventListener('change', () => {
+                if (addButton) {
+                    const hasSelection = valueContainer.querySelectorAll('input[type="checkbox"]:checked').length > 0;
+                    addButton.disabled = !hasSelection;
+                }
+            });
+        }
+        if (addButton) {
+            addButton.addEventListener('click', () => {
+                if (!questionSelect) {
+                    return;
+                }
+                const question = questionSelect.value;
+                if (!question) {
+                    return;
+                }
+                const selectedInputs = valueContainer
+                    ? Array.from(valueContainer.querySelectorAll('input[type="checkbox"]:checked'))
+                    : [];
+                if (!selectedInputs.length) {
+                    return;
+                }
+                const values = selectedInputs.map(input => input.value);
+                const existingIndex = manualReviewerActiveFilters.findIndex(filter => filter.question === question);
+                if (existingIndex >= 0) {
+                    manualReviewerActiveFilters[existingIndex].values = values;
+                } else {
+                    manualReviewerActiveFilters.push({ question, values });
+                }
+                selectedInputs.forEach(input => {
+                    input.checked = false;
+                });
+                addButton.disabled = true;
+                renderManualReviewerActiveFilters();
+                applyManualReviewerFilters();
+            });
+        }
+        if (clearButton) {
+            clearButton.addEventListener('click', () => {
+                manualReviewerActiveFilters = [];
+                renderManualReviewerActiveFilters();
+                renderManualReviewerValueOptions('');
+                if (questionSelect) {
+                    questionSelect.value = '';
+                }
+                applyManualReviewerFilters();
+            });
+        }
+        if (activeContainer) {
+            activeContainer.addEventListener('click', (event) => {
+                const target = event.target;
+                if (target instanceof HTMLElement && target.matches('button[data-filter-index]')) {
+                    const index = Number(target.getAttribute('data-filter-index'));
+                    if (!Number.isNaN(index)) {
+                        manualReviewerActiveFilters.splice(index, 1);
+                        renderManualReviewerActiveFilters();
+                        applyManualReviewerFilters();
+                    }
+                }
+            });
+        }
+        renderManualReviewerValueOptions('');
+        renderManualReviewerActiveFilters();
+    }
+
+    function updateAssignmentCounter() {
+        const counter = document.getElementById('assignmentCounter');
+        if (counter) {
+            counter.textContent = `${manualAssignments.length} atribuição(ões) planejadas`;
+        }
+        const clearBtn = document.getElementById('clearAssignmentsBtn');
+        if (clearBtn) {
+            clearBtn.disabled = manualAssignments.length === 0;
+        }
+        const executeBtn = document.getElementById('executeManualDistribution');
+        if (executeBtn) {
+            executeBtn.disabled = manualAssignments.length === 0;
+        }
+    }
+
+    function updateAssignmentsList() {
+        const container = document.getElementById('assignmentsList');
+        if (!container) {
+            return;
+        }
+        if (!manualAssignments.length) {
+            container.innerHTML = '<p class="text-muted text-center mb-0">Nenhuma atribuição criada ainda</p>';
+            updateAssignmentCounter();
+            return;
+        }
+        let html = '';
+        manualAssignments.forEach((assignment, index) => {
+            const reEvalBadge = assignment.reEvaluation ? '<span class="badge bg-warning text-dark ms-2">Reavaliação</span>' : '';
+            html += `
+                <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                    <div class="me-2">
+                        <div class="fw-semibold">${escapeHtml(assignment.workTitle)}</div>
+                        <small class="text-muted">→ ${escapeHtml(assignment.reviewerName)}</small>
+                        ${reEvalBadge}
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-assignment="${index}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        updateAssignmentCounter();
+        renderSelectedWorksList();
+    }
+
+    function addReviewerAssignment(reviewerId, reviewerName) {
+        if (!reviewerId) {
+            return;
+        }
+        if (!activeWorkIds.size) {
+            alert('Selecione pelo menos um trabalho para atribuir o revisor.');
+            return;
+        }
+        activeWorkIds.forEach((workIdStr) => {
+            const work = selectedWorkLookup[workIdStr];
+            if (!work) {
+                return;
+            }
+            const workId = Number(workIdStr);
+            const exists = manualAssignments.some(
+                (assignment) => assignment.workId === workId && assignment.reviewerId === reviewerId
+            );
+            if (!exists) {
+                manualAssignments.push({
+                    workId: workId,
+                    workTitle: work.title || `Trabalho #${workIdStr}`,
+                    reviewerId: reviewerId,
+                    reviewerName: reviewerName || 'Revisor',
+                    reEvaluation: manualDistributionMode === 'reevaluation',
+                });
+            }
+        });
+        if (manualAssignments.length) {
+            const alertBox = document.getElementById('manualDistributionAlert');
+            if (alertBox) {
+                alertBox.classList.add('d-none');
+                alertBox.textContent = '';
+            }
+        }
+        updateAssignmentsList();
+    }
+
+    function removeAssignment(index) {
+        manualAssignments.splice(index, 1);
+        updateAssignmentsList();
+    }
+
+    function clearAssignments() {
+        manualAssignments = [];
+        updateAssignmentsList();
+    }
+
+    function executeManualDistribution() {
+        const deadline = document.getElementById('manualDeadline');
+        const notes = document.getElementById('manualNotes');
+        const alertBox = document.getElementById('manualDistributionAlert');
+        if (!deadline || !deadline.value) {
+            if (alertBox) {
+                alertBox.textContent = 'Por favor, defina um prazo para a revisão.';
+                alertBox.classList.remove('d-none');
+            }
+            return;
+        }
+        if (!manualAssignments.length) {
+            if (alertBox) {
+                alertBox.textContent = 'Crie pelo menos uma atribuição antes de confirmar a distribuição.';
+                alertBox.classList.remove('d-none');
+            }
+            return;
+        }
+        const workIds = [...new Set(manualAssignments.map(assignment => assignment.workId))];
+        const payloadAssignments = manualAssignments.map(assignment => ({
+            workId: assignment.workId,
+            reviewerId: assignment.reviewerId,
+            workTitle: assignment.workTitle,
+            reviewerName: assignment.reviewerName,
+            re_evaluation: assignment.reEvaluation,
+        }));
+        const payload = {
+            work_ids: workIds,
+            assignments: payloadAssignments,
+            deadline: deadline.value,
+            notes: notes ? notes.value : '',
+            re_evaluation: manualDistributionMode === 'reevaluation',
+        };
+        fetch('/api/distribution/manual', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const message = manualDistributionMode === 'reevaluation'
+                        ? 'Reavaliação solicitada com sucesso!'
+                        : 'Distribuição manual executada com sucesso!';
+                    alert(message);
+                    window.location.reload();
+                } else {
+                    alert('Erro na distribuição: ' + (data.error || data.message || 'Erro desconhecido'));
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao executar a distribuição manual:', error);
+                alert('Erro ao executar distribuição manual.');
+            });
+    }
+
+    function applyGlobalDeadline() {
+        const globalDeadlineInput = document.getElementById('globalDeadline');
+        const alertBox = document.getElementById('manualDistributionAlert');
+        if (!globalDeadlineInput || !globalDeadlineInput.value) {
+            if (alertBox) {
+                alertBox.textContent = 'Informe uma data para aplicar como prazo global.';
+                alertBox.classList.remove('d-none');
+            }
+            return;
+        }
+
+        const workIds = activeWorkIds.size
+            ? Array.from(activeWorkIds).map((id) => Number(id))
+            : selectedWorkIdsSnapshot;
+
+        if (!workIds.length) {
+            if (alertBox) {
+                alertBox.textContent = 'Nenhum trabalho selecionado para atualizar o prazo.';
+                alertBox.classList.remove('d-none');
+            }
+            return;
+        }
+
+        fetch('/api/distribution/deadline', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                deadline: globalDeadlineInput.value,
+                work_ids: workIds,
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const manualDeadlineInput = document.getElementById('manualDeadline');
+                    if (manualDeadlineInput) {
+                        manualDeadlineInput.value = globalDeadlineInput.value;
+                    }
+                    alert('Prazo atualizado com sucesso para todas as atribuições.');
+                    window.location.reload();
+                } else {
+                    throw new Error(data.error || 'Erro ao aplicar prazo global');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao definir prazo global:', error);
+                if (alertBox) {
+                    alertBox.textContent = 'Erro ao aplicar prazo global. Tente novamente.';
+                    alertBox.classList.remove('d-none');
+                }
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeSelectedWorks(parseJsonDataset(configEl.dataset.selectedWorks, []));
+        initializeManualReviewerFilters();
+
+        const preloadReviewers = parseJsonDataset(configEl.dataset.reviewers, []);
+        if (Array.isArray(preloadReviewers) && preloadReviewers.length) {
+            allManualReviewers = preloadReviewers;
+            applyManualReviewerFilters();
+        } else {
+            loadAvailableReviewers();
+        }
+        setDefaultDeadline();
+        updateAssignmentCounter();
+
+        const reviewersListEl = document.getElementById('reviewersList');
+        if (reviewersListEl) {
+            reviewersListEl.addEventListener('click', (event) => {
+                const element = event.target instanceof HTMLElement
+                    ? event.target.closest('.assign-reviewer-btn')
+                    : null;
+                if (!element) {
+                    return;
+                }
+                const reviewerId = Number(element.getAttribute('data-reviewer-id'));
+                const reviewerName = element.getAttribute('data-reviewer-name') || 'Revisor';
+                if (!Number.isNaN(reviewerId)) {
+                    addReviewerAssignment(reviewerId, reviewerName);
+                }
+            });
+        }
+
+        const selectedWorksContainer = document.getElementById('selectedWorksList');
+        if (selectedWorksContainer) {
+            selectedWorksContainer.addEventListener('change', (event) => {
+                const target = event.target;
+                if (target instanceof HTMLInputElement && target.classList.contains('selected-work-checkbox')) {
+                    const workId = target.value;
+                    if (target.checked) {
+                        activeWorkIds.add(workId);
+                    } else {
+                        activeWorkIds.delete(workId);
+                    }
+                    updateSelectedWorkSummary();
+                }
+            });
+        }
+
+        const selectAllBtn = document.getElementById('selectAllWorksBtn');
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                activeWorkIds = new Set(Object.keys(selectedWorkLookup));
+                renderSelectedWorksList();
+                updateSelectedWorkSummary();
+            });
+        }
+
+        const clearSelectionBtn = document.getElementById('clearWorksSelectionBtn');
+        if (clearSelectionBtn) {
+            clearSelectionBtn.addEventListener('click', () => {
+                activeWorkIds.clear();
+                renderSelectedWorksList();
+                updateSelectedWorkSummary();
+            });
+        }
+
+        const reviewerSearch = document.getElementById('reviewerSearch');
+        if (reviewerSearch) {
+            reviewerSearch.addEventListener('input', function() {
+                reviewerSearchTerm = this.value.toLowerCase();
+                applyManualReviewerFilters();
+            });
+        }
+
+        const assignmentsList = document.getElementById('assignmentsList');
+        if (assignmentsList) {
+            assignmentsList.addEventListener('click', (event) => {
+                const target = event.target;
+                if (target instanceof HTMLElement) {
+                    const button = target.closest('button[data-remove-assignment]');
+                    if (button) {
+                        const index = Number(button.getAttribute('data-remove-assignment'));
+                        if (!Number.isNaN(index)) {
+                            removeAssignment(index);
+                        }
+                    }
+                }
+            });
+        }
+
+        const clearAssignmentsBtn = document.getElementById('clearAssignmentsBtn');
+        if (clearAssignmentsBtn) {
+            clearAssignmentsBtn.addEventListener('click', clearAssignments);
+        }
+
+        const executeManualBtn = document.getElementById('executeManualDistribution');
+        if (executeManualBtn) {
+            executeManualBtn.addEventListener('click', executeManualDistribution);
+        }
+
+        const globalDeadlineInput = document.getElementById('globalDeadline');
+        const applyGlobalDeadlineBtn = document.getElementById('applyGlobalDeadline');
+        if (globalDeadlineInput && applyGlobalDeadlineBtn) {
+            if (globalDeadlineInput.value) {
+                applyGlobalDeadlineBtn.disabled = false;
+            }
+            globalDeadlineInput.addEventListener('change', function() {
+                applyGlobalDeadlineBtn.disabled = !this.value;
+            });
+            applyGlobalDeadlineBtn.addEventListener('click', applyGlobalDeadline);
+        }
+    });
+})();
+</script>
+{% endblock %}

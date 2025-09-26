@@ -4255,12 +4255,14 @@ def gerar_xlsx_relatorio_geral_completo(
             cell.alignment = center_alignment if isinstance(value, bool) else left_alignment
 
     def _auto_fit(ws):
-        for column_cells in ws.columns:
-            column_cells = list(column_cells)
-            if not column_cells:
-                continue
+        from openpyxl.cell.cell import MergedCell
+        from openpyxl.utils import get_column_letter
+
+        for col_idx, column_cells in enumerate(ws.columns, start=1):
             max_length = 0
             for cell in column_cells:
+                if isinstance(cell, MergedCell):
+                    continue
                 value = cell.value
                 if value is None:
                     continue
@@ -4274,7 +4276,10 @@ def gerar_xlsx_relatorio_geral_completo(
                     rendered = str(value)
                 if len(rendered) > max_length:
                     max_length = len(rendered)
-            ws.column_dimensions[column_cells[0].column_letter].width = min(max_length + 2, 60)
+            if not max_length:
+                continue
+            column_letter = get_column_letter(col_idx)
+            ws.column_dimensions[column_letter].width = min(max_length + 2, 60)
 
     dados_agregados = dados_agregados or {}
 

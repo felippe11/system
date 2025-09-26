@@ -4,11 +4,12 @@ import secrets
 import unicodedata
 import uuid
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, time
 from io import BytesIO
 from utils import endpoints
 
 import pandas as pd
+import sqlalchemy as sa
 from flask import (
     Blueprint,
     current_app,
@@ -39,7 +40,6 @@ from reportlab.platypus import (
 from extensions import db, csrf
 from models import (
     AuditLog,
-    Assignment,
     Evento,
     Formulario,
     Review,
@@ -47,10 +47,11 @@ from models import (
     Usuario,
     WorkMetadata,
 )
+from models.avaliacao import AvaliacaoBarema, AvaliacaoCriterio
 from models.event import RespostaCampoFormulario, RespostaFormulario
 from models.review import Assignment, RevisorProcess, RevisorCandidatura
 from sqlalchemy import func
-from sqlalchemy.exc import DataError
+from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from services.submission_service import SubmissionService
 from utils.mfa import mfa_required
@@ -492,6 +493,218 @@ def _prepare_trabalhos_dataset(formulario):
     }
 
 
+def _build_reviewer_distribution_list(target_cliente_id: int | None = None):
+    """Retorna os revisores disponíveis com metadados usados na distribuição."""
+
+    candidaturas_query = RevisorCandidatura.query.join(
+        RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id
+    )
+
+    if target_cliente_id:
+        candidaturas_query = candidaturas_query.filter(
+            RevisorProcess.cliente_id == target_cliente_id
+        )
+
+    candidaturas = candidaturas_query.all()
+    candidaturas_por_email: dict[str, RevisorCandidatura] = {}
+    for candidatura in candidaturas:
+        if candidatura.email:
+            candidaturas_por_email.setdefault(candidatura.email.lower(), candidatura)
+
+    reviewers = Usuario.query.filter_by(tipo="revisor").all()
+
+    assignment_counts = dict(
+        db.session.query(Assignment.reviewer_id, func.count(Assignment.id))
+        .filter(Assignment.completed == False)
+        .group_by(Assignment.reviewer_id)
+        .all()
+    )
+
+    reviewer_list = []
+    for reviewer in reviewers:
+        current_assignments = assignment_counts.get(reviewer.id, 0)
+
+        candidatura = None
+        if reviewer.email:
+            candidatura = candidaturas_por_email.get(reviewer.email.lower())
+
+        reviewer_list.append(
+            {
+                "id": reviewer.id,
+                "nome": reviewer.nome,
+                "email": reviewer.email,
+                "current_assignments": current_assignments,
+                "expertise": getattr(reviewer, "expertise", ""),
+                "available": True,
+                "respostas": (
+                    candidatura.respostas
+                    if candidatura and isinstance(candidatura.respostas, dict)
+                    else {}
+                ),
+            }
+        )
+
+    return reviewer_list
+
+
+
+
+def _load_assignment_table():
+    metadata = sa.MetaData()
+    bind = db.session.get_bind() or db.engine
+    column_map: dict[str, sa.Column] = {}
+    table = None
+    try:
+        table = sa.Table(
+            'assignment',
+            metadata,
+            autoload_with=bind,
+        )
+        column_map = {col.name: col for col in table.c}
+    except SQLAlchemyError:
+        table = None
+        column_map = {}
+
+    if not column_map:
+        dialect = bind.dialect.name
+        if dialect == 'sqlite':
+            rows = db.session.execute(sa.text("PRAGMA table_info(assignment)")).fetchall()
+            column_names = [row[1] for row in rows]
+        else:
+            rows = db.session.execute(
+                sa.text(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = :table
+                      AND table_schema = current_schema()
+                    ORDER BY ordinal_position
+                    """
+                ),
+                {"table": 'assignment'},
+            ).fetchall()
+            column_names = [row[0] for row in rows]
+
+        if not column_names:
+            raise RuntimeError("Tabela 'assignment' não encontrada no banco de dados.")
+
+        column_map = {name: sa.column(name) for name in column_names}
+        table = sa.table('assignment', *column_map.values())
+
+    resolved_columns = _detect_assignment_columns(column_map)
+    return table, resolved_columns, column_map
+
+
+def _detect_assignment_columns(column_map: dict[str, sa.Column]) -> dict[str, sa.Column | None]:
+    def _resolve_column(candidate_names: list[str], keywords: list[str]):
+        for name in candidate_names:
+            col = column_map.get(name)
+            if col is not None:
+                return col
+        lowered = {name.lower(): col for name, col in column_map.items()}
+        for keyword in keywords:
+            for name, col in lowered.items():
+                if keyword in name:
+                    return col
+        return None
+
+    resposta_column = _resolve_column(
+        [
+            'resposta_formulario_id',
+            'submission_id',
+            'work_id',
+            'trabalho_id',
+        ],
+        ['resposta', 'submission', 'work', 'trabalho'],
+    )
+
+    reviewer_column = _resolve_column(
+        [
+            'reviewer_id',
+            'revisor_id',
+            'reviewer',
+            'usuario_id',
+        ],
+        ['reviewer', 'revisor', 'usuario'],
+    )
+
+    if resposta_column is None or reviewer_column is None:
+        available = ", ".join(sorted(column_map.keys()))
+        raise RuntimeError(
+            "Tabela de assignment não possui colunas esperadas para vincular revisor e trabalho. "
+            f"Colunas disponíveis: {available}"
+        )
+
+    return {
+        'resposta': resposta_column,
+        'reviewer': reviewer_column,
+        'id': column_map.get('id'),
+        'deadline': column_map.get('deadline'),
+        'distribution_type': column_map.get('distribution_type'),
+        'distribution_date': column_map.get('distribution_date'),
+        'distributed_by': column_map.get('distributed_by'),
+        'notes': column_map.get('notes'),
+        'is_reevaluation': column_map.get('is_reevaluation'),
+    }
+
+def _detect_assignment_columns(assignment_table) -> tuple[dict[str, sa.Column], dict[str, sa.Column]]:
+    columns = assignment_table.c
+    column_map: dict[str, sa.Column] = {col.name: col for col in columns}
+
+    def _resolve_column(candidate_names: list[str], keywords: list[str]):
+        for name in candidate_names:
+            col = column_map.get(name)
+            if col is not None:
+                return col
+        lowered = {name.lower(): col for name, col in column_map.items()}
+        for keyword in keywords:
+            for name, col in lowered.items():
+                if keyword in name:
+                    return col
+        return None
+
+    resposta_column = _resolve_column(
+        [
+            'resposta_formulario_id',
+            'submission_id',
+            'work_id',
+            'trabalho_id',
+        ],
+        ['resposta', 'submission', 'work', 'trabalho'],
+    )
+
+    reviewer_column = _resolve_column(
+        [
+            'reviewer_id',
+            'revisor_id',
+            'reviewer',
+            'usuario_id',
+        ],
+        ['reviewer', 'revisor', 'usuario'],
+    )
+
+    if resposta_column is None or reviewer_column is None:
+        available = ", ".join(sorted(column_map.keys()))
+        raise RuntimeError(
+            "Tabela de assignment não possui colunas esperadas para vincular revisor e trabalho. "
+            f"Colunas disponíveis: {available}"
+        )
+
+    resolved = {
+        'resposta': resposta_column,
+        'reviewer': reviewer_column,
+        'id': column_map.get('id'),
+        'deadline': column_map.get('deadline'),
+        'distribution_type': column_map.get('distribution_type'),
+        'distribution_date': column_map.get('distribution_date'),
+        'distributed_by': column_map.get('distributed_by'),
+        'notes': column_map.get('notes'),
+        'is_reevaluation': column_map.get('is_reevaluation'),
+    }
+
+    return resolved, column_map
+
+
 def _build_export_dataframe(trabalhos):
     question_order = []
     seen_questions = set()
@@ -900,6 +1113,266 @@ def listar_trabalhos():
         reviewers_without_assignments=dataset["reviewers_without_assignments"],
         reviewer_filter_options=reviewer_filter_options,
     )
+
+
+@trabalho_routes.route("/trabalhos/distribuicao/manual")
+@login_required
+def distribuicao_manual_page():
+    """Exibe a página dedicada para distribuição manual de trabalhos."""
+
+    if current_user.tipo not in ["cliente", "admin"]:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    formulario = get_trabalhos_form()
+    if not formulario:
+        flash("Formulário de trabalhos não configurado.", "warning")
+        return redirect(url_for("trabalho_routes.listar_trabalhos"))
+
+    dataset = _prepare_trabalhos_dataset(formulario)
+    reviewer_filter_options = _get_reviewer_filter_options_for_user(current_user)
+
+    selected_ids_param = request.args.get("ids", "")
+    selected_ids: list[int] = []
+    for raw_id in selected_ids_param.split(","):
+        raw_id = raw_id.strip()
+        if not raw_id:
+            continue
+        try:
+            selected_ids.append(int(raw_id))
+        except ValueError:
+            continue
+
+    work_lookup = {work.get("id"): work for work in dataset["trabalhos"]}
+    selected_work_ids = [work_id for work_id in selected_ids if work_id in work_lookup]
+    selected_works = [work_lookup[work_id] for work_id in selected_work_ids]
+
+    if not selected_works:
+        flash("Selecione pelo menos um trabalho para distribuir manualmente.", "warning")
+        return redirect(url_for("trabalho_routes.listar_trabalhos"))
+
+    def _resolve_title(work: dict | None) -> str:
+        if not work:
+            return "Trabalho"
+        respostas = work.get("respostas") or {}
+        return (
+            work.get("título")
+            or _stringify_field_value(respostas.get("Título"))
+            or f"Trabalho #{work.get('id')}"
+        )
+
+    def _resolve_category(work: dict | None) -> str:
+        if not work:
+            return "Sem categoria"
+        respostas = work.get("respostas") or {}
+        return (
+            work.get("categoria")
+            or _stringify_field_value(respostas.get("Categoria"))
+            or "Sem categoria"
+        )
+
+    selected_work_views: list[dict[str, object]] = []
+    for work in selected_works:
+        selected_work_views.append(
+            {
+                "id": work.get("id"),
+                "title": _resolve_title(work),
+                "category": _resolve_category(work),
+                "distribution_status": work.get("distribution_status"),
+                "assignment_count": work.get("assignment_count"),
+                "reviewer_names": work.get("reviewer_names") or [],
+            }
+        )
+
+    assignment_rows: list = []
+    if selected_work_ids:
+        assignment_rows = (
+            db.session.query(
+                Assignment.id.label("assignment_id"),
+                Assignment.resposta_formulario_id.label("resposta_formulario_id"),
+                Assignment.reviewer_id.label("reviewer_id"),
+                Assignment.deadline.label("deadline"),
+                Assignment.completed.label("completed"),
+                Assignment.distribution_type.label("distribution_type"),
+                Assignment.distribution_date.label("distribution_date"),
+                Assignment.notes.label("notes"),
+                RespostaFormulario.trabalho_id.label("submission_id"),
+                Usuario.nome.label("reviewer_name"),
+                Usuario.email.label("reviewer_email"),
+            )
+            .outerjoin(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+            .outerjoin(Usuario, Assignment.reviewer_id == Usuario.id)
+            .filter(Assignment.resposta_formulario_id.in_(selected_work_ids))
+            .order_by(Assignment.id.desc())
+            .all()
+        )
+
+    submission_ids: set[int] = set()
+    reviewer_ids: set[int] = set()
+    for row in assignment_rows:
+        submission_id = getattr(row, "submission_id", None)
+        reviewer_id = getattr(row, "reviewer_id", None)
+        if submission_id:
+            submission_ids.add(submission_id)
+        if reviewer_id:
+            reviewer_ids.add(reviewer_id)
+
+    avaliacao_map: dict[tuple[int, int], AvaliacaoBarema] = {}
+    if submission_ids and reviewer_ids:
+        avaliacoes = (
+            AvaliacaoBarema.query.options(joinedload(AvaliacaoBarema.revisor))
+            .filter(
+                AvaliacaoBarema.trabalho_id.in_(submission_ids),
+                AvaliacaoBarema.revisor_id.in_(reviewer_ids),
+            )
+            .all()
+        )
+        avaliacao_map = {
+            (avaliacao.trabalho_id, avaliacao.revisor_id): avaliacao
+            for avaliacao in avaliacoes
+        }
+
+    assignment_views: list[dict[str, object]] = []
+    for row in assignment_rows:
+        work_entry = work_lookup.get(row.resposta_formulario_id)
+        avaliacao_key = (
+            (row.submission_id, row.reviewer_id)
+            if row.submission_id and row.reviewer_id
+            else None
+        )
+        avaliacao = avaliacao_map.get(avaliacao_key) if avaliacao_key else None
+
+        assignment_views.append(
+            {
+                "id": row.assignment_id,
+                "work_id": row.resposta_formulario_id,
+                "work_title": _resolve_title(work_entry),
+                "reviewer_id": row.reviewer_id,
+                "reviewer_name": row.reviewer_name,
+                "reviewer_email": row.reviewer_email,
+                "deadline": row.deadline,
+                "completed": row.completed,
+                "submission_id": row.submission_id,
+                "avaliacao_id": avaliacao.id if avaliacao else None,
+                "avaliacao_nota": avaliacao.nota_final if avaliacao else None,
+                "avaliacao_data": avaliacao.data_avaliacao if avaliacao else None,
+            }
+        )
+
+    mode = request.args.get("mode", "assign") or "assign"
+    if mode not in {"assign", "reevaluation"}:
+        mode = "assign"
+
+    next_url = request.full_path
+
+    target_cliente_id = request.args.get("cliente_id", type=int)
+    if not target_cliente_id and current_user.tipo == "cliente":
+        target_cliente_id = current_user.id
+
+    reviewers_for_page = _build_reviewer_distribution_list(target_cliente_id)
+
+    return render_template(
+        "trabalhos/distribuicao_manual.html",
+        selected_works=selected_work_views,
+        selected_work_ids=selected_work_ids,
+        reviewer_filter_options=reviewer_filter_options,
+        manual_mode=mode,
+        assignments=assignment_views,
+        next_url=next_url,
+        reviewers=reviewers_for_page,
+    )
+
+
+@trabalho_routes.route("/trabalhos/avaliacoes/<int:avaliacao_id>")
+@login_required
+def visualizar_avaliacao_revisor(avaliacao_id: int):
+    """Permite que clientes e administradores visualizem uma avaliação registrada."""
+
+    if current_user.tipo not in ["cliente", "admin"]:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    avaliacao = (
+        AvaliacaoBarema.query.options(
+            joinedload(AvaliacaoBarema.criterios_avaliacao),
+            joinedload(AvaliacaoBarema.revisor),
+            joinedload(AvaliacaoBarema.trabalho).joinedload(Submission.evento),
+        )
+        .get_or_404(avaliacao_id)
+    )
+
+    if current_user.tipo == "cliente":
+        evento = avaliacao.trabalho.evento if avaliacao.trabalho else None
+        if evento and evento.cliente_id != current_user.id:
+            flash("Acesso negado.", "danger")
+            return redirect(url_for("trabalho_routes.listar_trabalhos"))
+
+    criterios = sorted(
+        avaliacao.criterios_avaliacao,
+        key=lambda criterio: criterio.criterio_id or "",
+    )
+
+    return render_template(
+        "trabalhos/avaliacao_detalhe.html",
+        avaliacao=avaliacao,
+        criterios=criterios,
+    )
+
+
+@trabalho_routes.route(
+    "/trabalhos/avaliacoes/<int:avaliacao_id>/excluir",
+    methods=["POST"],
+)
+@login_required
+def excluir_avaliacao_revisor(avaliacao_id: int):
+    """Exclui uma avaliação existente e reabre os assignments associados."""
+
+    if current_user.tipo not in ["cliente", "admin"]:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    avaliacao = (
+        AvaliacaoBarema.query.options(
+            joinedload(AvaliacaoBarema.trabalho).joinedload(Submission.evento),
+            joinedload(AvaliacaoBarema.revisor),
+        )
+        .get_or_404(avaliacao_id)
+    )
+
+    if current_user.tipo == "cliente":
+        evento = avaliacao.trabalho.evento if avaliacao.trabalho else None
+        if evento and evento.cliente_id != current_user.id:
+            flash("Acesso negado.", "danger")
+            return redirect(url_for("trabalho_routes.listar_trabalhos"))
+
+    next_url = request.form.get("next") or url_for("trabalho_routes.listar_trabalhos")
+
+    try:
+        resposta = None
+        if avaliacao.trabalho_id:
+            resposta = (
+                RespostaFormulario.query.filter_by(trabalho_id=avaliacao.trabalho_id)
+                .order_by(RespostaFormulario.id.asc())
+                .first()
+            )
+
+        if resposta:
+            (
+                Assignment.query.filter_by(
+                    resposta_formulario_id=resposta.id,
+                    reviewer_id=avaliacao.revisor_id,
+                ).update({"completed": False}, synchronize_session=False)
+            )
+
+        db.session.delete(avaliacao)
+        db.session.commit()
+        flash("Avaliação excluída com sucesso.", "success")
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        current_app.logger.exception("Erro ao excluir avaliação: %s", exc)
+        flash("Erro ao excluir avaliação.", "danger")
+
+    return redirect(next_url)
 
 
 @trabalho_routes.route("/trabalhos/export/xlsx")
@@ -1430,45 +1903,7 @@ def get_available_reviewers():
         if not target_cliente_id and current_user.is_authenticated and getattr(current_user, 'tipo', None) == 'cliente':
             target_cliente_id = getattr(current_user, 'id', None)
 
-        # Preload candidaturas para filtros
-        candidaturas_query = RevisorCandidatura.query.join(
-            RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id
-        )
-
-        if target_cliente_id:
-            candidaturas_query = candidaturas_query.filter(RevisorProcess.cliente_id == target_cliente_id)
-
-        candidaturas = candidaturas_query.all()
-        candidaturas_por_email: dict[str, RevisorCandidatura] = {}
-        for candidatura in candidaturas:
-            if candidatura.email:
-                candidaturas_por_email.setdefault(candidatura.email.lower(), candidatura)
-
-        # Get reviewers (users with tipo 'revisor')
-        reviewers = Usuario.query.filter_by(tipo="revisor").all()
-
-        reviewer_list = []
-        for reviewer in reviewers:
-            # Count current assignments
-            current_assignments = Assignment.query.filter_by(
-                reviewer_id=reviewer.id,
-                completed=False
-            ).count()
-
-            candidatura = None
-            if reviewer.email:
-                candidatura = candidaturas_por_email.get(reviewer.email.lower())
-
-            reviewer_data = {
-                "id": reviewer.id,
-                "nome": reviewer.nome,
-                "email": reviewer.email,
-                "current_assignments": current_assignments,
-                "expertise": getattr(reviewer, 'expertise', ''),
-                "available": True,  # Could add logic for availability
-                "respostas": candidatura.respostas if candidatura and isinstance(candidatura.respostas, dict) else {},
-            }
-            reviewer_list.append(reviewer_data)
+        reviewer_list = _build_reviewer_distribution_list(target_cliente_id)
 
         return {
             "success": True,
@@ -1508,54 +1943,147 @@ def manual_distribution():
         if len(works) != len(work_ids):
             return {"error": "Some works not found"}, 404
         
+        assignment_table, resolved_columns, column_map = _load_assignment_table()
+        current_app.logger.debug(
+            "assignment table columns detected: %s",
+            ", ".join(sorted(column_map.keys())) or "<nenhuma>",
+        )
+
+        resposta_column = resolved_columns['resposta']
+        reviewer_column = resolved_columns['reviewer']
+        id_column = resolved_columns['id']
+        deadline_column = resolved_columns['deadline']
+        distribution_type_column = resolved_columns['distribution_type']
+        distribution_date_column = resolved_columns['distribution_date']
+        distributed_by_column = resolved_columns['distributed_by']
+        notes_column = resolved_columns['notes']
+        is_reevaluation_column = resolved_columns['is_reevaluation']
+
+        def _coerce_deadline(value):
+            if not value:
+                return None
+            if isinstance(value, datetime):
+                return value
+            try:
+                parsed = datetime.fromisoformat(value)
+                if parsed.tzinfo is None:
+                    return parsed
+                return parsed.astimezone().replace(tzinfo=None)
+            except ValueError:
+                pass
+            try:
+                date_part = datetime.strptime(value, "%Y-%m-%d").date()
+                return datetime.combine(date_part, time(23, 59))
+            except ValueError:
+                return None
+
+        base_deadline = _coerce_deadline(deadline)
+
         assignments_created = 0
-        
-        # Create assignments
+
         for assignment_data in assignments:
-            work_id = assignment_data.get('workId')  # Changed from 'work_id' to 'workId'
-            reviewer_id = assignment_data.get('reviewerId')  # Changed from 'reviewer_id' to 'reviewerId'
+            work_id = assignment_data.get('workId')
+            reviewer_id = assignment_data.get('reviewerId')
             assignment_re_evaluation = bool(assignment_data.get('re_evaluation', default_re_evaluation))
 
-            if not all([work_id, reviewer_id]):
+            if not work_id or not reviewer_id:
                 continue
 
-            # Check if assignment already exists
-            existing = Assignment.query.filter_by(
-                resposta_formulario_id=work_id,
-                reviewer_id=reviewer_id
-            ).first()
-            
+            try:
+                work_id_int = int(work_id)
+                reviewer_id_int = int(reviewer_id)
+            except (TypeError, ValueError):
+                continue
+
+            select_target = id_column if id_column is not None else sa.literal(1)
+            existing_stmt = sa.select(select_target).where(
+                resposta_column == work_id_int,
+                reviewer_column == reviewer_id_int,
+            ).limit(1)
+            existing = db.session.execute(existing_stmt).first()
             if existing:
                 continue
-            
-            # Create new assignment
-            assignment = Assignment(
-                resposta_formulario_id=work_id,
-                reviewer_id=reviewer_id,
-                deadline=deadline,  # Use deadline from top level
-                distribution_type='manual_reevaluation' if assignment_re_evaluation else 'manual',
-                distribution_date=db.func.now(),
-                distributed_by=getattr(current_user, 'id', None),
-                notes=notes,
-                is_reevaluation=assignment_re_evaluation,
-            )
-            db.session.add(assignment)
+
+            assignment_deadline = _coerce_deadline(assignment_data.get('deadline')) or base_deadline
+
+            insert_values = {
+                resposta_column.key: work_id_int,
+                reviewer_column.key: reviewer_id_int,
+            }
+
+            if assignment_deadline and deadline_column is not None:
+                insert_values[deadline_column.key] = assignment_deadline
+
+            if distribution_type_column is not None:
+                insert_values[distribution_type_column.key] = 'manual_reevaluation' if assignment_re_evaluation else 'manual'
+
+            if distribution_date_column is not None:
+                insert_values[distribution_date_column.key] = datetime.utcnow()
+
+            if distributed_by_column is not None:
+                insert_values[distributed_by_column.key] = getattr(current_user, 'id', None)
+
+            if notes_column is not None:
+                insert_values[notes_column.key] = notes
+
+            if is_reevaluation_column is not None:
+                insert_values[is_reevaluation_column.key] = assignment_re_evaluation
+
+            db.session.execute(sa.insert(assignment_table).values(**insert_values))
             assignments_created += 1
-        
-        # Distribution logging removed to eliminate CSRF-related database errors
-        
+
         db.session.commit()
-        
+
         return {
             "success": True,
             "message": f"Successfully created {assignments_created} assignments",
             "assignments_created": assignments_created
         }
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error in manual distribution: {e}")
         return {"error": "Internal server error"}, 500
+
+
+@trabalho_routes.route("/api/distribution/deadline", methods=["POST"])
+@csrf.exempt
+@login_required
+def update_distribution_deadline():
+    """Aplica um prazo global para todas as atribuições dos trabalhos informados."""
+
+    if current_user.tipo not in ["cliente", "admin"]:
+        return {"error": "Acesso negado."}, 403
+
+    data = request.get_json() or {}
+    raw_deadline = data.get("deadline")
+    work_ids = data.get("work_ids") or []
+
+    if not raw_deadline:
+        return {"error": "Informe uma data limite."}, 400
+    if not isinstance(work_ids, list) or not work_ids:
+        return {"error": "Informe os trabalhos que devem receber o prazo."}, 400
+
+    try:
+        deadline_date = datetime.strptime(raw_deadline, "%Y-%m-%d").date()
+    except ValueError:
+        return {"error": "Data inválida. Utilize o formato AAAA-MM-DD."}, 400
+
+    deadline_dt = datetime.combine(deadline_date, time(23, 59, 0))
+
+    try:
+        updated = (
+            Assignment.query.filter(
+                Assignment.resposta_formulario_id.in_(work_ids)
+            ).update({"deadline": deadline_dt}, synchronize_session=False)
+        )
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        current_app.logger.exception("Erro ao atualizar prazo global de distribuicao: %s", exc)
+        return {"error": "Erro ao atualizar prazos."}, 500
+
+    return {"success": True, "updated": updated}
 
 
 @trabalho_routes.route("/api/distribution/automatic", methods=["POST"])

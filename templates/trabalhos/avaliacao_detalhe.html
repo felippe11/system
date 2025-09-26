@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Avaliação do Revisor{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-star text-warning me-2"></i>
+                Detalhes da Avaliação
+            </h2>
+            <p class="text-muted mb-0">
+                Revisão registrada em {{ avaliacao.submitted_at.strftime('%d/%m/%Y %H:%M') if avaliacao.submitted_at else 'data não informada' }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ request.referrer or url_for('trabalho_routes.listar_trabalhos') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-id-badge me-1 text-primary"></i>
+                        Informações do Revisor
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Nome</dt>
+                        <dd class="col-sm-7">{{ avaliacao.revisor.nome if avaliacao.revisor else avaliacao.nome_revisor or 'Não informado' }}</dd>
+
+                        <dt class="col-sm-5">E-mail</dt>
+                        <dd class="col-sm-7">{{ avaliacao.revisor.email if avaliacao.revisor else 'Não disponível' }}</dd>
+
+                        <dt class="col-sm-5">Categoria</dt>
+                        <dd class="col-sm-7">{{ avaliacao.categoria or 'Não informada' }}</dd>
+
+                        <dt class="col-sm-5">Nota final</dt>
+                        <dd class="col-sm-7">
+                            {% if avaliacao.nota_final is not none %}
+                            {{ '%.2f'|format(avaliacao.nota_final) }}
+                            {% else %}
+                            <span class="text-muted">Sem nota</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5">Data da avaliação</dt>
+                        <dd class="col-sm-7">{{ avaliacao.data_avaliacao.strftime('%d/%m/%Y %H:%M') if avaliacao.data_avaliacao else 'Não informada' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-check me-1 text-success"></i>
+                        Critérios avaliados
+                    </h5>
+                    <span class="badge bg-light text-dark">{{ criterios|length }} critério(s)</span>
+                </div>
+                <div class="card-body">
+                    {% if criterios %}
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Critério</th>
+                                    <th style="width: 120px;" class="text-center">Nota</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for criterio in criterios %}
+                                <tr>
+                                    <td><strong>{{ criterio.criterio_id or 'Critério' }}</strong></td>
+                                    <td class="text-center">{{ '%.2f'|format(criterio.nota) if criterio.nota is not none else '-' }}</td>
+                                    <td>{{ criterio.observacao or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="py-4 text-center text-muted">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Nenhum critério individual registrado para esta avaliação.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
