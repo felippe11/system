@@ -552,20 +552,17 @@ def _build_reviewer_distribution_list(target_cliente_id: int | None = None):
 def _load_assignment_table():
     metadata = sa.MetaData()
     bind = db.session.get_bind() or db.engine
-    column_map: dict[str, sa.Column] = {}
-    table = None
+
     try:
         table = sa.Table(
             'assignment',
             metadata,
             autoload_with=bind,
         )
-        column_map = {col.name: col for col in table.c}
     except SQLAlchemyError:
         table = None
-        column_map = {}
 
-    if not column_map:
+    if table is None:
         dialect = bind.dialect.name
         if dialect == 'sqlite':
             rows = db.session.execute(sa.text("PRAGMA table_info(assignment)")).fetchall()
@@ -588,64 +585,12 @@ def _load_assignment_table():
         if not column_names:
             raise RuntimeError("Tabela 'assignment' não encontrada no banco de dados.")
 
-        column_map = {name: sa.column(name) for name in column_names}
-        table = sa.table('assignment', *column_map.values())
+        columns = [sa.column(name) for name in column_names]
+        table = sa.table('assignment', *columns)
 
-    resolved_columns = _detect_assignment_columns(column_map)
+    resolved_columns, column_map = _detect_assignment_columns(table)
     return table, resolved_columns, column_map
 
-
-def _detect_assignment_columns(column_map: dict[str, sa.Column]) -> dict[str, sa.Column | None]:
-    def _resolve_column(candidate_names: list[str], keywords: list[str]):
-        for name in candidate_names:
-            col = column_map.get(name)
-            if col is not None:
-                return col
-        lowered = {name.lower(): col for name, col in column_map.items()}
-        for keyword in keywords:
-            for name, col in lowered.items():
-                if keyword in name:
-                    return col
-        return None
-
-    resposta_column = _resolve_column(
-        [
-            'resposta_formulario_id',
-            'submission_id',
-            'work_id',
-            'trabalho_id',
-        ],
-        ['resposta', 'submission', 'work', 'trabalho'],
-    )
-
-    reviewer_column = _resolve_column(
-        [
-            'reviewer_id',
-            'revisor_id',
-            'reviewer',
-            'usuario_id',
-        ],
-        ['reviewer', 'revisor', 'usuario'],
-    )
-
-    if resposta_column is None or reviewer_column is None:
-        available = ", ".join(sorted(column_map.keys()))
-        raise RuntimeError(
-            "Tabela de assignment não possui colunas esperadas para vincular revisor e trabalho. "
-            f"Colunas disponíveis: {available}"
-        )
-
-    return {
-        'resposta': resposta_column,
-        'reviewer': reviewer_column,
-        'id': column_map.get('id'),
-        'deadline': column_map.get('deadline'),
-        'distribution_type': column_map.get('distribution_type'),
-        'distribution_date': column_map.get('distribution_date'),
-        'distributed_by': column_map.get('distributed_by'),
-        'notes': column_map.get('notes'),
-        'is_reevaluation': column_map.get('is_reevaluation'),
-    }
 
 def _detect_assignment_columns(assignment_table) -> tuple[dict[str, sa.Column], dict[str, sa.Column]]:
     columns = assignment_table.c
