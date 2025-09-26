@@ -18,6 +18,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    session,
     url_for,
 )
 from flask_login import current_user
@@ -1926,6 +1927,37 @@ def manual_distribution():
 
         assignments_created = 0
 
+        distributor_user_id = None
+        if distributed_by_column is not None and current_user.is_authenticated:
+            try:
+                user_obj = current_user._get_current_object()
+            except AttributeError:  # pragma: no cover - defensive fallback
+                user_obj = current_user
+
+            if isinstance(user_obj, Usuario):
+                distributor_user_id = user_obj.id
+            else:
+                raw_impersonator = session.get('impersonator_id')
+                candidate_ids = [raw_impersonator, getattr(user_obj, 'usuario_id', None)]
+                for candidate in candidate_ids:
+                    if not candidate:
+                        continue
+                    try:
+                        candidate_int = int(candidate)
+                    except (TypeError, ValueError):
+                        continue
+                    exists = db.session.execute(
+                        sa.select(Usuario.id).where(Usuario.id == candidate_int)
+                    ).scalar()
+                    if exists:
+                        distributor_user_id = candidate_int
+                        break
+                if distributor_user_id is None and raw_impersonator:
+                    current_app.logger.debug(
+                        "Impersonator id %s not found in usuario table; omitting distributed_by",
+                        raw_impersonator,
+                    )
+
         for assignment_data in assignments:
             work_id = assignment_data.get('workId')
             reviewer_id = assignment_data.get('reviewerId')
@@ -1965,8 +1997,8 @@ def manual_distribution():
             if distribution_date_column is not None:
                 insert_values[distribution_date_column.key] = datetime.utcnow()
 
-            if distributed_by_column is not None:
-                insert_values[distributed_by_column.key] = getattr(current_user, 'id', None)
+            if distributed_by_column is not None and distributor_user_id is not None:
+                insert_values[distributed_by_column.key] = distributor_user_id
 
             if notes_column is not None:
                 insert_values[notes_column.key] = notes
