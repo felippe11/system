@@ -1199,23 +1199,47 @@ def selecionar_categoria_barema(trabalho_id):
             .filter(RespostaFormulario.trabalho_id == trabalho_id)
         )
 
+        assignments = assignment_query.options(db.joinedload(Assignment.reviewer)).all()
+
+        codigo_param = (request.args.get("codigo") or "").strip() or None
+        candidatura_codigo = None
+        if codigo_param:
+            candidatura_codigo = RevisorCandidatura.query.filter_by(codigo=codigo_param).first()
+
         assignment = None
+        if candidatura_codigo and candidatura_codigo.email:
+            email_alvo = candidatura_codigo.email.lower()
+            assignment = next(
+                (
+                    item
+                    for item in assignments
+                    if item.reviewer and (item.reviewer.email or "").lower() == email_alvo
+                ),
+                None,
+            )
+
         current_reviewer_id = (
             getattr(current_user, "id", None) if current_user.is_authenticated else None
         )
-        if current_reviewer_id:
-            assignment = assignment_query.filter(Assignment.reviewer_id == current_reviewer_id).first()
-        if not assignment:
-            assignment = assignment_query.first()
+        if not assignment and current_reviewer_id:
+            assignment = next(
+                (item for item in assignments if item.reviewer_id == current_reviewer_id),
+                None,
+            )
+
+        if not assignment and assignments:
+            assignment = assignments[0]
 
         revisor_email = None
-        if current_user.is_authenticated:
+        if candidatura_codigo and candidatura_codigo.email:
+            revisor_email = candidatura_codigo.email
+        elif current_user.is_authenticated:
             revisor_email = getattr(current_user, "email", None)
         if not revisor_email and assignment and assignment.reviewer:
             revisor_email = assignment.reviewer.email
 
-        codigo_candidatura = None
-        if revisor_email:
+        codigo_candidatura = codigo_param
+        if not codigo_candidatura and revisor_email:
             candidatura = (
                 RevisorCandidatura.query
                 .filter_by(email=revisor_email)
@@ -1260,29 +1284,54 @@ def avaliar_barema(trabalho_id, categoria):
 
     trabalho = Submission.query.get_or_404(trabalho_id)
 
+    codigo_param = (request.args.get("codigo") or request.form.get("codigo_candidatura") or "").strip() or None
+
     assignment_query = (
         Assignment.query
         .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
         .filter(RespostaFormulario.trabalho_id == trabalho_id)
     )
 
+    assignments = assignment_query.options(db.joinedload(Assignment.reviewer)).all()
+
+    candidatura_codigo = None
+    if codigo_param:
+        candidatura_codigo = RevisorCandidatura.query.filter_by(codigo=codigo_param).first()
+
     assignment = None
+    if candidatura_codigo and candidatura_codigo.email:
+        email_alvo = candidatura_codigo.email.lower()
+        assignment = next(
+            (
+                item
+                for item in assignments
+                if item.reviewer and (item.reviewer.email or "").lower() == email_alvo
+            ),
+            None,
+        )
+
     current_reviewer_id = (
         getattr(current_user, "id", None) if current_user.is_authenticated else None
     )
-    if current_reviewer_id:
-        assignment = assignment_query.filter(Assignment.reviewer_id == current_reviewer_id).first()
-    if not assignment:
-        assignment = assignment_query.first()
+    if not assignment and current_reviewer_id:
+        assignment = next(
+            (item for item in assignments if item.reviewer_id == current_reviewer_id),
+            None,
+        )
+
+    if not assignment and assignments:
+        assignment = assignments[0]
 
     revisor_email = None
-    if current_user.is_authenticated:
+    if candidatura_codigo and candidatura_codigo.email:
+        revisor_email = candidatura_codigo.email
+    elif current_user.is_authenticated:
         revisor_email = getattr(current_user, "email", None)
     if not revisor_email and assignment and assignment.reviewer:
         revisor_email = assignment.reviewer.email
 
-    codigo_candidatura = None
-    if revisor_email:
+    codigo_candidatura = codigo_param
+    if not codigo_candidatura and revisor_email:
         candidatura = (
             RevisorCandidatura.query
             .filter_by(email=revisor_email)
@@ -1317,8 +1366,11 @@ def avaliar_barema(trabalho_id, categoria):
             f"Barema não encontrado para a categoria '{categoria}'.",
             "danger",
         )
+        redirect_params = {"trabalho_id": trabalho_id}
+        if codigo_candidatura:
+            redirect_params["codigo"] = codigo_candidatura
         return redirect(
-            url_for("revisor_routes.selecionar_categoria_barema", trabalho_id=trabalho_id)
+            url_for("revisor_routes.selecionar_categoria_barema", **redirect_params)
         )
 
     criterios_dict = barema.criterios if hasattr(barema, "criterios") else {}
@@ -1471,10 +1523,13 @@ def avaliar_barema(trabalho_id, categoria):
                 "Não foi possível identificar o revisor responsável por esta avaliação.",
                 "danger",
             )
+            redirect_params = {"trabalho_id": trabalho_id}
+            if codigo_candidatura:
+                redirect_params["codigo"] = codigo_candidatura
             return redirect(
                 url_for(
                     "revisor_routes.selecionar_categoria_barema",
-                    trabalho_id=trabalho_id,
+                    **redirect_params,
                 )
             )
 
@@ -1552,6 +1607,8 @@ def avaliar_barema(trabalho_id, categoria):
         db.session.commit()
 
         flash("Avaliação salva com sucesso!", "success")
+        if current_user.is_authenticated and getattr(current_user, "tipo", None) == "revisor":
+            return redirect(url_for(endpoints.DASHBOARD_REVISOR))
         if codigo_candidatura:
             return redirect(url_for("revisor_routes.progress", codigo=codigo_candidatura))
         return redirect(url_for(endpoints.DASHBOARD_REVISOR))

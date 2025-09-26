@@ -200,7 +200,7 @@
                                         <i class="bi bi-file-earmark-pdf"></i> Ver PDF
                                     </a>
                                     {% if trabalho.submission_id %}
-                                    <a href="{{ url_for('revisor_routes.selecionar_categoria_barema', trabalho_id=trabalho.submission_id) }}" class="btn btn-sm btn-success">
+                                    <a href="{{ url_for('revisor_routes.selecionar_categoria_barema', trabalho_id=trabalho.submission_id, codigo=candidatura.codigo) }}" class="btn btn-sm btn-success">
                                         <i class="bi bi-clipboard-check"></i> Barema
                                     </a>
                                     {% else %}
