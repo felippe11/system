@@ -65,6 +65,13 @@ trabalho_routes = Blueprint(
 )
 
 
+def _user_dashboard_endpoint() -> str:
+    """Return the appropriate dashboard endpoint for the logged-in user."""
+    if current_user.is_authenticated and getattr(current_user, "tipo", None) == "revisor":
+        return endpoints.DASHBOARD_REVISOR
+    return endpoints.DASHBOARD
+
+
 # ──────────────────────────────── SUBMISSÃO ──────────────────────────────── #
 @trabalho_routes.route("/submeter_trabalho", methods=["GET", "POST"])
 @login_required
@@ -73,7 +80,7 @@ def submeter_trabalho():
     """Participante faz upload do PDF e registra o trabalho no banco."""
     if current_user.tipo not in ["participante", "ministrante"]:
         flash("Acesso negado. Apenas participantes podem submeter trabalhos.", "error")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     config = current_user.cliente.configuracao if current_user.cliente else None
     formulario = None
@@ -81,17 +88,17 @@ def submeter_trabalho():
         formulario = config.formulario_submissao
         if not formulario or not formulario.is_submission_form:
             flash("Formulário de submissão inválido.", "danger")
-            return redirect(url_for(endpoints.DASHBOARD))
+            return redirect(url_for(_user_dashboard_endpoint()))
         if (
             formulario.eventos
             and current_user.evento_id not in [ev.id for ev in formulario.eventos]
         ):
             flash("Formulário indisponível para seu evento.", "danger")
-            return redirect(url_for(endpoints.DASHBOARD))
+            return redirect(url_for(_user_dashboard_endpoint()))
 
     if not formulario:
         flash("Submissão de trabalhos desabilitada.", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     if request.method == "POST":
         evento_id = getattr(current_user, "evento_id", None)
@@ -209,9 +216,7 @@ def submeter_trabalho():
 def meus_trabalhos():
     """Lista trabalhos do participante logado com informações detalhadas."""
     if current_user.tipo not in ["participante", "ministrante"]:
-        return redirect(
-            url_for(endpoints.DASHBOARD)
-        )
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     # Buscar submissões com informações relacionadas
     from sqlalchemy.orm import joinedload
@@ -812,7 +817,7 @@ def download_template_trabalhos():
     """Gera planilha modelo com as colunas do formulário de trabalhos."""
     if current_user.tipo != "cliente":
         flash("Acesso negado.", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     formulario = get_trabalhos_form()
     if not formulario:
@@ -844,7 +849,7 @@ def importar_trabalhos_excel():
     """Importa múltiplos trabalhos a partir de uma planilha Excel."""
     if current_user.tipo != "cliente":
         flash("Acesso negado.", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     formulario = get_trabalhos_form()
     if not formulario:
@@ -1043,7 +1048,7 @@ def listar_trabalhos():
     """Lista todos os trabalhos cadastrados pelo cliente."""
     if current_user.tipo not in ["cliente", "admin"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     formulario = get_trabalhos_form()
     if not formulario:
@@ -1068,7 +1073,7 @@ def distribuicao_manual_page():
 
     if current_user.tipo not in ["cliente", "admin"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     formulario = get_trabalhos_form()
     if not formulario:
@@ -1236,7 +1241,7 @@ def visualizar_avaliacao_revisor(avaliacao_id: int):
 
     if current_user.tipo not in ["cliente", "admin"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     avaliacao = (
         AvaliacaoBarema.query.options(
@@ -1275,7 +1280,7 @@ def excluir_avaliacao_revisor(avaliacao_id: int):
 
     if current_user.tipo not in ["cliente", "admin"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     avaliacao = (
         AvaliacaoBarema.query.options(
@@ -1326,7 +1331,7 @@ def excluir_avaliacao_revisor(avaliacao_id: int):
 def exportar_trabalhos_xlsx():
     if current_user.tipo not in ["cliente", "admin"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     formulario = get_trabalhos_form()
     if not formulario:
@@ -1358,7 +1363,7 @@ def exportar_trabalhos_xlsx():
 def exportar_trabalhos_pdf():
     if current_user.tipo not in ["cliente", "admin"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     formulario = get_trabalhos_form()
     if not formulario:
@@ -1478,7 +1483,7 @@ def novo_trabalho():
     """Formulário para adicionar novo trabalho."""
     if current_user.tipo != "cliente":
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
 
     formulario = get_trabalhos_form()
     if not formulario:
@@ -1611,7 +1616,7 @@ def editar_trabalho(trabalho_id):
     """Editar trabalho existente."""
     if current_user.tipo not in ["cliente", "admin", "revisor"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
     
     # Buscar resposta do formulário
     if current_user.tipo == "admin":
@@ -1708,7 +1713,7 @@ def excluir_trabalho(trabalho_id):
     """Excluir trabalho."""
     if current_user.tipo not in ["cliente", "admin", "revisor"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
     
     # Buscar resposta do formulário
     if current_user.tipo == "admin":
@@ -1764,7 +1769,7 @@ def visualizar_trabalho(trabalho_id):
     """Visualizar detalhes do trabalho."""
     if current_user.tipo not in ["cliente", "admin", "revisor"]:
         flash("Acesso negado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(_user_dashboard_endpoint()))
     
     # Buscar resposta do formulário
     if current_user.tipo == "admin":

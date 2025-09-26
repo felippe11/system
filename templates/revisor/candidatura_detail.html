@@ -2,6 +2,7 @@
 {% from 'partials/card.html' import render_card %}
 {% block title %}Detalhes da Candidatura{% endblock %}
 {% block content %}
+{% set back_url = request.referrer or url_for('peer_review_routes.reviewer_dashboard') %}
 <div class="container py-4">
   <div class="row justify-content-center">
     <div class="col-lg-10">
@@ -178,7 +179,7 @@
       {{ render_card('Ações Administrativas', acoes_content, '', 'card shadow-sm border-0') }}
       {% else %}
       <div class="text-center">
-        <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-outline-secondary">
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">
           <i class="bi bi-arrow-left me-1"></i>Voltar
         </a>
       </div>

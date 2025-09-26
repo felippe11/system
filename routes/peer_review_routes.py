@@ -37,6 +37,7 @@ import uuid
 from datetime import datetime, timedelta
 import random
 from typing import Dict
+from sqlalchemy import or_
 
 
 peer_review_routes = Blueprint(
@@ -499,6 +500,8 @@ def assign_reviews():
                 resposta_formulario_id=resposta_formulario.id,
                 reviewer_id=reviewer_id,
                 deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+                distribution_type="manual",
+                distributed_by=uid,
             )
             db.session.add(assignment)
 
@@ -1180,7 +1183,16 @@ def reviewer_dashboard():
 
     # 2) Usuário autenticado ------------------------------------------------
     if current_user.is_authenticated:
-        tasks = Assignment.query.filter_by(reviewer_id=current_user.id).all()
+        tasks = (
+            Assignment.query.filter_by(reviewer_id=current_user.id)
+            .filter(
+                or_(
+                    Assignment.distribution_type.isnot(None),
+                    Assignment.distributed_by.isnot(None),
+                )
+            )
+            .all()
+        )
         return render_template("peer_review/reviewer/dashboard.html", tasks=tasks)
 
     # 3) Tentativa de acesso via locator + code -----------------------------
@@ -1193,7 +1205,16 @@ def reviewer_dashboard():
         if review and review.access_code == code:
             session["reviewer_locator"] = locator
             session["reviewer_code"] = code
-            tasks = Assignment.query.filter_by(reviewer_id=review.reviewer_id).all()
+            tasks = (
+                Assignment.query.filter_by(reviewer_id=review.reviewer_id)
+                .filter(
+                    or_(
+                        Assignment.distribution_type.isnot(None),
+                        Assignment.distributed_by.isnot(None),
+                    )
+                )
+                .all()
+            )
             return render_template("peer_review/reviewer/dashboard.html", tasks=tasks)
 
         # 3b) Valida como Submission ---------------------------------------

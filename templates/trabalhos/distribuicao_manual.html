@@ -153,10 +153,6 @@
                                 <input type="text" id="reviewerSearch" class="form-control" placeholder="Nome ou e-mail do revisor">
                             </div>
                         </div>
-                        <div class="col-lg-6">
-                            <label class="form-label" for="manualDeadline">Prazo para revisão</label>
-                            <input type="date" class="form-control" id="manualDeadline" required>
-                        </div>
                     </div>
 
                     <div class="row g-3 mt-1">
@@ -476,17 +472,13 @@
     }
 
     function setDefaultDeadline() {
-        const deadlineInput = document.getElementById('manualDeadline');
         const globalDeadlineInput = document.getElementById('globalDeadline');
-        if (!deadlineInput || deadlineInput.value) {
+        if (!globalDeadlineInput || globalDeadlineInput.value) {
             return;
         }
         const today = new Date();
         today.setDate(today.getDate() + 7);
-        deadlineInput.value = today.toISOString().split('T')[0];
-        if (globalDeadlineInput && !globalDeadlineInput.value) {
-            globalDeadlineInput.value = deadlineInput.value;
-        }
+        globalDeadlineInput.value = today.toISOString().split('T')[0];
     }
 
     function loadAvailableReviewers() {
@@ -872,12 +864,12 @@
     }
 
     function executeManualDistribution() {
-        const deadline = document.getElementById('manualDeadline');
+        const deadline = document.getElementById('globalDeadline');
         const notes = document.getElementById('manualNotes');
         const alertBox = document.getElementById('manualDistributionAlert');
         if (!deadline || !deadline.value) {
             if (alertBox) {
-                alertBox.textContent = 'Por favor, defina um prazo para a revisão.';
+                alertBox.textContent = 'Por favor, defina um prazo global para a revisão.';
                 alertBox.classList.remove('d-none');
             }
             return;
@@ -965,10 +957,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const manualDeadlineInput = document.getElementById('manualDeadline');
-                    if (manualDeadlineInput) {
-                        manualDeadlineInput.value = globalDeadlineInput.value;
-                    }
                     alert('Prazo atualizado com sucesso para todas as atribuições.');
                     window.location.reload();
                 } else {

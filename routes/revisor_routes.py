@@ -13,7 +13,7 @@ from utils.barema import normalize_barema_requisitos
 import json
 import os
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List
 
 from flask import (
@@ -80,6 +80,13 @@ revisor_routes = Blueprint(
 )
 
 
+def _redirect_to_dashboard():
+    """Redirect to the appropriate dashboard for the current user."""
+    if current_user.is_authenticated and getattr(current_user, "tipo", None) == "revisor":
+        return redirect(url_for(endpoints.DASHBOARD_REVISOR))
+    return redirect(url_for(endpoints.DASHBOARD))
+
+
 @revisor_routes.record_once
 def _ensure_secret_key(setup_state):  # pragma: no cover
     """Garante que a aplicação tenha uma *secret_key* mesmo em dev."""
@@ -101,7 +108,7 @@ def list_processes() -> Any:
 
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
 
     processos = RevisorProcess.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
@@ -116,7 +123,7 @@ def new_process():
     """Render form to create a new review process."""
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     
     formularios: List[Formulario] = Formulario.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
@@ -146,7 +153,7 @@ def create_process() -> Any:
     """Create a new review process for the current client."""
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     try:
         dados = parse_revisor_form(request)
     except ValueError as exc:
@@ -192,7 +199,7 @@ def edit_process(process_id: int):
     """Render or update a specific review process."""
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     
     # Check if process exists
     processo = RevisorProcess.query.filter_by(
@@ -206,7 +213,7 @@ def edit_process(process_id: int):
     
     if processo.cliente_id != current_user.id:  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
 
 
     formularios: List[Formulario] = Formulario.query.filter_by(
@@ -278,7 +285,7 @@ def edit_process(process_id: int):
 def config_revisor():
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
 
     processo = RevisorProcess.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
@@ -302,7 +309,7 @@ def config_overview():
     """
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     
     # Get all reviewer processes for the current client
     processos = RevisorProcess.query.filter_by(
@@ -334,11 +341,11 @@ def delete_process(process_id: int):
     """Remove a review process owned by the current client."""
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     processo = RevisorProcess.query.get_or_404(process_id)
     if processo.cliente_id != current_user.id:  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     db.session.delete(processo)
     db.session.commit()
     if request.method == "DELETE":
@@ -363,7 +370,7 @@ def manage_barema(process_id: int):
     """
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     processo = RevisorProcess.query.get_or_404(process_id)
     barema = ProcessoBarema.query.filter_by(process_id=process_id).first()
     if barema is None:
@@ -386,7 +393,7 @@ def manage_barema(process_id: int):
 def add_requisito(barema_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     barema = ProcessoBarema.query.get_or_404(barema_id)
 
     if request.method == "POST":
@@ -427,7 +434,7 @@ def edit_requisito(req_id: int):
         flash("Acesso negado!", "danger")
 
 
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     if request.method == "POST":
         requisito.nome = request.form.get("nome") or requisito.nome
         requisito.descricao = request.form.get("descricao")
@@ -471,7 +478,7 @@ def delete_requisito(req_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
 
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     process_id = requisito.barema.process_id
     db.session.delete(requisito)
     db.session.commit()
@@ -487,7 +494,7 @@ def delete_requisito(req_id: int):
 def delete_barema(process_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     barema = ProcessoBarema.query.filter_by(process_id=process_id).first_or_404()
 
     db.session.delete(barema)
@@ -865,75 +872,41 @@ def approve(cand_id: int):
         else:
             reviewer.tipo = "revisor"  # garante a role
 
-    # Se informado, cria assignment imediato
+    # Se informado, registra um assignment explícito para o trabalho
     submission_id: int | None = (
         request.json.get("submission_id")
         if request.is_json
         else request.form.get("submission_id", type=int)
     )
     if submission_id and reviewer:
-        db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
-    
-    # Atribuição automática de trabalhos disponíveis para o revisor aprovado
-    if reviewer:
-        from datetime import timedelta
-        
-        # Busca trabalhos disponíveis do mesmo cliente que ainda precisam de revisores
         from models.event import RespostaFormulario
-        
-        # Buscar IDs de trabalhos já atribuídos ao revisor
-        trabalhos_atribuidos_ids = (
-            db.session.query(RespostaFormulario.trabalho_id)
-            .join(Assignment, Assignment.resposta_formulario_id == RespostaFormulario.id)
-            .filter(Assignment.reviewer_id == reviewer.id)
-            .filter(RespostaFormulario.trabalho_id.isnot(None))
-        )
-        
-        trabalhos_disponiveis = (
-            Submission.query
-            .join(Evento, Submission.evento_id == Evento.id)
-            .filter(
-                Evento.cliente_id == cand.process.cliente_id,
-                ~Submission.id.in_(trabalhos_atribuidos_ids)
+
+        resposta_formulario = RespostaFormulario.query.filter_by(
+            trabalho_id=submission_id
+        ).first()
+        if not resposta_formulario:
+            resposta_formulario = RespostaFormulario(
+                trabalho_id=submission_id,
+                formulario_id=None,
+                data_submissao=datetime.utcnow(),
             )
-            .limit(5)  # Limita a 5 trabalhos iniciais
-            .all()
-        )
-        
-        # Cria assignments para os trabalhos disponíveis
+            db.session.add(resposta_formulario)
+            db.session.flush()
+
         config = ConfiguracaoCliente.query.filter_by(
             cliente_id=cand.process.cliente_id
         ).first()
         prazo_dias = config.prazo_parecer_dias if config else 14
-        
-        for trabalho in trabalhos_disponiveis:
-            # Cria Review
-            review = Review(
-                submission_id=trabalho.id,
-                reviewer_id=reviewer.id,
-                access_code=str(uuid.uuid4())[:8],
-            )
-            db.session.add(review)
-            
-            # Busca ou cria RespostaFormulario para o trabalho
-            resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=trabalho.id).first()
-            if not resposta_formulario:
-                # Cria uma resposta de formulário básica se não existir
-                resposta_formulario = RespostaFormulario(
-                    trabalho_id=trabalho.id,
-                    formulario_id=None,  # Pode ser None para assignments automáticos
-                    data_submissao=datetime.utcnow()
-                )
-                db.session.add(resposta_formulario)
-                db.session.flush()  # Para obter o ID
-            
-            # Cria Assignment
-            assignment = Assignment(
+
+        db.session.add(
+            Assignment(
                 resposta_formulario_id=resposta_formulario.id,
                 reviewer_id=reviewer.id,
                 deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+                distribution_type="manual",
+                distributed_by=getattr(current_user, "id", None),
             )
-            db.session.add(assignment)
+        )
 
     db.session.commit()
     if cand.email:
@@ -1044,7 +1017,7 @@ def view_candidatura(cand_id: int):
     """Exibe os detalhes e respostas de uma candidatura."""
     if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
     return render_template("revisor/candidatura_detail.html", candidatura=cand)
@@ -1596,7 +1569,7 @@ def avaliar(submission_id: int):
         )
         if not assignment:
             flash("Acesso negado!", "danger")
-            return redirect(url_for(endpoints.DASHBOARD))
+            return _redirect_to_dashboard()
 
     categoria_trabalho = resolve_categoria_trabalho(submission, assignment)
     
@@ -1613,7 +1586,7 @@ def avaliar(submission_id: int):
     
     if not barema_categoria and not barema_geral:
         flash("Barema não encontrado para este evento.", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
+        return _redirect_to_dashboard()
     
     # Usar barema específico se disponível, senão usar o geral
 

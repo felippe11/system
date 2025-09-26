@@ -22,3 +22,6 @@ DASHBOARD_AGENDAMENTOS = "dashboard_routes.dashboard_agendamentos"
 
 DASHBOARD_PARTICIPANTE = "dashboard_participante_routes.dashboard_participante"
 """Endpoint for the participant dashboard."""
+
+DASHBOARD_REVISOR = "peer_review_routes.reviewer_dashboard"
+"""Endpoint for the reviewer dashboard."""
