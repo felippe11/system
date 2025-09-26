@@ -102,11 +102,19 @@
 
 <script>
 function selecionarCategoria(categoria) {
-    // Confirmar seleção
-    if (confirm(`Deseja avaliar este trabalho usando o barema da categoria "${categoria}"?`)) {
-        // Redirecionar para a página de avaliação
-        window.location.href = `{{ url_for('revisor_routes.avaliar_barema', trabalho_id=trabalho.id, categoria='CATEGORIA_PLACEHOLDER') }}`.replace('CATEGORIA_PLACEHOLDER', encodeURIComponent(categoria));
+    if (!confirm(`Deseja avaliar este trabalho usando o barema da categoria "${categoria}"?`)) {
+        return;
     }
+
+    let url = `{{ url_for('revisor_routes.avaliar_barema', trabalho_id=trabalho.id, categoria='CATEGORIA_PLACEHOLDER') }}`
+        .replace('CATEGORIA_PLACEHOLDER', encodeURIComponent(categoria));
+
+    {% if codigo_candidatura %}
+    const separator = url.includes('?') ? '&' : '?';
+    url = `${url}${separator}codigo={{ codigo_candidatura }}`;
+    {% endif %}
+
+    window.location.href = url;
 }
 </script>
 

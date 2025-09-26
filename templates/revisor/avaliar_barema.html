@@ -45,6 +45,9 @@
 
                     <!-- Formulário de Avaliação -->
                     <form method="POST" id="formAvaliacao">
+                        {% if codigo_candidatura %}
+                        <input type="hidden" name="codigo_candidatura" value="{{ codigo_candidatura }}">
+                        {% endif %}
                         <div class="card">
                             <div class="card-header">
                                 <h5 class="mb-0">
@@ -167,7 +170,7 @@
 
                         <!-- Botões de Ação -->
                         <div class="mt-4 text-center">
-                            <a href="{{ url_for('revisor_routes.selecionar_categoria_barema', trabalho_id=trabalho.id) }}" 
+                            <a href="{{ url_for('revisor_routes.selecionar_categoria_barema', trabalho_id=trabalho.id, codigo=codigo_candidatura) if codigo_candidatura else url_for('revisor_routes.selecionar_categoria_barema', trabalho_id=trabalho.id) }}" 
                                class="btn btn-secondary mr-2">
                                 <i class="fas fa-arrow-left"></i> Voltar
                             </a>
