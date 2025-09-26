@@ -1193,18 +1193,35 @@ def selecionar_categoria_barema(trabalho_id):
         trabalho = Submission.query.get_or_404(trabalho_id)
         logging.info(f"[DEBUG] Trabalho encontrado: {trabalho.title if trabalho else 'None'}")
 
-        assignment = (
+        assignment_query = (
             Assignment.query
             .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
             .filter(RespostaFormulario.trabalho_id == trabalho_id)
-            .first()
         )
 
+        assignment = None
+        current_reviewer_id = (
+            getattr(current_user, "id", None) if current_user.is_authenticated else None
+        )
+        if current_reviewer_id:
+            assignment = assignment_query.filter(Assignment.reviewer_id == current_reviewer_id).first()
+        if not assignment:
+            assignment = assignment_query.first()
+
+        revisor_email = None
+        if current_user.is_authenticated:
+            revisor_email = getattr(current_user, "email", None)
+        if not revisor_email and assignment and assignment.reviewer:
+            revisor_email = assignment.reviewer.email
+
         codigo_candidatura = None
-        if assignment and assignment.reviewer:
-            candidatura = RevisorCandidatura.query.filter_by(
-                email=assignment.reviewer.email
-            ).first()
+        if revisor_email:
+            candidatura = (
+                RevisorCandidatura.query
+                .filter_by(email=revisor_email)
+                .order_by(RevisorCandidatura.created_at.desc())
+                .first()
+            )
             if candidatura:
                 codigo_candidatura = candidatura.codigo
 
@@ -1243,18 +1260,35 @@ def avaliar_barema(trabalho_id, categoria):
 
     trabalho = Submission.query.get_or_404(trabalho_id)
 
-    assignment = (
+    assignment_query = (
         Assignment.query
         .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
         .filter(RespostaFormulario.trabalho_id == trabalho_id)
-        .first()
     )
 
+    assignment = None
+    current_reviewer_id = (
+        getattr(current_user, "id", None) if current_user.is_authenticated else None
+    )
+    if current_reviewer_id:
+        assignment = assignment_query.filter(Assignment.reviewer_id == current_reviewer_id).first()
+    if not assignment:
+        assignment = assignment_query.first()
+
+    revisor_email = None
+    if current_user.is_authenticated:
+        revisor_email = getattr(current_user, "email", None)
+    if not revisor_email and assignment and assignment.reviewer:
+        revisor_email = assignment.reviewer.email
+
     codigo_candidatura = None
-    if assignment and assignment.reviewer:
-        candidatura = RevisorCandidatura.query.filter_by(
-            email=assignment.reviewer.email
-        ).first()
+    if revisor_email:
+        candidatura = (
+            RevisorCandidatura.query
+            .filter_by(email=revisor_email)
+            .order_by(RevisorCandidatura.created_at.desc())
+            .first()
+        )
         if candidatura:
             codigo_candidatura = candidatura.codigo
 
@@ -1412,16 +1446,16 @@ def avaliar_barema(trabalho_id, categoria):
         nome_revisor = None
         revisor_usuario = None
 
-        if assignment:
+        if current_user.is_authenticated:
+            possible_id = getattr(current_user, "id", None)
+            if possible_id:
+                revisor_usuario = Usuario.query.get(possible_id)
+
+        if not revisor_usuario and assignment:
             if assignment.reviewer:
                 revisor_usuario = assignment.reviewer
             elif assignment.reviewer_id:
                 revisor_usuario = Usuario.query.get(assignment.reviewer_id)
-
-        if not revisor_usuario and current_user.is_authenticated:
-            possible_id = getattr(current_user, "id", None)
-            if possible_id:
-                revisor_usuario = Usuario.query.get(possible_id)
 
         if not revisor_usuario and assignment and assignment.reviewer:
             revisor_usuario = Usuario.query.filter_by(
@@ -1447,10 +1481,14 @@ def avaliar_barema(trabalho_id, categoria):
         revisor_id = revisor_usuario.id
         nome_revisor = revisor_usuario.nome
 
-        if assignment and assignment.reviewer:
-            candidatura = RevisorCandidatura.query.filter_by(
-                email=assignment.reviewer.email
-            ).first()
+        revisor_email_lookup = getattr(revisor_usuario, "email", None)
+        if revisor_email_lookup:
+            candidatura = (
+                RevisorCandidatura.query
+                .filter_by(email=revisor_email_lookup)
+                .order_by(RevisorCandidatura.created_at.desc())
+                .first()
+            )
             if candidatura:
                 nome_revisor = candidatura.nome or nome_revisor
                 if candidatura.status == "aprovado":
@@ -1514,7 +1552,9 @@ def avaliar_barema(trabalho_id, categoria):
         db.session.commit()
 
         flash("Avaliação salva com sucesso!", "success")
-        return redirect(url_for("revisor_routes.progress", codigo=codigo_candidatura))
+        if codigo_candidatura:
+            return redirect(url_for("revisor_routes.progress", codigo=codigo_candidatura))
+        return redirect(url_for(endpoints.DASHBOARD_REVISOR))
 
     pdf_url = None
 
