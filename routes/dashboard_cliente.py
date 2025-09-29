@@ -1517,7 +1517,7 @@ def _exportar_metricas_baremas_xlsx(dados, filtros):
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
 
-    header_format = workbook.add_format({'bold': True, 'bg_color': '#1d4ed8', 'color': 'white'})
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#1d4ed8', 'font_color': 'white'})
     wrap_format = workbook.add_format({'text_wrap': True})
 
     resumo_ws = workbook.add_worksheet('Resumo')
@@ -1741,7 +1741,7 @@ def _exportar_revisores_metricas_xlsx(dados, filtros):
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
 
-    header_format = workbook.add_format({'bold': True, 'bg_color': '#0f172a', 'color': 'white'})
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#0f172a', 'font_color': 'white'})
     wrap_format = workbook.add_format({'text_wrap': True})
 
     por_trabalho_ws = workbook.add_worksheet('Revisores por Trabalho')
