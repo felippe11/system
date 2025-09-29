@@ -136,7 +136,6 @@
           <ul class="nav nav-tabs nav-justified" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="clientes-tab" data-bs-toggle="tab"
-
                       data-bs-target="#clientes" type="button">
                 <i class="bi bi-people me-1"></i>Clientes
               </button>
@@ -152,7 +151,6 @@
                       data-bs-target="#financeiro" type="button">
                 <i class="bi bi-graph-up me-1"></i>Financeiro
               </button>
-
             </li>
           </ul>
 
@@ -286,7 +284,7 @@
                           <td>{{ proposta.email }}</td>
                           <td>{{ proposta.tipo_evento }}</td>
                           <td>{{ proposta.descricao }}</td>
-                          <td>{{ proposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</td>
+                          <td>{{ proposta.data_submissao.strftime('%d/%m/%Y %H:%M') if proposta.data_submissao else 'N/A' }}</td>
                           <td>
                             <span class="badge bg-{{ 'warning' if proposta.status == 'Pendente' else 'success' }}">
                               {{ proposta.status }}
@@ -300,9 +298,6 @@
                 </div>
               </div>
             </div>
-
-
-
 
             <!-- Financeiro Tab -->
             <div class="tab-pane fade" id="financeiro">
@@ -479,51 +474,28 @@
     }
     
     // Validação para garantir que a taxa diferenciada seja menor que a geral
-
-    
-    
-
-    taxaDiferenciada.addEventListener('input', validateTaxa);
-    taxaGeral.addEventListener('input', validateTaxa);
-    
     function validateTaxa() {
-      if (removerTaxaCheckbox.checked) {
-        taxaDiferenciada.setCustomValidity('');
-        return; // Não valida se vai remover a taxa
-      }
+      const taxaGeralValue = parseFloat(taxaGeral.value) || 0;
+      const taxaDiferenciadaValue = parseFloat(taxaDiferenciada.value) || 0;
       
-      const geralValue = parseFloat(taxaGeral.value) || 0;
-      const diferenciadaValue = parseFloat(taxaDiferenciada.value) || 0;
-      
-      if (diferenciadaValue >= geralValue && diferenciadaValue > 0) {
+      if (taxaDiferenciadaValue > 0 && taxaDiferenciadaValue >= taxaGeralValue) {
         taxaHelp.classList.remove('text-muted');
         taxaHelp.classList.add('text-danger');
-        taxaHelp.textContent = 'A taxa diferenciada deve ser menor que a taxa geral!';
-        taxaDiferenciada.setCustomValidity('Taxa diferenciada deve ser menor que taxa geral');
+        taxaHelp.textContent = 'A taxa diferenciada deve ser menor que a taxa geral do sistema.';
+        taxaDiferenciada.setCustomValidity('Taxa deve ser menor que a taxa geral');
       } else {
-        taxaHelp.classList.add('text-muted');
         taxaHelp.classList.remove('text-danger');
+        taxaHelp.classList.add('text-muted');
         taxaHelp.textContent = 'Deve ser menor que a taxa geral do sistema.';
         taxaDiferenciada.setCustomValidity('');
       }
     }
     
-    // Validação no envio do formulário
-    document.getElementById('taxaForm').addEventListener('submit', function(e) {
-      // Se estiver removendo a taxa, não precisa validar o valor
-      if (removerTaxaCheckbox.checked) {
-        return true;
-      }
-      
-      const geralValue = parseFloat(taxaGeral.value) || 0;
-      const diferenciadaValue = parseFloat(taxaDiferenciada.value) || 0;
-      const clienteId = clienteSelect.value;
-      
-      if (clienteId && diferenciadaValue > 0 && diferenciadaValue >= geralValue) {
-        e.preventDefault();
-        alert('A taxa diferenciada deve ser menor que a taxa geral do sistema!');
-      }
-    });
+    taxaDiferenciada.addEventListener('input', validateTaxa);
+    taxaGeral.addEventListener('input', validateTaxa);
+    
+    // Validação inicial
+    validateTaxa();
   });
 </script>
 
