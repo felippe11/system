@@ -60,6 +60,88 @@ class EmailService:
     # ------------------------------------------------------------------
     #  Public API
     # ------------------------------------------------------------------
+    
+    def _validate_template(self, template_path: str) -> bool:
+        """Valida se um template existe."""
+        try:
+            from flask import render_template_string
+            import os
+            
+            # Verificar se o arquivo existe
+            full_path = os.path.join('templates', template_path)
+            if not os.path.exists(full_path):
+                return False
+            
+            # Tentar renderizar o template para validar sintaxe
+            with open(full_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            # Renderizar com contexto vazio para validar sintaxe
+            render_template_string(template_content, {})
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erro ao validar template {template_path}: {e}")
+            return False
+
+    def enviar_certificado_revisor(self, certificado) -> bool:
+        """Envia certificado de revisor por email."""
+        try:
+            logger.info(f"Iniciando envio de certificado para revisor: {certificado.revisor.email}")
+            
+            # Preparar dados do email
+            assunto = f"Certificado de Revisor - {certificado.cliente.nome}"
+            
+            # Preparar anexo
+            anexos = []
+            if certificado.arquivo_path and os.path.exists(certificado.arquivo_path):
+                with open(certificado.arquivo_path, 'rb') as f:
+                    conteudo = f.read()
+                anexos.append((
+                    f"certificado_revisor_{certificado.revisor.nome.replace(' ', '_')}.pdf",
+                    conteudo,
+                    'application/pdf'
+                ))
+                logger.info(f"Anexo preparado: {certificado.arquivo_path}")
+            else:
+                logger.warning(f"Arquivo de certificado não encontrado: {certificado.arquivo_path}")
+            
+            # Preparar contexto do template
+            contexto = {
+                'revisor_nome': certificado.revisor.nome,
+                'cliente_nome': certificado.cliente.nome,
+                'evento_nome': certificado.evento.nome if certificado.evento else '',
+                'trabalhos_revisados': certificado.trabalhos_revisados,
+                'data_liberacao': certificado.data_liberacao.strftime('%d/%m/%Y') if certificado.data_liberacao else '',
+                'titulo_certificado': certificado.titulo,
+            }
+            
+            # Validar template
+            template_path = 'email/certificado_revisor.html'
+            if not self._validate_template(template_path):
+                logger.error(f"Template não encontrado: {template_path}")
+                return False
+            
+            # Enviar email
+            resultado = self.send_email(
+                subject=assunto,
+                to=(certificado.revisor.email, certificado.revisor.nome),
+                template=template_path,
+                template_context=contexto,
+                attachments=anexos
+            )
+            
+            success = resultado.get('success', False)
+            if success:
+                logger.info(f"Certificado enviado com sucesso para: {certificado.revisor.email}")
+            else:
+                logger.error(f"Falha ao enviar certificado para: {certificado.revisor.email}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Erro ao enviar certificado de revisor: {e}", exc_info=True)
+            return False
 
     def send_email(
         self,
@@ -77,27 +159,63 @@ class EmailService:
         attachments: Optional[Sequence[AttachmentInput]] = None,
     ) -> Dict[str, Any]:
         """Send an email using Mailjet or SMTP depending on configuration."""
+        
+        try:
+            logger.info(f"Iniciando envio de email - Assunto: {subject}")
+            
+            recipients = self._normalise_recipients(to)
+            if not recipients:
+                logger.error("Email requer pelo menos um destinatário")
+                raise ValueError("Email requires at least one recipient")
 
-        recipients = self._normalise_recipients(to)
-        if not recipients:
-            raise ValueError("Email requires at least one recipient")
+            sender_recipient = self._resolve_sender(sender)
+            if not sender_recipient:
+                logger.error("MAIL_DEFAULT_SENDER não configurado e nenhum remetente fornecido")
+                raise RuntimeError(
+                    "MAIL_DEFAULT_SENDER is not configured and no sender was provided."
+                )
 
-        sender_recipient = self._resolve_sender(sender)
-        if not sender_recipient:
-            raise RuntimeError(
-                "MAIL_DEFAULT_SENDER is not configured and no sender was provided."
-            )
+            # Validar template se fornecido
+            if template and not self._validate_template(template):
+                logger.error(f"Template inválido: {template}")
+                raise ValueError(f"Template não encontrado ou inválido: {template}")
 
-        html = html or self._render_template(template, template_context)
-        att_objs = self._normalise_attachments(attachments)
-        cc_recipients = self._normalise_recipients(cc) if cc else []
-        bcc_recipients = self._normalise_recipients(bcc) if bcc else []
-        reply_to_recipient = self._normalise_single_recipient(reply_to)
+            html = html or self._render_template(template, template_context)
+            att_objs = self._normalise_attachments(attachments)
+            cc_recipients = self._normalise_recipients(cc) if cc else []
+            bcc_recipients = self._normalise_recipients(bcc) if bcc else []
+            reply_to_recipient = self._normalise_single_recipient(reply_to)
 
-        client = self._get_mailjet_client()
-        if client:
-            return self._send_mailjet(
-                client=client,
+            logger.info(f"Destinatários: {[r.email for r in recipients]}")
+            logger.info(f"Remetente: {sender_recipient.email}")
+            logger.info(f"Anexos: {len(att_objs)}")
+
+            client = self._get_mailjet_client()
+            if client:
+                logger.info("Usando Mailjet para envio")
+                result = self._send_mailjet(
+                    client=client,
+                    sender=sender_recipient,
+                    to=recipients,
+                    subject=subject,
+                    text=text,
+                    html=html,
+                    attachments=att_objs,
+                    cc=cc_recipients,
+                    bcc=bcc_recipients,
+                    reply_to=reply_to_recipient,
+                )
+                logger.info(f"Email enviado via Mailjet com sucesso")
+                return result
+
+            if not self._can_use_smtp():
+                logger.error("Nenhum provedor de email configurado")
+                raise RuntimeError(
+                    "No email provider configured: set Mailjet credentials or SMTP settings."
+                )
+
+            logger.info("Usando SMTP para envio")
+            result = self._send_smtp(
                 sender=sender_recipient,
                 to=recipients,
                 subject=subject,
@@ -108,23 +226,88 @@ class EmailService:
                 bcc=bcc_recipients,
                 reply_to=reply_to_recipient,
             )
+            logger.info(f"Email enviado via SMTP com sucesso")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Erro ao enviar email: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
 
-        if not self._can_use_smtp():
-            raise RuntimeError(
-                "No email provider configured: set Mailjet credentials or SMTP settings."
+    def enviar_email_unificado(
+        self,
+        destinatario: str,
+        nome_participante: str,
+        nome_oficina: str,
+        assunto: str,
+        corpo_texto: str,
+        anexo_path: Optional[str] = None,
+        corpo_html: Optional[str] = None,
+        template_path: Optional[str] = None,
+        template_context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Função unificada que substitui o sistema legacy de envio de emails.
+        Compatível com a interface antiga mas usando o novo EmailService.
+        """
+        try:
+            logger.info(f"Enviando email unificado para: {destinatario}")
+            
+            # Preparar HTML
+            if corpo_html is None:
+                if template_path:
+                    # Validar template
+                    if not self._validate_template(template_path):
+                        logger.error(f"Template não encontrado: {template_path}")
+                        return {"success": False, "error": f"Template não encontrado: {template_path}"}
+                    
+                    corpo_html = self._render_template(template_path, template_context or {})
+                else:
+                    # HTML padrão para compatibilidade
+                    corpo_html = f"""
+                    <html>
+                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                        <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                            <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
+                            <p>Olá, <b>{nome_participante}</b>!</p>
+                            <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
+                            <p>Aguardamos você no evento!</p>
+
+                            <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
+                                <p><b>Detalhes da Oficina:</b></p>
+                                <p><b>Nome:</b> {nome_oficina}</p>
+                            </div>
+
+                            <p>Caso tenha dúvidas, entre em contato conosco.</p>
+                            <p style="text-align: center;">
+                                <b>Equipe Organizadora</b>
+                            </p>
+                        </div>
+                    </body>
+                    </html>
+                    """
+            
+            # Preparar anexos
+            attachments = [anexo_path] if anexo_path else None
+            
+            # Enviar email
+            resultado = self.send_email(
+                to=destinatario,
+                subject=assunto,
+                text=corpo_texto,
+                html=corpo_html,
+                attachments=attachments,
             )
-
-        return self._send_smtp(
-            sender=sender_recipient,
-            to=recipients,
-            subject=subject,
-            text=text,
-            html=html,
-            attachments=att_objs,
-            cc=cc_recipients,
-            bcc=bcc_recipients,
-            reply_to=reply_to_recipient,
-        )
+            
+            if resultado.get('success', False):
+                logger.info(f"✅ E-mail enviado com sucesso para {destinatario}")
+                return {"success": True, "message": "Email enviado com sucesso"}
+            else:
+                logger.error(f"❌ Falha ao enviar email para {destinatario}")
+                return {"success": False, "error": resultado.get('error', 'Erro desconhecido')}
+                
+        except Exception as e:
+            logger.error(f"Erro ao enviar email unificado: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
 
     # ------------------------------------------------------------------
     #  Provider helpers

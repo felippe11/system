@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Configurar Certificados de Revisores{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="bi bi-award text-primary me-2"></i>
+                    Certificados de Revisores
+                </h2>
+                <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
+                </a>
+            </div>
+
+            <!-- Informações do Evento -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-event me-2"></i>
+                        {{ evento.nome }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Cliente:</strong> {{ evento.cliente.nome }}</p>
+                            <p><strong>Data:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Não definida' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Revisores Aprovados:</strong> {{ revisores_aprovados|length }}</p>
+                            <p><strong>Certificados Liberados:</strong> 
+                                {% set certificados_liberados = certificados_existentes|selectattr('liberado')|list %}
+                                {{ certificados_liberados|length }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Configuração do Certificado -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="bi bi-gear me-2"></i>
+                                Configuração do Certificado
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('certificado_revisor_routes.salvar_config_certificado_revisor') }}" enctype="multipart/form-data">
+                                <input type="hidden" name="evento_id" value="{{ evento.id }}">
+                                
+                                <div class="mb-3">
+                                    <label for="titulo_certificado" class="form-label">
+                                        <i class="bi bi-type me-1"></i>Título do Certificado
+                                    </label>
+                                    <input type="text" class="form-control" id="titulo_certificado" name="titulo_certificado" 
+                                           value="{{ config.titulo_certificado }}" required>
+                                    <div class="form-text">Título que aparecerá no certificado</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="texto_certificado" class="form-label">
+                                        <i class="bi bi-file-text me-1"></i>Texto do Certificado
+                                    </label>
+                                    <textarea class="form-control" id="texto_certificado" name="texto_certificado" rows="6" required>{{ config.texto_certificado }}</textarea>
+                                    <div class="form-text">
+                                        <strong>Variáveis disponíveis:</strong><br>
+                                        <code>{nome_revisor}</code> - Nome completo do revisor<br>
+                                        <code>{evento_nome}</code> - Nome do evento<br>
+                                        <code>{cliente_nome}</code> - Nome do cliente<br>
+                                        <code>{trabalhos_revisados}</code> - Quantidade de trabalhos revisados<br>
+                                        <code>{data_liberacao}</code> - Data de liberação do certificado
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="fundo_certificado" class="form-label">
+                                        <i class="bi bi-image me-1"></i>Fundo do Certificado
+                                    </label>
+                                    <input type="file" class="form-control" id="fundo_certificado" name="fundo_certificado" 
+                                           accept=".png,.jpg,.jpeg,.pdf">
+                                    <div class="form-text">Imagem de fundo para o certificado (PNG, JPG, JPEG, PDF)</div>
+                                    {% if config.fundo_certificado %}
+                                    <div class="mt-2">
+                                        <small class="text-muted">Fundo atual:</small>
+                                        <img src="{{ url_for('static', filename=config.fundo_certificado) }}" 
+                                             class="img-thumbnail ms-2" style="max-width: 100px; max-height: 100px;">
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="incluir_assinatura_cliente" 
+                                               name="incluir_assinatura_cliente" {% if config.incluir_assinatura_cliente %}checked{% endif %}>
+                                        <label class="form-check-label" for="incluir_assinatura_cliente">
+                                            <i class="bi bi-pen me-1"></i>Incluir Assinatura do Cliente
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Se marcado, o certificado incluirá a assinatura com o nome do cliente</div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="liberacao_automatica" 
+                                                       name="liberacao_automatica" {% if config.liberacao_automatica %}checked{% endif %}>
+                                                <label class="form-check-label" for="liberacao_automatica">
+                                                    Liberação Automática
+                                                </label>
+                                            </div>
+                                            <div class="form-text">Liberar automaticamente quando critérios forem atendidos</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="trabalhos_minimos" class="form-label">
+                                                <i class="bi bi-list-ol me-1"></i>Trabalhos Mínimos
+                                            </label>
+                                            <input type="number" class="form-control" id="trabalhos_minimos" name="trabalhos_minimos" 
+                                                   value="{{ config.criterio_trabalhos_minimos }}" min="1">
+                                            <div class="form-text">Mínimo de trabalhos revisados para liberar certificado</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-save me-2"></i>Salvar Configuração
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ações Rápidas -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-lightning me-2"></i>
+                                Ações Rápidas
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-success" onclick="liberarTodos()">
+                                    <i class="bi bi-unlock me-2"></i>Liberar Todos
+                                </button>
+                                <button type="button" class="btn btn-info" onclick="enviarTodosEmail()">
+                                    <i class="bi bi-envelope me-2"></i>Enviar Todos por Email
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="gerarTodosPDF()">
+                                    <i class="bi bi-file-pdf me-2"></i>Gerar Todos PDFs
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="gerarPDFsLote()">
+                                    <i class="bi bi-download me-2"></i>Download em Lote
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estatísticas -->
+                    <div class="card mt-3">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up me-2"></i>
+                                Estatísticas
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h4 class="text-primary">{{ revisores_aprovados|length }}</h4>
+                                    <small class="text-muted">Revisores Aprovados</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success">
+                                        {% set certificados_liberados = certificados_existentes|selectattr('liberado')|list %}
+                                        {{ certificados_liberados|length }}
+                                    </h4>
+                                    <small class="text-muted">Certificados Liberados</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Info (remover em produção) -->
+            <div class="card mt-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bug me-2"></i>
+                        Debug Info
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Evento ID:</strong> {{ evento.id }}</p>
+                            <p><strong>Evento Nome:</strong> {{ evento.nome }}</p>
+                            <p><strong>Cliente ID:</strong> {{ current_user.id }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Revisores Encontrados:</strong> {{ revisores_aprovados|length }}</p>
+                            <p><strong>Certificados Existentes:</strong> {{ certificados_existentes|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Revisores -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people me-2"></i>
+                        Revisores Aprovados
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if revisores_aprovados %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Trabalhos Revisados</th>
+                                    <th>Status Certificado</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for revisor in revisores_aprovados %}
+                                <tr>
+                                    <td>{{ revisor.nome }}</td>
+                                    <td>{{ revisor.email }}</td>
+                                    <td>
+                                        {% set certificado = certificados_existentes|selectattr('revisor_id', 'equalto', revisor.id)|first %}
+                                        {% if certificado %}
+                                            {{ certificado.trabalhos_revisados }}
+                                        {% else %}
+                                            0
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if certificado and certificado.liberado %}
+                                            <span class="badge bg-success">Liberado</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Pendente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if certificado and certificado.liberado %}
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('certificado_revisor_routes.gerar_pdf_certificado_revisor', certificado_id=certificado.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Gerar PDF">
+                                                    <i class="bi bi-file-pdf"></i>
+                                                </a>
+                                                <a href="{{ url_for('certificado_revisor_routes.enviar_email_certificado_revisor', certificado_id=certificado.id) }}" 
+                                                   class="btn btn-sm btn-outline-info" title="Enviar Email">
+                                                    <i class="bi bi-envelope"></i>
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <a href="{{ url_for('certificado_revisor_routes.liberar_certificado_individual', revisor_id=revisor.id, evento_id=evento.id) }}" 
+                                               class="btn btn-sm btn-success" title="Liberar Certificado">
+                                                <i class="bi bi-unlock"></i>
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-2">Nenhum revisor aprovado encontrado para este evento.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function liberarTodos() {
+    if (confirm('Tem certeza que deseja liberar certificados para todos os revisores aprovados?')) {
+        window.location.href = "{{ url_for('certificado_revisor_routes.liberar_certificados_todos', evento_id=evento.id) }}";
+    }
+}
+
+function enviarTodosEmail() {
+    if (confirm('Tem certeza que deseja enviar certificados por email para todos os revisores?')) {
+        window.location.href = "{{ url_for('certificado_revisor_routes.enviar_todos_certificados_email', evento_id=evento.id) }}";
+    }
+}
+
+function gerarTodosPDF() {
+    if (confirm('Tem certeza que deseja gerar PDFs para todos os certificados liberados?')) {
+        window.location.href = "{{ url_for('certificado_revisor_routes.gerar_todos_pdfs', evento_id=evento.id) }}";
+    }
+}
+
+function gerarPDFsLote() {
+    if (confirm('Tem certeza que deseja fazer download em lote de todos os certificados liberados?')) {
+        window.location.href = "{{ url_for('certificado_revisor_routes.download_lote_certificados', evento_id=evento.id) }}";
+    }
+}
+</script>
+{% endblock %}

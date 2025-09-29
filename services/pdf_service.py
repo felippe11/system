@@ -147,6 +147,126 @@ def _resolve_image_path(src):
 
 
 @_profile
+def gerar_certificado_revisor_pdf(certificado):
+    """Gera PDF do certificado de revisor."""
+    from models import CertificadoRevisor
+    
+    pdf = FPDF(orientation='L', unit='mm', format='A4')
+    pdf.add_page()
+    
+    # Usar fontes padrão do FPDF (Arial)
+    # Não precisa carregar fontes externas
+    
+    # Definir margens
+    margin_left = 20
+    margin_top = 20
+    page_width = 297  # A4 landscape width
+    page_height = 210  # A4 landscape height
+    
+    # Adicionar fundo se configurado
+    if certificado.fundo_personalizado and os.path.exists(os.path.join('static', certificado.fundo_personalizado)):
+        pdf.image(os.path.join('static', certificado.fundo_personalizado), 0, 0, page_width, page_height)
+    
+    # Título do certificado
+    pdf.set_font('Arial', 'B', 24)
+    pdf.set_text_color(0, 0, 0)
+    titulo_width = pdf.get_string_width(certificado.titulo)
+    pdf.set_xy((page_width - titulo_width) / 2, margin_top + 20)
+    pdf.cell(titulo_width, 10, certificado.titulo, 0, 1, 'C')
+    
+    # Espaçamento
+    pdf.set_xy(0, margin_top + 50)
+    
+    # Texto do certificado com substituição de variáveis
+    texto = certificado.texto_personalizado or certificado.titulo
+    
+    # Substituir variáveis
+    texto = texto.replace('{nome_revisor}', certificado.revisor.nome)
+    texto = texto.replace('{evento_nome}', certificado.evento.nome if certificado.evento else '')
+    texto = texto.replace('{cliente_nome}', certificado.cliente.nome)
+    texto = texto.replace('{trabalhos_revisados}', str(certificado.trabalhos_revisados))
+    texto = texto.replace('{data_liberacao}', certificado.data_liberacao.strftime('%d/%m/%Y') if certificado.data_liberacao else '')
+    
+    # Dividir texto em linhas
+    pdf.set_font('Arial', '', 14)
+    pdf.set_text_color(0, 0, 0)
+    
+    # Calcular largura disponível para texto
+    text_width = page_width - (margin_left * 2)
+    
+    # Quebrar texto em linhas
+    words = texto.split(' ')
+    lines = []
+    current_line = ''
+    
+    for word in words:
+        test_line = current_line + (' ' if current_line else '') + word
+        if pdf.get_string_width(test_line) <= text_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    
+    if current_line:
+        lines.append(current_line)
+    
+    # Escrever linhas centralizadas
+    line_height = 8
+    start_y = margin_top + 80
+    
+    for i, line in enumerate(lines):
+        y_pos = start_y + (i * line_height)
+        pdf.set_xy(margin_left, y_pos)
+        pdf.cell(text_width, line_height, line, 0, 1, 'C')
+    
+    # Informações adicionais
+    info_y = start_y + (len(lines) * line_height) + 20
+    
+    # Data de emissão
+    pdf.set_font('Arial', '', 12)
+    pdf.set_xy(margin_left, info_y)
+    pdf.cell(text_width, 8, f"Emitido em: {certificado.data_liberacao.strftime('%d/%m/%Y') if certificado.data_liberacao else datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'C')
+    
+    # Assinatura do cliente (condicional)
+    # Verificar se deve incluir assinatura baseado na configuração
+    incluir_assinatura = True  # Padrão
+    
+    # Buscar configuração do certificado
+    try:
+        from models import CertificadoRevisorConfig
+        config = CertificadoRevisorConfig.query.filter_by(
+            cliente_id=certificado.cliente_id,
+            evento_id=certificado.evento_id
+        ).first()
+        
+        if config:
+            incluir_assinatura = config.incluir_assinatura_cliente
+    except Exception as e:
+        logger.warning(f"Erro ao verificar configuração de assinatura: {e}")
+        incluir_assinatura = True  # Manter padrão em caso de erro
+    
+    if incluir_assinatura:
+        assinatura_y = info_y + 30
+        pdf.set_font('Arial', '', 12)
+        pdf.set_xy(margin_left, assinatura_y)
+        pdf.cell(text_width, 8, certificado.cliente.nome, 0, 1, 'C')
+        
+        # Linha para assinatura
+        pdf.set_xy(margin_left + (text_width / 2) - 30, assinatura_y + 15)
+        pdf.line(margin_left + (text_width / 2) - 30, assinatura_y + 15, margin_left + (text_width / 2) + 30, assinatura_y + 15)
+    
+    # Gerar arquivo
+    filename = f"certificado_revisor_{certificado.id}_{uuid.uuid4().hex[:8]}.pdf"
+    pdf_path = os.path.join('static', 'certificados', 'revisores')
+    os.makedirs(pdf_path, exist_ok=True)
+    full_path = os.path.join(pdf_path, filename)
+    
+    pdf.output(full_path)
+    
+    return full_path
+
+
 def gerar_revisor_details_pdf(cand, pdf_path=None):
     """Gera um PDF simples com dados do revisor e suas respostas."""
     from reportlab.lib.pagesizes import letter

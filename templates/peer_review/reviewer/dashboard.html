@@ -30,6 +30,29 @@
     </div>
   </div>
 
+  <!-- Seção de Certificados -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-success border-top border-4 shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">
+            <i class="bi bi-award me-2"></i>
+            Meus Certificados de Revisor
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Visualize e baixe seus certificados de revisor liberados.</p>
+          <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+            <a href="{{ url_for('certificado_revisor_routes.meus_certificados_revisor') }}" 
+               class="btn btn-success">
+              <i class="bi bi-award me-2"></i>Ver Meus Certificados
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col-12">
       {% if tasks %}

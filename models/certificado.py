@@ -194,6 +194,81 @@ class CertificadoTemplateAvancado(db.Model):
         return f'<CertificadoTemplateAvancado {self.nome}>'
 
 
+class CertificadoRevisorConfig(db.Model):
+    """Configuração de certificados para revisores."""
+    __tablename__ = "certificado_revisor_config"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)  # None = global
+    
+    # Configurações do certificado
+    titulo_certificado = db.Column(db.String(200), nullable=False, default="Certificado de Revisor")
+    texto_certificado = db.Column(db.Text, nullable=False, default="Certificamos que {nome_revisor} atuou como revisor de trabalhos...")
+    fundo_certificado = db.Column(db.String(500), nullable=True)  # Caminho para imagem de fundo
+    
+    # Configurações de assinatura
+    incluir_assinatura_cliente = db.Column(db.Boolean, default=True)  # Se deve incluir assinatura do cliente
+    
+    # Configurações de liberação
+    liberacao_automatica = db.Column(db.Boolean, default=False)
+    criterio_trabalhos_minimos = db.Column(db.Integer, default=1)
+    
+    # Status
+    ativo = db.Column(db.Boolean, default=True)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relacionamentos
+    cliente = db.relationship("Cliente", backref="certificado_revisor_configs")
+    evento = db.relationship("Evento", backref="certificado_revisor_configs")
+    
+    def __repr__(self):
+        return f'<CertificadoRevisorConfig {self.cliente_id}-{self.evento_id}>'
+
+
+class CertificadoRevisor(db.Model):
+    """Certificados emitidos para revisores."""
+    __tablename__ = "certificado_revisor"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    revisor_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
+    
+    # Status do certificado
+    liberado = db.Column(db.Boolean, default=False)
+    data_liberacao = db.Column(db.DateTime, nullable=True)
+    liberado_por = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    
+    # Dados do certificado
+    titulo = db.Column(db.String(200), nullable=False)
+    texto_personalizado = db.Column(db.Text, nullable=True)
+    fundo_personalizado = db.Column(db.String(500), nullable=True)
+    
+    # Estatísticas do revisor
+    trabalhos_revisados = db.Column(db.Integer, default=0)
+    data_inicio_atividade = db.Column(db.DateTime, nullable=True)
+    data_fim_atividade = db.Column(db.DateTime, nullable=True)
+    
+    # Arquivo gerado
+    arquivo_path = db.Column(db.String(500), nullable=True)
+    hash_verificacao = db.Column(db.String(64), nullable=True)
+    
+    # Datas
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relacionamentos
+    revisor = db.relationship("Usuario", foreign_keys=[revisor_id], backref="certificados_revisor")
+    cliente = db.relationship("Cliente", backref="certificados_revisor")
+    evento = db.relationship("Evento", backref="certificados_revisor")
+    liberador = db.relationship("Usuario", foreign_keys=[liberado_por])
+    
+    def __repr__(self):
+        return f'<CertificadoRevisor {self.revisor_id}-{self.cliente_id}>'
+
+
 class DeclaracaoTemplate(db.Model):
     """Templates para declarações de comparecimento."""
     __tablename__ = "declaracao_template"

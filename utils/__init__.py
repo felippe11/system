@@ -440,55 +440,39 @@ def obter_credenciais(token_file: str | None = None):
 def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto,
                  anexo_path=None, corpo_html=None, template_path=None,
                  template_context=None):
-    """Envia um e-mail utilizando o serviço Mailjet.
+    """Envia um e-mail utilizando o EmailService unificado.
 
-    Se ``corpo_html`` não for fornecido, utiliza um modelo simples de confirmação
-    de inscrição. Esse parâmetro permite personalizar o conteúdo HTML de e-mails
-    como a recuperação de senha, garantindo que o texto exibido ao usuário seja
-    adequado ao contexto.
+    Esta função agora usa o novo EmailService que suporta Mailjet e SMTP fallback,
+    com logs detalhados e validação de templates.
     """
-    from services.email_service import send_email
-    from flask import render_template
-
-    if corpo_html is None:
-        if template_path:
-            corpo_html = render_template(template_path, **(template_context or {}))
-        else:
-            corpo_html = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-                <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
-                <p>Olá, <b>{nome_participante}</b>!</p>
-                <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
-                <p>Aguardamos você no evento!</p>
-
-                <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
-                    <p><b>Detalhes da Oficina:</b></p>
-                    <p><b>Nome:</b> {nome_oficina}</p>
-                </div>
-
-                <p>Caso tenha dúvidas, entre em contato conosco.</p>
-                <p style="text-align: center;">
-                    <b>Equipe Organizadora</b>
-                </p>
-            </div>
-        </body>
-        </html>
-            """
-
-    attachments = [anexo_path] if anexo_path else None
+    from services.email_service import email_service
+    
     try:
-        send_email(
-            to=destinatario,
-            subject=assunto,
-            text=corpo_texto,
-            html=corpo_html,
-            attachments=attachments,
+        logger.info(f"Iniciando envio de email legacy para: {destinatario}")
+        
+        # Usar o novo EmailService unificado
+        resultado = email_service.enviar_email_unificado(
+            destinatario=destinatario,
+            nome_participante=nome_participante,
+            nome_oficina=nome_oficina,
+            assunto=assunto,
+            corpo_texto=corpo_texto,
+            anexo_path=anexo_path,
+            corpo_html=corpo_html,
+            template_path=template_path,
+            template_context=template_context
         )
-        logger.info("✅ E-mail enviado com sucesso para %s", destinatario)
-    except Exception as error:  # pragma: no cover - log and continue
-        logger.error("❌ ERRO ao enviar e-mail: %s", error, exc_info=True)
+        
+        if resultado.get('success', False):
+            logger.info("✅ E-mail enviado com sucesso para %s", destinatario)
+            return True
+        else:
+            logger.error("❌ Falha ao enviar email para %s: %s", destinatario, resultado.get('error'))
+            return False
+            
+    except Exception as e:
+        logger.error("❌ Erro ao enviar email para %s: %s", destinatario, e, exc_info=True)
+        return False
         
 
 def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_personalizado, template_conteudo, cliente):

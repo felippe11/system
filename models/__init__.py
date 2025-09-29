@@ -31,6 +31,8 @@ from .certificado import (
     RegraCertificado,
     CertificadoTemplateAvancado,
     DeclaracaoTemplate,
+    CertificadoRevisorConfig,
+    CertificadoRevisor,
 )
 from .orcamento import Orcamento, HistoricoOrcamento
 from .atividade_multipla_data import (
