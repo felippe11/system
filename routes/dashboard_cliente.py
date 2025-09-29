@@ -1517,7 +1517,7 @@ def _exportar_metricas_baremas_xlsx(dados, filtros):
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
 
-    header_format = workbook.add_format({'bold': True, 'bg_color': '#1d4ed8', 'color': 'white'})
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#1d4ed8', 'font_color': 'white'})
     wrap_format = workbook.add_format({'text_wrap': True})
 
     resumo_ws = workbook.add_worksheet('Resumo')
