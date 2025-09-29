@@ -136,7 +136,7 @@ def excluir_cliente(cliente_id):
 
         from models import (
             CampoPersonalizadoCadastro,
-            CertificadoTemplate,
+            CertificadoTemplateAvancado,
             Checkin,
             ConfiguracaoAgendamento,
             ConfiguracaoCliente,
@@ -189,6 +189,96 @@ def excluir_cliente(cliente_id):
         # ===============================
         participantes = Usuario.query.filter_by(cliente_id=cliente.id).all()
         usuario_ids = [u.id for u in participantes]
+
+        # ===============================
+        # 1️⃣.1️⃣ AUDIT LOG E OUTRAS REFERÊNCIAS DOS USUÁRIOS
+        # ===============================
+        from models.event import AuditLog
+        from models.review import DistributionLog
+        from models.relatorio_bi import RelatorioBI, DashboardBI, WidgetBI, ExportacaoRelatorio
+        from models.certificado import (
+            CertificadoConfig, CertificadoParticipante, NotificacaoCertificado, 
+            SolicitacaoCertificado, RegraCertificado, CertificadoTemplateAvancado,
+            DeclaracaoTemplate, VariavelDinamica, AcessoValidacaoCertificado
+        )
+        from models.avaliacao import AvaliacaoBarema, AvaliacaoCriterio
+        from models.material import Material
+        from models.orcamento import Orcamento
+        from models.compra import (
+            Compra, ItemCompra, AprovacaoCompra, DocumentoFiscal, 
+            PrestacaoContas, RelatorioCompra, OrcamentoCliente, NivelAprovacao
+        )
+        from models.submission_system import (
+            ReviewerProfile, ReviewerPreference, DistributionConfig, 
+            AutoDistributionLog, ImportedSubmission, SpreadsheetMapping
+        )
+        from models.reminder import LembreteOficina, LembreteEnvio
+        from models.feedback_models import PerguntaFeedback, RespostaFeedback, FeedbackSession
+        from models.atividade_multipla_data import AtividadeMultiplaData, AtividadeData, FrequenciaAtividade, CheckinAtividade
+        from models.formador import TrilhaFormativa, CampoTrilhaFormativa, RespostaTrilhaFormativa
+        from models.relatorio_config import ConfiguracaoRelatorio, CampoRelatorio, RelatorioFormador, RespostaCampo, HistoricoRelatorio
+        
+        # Excluir audit logs dos usuários PRIMEIRO
+        if usuario_ids:
+            print(f"Excluindo audit logs para usuários: {usuario_ids}")
+            audit_deleted = AuditLog.query.filter(AuditLog.user_id.in_(usuario_ids)).delete(synchronize_session=False)
+            print(f"Audit logs excluídos: {audit_deleted}")
+            
+            # Excluir distribution logs dos usuários
+            DistributionLog.query.filter(DistributionLog.distributed_by.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir relatórios BI dos usuários
+            RelatorioBI.query.filter(RelatorioBI.usuario_criador_id.in_(usuario_ids)).delete(synchronize_session=False)
+            DashboardBI.query.filter(DashboardBI.usuario_criador_id.in_(usuario_ids)).delete(synchronize_session=False)
+            ExportacaoRelatorio.query.filter(ExportacaoRelatorio.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir certificados dos usuários
+            CertificadoParticipante.query.filter(CertificadoParticipante.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            NotificacaoCertificado.query.filter(NotificacaoCertificado.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            SolicitacaoCertificado.query.filter(SolicitacaoCertificado.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            SolicitacaoCertificado.query.filter(SolicitacaoCertificado.aprovado_por.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir avaliações dos usuários
+            AvaliacaoBarema.query.filter(AvaliacaoBarema.revisor_id.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir materiais dos usuários (Material não tem usuario_id, apenas cliente_id)
+            # Material será excluído na seção de configurações do cliente
+            
+            # Excluir orçamentos dos usuários
+            Orcamento.query.filter(Orcamento.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir compras dos usuários
+            Compra.query.filter(Compra.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            ItemCompra.query.filter(ItemCompra.compra_id.in_(
+                db.session.query(Compra.id).filter(Compra.usuario_id.in_(usuario_ids))
+            )).delete(synchronize_session=False)
+            AprovacaoCompra.query.filter(AprovacaoCompra.aprovador_id.in_(usuario_ids)).delete(synchronize_session=False)
+            DocumentoFiscal.query.filter(DocumentoFiscal.usuario_upload_id.in_(usuario_ids)).delete(synchronize_session=False)
+            PrestacaoContas.query.filter(PrestacaoContas.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            PrestacaoContas.query.filter(PrestacaoContas.usuario_aprovacao_id.in_(usuario_ids)).delete(synchronize_session=False)
+            RelatorioCompra.query.filter(RelatorioCompra.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir perfis de revisor dos usuários
+            ReviewerProfile.query.filter(ReviewerProfile.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            ReviewerPreference.query.filter(ReviewerPreference.reviewer_profile_id.in_(
+                db.session.query(ReviewerProfile.id).filter(ReviewerProfile.usuario_id.in_(usuario_ids))
+            )).delete(synchronize_session=False)
+            SpreadsheetMapping.query.filter(SpreadsheetMapping.created_by.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir lembretes dos usuários
+            LembreteEnvio.query.filter(LembreteEnvio.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir feedback dos usuários
+            RespostaFeedback.query.filter(RespostaFeedback.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            FeedbackSession.query.filter(FeedbackSession.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Excluir atividades múltiplas dos usuários
+            FrequenciaAtividade.query.filter(FrequenciaAtividade.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            CheckinAtividade.query.filter(CheckinAtividade.usuario_id.in_(usuario_ids)).delete(synchronize_session=False)
+            
+            # Commit das exclusões de referências
+            db.session.commit()
+            print("Commit das exclusões de referências realizado")
 
         with db.session.no_autoflush:
             for usuario in participantes:
@@ -354,7 +444,7 @@ def excluir_cliente(cliente_id):
         # ===============================
         # 5️⃣ CONFIGURAÇÕES E VINCULAÇÕES
         # ===============================
-        CertificadoTemplate.query.filter_by(cliente_id=cliente.id).delete()
+        CertificadoTemplateAvancado.query.filter_by(cliente_id=cliente.id).delete()
         CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente.id).delete()
         LinkCadastro.query.filter_by(cliente_id=cliente.id).delete()
         ConfiguracaoCliente.query.filter_by(cliente_id=cliente.id).delete()
@@ -401,6 +491,45 @@ def excluir_cliente(cliente_id):
         MaterialDisponivel.query.filter_by(cliente_id=cliente.id).delete(
             synchronize_session=False
         )
+
+        # ===============================
+        # 5️⃣.2️⃣ LINKS DE MONITOR E CERTIFICADOS
+        # ===============================
+        from models.user import MonitorCadastroLink
+        MonitorCadastroLink.query.filter_by(cliente_id=cliente.id).delete(
+            synchronize_session=False
+        )
+        
+        # Excluir configurações de certificado do cliente
+        from models.event import CertificadoTemplate
+        CertificadoTemplate.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        CertificadoConfig.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        RegraCertificado.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        CertificadoTemplateAvancado.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        DeclaracaoTemplate.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        VariavelDinamica.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        
+        # Excluir configurações de compra do cliente
+        OrcamentoCliente.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        NivelAprovacao.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        PrestacaoContas.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        RelatorioCompra.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        
+        # Excluir lembretes do cliente
+        LembreteOficina.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        
+        # Excluir feedback do cliente
+        PerguntaFeedback.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        
+        # Excluir atividades múltiplas do cliente
+        AtividadeMultiplaData.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        
+        # Excluir trilhas formativas do cliente
+        TrilhaFormativa.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        
+        # Excluir configurações de relatório do cliente
+        ConfiguracaoRelatorio.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+
 
         # ===============================
         # 6️⃣ EXCLUI O CLIENTE

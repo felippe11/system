@@ -17,22 +17,6 @@
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-        <!-- Links para a landing page -->
-        <li class="nav-item">
-          <a class="nav-link home-link"
-             href="{{ url_for('evento_routes.home') }}{% if current_path == '/' %}#home{% endif %}">
-            Home
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link eventos-link" href="{{ url_for('evento_routes.home') }}#eventos">Eventos</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link recursos-link" href="{{ url_for('evento_routes.home') }}#recursos">Recursos</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link contato-link" href="{{ url_for('evento_routes.home') }}#contato">Contato</a>
-        </li>
 
         <!-- Botão modal de revisores -->
         <li class="nav-item ms-lg-3">
@@ -46,7 +30,7 @@
         {% if not current_user.is_authenticated %}
           <!-- Ações para visitantes -->
           <li class="nav-item ms-lg-3">
-            <a class="btn btn-register" href="{{ url_for('auth_routes.cadastrar_cliente_publico') }}">
+            <a class="btn btn-register" data-bs-toggle="modal" data-bs-target="#criarContaModal">
               Criar Conta
             </a>
           </li>
@@ -149,6 +133,60 @@
   </div>
 </div>
 
+<!-- ======================= MODAL CRIAR CONTA ======================= -->
+<div class="modal fade" id="criarContaModal" tabindex="-1" aria-labelledby="criarContaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="criarContaModalLabel">
+          <i class="bi bi-info-circle text-primary me-2"></i>
+          Informação Importante
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="text-center mb-4">
+          <i class="bi bi-building text-primary" style="font-size: 3rem;"></i>
+        </div>
+        
+        <div class="alert alert-info" role="alert">
+          <h6 class="alert-heading">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Atenção!
+          </h6>
+          <p class="mb-0">
+            A opção <strong>"Criar Conta"</strong> é destinada a <strong>pessoas que gerenciam eventos</strong> 
+            (organizadores, empresas, instituições).
+          </p>
+        </div>
+
+        <div class="alert alert-success" role="alert">
+          <h6 class="alert-heading">
+            <i class="bi bi-calendar-check me-2"></i>
+            Quer se inscrever em um evento?
+          </h6>
+          <p class="mb-0">
+            Se você deseja <strong>participar de um evento</strong>, role a página para baixo 
+            e procure o evento desejado. Lá você encontrará a opção para se inscrever.
+          </p>
+        </div>
+
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-outline-primary" onclick="scrollToEvents()">
+            <i class="bi bi-arrow-down-circle me-2"></i>
+            Procurar Eventos
+          </button>
+          <button type="button" class="btn btn-primary" onclick="proceedToCreateAccount()">
+            <i class="bi bi-building me-2"></i>
+            Sou Organizador - Criar Conta
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- =================== JS: ACTIVE LINKS & SCROLL EFFECT =================== -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
@@ -207,4 +245,43 @@
     window.addEventListener('scroll', toggleScrolledClass);
     toggleScrolledClass(); // executa uma vez no load
   });
+
+  // Função para rolar até a seção de eventos
+  function scrollToEvents() {
+    // Fecha o modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('criarContaModal'));
+    if (modal) {
+      modal.hide();
+    }
+    
+    // Procura pela seção de eventos na página
+    const eventosSection = document.querySelector('#eventos') || 
+                          document.querySelector('.eventos') || 
+                          document.querySelector('[class*="evento"]');
+    
+    if (eventosSection) {
+      eventosSection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    } else {
+      // Se não encontrar seção específica, rola para baixo
+      window.scrollTo({
+        top: window.innerHeight,
+        behavior: 'smooth'
+      });
+    }
+  }
+
+  // Função para prosseguir com criação de conta
+  function proceedToCreateAccount() {
+    // Fecha o modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('criarContaModal'));
+    if (modal) {
+      modal.hide();
+    }
+    
+    // Redireciona para a página de cadastro
+    window.location.href = "{{ url_for('auth_routes.cadastrar_cliente_publico') }}";
+  }
 </script>
