@@ -1598,7 +1598,7 @@ def _exportar_metricas_baremas_xlsx(dados, filtros):
 def _exportar_metricas_baremas_pdf(dados, filtros):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import (
         SimpleDocTemplate,
         Paragraph,
@@ -1618,6 +1618,29 @@ def _exportar_metricas_baremas_pdf(dados, filtros):
     styles = getSampleStyleSheet()
     elements = []
 
+    # Create custom styles for table cells with proper text wrapping
+    table_cell_style = ParagraphStyle(
+        'TableCellStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        fontName='Helvetica',
+        leading=11,
+        alignment=0,  # Left alignment
+        spaceAfter=2,
+        spaceBefore=2,
+    )
+    
+    table_header_style = ParagraphStyle(
+        'TableHeaderStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        fontName='Helvetica-Bold',
+        leading=11,
+        alignment=1,  # Center alignment
+        spaceAfter=2,
+        spaceBefore=2,
+    )
+
     header = styles['Heading1']
     header.alignment = 1
     elements.append(Paragraph('Relatório de Métricas dos Baremas', header))
@@ -1631,23 +1654,42 @@ def _exportar_metricas_baremas_pdf(dados, filtros):
 
     for idx, rel in enumerate(dados['relatorios_trabalhos']):
         elements.append(Paragraph(f"Trabalho #{rel['trabalho_id']} - {rel['titulo']}", styles['Heading2']))
+        # Create info table with Paragraph objects for proper text wrapping
         info_table = Table([
-            ['Categoria', rel['categoria'], 'Avaliações', rel['total_avaliacoes']],
-            ['Nota média', rel['nota_media'], 'Nota máxima', rel['nota_maxima']],
-            ['Nota mínima', rel['nota_minima'], '', ''],
-        ], colWidths=[90, 180, 90, 120])
+            [
+                Paragraph('Categoria', table_header_style),
+                Paragraph(rel['categoria'], table_cell_style),
+                Paragraph('Avaliações', table_header_style),
+                Paragraph(str(rel['total_avaliacoes']), table_cell_style)
+            ],
+            [
+                Paragraph('Nota média', table_header_style),
+                Paragraph(str(rel['nota_media']), table_cell_style),
+                Paragraph('Nota máxima', table_header_style),
+                Paragraph(str(rel['nota_maxima']), table_cell_style)
+            ],
+            [
+                Paragraph('Nota mínima', table_header_style),
+                Paragraph(str(rel['nota_minima']), table_cell_style),
+                Paragraph('', table_cell_style),
+                Paragraph('', table_cell_style)
+            ],
+        ], colWidths=[90, 180, 90, 120], repeatRows=1)
         info_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
             ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('BOX', (0, 0), (-1, -1), 0.5, colors.grey),
             ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
         elements.append(info_table)
         elements.append(Spacer(1, 10))
 
-        for avaliacao in rel['avaliacoes']:
+        for eval_idx, avaliacao in enumerate(rel['avaliacoes']):
             nome_revisor = avaliacao.get('revisor_nome_exibicao', avaliacao['alias'])
             elements.append(Paragraph(
                 f"{nome_revisor} - Nota final: {avaliacao['nota_final'] if avaliacao['nota_final'] is not None else 'N/A'}", styles['Heading4']
@@ -1658,28 +1700,39 @@ def _exportar_metricas_baremas_pdf(dados, filtros):
             elements.append(Paragraph(' | '.join(detalhes_revisor), styles['Normal']))
 
             if avaliacao['criterios']:
-                criterio_data = [['Critério', 'Nota', 'Observações']]
+                # Create table data with Paragraph objects for proper text wrapping
+                criterio_data = [[
+                    Paragraph('Critério', table_header_style),
+                    Paragraph('Nota', table_header_style),
+                    Paragraph('Observações', table_header_style)
+                ]]
                 for criterio in avaliacao['criterios']:
                     criterio_data.append([
-                        criterio.get('nome', ''),
-                        criterio.get('nota', ''),
-                        criterio.get('observacao', ''),
+                        Paragraph(criterio.get('nome', '') or '', table_cell_style),
+                        Paragraph(str(criterio.get('nota', '')) or '', table_cell_style),
+                        Paragraph(criterio.get('observacao', '') or '', table_cell_style),
                     ])
-                criterio_table = Table(criterio_data, colWidths=[200, 50, 220])
+                criterio_table = Table(criterio_data, colWidths=[200, 50, 220], repeatRows=1)
                 criterio_table.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1d4ed8')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 9),
                     ('BOX', (0, 0), (-1, -1), 0.25, colors.grey),
                     ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
                 ]))
                 elements.append(criterio_table)
             else:
                 elements.append(Paragraph('Sem critérios registrados para esta avaliação.', styles['Italic']))
 
             elements.append(Spacer(1, 8))
+            
+            # Add page break after every 3 evaluations to prevent overcrowding
+            if eval_idx > 0 and (eval_idx + 1) % 3 == 0 and eval_idx < len(rel['avaliacoes']) - 1:
+                elements.append(PageBreak())
 
         if idx < len(dados['relatorios_trabalhos']) - 1:
             elements.append(PageBreak())
