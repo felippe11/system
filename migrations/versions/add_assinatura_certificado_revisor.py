@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'add_assinatura_certificado_revisor'
-down_revision = None  # Ajustar conforme necessário
+down_revision = 'cert_revisor_001'
 branch_labels = None
 depends_on = None
 
