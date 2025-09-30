@@ -49,3 +49,4 @@ def webmanifest():
         'site.webmanifest',
         mimetype='application/manifest+json'
     )
+

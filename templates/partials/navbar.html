@@ -220,6 +220,7 @@
 
         const homeSection     = document.querySelector('#home');
         const eventosSection  = document.querySelector('#eventos');
+        const segmentosSection = document.querySelector('#segmentos');
         const recursosSection = document.querySelector('#recursos');
         const contatoSection  = document.querySelector('#contato');
 
@@ -227,8 +228,10 @@
 
         if (homeSection && scrollY < (eventosSection?.offsetTop || 0) - 100) {
           setActive('.navbar .home-link');
-        } else if (eventosSection && scrollY < (recursosSection?.offsetTop || 0) - 100) {
+        } else if (eventosSection && scrollY < (segmentosSection?.offsetTop || 0) - 100) {
           setActive('.navbar .eventos-link');
+        } else if (segmentosSection && scrollY < (recursosSection?.offsetTop || 0) - 100) {
+          setActive('.navbar .segmentos-link');
         } else if (recursosSection && scrollY < (contatoSection?.offsetTop || 0) - 100) {
           setActive('.navbar .recursos-link');
         } else {
