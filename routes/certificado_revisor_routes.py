@@ -290,6 +290,106 @@ def liberar_certificados_todos(evento_id):
     return redirect(url_for('certificado_revisor_routes.configurar_certificado_revisor', evento_id=evento_id))
 
 
+@certificado_revisor_routes.route('/certificado_revisor/download_publico/<codigo_candidatura>')
+def download_certificado_publico(codigo_candidatura):
+    """Download público de certificado usando código da candidatura (sem login)."""
+    from models import RevisorCandidatura, Usuario
+    
+    # Buscar candidatura pelo código
+    candidatura = RevisorCandidatura.query.filter_by(codigo=codigo_candidatura).first()
+    if not candidatura:
+        flash('Candidatura não encontrada!', 'danger')
+        return redirect(url_for('evento_routes.home'))
+    
+    # Buscar usuário revisor
+    revisor_user = Usuario.query.filter_by(email=candidatura.email).first()
+    if not revisor_user:
+        flash('Revisor não encontrado!', 'danger')
+        return redirect(url_for('evento_routes.home'))
+    
+    # Buscar certificados liberados para este revisor
+    certificados = CertificadoRevisor.query.filter_by(
+        revisor_id=revisor_user.id,
+        liberado=True
+    ).order_by(CertificadoRevisor.data_liberacao.desc()).all()
+    
+    if not certificados:
+        flash('Nenhum certificado liberado encontrado para este revisor!', 'warning')
+        return redirect(url_for('revisor_routes.progress', codigo=codigo_candidatura))
+    
+    # Se houver apenas um certificado, baixar diretamente
+    if len(certificados) == 1:
+        certificado = certificados[0]
+        try:
+            # Gerar PDF se não existir
+            if not certificado.arquivo_path or not os.path.exists(certificado.arquivo_path):
+                pdf_path = gerar_certificado_revisor_pdf(certificado)
+                certificado.arquivo_path = pdf_path
+                db.session.commit()
+            
+            return send_file(
+                certificado.arquivo_path, 
+                as_attachment=True, 
+                download_name=f"certificado_revisor_{certificado.revisor.nome.replace(' ', '_')}.pdf"
+            )
+        except Exception as e:
+            current_app.logger.error(f"Erro ao gerar PDF do certificado: {e}")
+            flash('Erro ao gerar certificado. Tente novamente.', 'danger')
+            return redirect(url_for('revisor_routes.progress', codigo=codigo_candidatura))
+    
+    # Se houver múltiplos certificados, mostrar página de seleção
+    return render_template(
+        'certificado_revisor/selecionar_certificado.html',
+        candidatura=candidatura,
+        certificados=certificados,
+        codigo_candidatura=codigo_candidatura
+    )
+
+
+@certificado_revisor_routes.route('/certificado_revisor/download_especifico/<int:certificado_id>/<codigo_candidatura>')
+def download_certificado_especifico(certificado_id, codigo_candidatura):
+    """Download de certificado específico usando código da candidatura (sem login)."""
+    from models import RevisorCandidatura, Usuario
+    
+    # Buscar candidatura pelo código
+    candidatura = RevisorCandidatura.query.filter_by(codigo=codigo_candidatura).first()
+    if not candidatura:
+        flash('Candidatura não encontrada!', 'danger')
+        return redirect(url_for('evento_routes.home'))
+    
+    # Buscar certificado
+    certificado = CertificadoRevisor.query.get_or_404(certificado_id)
+    
+    # Verificar se o certificado pertence ao revisor da candidatura
+    revisor_user = Usuario.query.filter_by(email=candidatura.email).first()
+    if not revisor_user or certificado.revisor_id != revisor_user.id:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('evento_routes.home'))
+    
+    # Verificar se está liberado
+    if not certificado.liberado:
+        flash('Certificado ainda não foi liberado!', 'danger')
+        return redirect(url_for('revisor_routes.progress', codigo=codigo_candidatura))
+    
+    try:
+        # Gerar PDF se não existir
+        if not certificado.arquivo_path or not os.path.exists(certificado.arquivo_path):
+            pdf_path = gerar_certificado_revisor_pdf(certificado)
+            certificado.arquivo_path = pdf_path
+            db.session.commit()
+        
+        return send_file(
+            certificado.arquivo_path, 
+            as_attachment=True, 
+            download_name=f"certificado_revisor_{certificado.revisor.nome.replace(' ', '_')}.pdf"
+        )
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao gerar PDF do certificado: {e}")
+        flash('Erro ao gerar certificado. Tente novamente.', 'danger')
+        return redirect(url_for('revisor_routes.progress', codigo=codigo_candidatura))
+
+
 @certificado_revisor_routes.route('/certificado_revisor/gerar_pdf/<int:certificado_id>')
 @login_required
 def gerar_pdf_certificado_revisor(certificado_id):

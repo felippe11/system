@@ -268,52 +268,174 @@ def gerar_certificado_revisor_pdf(certificado):
 
 
 def gerar_revisor_details_pdf(cand, pdf_path=None):
-    """Gera um PDF simples com dados do revisor e suas respostas."""
+    """Gera um PDF estilo bilhete de cinema com dados do revisor."""
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
+    from reportlab.lib import colors
     import tempfile
     import os
     from flask import send_file
     from textwrap import wrap
+    from datetime import datetime
 
     if pdf_path is None:
-        pdf_filename = f"revisor_{cand.codigo}.pdf"
+        pdf_filename = f"comprovante_revisor_{cand.codigo}.pdf"
         pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
 
-    c = canvas.Canvas(pdf_path, pagesize=letter, pageCompression=0)
-    width, height = letter
-    margin = 72
-    y = height - margin
-
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(margin, y, "Dados do Revisor")
-    y -= 28
-
-    c.setFont("Helvetica", 12)
-    c.drawString(margin, y, f"Nome: {cand.nome}")
-    y -= 20
-    c.drawString(margin, y, f"E-mail: {cand.email}")
-    y -= 20
-    c.drawString(margin, y, f"Código: {cand.codigo}")
-    y -= 24
-
+    # Formato bilhete de cinema (mais largo e menos alto)
+    c = canvas.Canvas(pdf_path, pagesize=(612, 396), pageCompression=0)  # 8.5x5.5 inches
+    width, height = 612, 396
+    
+    # Cores do tema bilhete de cinema
+    cor_principal = colors.HexColor('#1a1a1a')      # Preto
+    cor_secundaria = colors.HexColor('#ff6b35')      # Laranja vibrante
+    cor_dourado = colors.HexColor('#ffd700')        # Dourado
+    cor_texto = colors.HexColor('#2c2c2c')          # Cinza escuro
+    cor_fundo = colors.HexColor('#ffffff')           # Branco
+    cor_borda = colors.HexColor('#e0e0e0')          # Cinza claro
+    
+    # Fundo branco
+    c.setFillColor(cor_fundo)
+    c.rect(0, 0, width, height, fill=1)
+    
+    # Bordas externas
+    c.setStrokeColor(cor_borda)
+    c.setLineWidth(2)
+    c.rect(10, 10, width-20, height-20, fill=0)
+    
+    # Cabeçalho principal - estilo cinema
+    c.setFillColor(cor_principal)
+    c.rect(15, height-80, width-30, 70, fill=1)
+    
+    # Título principal em dourado
+    c.setFillColor(cor_dourado)
+    c.setFont("Helvetica-Bold", 28)
+    titulo = "COMPROVANTE DE CANDIDATURA"
+    titulo_width = c.stringWidth(titulo, "Helvetica-Bold", 28)
+    c.drawString((width - titulo_width) / 2, height - 45, titulo)
+    
+    # Subtítulo em branco
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica", 16)
+    subtitulo = "Revisor de Trabalhos Científicos"
+    subtitulo_width = c.stringWidth(subtitulo, "Helvetica", 16)
+    c.drawString((width - subtitulo_width) / 2, height - 70, subtitulo)
+    
+    # Linha decorativa laranja
+    c.setFillColor(cor_secundaria)
+    c.rect(15, height-85, width-30, 5, fill=1)
+    
+    # Seção principal - dados do revisor
+    y_pos = height - 120
+    
+    # Card principal com bordas arredondadas simuladas
+    c.setFillColor(cor_fundo)
+    c.setStrokeColor(cor_secundaria)
+    c.setLineWidth(3)
+    c.rect(25, y_pos - 30, width-50, 180, fill=1)
+    
+    # Título da seção
+    c.setFillColor(cor_principal)
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(40, y_pos, "DADOS DO REVISOR")
+    
+    # Linha decorativa
+    c.setFillColor(cor_secundaria)
+    c.rect(40, y_pos - 5, width-80, 2, fill=1)
+    
+    y_pos -= 35
+    
+    # Dados principais em duas colunas
+    c.setFillColor(cor_texto)
+    c.setFont("Helvetica-Bold", 14)
+    
+    # Coluna esquerda
+    c.drawString(40, y_pos, "NOME:")
+    c.setFont("Helvetica", 14)
+    c.drawString(40, y_pos - 20, cand.nome)
+    
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, y_pos - 45, "E-MAIL:")
+    c.setFont("Helvetica", 14)
+    c.drawString(40, y_pos - 65, cand.email)
+    
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, y_pos - 90, "CÓDIGO:")
+    c.setFont("Helvetica", 14)
+    c.drawString(40, y_pos - 110, cand.codigo)
+    
+    # Coluna direita
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(width/2 + 20, y_pos, "STATUS:")
+    c.setFont("Helvetica", 14)
+    status_text = cand.status.upper() if cand.status else "PENDENTE"
+    c.drawString(width/2 + 20, y_pos - 20, status_text)
+    
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(width/2 + 20, y_pos - 45, "DATA:")
+    c.setFont("Helvetica", 14)
+    c.drawString(width/2 + 20, y_pos - 65, datetime.now().strftime("%d/%m/%Y"))
+    
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(width/2 + 20, y_pos - 90, "HORA:")
+    c.setFont("Helvetica", 14)
+    c.drawString(width/2 + 20, y_pos - 110, datetime.now().strftime("%H:%M"))
+    
+    # Seção de respostas (se houver) - estilo bilhete
     respostas = cand.respostas or {}
-    for campo, valor in respostas.items():
-        if isinstance(valor, str) and ("/" in valor or "\\" in valor):
-            display_value = os.path.basename(valor) or "arquivo anexado"
-        else:
-            display_value = str(valor)
-
-        text = f"{campo}: {display_value}"
-        for line in wrap(text, width=80):
-            c.drawString(margin, y, line)
-            y -= 20
-            if y < margin:
-                c.showPage()
-                y = height - margin
-                c.setFont("Helvetica", 12)
-
-    c.showPage()
+    if respostas:
+        y_pos -= 140
+        
+        # Card de respostas
+        c.setFillColor(cor_fundo)
+        c.setStrokeColor(cor_secundaria)
+        c.setLineWidth(2)
+        c.rect(25, y_pos - 20, width-50, 100, fill=1)
+        
+        # Título da seção
+        c.setFillColor(cor_principal)
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(40, y_pos, "INFORMAÇÕES ADICIONAIS")
+        
+        # Linha decorativa
+        c.setFillColor(cor_secundaria)
+        c.rect(40, y_pos - 5, width-80, 2, fill=1)
+        
+        y_pos -= 25
+        
+        c.setFillColor(cor_texto)
+        c.setFont("Helvetica", 11)
+        
+        for campo, valor in list(respostas.items())[:4]:  # Limitar a 4 campos
+            if isinstance(valor, str) and ("/" in valor or "\\" in valor):
+                display_value = os.path.basename(valor) or "arquivo anexado"
+            else:
+                display_value = str(valor)[:40] + "..." if len(str(valor)) > 40 else str(valor)
+            
+            c.drawString(40, y_pos, f"• {campo}: {display_value}")
+            y_pos -= 18
+    
+    # Rodapé estilo bilhete de cinema
+    c.setFillColor(cor_principal)
+    c.rect(15, 15, width-30, 40, fill=1)
+    
+    # Linha decorativa dourada
+    c.setFillColor(cor_dourado)
+    c.rect(15, 50, width-30, 3, fill=1)
+    
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica", 10)
+    rodape_text = f"Documento gerado automaticamente em {datetime.now().strftime('%d/%m/%Y às %H:%M')}"
+    rodape_width = c.stringWidth(rodape_text, "Helvetica", 10)
+    c.drawString((width - rodape_width) / 2, 30, rodape_text)
+    
+    # Código de barras simulado (linhas verticais)
+    c.setStrokeColor(cor_principal)
+    c.setLineWidth(1)
+    for i in range(0, width-40, 3):
+        altura = 15 + (i % 10)
+        c.line(20 + i, 15, 20 + i, 15 + altura)
+    
     c.save()
 
     return send_file(

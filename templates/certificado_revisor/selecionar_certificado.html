@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Selecionar Certificado{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <h1 class="h3 text-primary mb-2">
+                    <i class="bi bi-award me-2"></i>Selecionar Certificado
+                </h1>
+                <p class="text-muted">Escolha qual certificado deseja baixar</p>
+            </div>
+            
+            <!-- Informações da candidatura -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="m-0">
+                        <i class="bi bi-person me-2"></i>Informações do Revisor
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Nome:</strong> {{ candidatura.nome }}</p>
+                            <p><strong>E-mail:</strong> {{ candidatura.email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Código:</strong> {{ candidatura.codigo }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-success">{{ candidatura.status|title }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lista de certificados -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-success text-white">
+                    <h5 class="m-0">
+                        <i class="bi bi-award me-2"></i>Certificados Disponíveis
+                        <span class="badge bg-light text-success ms-2">{{ certificados|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if certificados %}
+                    <div class="row">
+                        {% for certificado in certificados %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-success h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-success">
+                                        <i class="bi bi-award me-1"></i>{{ certificado.titulo }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="bi bi-building me-1"></i>{{ certificado.cliente.nome }}<br>
+                                            {% if certificado.evento %}
+                                            <i class="bi bi-calendar-event me-1"></i>{{ certificado.evento.nome }}<br>
+                                            {% endif %}
+                                            <i class="bi bi-clipboard-check me-1"></i>{{ certificado.trabalhos_revisados }} trabalho(s) revisado(s)<br>
+                                            <i class="bi bi-calendar-check me-1"></i>Liberado em: {{ certificado.data_liberacao.strftime('%d/%m/%Y') }}
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <a href="{{ url_for('certificado_revisor_routes.download_certificado_especifico', certificado_id=certificado.id, codigo_candidatura=codigo_candidatura) }}" 
+                                       class="btn btn-success btn-sm w-100">
+                                        <i class="bi bi-file-pdf me-2"></i>Baixar Certificado
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-info-circle text-muted fs-1 mb-3"></i>
+                        <h6 class="text-muted">Nenhum certificado disponível</h6>
+                        <p class="text-muted mb-0">Você ainda não possui certificados liberados.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Ações -->
+            <div class="d-flex gap-2 justify-content-center mt-4">
+                <a href="{{ url_for('revisor_routes.progress', codigo=codigo_candidatura) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Voltar ao Progresso
+                </a>
+                <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-house me-1"></i>Página Inicial
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

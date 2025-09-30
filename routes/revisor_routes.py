@@ -717,12 +717,23 @@ def progress(codigo: str):
             nome_revisor = revisor_user.nome
     
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
+    
+    # Buscar certificados liberados para este revisor
+    certificados_liberados = []
+    if cand.status == 'aprovado' and revisor_user:
+        from models import CertificadoRevisor
+        certificados_liberados = CertificadoRevisor.query.filter_by(
+            revisor_id=revisor_user.id,
+            liberado=True
+        ).order_by(CertificadoRevisor.data_liberacao.desc()).all()
+    
     return render_template(
         "revisor/progress.html",
         candidatura=cand,
         pdf_url=pdf_url,
         trabalhos_designados=trabalhos_designados,
-        nome_revisor=nome_revisor
+        nome_revisor=nome_revisor,
+        certificados_liberados=certificados_liberados
     )
 
 
