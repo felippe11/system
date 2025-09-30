@@ -96,6 +96,44 @@ def configurar_certificado_revisor(evento_id):
         evento_id=evento_id
     ).all()
     
+    # Atualizar contagem de trabalhos revisados para todos os revisores
+    for revisor in revisores_aprovados:
+        trabalhos_revisados = _calcular_trabalhos_revisados(revisor.id, evento_id)
+        
+        # Buscar certificado existente para este revisor
+        certificado_existente = next(
+            (cert for cert in certificados_existentes if cert.revisor_id == revisor.id), 
+            None
+        )
+        
+        if certificado_existente:
+            # Atualizar contagem no certificado existente apenas se diferente
+            if certificado_existente.trabalhos_revisados != trabalhos_revisados:
+                current_app.logger.info(f"Atualizando contagem para revisor {revisor.id}: {certificado_existente.trabalhos_revisados} -> {trabalhos_revisados}")
+                certificado_existente.trabalhos_revisados = trabalhos_revisados
+        else:
+            # Criar certificado temporário para exibição (não salvar no banco)
+            certificado_temp = CertificadoRevisor(
+                revisor_id=revisor.id,
+                cliente_id=current_user.id,
+                evento_id=evento_id,
+                titulo=config.titulo_certificado,
+                texto_personalizado=config.texto_certificado,
+                fundo_personalizado=config.fundo_certificado,
+                trabalhos_revisados=trabalhos_revisados,
+                liberado=False
+            )
+            certificados_existentes.append(certificado_temp)
+            current_app.logger.info(f"Criado certificado temporário para revisor {revisor.id} com {trabalhos_revisados} trabalhos revisados")
+    
+    # Salvar atualizações no banco
+    try:
+        db.session.commit()
+        current_app.logger.info("Atualizações de contagem salvas com sucesso")
+    except Exception as e:
+        current_app.logger.error(f"Erro ao salvar atualizações: {e}")
+        db.session.rollback()
+    
     current_app.logger.info(f"Certificados existentes: {len(certificados_existentes)}")
     
     return render_template(
@@ -652,6 +690,68 @@ def meus_certificados_revisor():
     )
 
 
+@certificado_revisor_routes.route('/certificado_revisor/debug/<int:evento_id>')
+@login_required
+@cliente_required
+def debug_certificado_revisor(evento_id):
+    """Rota de debug para verificar dados de certificados de revisores."""
+    evento = Evento.query.get_or_404(evento_id)
+    
+    # Verificar se o evento pertence ao cliente
+    if evento.cliente_id != current_user.id:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    # Buscar revisores aprovados
+    revisores_aprovados = _get_revisores_aprovados(evento_id)
+    
+    # Buscar dados de revisão
+    debug_data = {
+        'evento': evento,
+        'revisores_aprovados': revisores_aprovados,
+        'trabalhos_evento': RespostaFormulario.query.filter_by(evento_id=evento_id).count(),
+        'assignments_evento': db.session.query(Assignment).join(
+            RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id
+        ).filter(RespostaFormulario.evento_id == evento_id).count(),
+        'assignments_completados': db.session.query(Assignment).join(
+            RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id
+        ).filter(
+            RespostaFormulario.evento_id == evento_id,
+            Assignment.completed == True
+        ).count(),
+        'certificados_existentes': CertificadoRevisor.query.filter_by(
+            cliente_id=current_user.id,
+            evento_id=evento_id
+        ).count()
+    }
+    
+    # Adicionar dados específicos por revisor
+    for revisor in revisores_aprovados:
+        trabalhos_revisados = _calcular_trabalhos_revisados(revisor.id, evento_id)
+        debug_data[f'revisor_{revisor.id}_trabalhos'] = trabalhos_revisados
+    
+    return f"""
+    <h1>Debug - Certificados de Revisores</h1>
+    <h2>Evento: {evento.nome} (ID: {evento_id})</h2>
+    
+    <h3>Dados Gerais:</h3>
+    <ul>
+        <li>Trabalhos no evento: {debug_data['trabalhos_evento']}</li>
+        <li>Assignments no evento: {debug_data['assignments_evento']}</li>
+        <li>Assignments completados: {debug_data['assignments_completados']}</li>
+        <li>Certificados existentes: {debug_data['certificados_existentes']}</li>
+        <li>Revisores aprovados: {len(revisores_aprovados)}</li>
+    </ul>
+    
+    <h3>Revisores e Trabalhos Revisados:</h3>
+    <ul>
+    {''.join([f'<li>{revisor.nome} ({revisor.email}): {debug_data.get(f"revisor_{revisor.id}_trabalhos", 0)} trabalhos</li>' for revisor in revisores_aprovados])}
+    </ul>
+    
+    <p><a href="{url_for('certificado_revisor_routes.configurar_certificado_revisor', evento_id=evento_id)}">Voltar para página de configuração</a></p>
+    """
+
+
 # Funções auxiliares
 
 def _get_revisores_aprovados(evento_id):
@@ -745,10 +845,36 @@ def _verificar_candidatura_aprovada(revisor_id, evento_id):
 
 def _calcular_trabalhos_revisados(revisor_id, evento_id):
     """Calcula quantos trabalhos um revisor revisou em um evento."""
-    return db.session.query(Assignment).join(
+    from models.review import Assignment
+    from models.event import RespostaFormulario
+    
+    # Debug: Log da consulta
+    current_app.logger.info(f"Calculando trabalhos revisados para revisor {revisor_id} no evento {evento_id}")
+    
+    # Verificar se existem RespostaFormulario para o evento
+    total_trabalhos_evento = RespostaFormulario.query.filter_by(evento_id=evento_id).count()
+    current_app.logger.info(f"Total de trabalhos no evento {evento_id}: {total_trabalhos_evento}")
+    
+    # Verificar assignments para o revisor
+    total_assignments_revisor = Assignment.query.filter_by(reviewer_id=revisor_id).count()
+    current_app.logger.info(f"Total de assignments para revisor {revisor_id}: {total_assignments_revisor}")
+    
+    # Verificar assignments completados para o revisor
+    assignments_completados_revisor = Assignment.query.filter_by(
+        reviewer_id=revisor_id, 
+        completed=True
+    ).count()
+    current_app.logger.info(f"Assignments completados para revisor {revisor_id}: {assignments_completados_revisor}")
+    
+    # Consulta principal
+    count = db.session.query(Assignment).join(
         RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id
     ).filter(
         Assignment.reviewer_id == revisor_id,
         RespostaFormulario.evento_id == evento_id,
         Assignment.completed == True
     ).count()
+    
+    current_app.logger.info(f"Trabalhos revisados calculados para revisor {revisor_id} no evento {evento_id}: {count}")
+    
+    return count
