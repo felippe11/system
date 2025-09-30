@@ -4,7 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from flask import current_app
-from models import LembreteOficina, StatusLembrete, db
+from models import LembreteOficina, StatusLembrete, TipoLembrete, db
 from services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def verificar_lembretes_automaticos(app):
             
             # Buscar lembretes automáticos pendentes
             lembretes_pendentes = LembreteOficina.query.filter(
-                LembreteOficina.tipo == 'automatico',
+                LembreteOficina.tipo == TipoLembrete.AUTOMATICO,
                 LembreteOficina.status == StatusLembrete.PENDENTE
             ).all()
             

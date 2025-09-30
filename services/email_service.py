@@ -77,7 +77,7 @@ class EmailService:
                 template_content = f.read()
             
             # Renderizar com contexto vazio para validar sintaxe
-            render_template_string(template_content, {})
+            render_template_string(template_content)
             return True
             
         except Exception as e:
