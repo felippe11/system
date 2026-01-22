@@ -358,13 +358,6 @@ class Assignment(db.Model):
     reviewer = db.relationship("Usuario", foreign_keys=[reviewer_id], backref=db.backref("assignments", lazy=True))
     distributor = db.relationship("Usuario", foreign_keys=[distributed_by], backref=db.backref("distributed_assignments", lazy=True))
 
-    @property
-    def submission(self):
-        """Retorna a submissão associada através da resposta do formulário."""
-        if self.resposta_formulario and self.resposta_formulario.trabalho_id:
-            return Submission.query.get(self.resposta_formulario.trabalho_id)
-        return None
-
 
 # -----------------------------------------------------------------------------
 # DISTRIBUTION LOG (log de distribuições de trabalhos)
