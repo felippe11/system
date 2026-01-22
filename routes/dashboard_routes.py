@@ -46,9 +46,6 @@ def dashboard():
     elif tipo == "superadmin":
         return redirect(url_for(endpoints.DASHBOARD_SUPERADMIN))
 
-    elif tipo == "revisor":
-        return redirect(url_for(endpoints.DASHBOARD_REVISOR))
-
     abort(403)
 
 
