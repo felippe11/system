@@ -355,9 +355,10 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="input-group mb-3">
-          <input type="text" id="modal-search-input" class="form-control" placeholder="Digite um lugar para pesquisar...">
+        <div class="input-group mb-3 position-relative">
+          <input type="text" id="modal-search-input" class="form-control" placeholder="Digite um lugar para pesquisar..." autocomplete="off">
           <button id="modal-search-btn" class="btn btn-primary" type="button">Buscar</button>
+          <div id="modal-suggestions" class="list-group position-absolute w-100 bg-white shadow-sm" style="top: 100%; z-index: 1050; max-height: 200px; overflow-y: auto; display: none;"></div>
         </div>
         <div id="mapa-container" style="height: 400px;"></div>
         <div id="endereco-detalhes" class="mt-3 p-3 bg-light rounded d-none">
@@ -942,16 +943,26 @@ document.addEventListener('DOMContentLoaded', function() {
     lng: -47.92972
   };
   let suggestionTimeout;
+  let currentFocus = -1;
 
   // Configuração de sugestões para o campo de localização
   const localizacaoInput = document.getElementById('localizacao-input');
   const suggestionsContainer = document.getElementById('suggestions');
+  
+  // Configuração de sugestões para o campo do modal
+  const modalSearchInput = document.getElementById('modal-search-input');
+  const modalSuggestionsContainer = document.getElementById('modal-suggestions');
   
   // Configurar o mapa quando o modal for aberto
   document.getElementById('mapaModal').addEventListener('shown.bs.modal', function () {
     if (!map) {
       initMap();
     }
+    
+    // Forçar recálculo do tamanho do mapa
+    setTimeout(function() {
+      map.invalidateSize();
+    }, 10);
     
     // Centralize no local salvo, se existir
     if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
@@ -1011,10 +1022,20 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Mostrar detalhes do local selecionado
-  function showLocationDetails(lat, lng) {
+  function showLocationDetails(lat, lng, address = null) {
     document.getElementById('endereco-detalhes').classList.remove('d-none');
     document.getElementById('info-latitude').textContent = lat.toFixed(6);
     document.getElementById('info-longitude').textContent = lng.toFixed(6);
+    
+    if (address) {
+        document.getElementById('endereco-completo').textContent = address;
+        currentLocation = {
+          lat: lat,
+          lng: lng,
+          address: address
+        };
+        return;
+    }
     
     // Fazer geocoding reverso para obter o endereço
       fetch(`https://api.stadiamaps.com/geocoding/v1/reverse?point.lat=${lat}&point.lon=${lng}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
@@ -1036,90 +1057,201 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
   
+  // Função auxiliar para renderizar sugestões
+  function renderSuggestions(features, container, inputElement, isModal) {
+    container.innerHTML = '';
+    
+    if (!features || features.length === 0) {
+        const item = document.createElement('div');
+        item.className = 'list-group-item text-muted';
+        item.textContent = 'Nenhum local encontrado';
+        container.appendChild(item);
+        container.style.display = 'block';
+        return;
+    }
+
+    features.forEach(feature => {
+        const coords = feature.geometry.coordinates;
+        const label = feature.properties.label;
+
+        // Criar elemento de sugestão
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action suggestion-item';
+        item.textContent = label;
+        
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            inputElement.value = label;
+            container.style.display = 'none';
+
+            if (isModal) {
+                const lat = coords[1];
+                const lng = coords[0];
+                
+                map.setView([lat, lng], 15);
+                
+                if (marker) {
+                    marker.setLatLng([lat, lng]);
+                } else {
+                    marker = L.marker([lat, lng]).addTo(map);
+                }
+                
+                showLocationDetails(lat, lng, label);
+            } else {
+                document.getElementById('latitude').value = coords[1];
+                document.getElementById('longitude').value = coords[0];
+                document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${coords[1]},${coords[0]}`;
+            }
+        });
+        
+        // Hover effect visual feedback
+        item.addEventListener('mouseenter', function() {
+            this.classList.add('active');
+        });
+        item.addEventListener('mouseleave', function() {
+            this.classList.remove('active');
+        });
+
+        container.appendChild(item);
+    });
+
+    container.style.display = 'block';
+  }
+
   // Buscar locais com base no texto digitado
   function searchPlaces(query, modalSearch = false) {
-    const searchInput = modalSearch ? document.getElementById('modal-search-input') : localizacaoInput;
+    const searchInput = modalSearch ? modalSearchInput : localizacaoInput;
+    const container = modalSearch ? modalSuggestionsContainer : suggestionsContainer;
     
-    if (query.length < 3) return;
+    if (query.length < 3) {
+        container.style.display = 'none';
+        return;
+    }
     
-      fetch(`https://api.stadiamaps.com/geocoding/v1/search?text=${encodeURIComponent(query)}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
-        .then(response => response.json())
-        .then(data => {
-        if (modalSearch) {
-          // Se for busca no modal, centraliza o primeiro resultado no mapa
-          if (data.features && data.features.length > 0) {
-            const feature = data.features[0];
-            const coords = feature.geometry.coordinates;
-            const lat = coords[1];
-            const lng = coords[0];
-            
-            map.setView([lat, lng], 15);
-            
-            if (marker) {
-              marker.setLatLng([lat, lng]);
-            } else {
-              marker = L.marker([lat, lng]).addTo(map);
-            }
-            
-            showLocationDetails(lat, lng);
-          }
+    fetch(`https://api.stadiamaps.com/geocoding/v1/search?text=${encodeURIComponent(query)}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.features) {
+            renderSuggestions(data.features, container, searchInput, modalSearch);
         } else {
-          // Se for busca no campo, mostra sugestões
-          suggestionsContainer.innerHTML = '';
-          
-            if (data.features && data.features.length > 0) {
-              data.features.forEach(feature => {
-                const coords = feature.geometry.coordinates;
-                const label = feature.properties.label;
-
-                const item = document.createElement('div');
-                item.className = 'suggestion-item';
-                item.textContent = label;
-                item.addEventListener('click', function() {
-                  localizacaoInput.value = label;
-                  document.getElementById('latitude').value = coords[1];
-                  document.getElementById('longitude').value = coords[0];
-                  document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${coords[1]},${coords[0]}`;
-                  suggestionsContainer.style.display = 'none';
-                });
-
-                suggestionsContainer.appendChild(item);
-              });
-            
-            suggestionsContainer.style.display = 'block';
-          } else {
-            suggestionsContainer.style.display = 'none';
-          }
+            renderSuggestions([], container, searchInput, modalSearch);
         }
       })
       .catch(error => {
         console.error('Erro na busca:', error);
+        renderSuggestions([], container, searchInput, modalSearch);
       });
   }
   
-  // Event listener para o campo de localização
+  // Debounce function
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  const debouncedSearchLocalizacao = debounce((query) => searchPlaces(query, false), 300);
+  const debouncedSearchModal = debounce((query) => searchPlaces(query, true), 300);
+  
+  // Event listener para o campo de localização principal
   localizacaoInput.addEventListener('input', function() {
     const query = this.value.trim();
-    
-    // Limpar timeout anterior
-    if (suggestionTimeout) {
-      clearTimeout(suggestionTimeout);
-    }
-    
-    // Esperar um pouco antes de buscar para evitar muitas requisições
-    suggestionTimeout = setTimeout(() => {
-      if (query.length >= 3) {
-        searchPlaces(query);
-      } else {
-        suggestionsContainer.style.display = 'none';
-      }
-    }, 300);
+    debouncedSearchLocalizacao(query);
   });
   
+  // Event listener para o campo do modal
+  modalSearchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    currentFocus = -1; // Reset focus on input change
+    debouncedSearchModal(query);
+  });
+
+  // Navegação por teclado para o modal
+  modalSearchInput.addEventListener('keydown', function(e) {
+      const container = modalSuggestionsContainer;
+      const items = container.getElementsByClassName('suggestion-item');
+      
+      if (e.key === 'ArrowDown') {
+          currentFocus++;
+          addActive(items);
+      } else if (e.key === 'ArrowUp') {
+          currentFocus--;
+          addActive(items);
+      } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (currentFocus > -1) {
+              if (items && items[currentFocus]) {
+                  items[currentFocus].click();
+              }
+          } else {
+              // Se nenhuma sugestão selecionada, realiza busca normal (botão buscar)
+              document.getElementById('modal-search-btn').click();
+          }
+      }
+  });
+
+  function addActive(x) {
+    if (!x) return false;
+    removeActive(x);
+    if (currentFocus >= x.length) currentFocus = 0;
+    if (currentFocus < 0) currentFocus = (x.length - 1);
+    
+    x[currentFocus].classList.add("active");
+    x[currentFocus].scrollIntoView({block: "nearest"});
+  }
+
+  function removeActive(x) {
+    for (var i = 0; i < x.length; i++) {
+      x[i].classList.remove("active");
+    }
+  }
+
   // Esconder sugestões ao clicar fora
   document.addEventListener('click', function(e) {
     if (e.target !== localizacaoInput && !suggestionsContainer.contains(e.target)) {
       suggestionsContainer.style.display = 'none';
+    }
+    if (e.target !== modalSearchInput && !modalSuggestionsContainer.contains(e.target)) {
+      modalSuggestionsContainer.style.display = 'none';
+    }
+  });
+
+  // Esconder sugestões ao perder foco (com delay para permitir clique)
+  modalSearchInput.addEventListener('blur', function() {
+      setTimeout(() => {
+          modalSuggestionsContainer.style.display = 'none';
+      }, 200);
+  });
+
+  // Limpar ao esvaziar
+  modalSearchInput.addEventListener('keyup', function() {
+      if (this.value === '') {
+          modalSuggestionsContainer.style.display = 'none';
+      }
+  });
+
+  // Buscar no modal (botão)
+  document.getElementById('modal-search-btn').addEventListener('click', function() {
+    const query = modalSearchInput.value.trim();
+    if (query.length >= 3) {
+        // Force search explicitly without debounce if button clicked
+        searchPlaces(query, true);
+    }
+  });
+  
+  // Selecionar local do mapa
+  document.getElementById('btn-selecionar-local').addEventListener('click', function() {
+    if (currentLocation) {
+      // Preencher campos com informações do local selecionado
+      document.getElementById('latitude').value = currentLocation.lat;
+      document.getElementById('longitude').value = currentLocation.lng;
+      document.getElementById('localizacao-input').value = currentLocation.address || '';
+      
+      // Gerar link do Google Maps
+      document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${currentLocation.lat},${currentLocation.lng}`;
     }
   });
 });
