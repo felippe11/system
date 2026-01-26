@@ -1176,16 +1176,16 @@ def gerar_comprovante_pdf(usuario, oficina, inscricao):
     y_position = info_box_y - 50
     line_spacing = 22
     
-    # Informações com pequenos marcadores
+    # Informações sem marcadores
     infos = [
-        (f"Nome: {usuario.nome}", "👤"),
-        (f"CPF: {usuario.cpf}", "🆔"),
-        (f"E-mail: {usuario.email}", "✉️"),
-        (f"Oficina: {oficina.titulo}", "📚")
+        f"Nome: {usuario.nome}",
+        f"CPF: {usuario.cpf}",
+        f"E-mail: {usuario.email}",
+        f"Oficina: {oficina.titulo}"
     ]
     
-    for texto, icone in infos:
-        c.drawString(1.1 * inch, y_position, f"{icone} {texto}")
+    for texto in infos:
+        c.drawString(1.1 * inch, y_position, texto)
         y_position -= line_spacing
     
     # ----- SEÇÃO DE DETALHES DA OFICINA -----
