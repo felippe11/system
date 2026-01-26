@@ -2680,14 +2680,16 @@ def gerar_evento_qrcode_pdf(evento_id):
     from reportlab.lib.units import cm
     import qrcode
 
-    # 1) Verifica se há configuração do cliente e se está habilitado o QR Code de evento
-    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.cliente_id).first()
-    if not config_cliente or not config_cliente.habilitar_qrcode_evento_credenciamento:
-        flash("A geração de QR Code para credenciamento de evento está desabilitada para este cliente.", "danger")
-        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
-
-    # 2) Localiza o evento
+    # 1) Localiza o evento (Movido para antes da verificação)
     evento = Evento.query.get_or_404(evento_id)
+
+    # 2) Verifica se há configuração do evento e se está habilitado o QR Code
+    # Prioridade para configuração do evento
+    config_evento = evento.configuracao_evento
+    
+    if not config_evento or not config_evento.habilitar_qrcode_evento_credenciamento:
+        flash("A geração de QR Code para credenciamento de evento está desabilitada para este evento.", "danger")
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     # 3) Verifica se o participante está inscrito nesse evento, senão cria a inscrição automaticamente
     inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, evento_id=evento_id).first()
