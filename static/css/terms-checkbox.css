@@ -1,22 +1,24 @@
-/* Estilos específicos para o checkbox de termos */
+/* Estilos específicos para o checkbox de termos - AppFiber Design System */
 
 /* Container do checkbox */
 .terms-checkbox {
     display: flex;
-    margin-bottom: 16px;
-    padding: 12px;
-    border-radius: 8px;
-    background-color: #fff;
-    border: 1px solid #d1d5db;
-    transition: all 0.3s ease;
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-subtle);
+    border: 1px solid var(--border-default);
+    transition: var(--transition);
     cursor: pointer;
     position: relative;
-    outline: none; /* Remove outline padrão do tabindex */
+    outline: none;
 }
 
-.terms-checkbox:hover, .terms-checkbox:focus-within {
-    border-color: #60a5fa;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.terms-checkbox:hover,
+.terms-checkbox:focus-within {
+    border-color: var(--action-primary);
+    box-shadow: var(--shadow-sm);
+    background-color: var(--surface-section);
 }
 
 /* Esconder o checkbox nativo mas mantê-lo acessível */
@@ -31,129 +33,125 @@
     z-index: 2;
 }
 
-/* Estilo do label - torna toda a área clicável */
+/* Estilo do label */
 .terms-checkbox label {
     display: flex;
     align-items: center;
     cursor: pointer;
     width: 100%;
     font-size: 0.95rem;
-    color: #1f2937;
+    color: var(--text-primary);
     margin: 0;
     padding: 0;
     z-index: 1;
 }
 
-/* Criar o checkbox customizado */
+/* Checkbox Customizado */
 .terms-checkbox .checkmark {
     display: inline-block;
-    width: 22px;
-    height: 22px;
-    min-width: 22px;
-    background-color: #fff;
-    border: 2px solid #d1d5db;
-    border-radius: 4px;
-    margin-right: 12px;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    background-color: var(--surface-section);
+    border: 2px solid var(--border-default);
+    border-radius: 6px;
+    /* radius-sm + adjustment */
+    margin-right: 16px;
     position: relative;
-    transition: all 0.2s ease-in-out;
+    transition: var(--transition);
 }
 
-/* Estilo do texto dos termos */
+/* Texto dos termos */
 .terms-checkbox .terms-text {
     flex-grow: 1;
-    line-height: 1.4;
+    line-height: 1.5;
+    color: var(--text-secondary);
 }
 
 /* Estado hover e focus */
 .terms-checkbox:hover .checkmark,
-.terms-checkbox input:focus + label .checkmark {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+.terms-checkbox input:focus+label .checkmark {
+    border-color: var(--action-primary);
+    box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.1);
 }
 
 /* Estado checked */
-.terms-checkbox input:checked + label .checkmark {
-    background-color: #2563eb;
-    border-color: #2563eb;
+.terms-checkbox input:checked+label .checkmark {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
 }
 
-.terms-checkbox input:checked + label .checkmark:after {
+.terms-checkbox input:checked+label .checkmark:after {
     content: '';
     position: absolute;
-    left: 6px;
-    top: 2px;
+    left: 7px;
+    top: 3px;
     width: 6px;
     height: 12px;
-    border: solid white;
+    border: solid var(--text-on-brand);
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
     animation: check-animation 0.2s ease-out;
 }
 
 @keyframes check-animation {
-    0% { opacity: 0; transform: rotate(45deg) scale(0.8); }
-    50% { opacity: 1; transform: rotate(45deg) scale(1.2); }
-    100% { opacity: 1; transform: rotate(45deg) scale(1); }
+    0% {
+        opacity: 0;
+        transform: rotate(45deg) scale(0.8);
+    }
+
+    50% {
+        opacity: 1;
+        transform: rotate(45deg) scale(1.2);
+    }
+
+    100% {
+        opacity: 1;
+        transform: rotate(45deg) scale(1);
+    }
 }
 
 /* Links dentro do checkbox */
 .terms-checkbox a {
-    color: #2563eb;
+    color: var(--action-primary);
     text-decoration: none;
     font-weight: 600;
     margin: 0 2px;
     position: relative;
-    z-index: 3; /* Garante que os links fiquem acima de tudo */
-}
-
-.terms-checkbox a:after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 1px;
-    bottom: -1px;
-    left: 0;
-    background-color: #2563eb;
-    transform: scaleX(0.5);
-    opacity: 0.3;
-    transition: all 0.2s ease-out;
+    z-index: 3;
 }
 
 .terms-checkbox a:hover {
-    color: #1e40af;
-}
-
-.terms-checkbox a:hover:after {
-    transform: scaleX(1);
-    opacity: 0.8;
+    color: var(--action-primary-hover);
+    text-decoration: underline;
 }
 
 /* Estado de erro */
 .terms-checkbox.highlight-required {
-    border-color: #ef4444;
-    background-color: #fee2e2;
+    border-color: var(--danger-color);
+    background-color: var(--danger-light);
     animation: pulse 0.8s ease;
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-    100% { transform: scale(1); }
-}
-
 /* Responsividade */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
     .terms-checkbox {
-        padding: 10px;
+        padding: 12px;
     }
-    
+
     .terms-checkbox .checkmark {
         width: 20px;
         height: 20px;
         min-width: 20px;
+        margin-right: 12px;
     }
-    
+
+    .terms-checkbox input:checked+label .checkmark:after {
+        left: 6px;
+        top: 2px;
+    }
+
     .terms-checkbox .terms-text {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 }
