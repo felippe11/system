@@ -661,10 +661,19 @@
 
                     if (data.length > 0) {
                         data.forEach(evento => {
-                            const date = new Date(evento.data_inicio);
-                            const month = date.toLocaleString('default', { month: 'short' });
-                            const day = date.getDate();
-                            const year = date.getFullYear();
+                            let dateStr = 'Data a definir';
+
+                            if (evento.data_inicio_iso) {
+                                const date = new Date(evento.data_inicio_iso);
+                                if (!isNaN(date.getTime())) {
+                                    const month = date.toLocaleString('pt-BR', { month: 'short' });
+                                    // Capitalizar primeira letra do mês
+                                    const monthCap = month.charAt(0).toUpperCase() + month.slice(1);
+                                    const day = date.getDate();
+                                    const year = date.getFullYear();
+                                    dateStr = `${day} de ${monthCap}, ${year}`;
+                                }
+                            }
 
                             const card = `
                                 <div class="min-w-[300px] md:min-w-[380px] snap-center group cursor-pointer">
@@ -678,7 +687,7 @@
                                         <div class="p-6 flex flex-col flex-1">
                                             <div class="flex items-center gap-2 text-text-sub text-sm mb-3">
                                                 <span class="material-symbols-outlined text-[18px]">calendar_month</span>
-                                                <span>${month} ${day}, ${year}</span>
+                                                <span>${dateStr}</span>
                                             </div>
                                             <h3 class="font-display text-xl font-bold text-text-main mb-2 group-hover:text-primary transition-colors line-clamp-1" title="${evento.nome}">${evento.nome}</h3>
                                             <p class="text-text-sub text-sm line-clamp-2 mb-4 flex-1">${evento.descricao || 'Sem descrição disponível.'}</p>
