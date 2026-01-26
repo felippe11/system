@@ -1,0 +1,415 @@
+/* AppFiber Design System - Dashboard Participante */
+
+:root {
+    /* Paleta de Cores */
+    --text-primary: #0F172A;
+    --text-secondary: #4E7597;
+    --text-muted: #94A3B8;
+    --text-on-dark: #FFFFFF;
+    --text-on-brand: #FFFFFF;
+
+    /* Superfícies */
+    --surface-page: #F8FAFC;
+    --surface-section: #FFFFFF;
+    --surface-card: rgba(255, 255, 255, 0.7);
+    --surface-subtle: #F1F5F9;
+    --surface-elevated: #FFFFFF;
+
+    /* Ações */
+    --action-primary: #1E88E5;
+    --action-primary-hover: #1565C0;
+    --action-primary-active: #0F4C81;
+    --action-secondary: rgba(31, 137, 229, 0.1);
+    --action-strong: #0F172A;
+    --action-strong-hover: #2563EB;
+
+    /* Bordas */
+    --border-default: #E2E8F0;
+    --border-subtle: rgba(255, 255, 255, 0.5);
+    --border-focus: #1E88E5;
+
+    /* Status */
+    --success-color: #10b981;
+    --success-light: #d1fae5;
+    --warning-color: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger-color: #ef4444;
+    --danger-light: #fee2e2;
+    --info-color: #3b82f6;
+    --info-light: #dbeafe;
+
+    /* Dimensões & Efeitos */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+    --backdrop-blur: blur(12px);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --font-primary: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+    font-family: var(--font-primary);
+    background-color: var(--surface-page);
+    color: var(--text-primary);
+}
+
+/* Cabeçalho do Dashboard */
+.dashboard-header {
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--surface-card);
+    border-radius: var(--radius-xl);
+    backdrop-filter: var(--backdrop-blur);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.dashboard-header h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.dashboard-header h3 {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Seções de evento */
+.evento-section {
+    margin-bottom: 3rem;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.evento-titulo {
+    background: var(--surface-section);
+    padding: 1.5rem;
+    border-radius: var(--radius-xl);
+    margin-bottom: 2rem;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.75rem;
+    border-left: 6px solid var(--action-primary);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.evento-data {
+    margin-top: -1.5rem;
+    margin-bottom: 2rem;
+    margin-left: 1.5rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Cards de oficina */
+.card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    transition: var(--transition);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-card);
+    backdrop-filter: var(--backdrop-blur);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--action-primary);
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--action-primary), var(--action-primary-active));
+    color: var(--text-on-brand);
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-body {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    color: var(--text-secondary);
+}
+
+.card-body p {
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.card-body p strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.card-body ul {
+    padding-left: 0;
+    margin-bottom: 1rem;
+    list-style-type: none;
+}
+
+.card-body li {
+    margin-bottom: 0.5rem;
+    padding: 0.75rem;
+    background-color: var(--surface-subtle);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-body li i {
+    color: var(--action-primary);
+}
+
+.badge-esgotado {
+    background-color: var(--danger-light);
+    color: var(--danger-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.card-footer {
+    margin-top: auto;
+    border-top: 1px solid var(--border-default);
+    padding: 1.5rem;
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Badges e status */
+.status-badge {
+    display: inline-block;
+    padding: 0.25em 0.75em;
+    font-size: 0.85em;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: var(--radius-full);
+    margin-left: 0.5rem;
+}
+
+.badge-vagas {
+    background-color: var(--info-light);
+    color: var(--info-color);
+}
+
+/* Botões customizados */
+.btn {
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    transition: var(--transition);
+    text-transform: none;
+    /* AppFiber prefers normal case for actions usually, but let's keep clean */
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary {
+    background-color: var(--action-primary);
+    color: var(--text-on-brand);
+}
+
+.btn-primary:hover {
+    background-color: var(--action-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    filter: brightness(0.9);
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    filter: brightness(0.9);
+    transform: translateY(-2px);
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: var(--text-primary);
+}
+
+.btn-warning:hover {
+    filter: brightness(0.9);
+    transform: translateY(-2px);
+}
+
+.btn-info {
+    background-color: var(--info-color);
+    color: white;
+}
+
+.btn-info:hover {
+    filter: brightness(0.9);
+    transform: translateY(-2px);
+}
+
+.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* Informações do tipo de inscrição */
+.tipo-inscricao-info {
+    background-color: var(--surface-subtle);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin: 2rem auto;
+    max-width: 800px;
+    border-left: 4px solid var(--action-primary);
+    text-align: left;
+}
+
+.tipo-inscricao-info p {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.tipo-inscricao-info strong {
+    color: var(--text-primary);
+}
+
+.limite-oficinas i {
+    color: var(--action-primary);
+    margin-right: 8px;
+}
+
+/* Notificações */
+.notificacoes-section {
+    background-color: var(--surface-section);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-md);
+}
+
+.notificacao-titulo {
+    color: var(--text-primary);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border-default);
+    padding-bottom: 1rem;
+}
+
+.notificacao-item {
+    background-color: var(--surface-subtle);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-left: 4px solid var(--text-muted);
+    transition: var(--transition);
+}
+
+.notificacao-item:hover {
+    background-color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.notificacao-item.nao-lida {
+    border-left-color: var(--action-primary);
+    background-color: #F0F9FF;
+    /* Light blue tint */
+}
+
+.notificacao-mensagem {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.notificacao-data {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Select Box */
+.form-select {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
+    background-color: var(--surface-section);
+}
+
+.form-select:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.1);
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        margin-top: 1rem;
+        padding: 1.5rem;
+    }
+
+    .dashboard-header h2 {
+        font-size: 1.75rem;
+    }
+
+    .btn-lg {
+        width: 100%;
+    }
+}
