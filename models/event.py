@@ -220,7 +220,7 @@ class Inscricao(db.Model):
     checkin_attempts = db.Column(db.Integer, default=0)
 
     tipo_inscricao_id = db.Column(
-        db.Integer, db.ForeignKey("inscricao_tipo.id"), nullable=True
+        db.Integer, db.ForeignKey("evento_inscricao_tipo.id"), nullable=True
     )
     lote_id = db.Column(db.Integer, db.ForeignKey("lote_inscricao.id"), nullable=True)
 
