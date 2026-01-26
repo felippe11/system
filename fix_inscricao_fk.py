@@ -8,8 +8,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def fix_constraint():
     try:
-        from app import app
+        from app import create_app
         from extensions import db
+        
+        # Instantiate the application using the factory
+        app = create_app()
         
         with app.app_context():
             print("Iniciando correção de constraint na tabela inscricao...")
