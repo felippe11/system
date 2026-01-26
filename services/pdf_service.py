@@ -3656,11 +3656,24 @@ def gerar_programacao_evento_pdf(evento_id):
     # 5. Build Document Content
     story = []
     
+    # Mapeamento para meses em português
+    MONTHS_PT = {
+        1: 'janeiro', 2: 'fevereiro', 3: 'março', 4: 'abril',
+        5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto',
+        9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'
+    }
+
+    def format_date_pt_br(date_obj):
+        """Formata data para 'dd de mês de YYYY' em português"""
+        if not date_obj:
+            return ""
+        return f"{date_obj.day} de {MONTHS_PT[date_obj.month]} de {date_obj.year}"
+
     # Cabeçalho do evento
     story.append(Paragraph(f"{evento.nome}", styles['EventTitle']))
     
     if hasattr(evento, 'data_inicio') and evento.data_inicio:
-        data_evento = evento.data_inicio.strftime('%d de %B de %Y')
+        data_evento = format_date_pt_br(evento.data_inicio)
         story.append(Paragraph(f"Programação do Evento - {data_evento}", styles['EventSubtitle']))
     else:
         story.append(Paragraph("Programação do Evento", styles['EventSubtitle']))
@@ -3676,7 +3689,7 @@ def gerar_programacao_evento_pdf(evento_id):
     for i, data in enumerate(sorted_dates):
         # Cabeçalho da data
         data_dt = datetime.strptime(data, '%d/%m/%Y')
-        data_formatada = f"{dia_semana(data_dt)}, {data_dt.strftime('%d de %B de %Y')}"
+        data_formatada = f"{dia_semana(data_dt)}, {format_date_pt_br(data_dt)}"
         story.append(Paragraph(data_formatada, styles['DateHeader']))
         
         # Criar tabela para as oficinas do dia
