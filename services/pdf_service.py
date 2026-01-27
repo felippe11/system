@@ -3540,9 +3540,23 @@ def gerar_programacao_evento_pdf(evento_id):
                     return horario
                 return horario.strftime('%H:%M')
             
+            # Coletar todos os ministrantes (principal + associados)
+            ministrantes_nomes = []
+            if oficina.ministrante_obj:
+                ministrantes_nomes.append(oficina.ministrante_obj.nome)
+            
+            # Adicionar ministrantes associados
+            # Como o relacionamento é lazy='dynamic', iteramos sobre o resultado da query
+            if hasattr(oficina, 'ministrantes_associados'):
+                for m in oficina.ministrantes_associados:
+                    if m.nome not in ministrantes_nomes:
+                        ministrantes_nomes.append(m.nome)
+            
+            ministrante_str = ", ".join(ministrantes_nomes) if ministrantes_nomes else 'A definir'
+
             grouped_oficinas[data_str].append({
                 'titulo': oficina.titulo,
-                'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'A definir',
+                'ministrante': ministrante_str,
                 'inicio': format_horario(dia.horario_inicio),
                 'fim': format_horario(dia.horario_fim),
                 'descricao': getattr(oficina, 'descricao', '') or '',
@@ -3715,11 +3729,12 @@ def gerar_programacao_evento_pdf(evento_id):
                 table_data.append([
                     horario,
                     Paragraph(titulo_oficina, styles['Normal']),
-                    oficina['ministrante']
+                    Paragraph(oficina['ministrante'], styles['Normal'])
                 ])
             
             # Criar e estilizar tabela
-            table = Table(table_data, colWidths=[3.5*cm, 9*cm, 4*cm])
+            # Ajustado para 17cm (Largura A4 21cm - Margens 2cm+2cm)
+            table = Table(table_data, colWidths=[3.0*cm, 9.5*cm, 4.5*cm])
             table.setStyle(TableStyle([
                 # Cabeçalho
                 ('BACKGROUND', (0, 0), (-1, 0), secondary_color),
