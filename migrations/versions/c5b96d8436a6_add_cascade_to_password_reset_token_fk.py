@@ -16,6 +16,10 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("password_reset_token"):
+        return
     op.drop_constraint(
         "fk_password_reset_token_usuario_id_usuario",
         "password_reset_token",
@@ -32,6 +36,10 @@ def upgrade():
 
 
 def downgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("password_reset_token"):
+        return
     op.drop_constraint(
         op.f("fk_password_reset_token_usuario_id_usuario"),
         "password_reset_token",

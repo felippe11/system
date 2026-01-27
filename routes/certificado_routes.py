@@ -9,6 +9,7 @@ from flask import (
     send_file,
     after_this_request,
     jsonify,
+    current_app,
 )
 import os
 from utils import endpoints
@@ -38,6 +39,17 @@ from models.certificado import (
 )
 from models.event import ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
+
+def _resolve_static_path(value: str | None) -> str | None:
+    if not value:
+        return None
+    if os.path.isabs(value):
+        return value if os.path.exists(value) else None
+    normalized = value.lstrip("/")
+    if normalized.startswith("static/"):
+        normalized = normalized[len("static/") :]
+    candidate = os.path.join(current_app.static_folder, normalized)
+    return candidate if os.path.exists(candidate) else None
 
 from services.declaracao_service import gerar_declaracao_personalizada
 from services import certificado_service
@@ -156,7 +168,11 @@ def salvar_personalizacao_certificado():
     """Salva personalização do certificado após validar os arquivos enviados."""
     cliente = Cliente.query.get(current_user.id)
 
-    upload_dir = os.path.join('static', 'uploads', 'certificados')
+    uploads_root = current_app.config.get(
+        "UPLOADS_ROOT",
+        os.path.join(current_app.root_path, "static", "uploads"),
+    )
+    upload_dir = os.path.join(uploads_root, 'certificados')
     os.makedirs(upload_dir, exist_ok=True)
 
     for campo in ['logo_certificado', 'assinatura_certificado', 'fundo_certificado']:
@@ -181,7 +197,7 @@ def salvar_personalizacao_certificado():
 
         path = os.path.join(upload_dir, filename)
         arquivo.save(path)
-        setattr(cliente, campo, path)
+        setattr(cliente, campo, os.path.join('uploads', 'certificados', filename))
 
     cliente.texto_personalizado = request.form.get('texto_personalizado')
     db.session.commit()
@@ -266,7 +282,11 @@ def upload_personalizacao_certificado():
         ass_file = request.files.get('assinatura_certificado')
 
         # Exemplo de pasta
-        pasta_uploads = os.path.join('uploads', 'personalizacao')
+        uploads_root = current_app.config.get(
+            "UPLOADS_ROOT",
+            os.path.join(current_app.root_path, "static", "uploads"),
+        )
+        pasta_uploads = os.path.join(uploads_root, 'personalizacao')
         os.makedirs(pasta_uploads, exist_ok=True)
 
         # Se o cliente enviar algo, salvamos e atualizamos o path
@@ -274,19 +294,19 @@ def upload_personalizacao_certificado():
             filename_logo = secure_filename(logo_file.filename)
             caminho_logo = os.path.join(pasta_uploads, filename_logo)
             logo_file.save(caminho_logo)
-            current_user.logo_certificado = caminho_logo  # Salva no banco
+            current_user.logo_certificado = os.path.join('uploads', 'personalizacao', filename_logo)
 
         if fundo_file and fundo_file.filename:
             filename_fundo = secure_filename(fundo_file.filename)
             caminho_fundo = os.path.join(pasta_uploads, filename_fundo)
             fundo_file.save(caminho_fundo)
-            current_user.fundo_certificado = caminho_fundo
+            current_user.fundo_certificado = os.path.join('uploads', 'personalizacao', filename_fundo)
 
         if ass_file and ass_file.filename:
             filename_ass = secure_filename(ass_file.filename)
             caminho_ass = os.path.join(pasta_uploads, filename_ass)
             ass_file.save(caminho_ass)
-            current_user.assinatura_certificado = caminho_ass
+            current_user.assinatura_certificado = os.path.join('uploads', 'personalizacao', filename_ass)
 
         db.session.commit()
         flash("Personalização salva com sucesso!", "success")
@@ -1285,8 +1305,8 @@ def gerar_certificado_geral_personalizado(usuario, evento, atividades, template,
     # Renderizar certificado
     # 1. Fundo
     if hasattr(cliente, 'fundo_certificado') and cliente.fundo_certificado:
-        fundo_path = os.path.join('static', cliente.fundo_certificado)
-        if os.path.exists(fundo_path):
+        fundo_path = _resolve_static_path(cliente.fundo_certificado)
+        if fundo_path:
             fundo = ImageReader(fundo_path)
             c.drawImage(fundo, 0, 0, width=width, height=height)
     
@@ -1317,8 +1337,8 @@ def gerar_certificado_geral_personalizado(usuario, evento, atividades, template,
     
     # 4. Logo (se disponível)
     if hasattr(cliente, 'logo_certificado') and cliente.logo_certificado:
-        logo_path = os.path.join('static', cliente.logo_certificado)
-        if os.path.exists(logo_path):
+        logo_path = _resolve_static_path(cliente.logo_certificado)
+        if logo_path:
             logo = ImageReader(logo_path)
             c.drawImage(logo, width * 0.05, height * 0.05, width=100, height=100, preserveAspectRatio=True)
     

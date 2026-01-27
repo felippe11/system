@@ -260,6 +260,35 @@
             </label>
           </div>
         </div>
+
+        <div class="mb-3">
+          <label class="form-label">Tipos de inscrição permitidos nesta atividade</label>
+          {% if tipos_inscricao_evento and tipos_inscricao_evento|length > 0 %}
+            <div class="border rounded p-3" style="max-height: 220px; overflow-y: auto;">
+              {% set permitidos = oficina.get_tipos_inscricao_permitidos_list() %}
+              {% for tipo in tipos_inscricao_evento %}
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="tipo-permitido-{{ tipo.id }}"
+                    name="tipos_inscricao_permitidos[]"
+                    value="{{ tipo.id }}"
+                    {% if tipo.id in permitidos %}checked{% endif %}
+                  >
+                  <label class="form-check-label" for="tipo-permitido-{{ tipo.id }}">
+                    {{ tipo.nome }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+            <small class="text-muted">Se não selecionar nenhum, todos os tipos do evento poderão se inscrever.</small>
+          {% else %}
+            <div class="alert alert-info mb-0">
+              <i class="fas fa-info-circle"></i> Nenhum tipo de inscrição cadastrado para este evento.
+            </div>
+          {% endif %}
+        </div>
         
         <!-- Container para Tipos de Inscrição e Preços -->
         <div id="tipos-inscricao-container" {% if oficina.inscricao_gratuita %}style="display: none;"{% endif %}>

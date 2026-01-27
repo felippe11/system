@@ -49,13 +49,11 @@ def cadastro_ministrante():
             original_filename = secure_filename(foto.filename)   # ex.: foto.jpg
             ext = original_filename.rsplit('.', 1)[1].lower()    # pega a extensão ex.: jpg
             unique_name = f"{uuid.uuid4()}.{ext}"                # ex.: 123e4567-e89b-12d3-a456-426614174000.jpg
-            caminho_foto = os.path.join(
-                current_app.root_path, 
-                'static', 
-                'uploads', 
-                'ministrantes', 
-                unique_name
+            uploads_root = current_app.config.get(
+                "UPLOADS_ROOT",
+                os.path.join(current_app.root_path, "static", "uploads"),
             )
+            caminho_foto = os.path.join(uploads_root, "ministrantes", unique_name)
             os.makedirs(os.path.dirname(caminho_foto), exist_ok=True)
             foto.save(caminho_foto) 
             foto_path = f'uploads/ministrantes/{unique_name}'    # caminho relativo à pasta static
@@ -129,7 +127,11 @@ def editar_ministrante(ministrante_id):
         foto = request.files.get('foto')
         if foto and foto.filename:
             filename = secure_filename(foto.filename)
-            caminho_foto = os.path.join(current_app.root_path, 'static/uploads/ministrantes', filename)
+            uploads_root = current_app.config.get(
+                "UPLOADS_ROOT",
+                os.path.join(current_app.root_path, "static", "uploads"),
+            )
+            caminho_foto = os.path.join(uploads_root, "ministrantes", filename)
             os.makedirs(os.path.dirname(caminho_foto), exist_ok=True)
             foto.save(caminho_foto)
             ministrante.foto = f'uploads/ministrantes/{filename}'

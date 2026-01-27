@@ -18,6 +18,7 @@ from models import (
     MaterialOficina,
     RelatorioOficina,
     InscricaoTipo,
+    EventoInscricaoTipo,
     Feedback,
 )
 from models.user import Ministrante, Cliente
@@ -314,6 +315,12 @@ def editar_oficina(oficina_id):
     formadores = ministrantes
 
     if request.method == 'POST':
+        tipos_evento_context = []
+        evento_id_form = request.form.get('evento_id') or oficina.evento_id
+        if evento_id_form:
+            tipos_evento_context = EventoInscricaoTipo.query.filter_by(
+                evento_id=evento_id_form
+            ).all()
         context = {
             'oficina': oficina,
             'estados': estados,
@@ -325,6 +332,7 @@ def editar_oficina(oficina_id):
             'horarios_inicio': request.form.getlist('horario_inicio[]'),
             'horarios_fim': request.form.getlist('horario_fim[]'),
             'formador_id': request.form.get('formador_id'),
+            'tipos_inscricao_evento': tipos_evento_context,
         }
         oficina.titulo = request.form.get('titulo')
         oficina.descricao = request.form.get('descricao')
@@ -360,6 +368,18 @@ def editar_oficina(oficina_id):
         oficina.opcoes_checkin = request.form.get('opcoes_checkin')
         oficina.palavra_correta = request.form.get('palavra_correta')
         oficina.evento_id = request.form.get('evento_id')  # Atualiza o evento_id
+
+        tipos_evento = []
+        if oficina.evento_id:
+            tipos_evento = EventoInscricaoTipo.query.filter_by(
+                evento_id=oficina.evento_id
+            ).all()
+        tipos_evento_ids = {str(t.id) for t in tipos_evento}
+        tipos_permitidos = [
+            tid for tid in request.form.getlist('tipos_inscricao_permitidos[]')
+            if tid in tipos_evento_ids
+        ]
+        oficina.set_tipos_inscricao_permitidos_list(tipos_permitidos)
         
         # Atualiza os campos tipo_oficina e tipo_oficina_outro
         tipo_oficina = request.form.get('tipo_oficina', 'Oficina')
@@ -473,7 +493,8 @@ def editar_oficina(oficina_id):
                 formadores=formadores,
                 clientes=clientes_disponiveis,
                 eventos=eventos_disponiveis,
-                formador_id=request.form.get('formador_id')
+                formador_id=request.form.get('formador_id'),
+                tipos_inscricao_evento=tipos_evento,
             )
 
     return render_template(
@@ -484,7 +505,10 @@ def editar_oficina(oficina_id):
         formadores=formadores,
         clientes=clientes_disponiveis,
         eventos=eventos_disponiveis,
-        formador_id=oficina.formador_id
+        formador_id=oficina.formador_id,
+        tipos_inscricao_evento=EventoInscricaoTipo.query.filter_by(
+            evento_id=oficina.evento_id
+        ).all() if oficina.evento_id else []
     )
 
 @oficina_routes.route('/excluir_oficina/<int:oficina_id>', methods=['POST'])

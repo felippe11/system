@@ -2691,7 +2691,11 @@ def criar_evento_agendamento():
                 
                 if banner and banner.filename:
                     filename = secure_filename(banner.filename)
-                    caminho_banner = os.path.join('static/banners', filename)
+                    banners_root = current_app.config.get(
+                        "BANNERS_ROOT",
+                        os.path.join(current_app.root_path, "static", "banners"),
+                    )
+                    caminho_banner = os.path.join(banners_root, filename)
                     os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
                     banner.save(caminho_banner)
                     banner_url = url_for('static', filename=f'banners/{filename}', _external=True)

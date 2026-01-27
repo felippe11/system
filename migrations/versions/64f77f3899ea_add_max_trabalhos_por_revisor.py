@@ -17,6 +17,10 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("configuracao_cliente"):
+        return
     op.add_column(
         "configuracao_cliente",
         sa.Column(
@@ -29,4 +33,8 @@ def upgrade():
 
 
 def downgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("configuracao_cliente"):
+        return
     op.drop_column("configuracao_cliente", "max_trabalhos_por_revisor")

@@ -602,8 +602,17 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
                     "formador": oficina.formador,
                     "horario_inicio": dia.horario_inicio,
                     "horario_fim": dia.horario_fim,
+                    "ordem_exibicao": dia.ordem_exibicao,
                 }
             )
+    for data_key, itens in grouped_oficinas.items():
+        itens.sort(
+            key=lambda item: (
+                item["ordem_exibicao"] if item["ordem_exibicao"] is not None else 9999,
+                item["horario_inicio"] or "",
+                item["titulo"].lower(),
+            )
+        )
     sorted_keys = sorted(grouped_oficinas.keys(), key=lambda d: parser.parse(d, dayfirst=True))
 
     campos_personalizados = CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente_id).all()
@@ -785,6 +794,14 @@ def inscrever(oficina_id):
             'success': False,
             'message': 'Você já está inscrito nesta oficina!'
         })
+
+    tipos_permitidos = set(oficina.get_tipos_inscricao_permitidos_list())
+    if tipos_permitidos:
+        if not current_user.tipo_inscricao_id or current_user.tipo_inscricao_id not in tipos_permitidos:
+            return jsonify({
+                'success': False,
+                'message': 'Esta atividade não está habilitada para seu tipo de inscrição.'
+            })
     
     # Verificar regras de inscrição baseadas no tipo de inscrição do participante
     if oficina.evento_id and current_user.tipo_inscricao_id:
