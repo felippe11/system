@@ -6516,14 +6516,14 @@ def gerar_comprovante_pdf(usuario, oficina, inscricao):
     
     # Informações com pequenos marcadores
     infos = [
-        (f"Nome: {usuario.nome}", "👤"),
-        (f"CPF: {usuario.cpf}", "🆔"),
-        (f"E-mail: {usuario.email}", "✉️"),
-        (f"Oficina: {oficina.titulo}", "📚")
+        f"Nome: {usuario.nome}",
+        f"CPF: {usuario.cpf}",
+        f"E-mail: {usuario.email}",
+        f"Oficina: {oficina.titulo}"
     ]
     
-    for texto, icone in infos:
-        c.drawString(1.1 * inch, y_position, f"{icone} {texto}")
+    for texto in infos:
+        c.drawString(1.1 * inch, y_position, texto)
         y_position -= line_spacing
     
     # ----- SEÇÃO DE DETALHES DA OFICINA -----
@@ -6542,7 +6542,7 @@ def gerar_comprovante_pdf(usuario, oficina, inscricao):
     # Verifica se existem dias associados à oficina
     if hasattr(oficina, 'dias') and oficina.dias:
         y_position = details_y - 25
-        c.drawString(1.1 * inch, y_position, "📅 Datas e Horários:")
+        c.drawString(1.1 * inch, y_position, "Datas e Horários:")
         
         # Lista cada dia da oficina
         for i, dia in enumerate(oficina.dias):
