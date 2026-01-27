@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Perguntas - {{ categoria.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-question-circle"></i>
+                        Gerenciar Perguntas - {{ categoria.nome }}
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('voting_routes.gerenciar_categorias', voting_event_id=categoria.voting_event_id) }}" 
+                           class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar às Categorias
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Botão para Adicionar Pergunta -->
+                    <div class="mb-4">
+                        <button class="btn btn-primary" data-toggle="modal" data-target="#adicionarPerguntaModal">
+                            <i class="fas fa-plus"></i> Adicionar Nova Pergunta
+                        </button>
+                    </div>
+
+                    <!-- Lista de Perguntas -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Ordem</th>
+                                    <th>Pergunta</th>
+                                    <th>Tipo</th>
+                                    <th>Pontuação</th>
+                                    <th>Obrigatória</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pergunta in perguntas %}
+                                <tr data-pergunta-id="{{ pergunta.id }}">
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm ordem-input" 
+                                               value="{{ pergunta.ordem }}" min="1" style="width: 60px;">
+                                    </td>
+                                    <td>
+                                        <strong>{{ pergunta.texto }}</strong>
+                                        {% if pergunta.explicacao %}
+                                            <br><small class="text-muted">{{ pergunta.explicacao }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ pergunta.tipo }}</span>
+                                    </td>
+                                    <td>
+                                        {% if pergunta.tipo == 'numerica' %}
+                                            {{ pergunta.pontuacao_minima }} - {{ pergunta.pontuacao_maxima }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-{{ 'success' if pergunta.obrigatoria else 'secondary' }}">
+                                            {{ 'Sim' if pergunta.obrigatoria else 'Não' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" onclick="editarPergunta({{ pergunta.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deletarPergunta({{ pergunta.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if not perguntas %}
+                    <div class="alert alert-info text-center">
+                        <h5>Nenhuma pergunta cadastrada</h5>
+                        <p>Use o botão acima para adicionar a primeira pergunta desta categoria.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Adicionar Pergunta -->
+<div class="modal fade" id="adicionarPerguntaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Nova Pergunta</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="adicionarPerguntaForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="texto">Texto da Pergunta</label>
+                        <textarea class="form-control" id="texto" name="texto" rows="2" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="explicacao">Explicação (Opcional)</label>
+                        <textarea class="form-control" id="explicacao" name="explicacao" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="tipo">Tipo de Resposta</label>
+                                <select class="form-control" id="tipo" name="tipo" onchange="togglePontuacaoFields()">
+                                    <option value="texto">Texto Livre</option>
+                                    <option value="numerica">Numérica</option>
+                                    <option value="escolha_unica">Escolha Única</option>
+                                    <option value="escolha_multipla">Escolha Múltipla</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="ordem">Ordem</label>
+                                <input type="number" class="form-control" id="ordem" name="ordem" 
+                                       value="{{ perguntas|length + 1 }}" min="1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row" id="pontuacaoFields" style="display: none;">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="pontuacao_minima">Pontuação Mínima</label>
+                                <input type="number" class="form-control" id="pontuacao_minima" name="pontuacao_minima" 
+                                       step="0.1" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="pontuacao_maxima">Pontuação Máxima</label>
+                                <input type="number" class="form-control" id="pontuacao_maxima" name="pontuacao_maxima" 
+                                       step="0.1" value="10">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="obrigatoria" name="obrigatoria">
+                            <label class="form-check-label" for="obrigatoria">
+                                Pergunta obrigatória
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar Pergunta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle campos de pontuação baseado no tipo
+function togglePontuacaoFields() {
+    const tipo = document.getElementById('tipo').value;
+    const pontuacaoFields = document.getElementById('pontuacaoFields');
+    
+    if (tipo === 'numerica') {
+        pontuacaoFields.style.display = 'block';
+        document.getElementById('pontuacao_minima').required = true;
+        document.getElementById('pontuacao_maxima').required = true;
+    } else {
+        pontuacaoFields.style.display = 'none';
+        document.getElementById('pontuacao_minima').required = false;
+        document.getElementById('pontuacao_maxima').required = false;
+    }
+}
+
+// Adicionar pergunta
+document.getElementById('adicionarPerguntaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        texto: formData.get('texto'),
+        explicacao: formData.get('explicacao'),
+        tipo: formData.get('tipo'),
+        ordem: parseInt(formData.get('ordem')),
+        pontuacao_minima: parseFloat(formData.get('pontuacao_minima')) || 0,
+        pontuacao_maxima: parseFloat(formData.get('pontuacao_maxima')) || 10,
+        obrigatoria: formData.get('obrigatoria') === 'on'
+    };
+    
+    // Obter token CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    fetch('{{ url_for("voting_routes.gerenciar_perguntas", categoria_id=categoria.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro interno do servidor');
+    });
+});
+
+// Atualizar ordem
+document.querySelectorAll('.ordem-input').forEach(input => {
+    input.addEventListener('change', function() {
+        const perguntaId = this.closest('tr').dataset.perguntaId;
+        const novaOrdem = this.value;
+        
+        const data = {
+            action: 'atualizar_ordem',
+            pergunta_id: perguntaId,
+            nova_ordem: novaOrdem
+        };
+        
+        // Obter token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ url_for("voting_routes.gerenciar_perguntas", categoria_id=categoria.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Erro ao atualizar ordem: ' + data.message);
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro interno do servidor');
+            location.reload();
+        });
+    });
+});
+
+// Editar pergunta
+function editarPergunta(id) {
+    // Implementar edição
+    alert('Funcionalidade de edição em desenvolvimento');
+}
+
+// Deletar pergunta
+function deletarPergunta(id) {
+    if (confirm('Tem certeza que deseja deletar esta pergunta? Esta ação não pode ser desfeita.')) {
+        const data = {
+            action: 'deletar',
+            pergunta_id: id
+        };
+        
+        // Obter token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ url_for("voting_routes.gerenciar_perguntas", categoria_id=categoria.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro interno do servidor');
+        });
+    }
+}
+</script>
+{% endblock %}
+

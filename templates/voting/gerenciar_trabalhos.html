@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Trabalhos - {{ voting_event.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-tasks"></i>
+                        Gerenciar Trabalhos - {{ voting_event.nome }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Botões de Ação -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#importarModal">
+                                <i class="fas fa-download"></i> Importar do Sistema de Submissão
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-success" data-toggle="modal" data-target="#adicionarModal">
+                                <i class="fas fa-plus"></i> Adicionar Trabalho Manual
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Trabalhos -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Ordem</th>
+                                    <th>Título</th>
+                                    <th>Descrição</th>
+                                    <th>Autor</th>
+                                    <th>Categoria</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trabalhosTable">
+                                {% for trabalho in trabalhos %}
+                                <tr data-trabalho-id="{{ trabalho.id }}">
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm ordem-input" 
+                                               value="{{ trabalho.ordem_exibicao }}" min="1" style="width: 60px;">
+                                    </td>
+                                    <td>{{ trabalho.titulo }}</td>
+                                    <td>{{ trabalho.descricao[:100] }}{% if trabalho.descricao|length > 100 %}...{% endif %}</td>
+                                    <td>{{ trabalho.autor_info }}</td>
+                                    <td>{{ trabalho.categoria.nome if trabalho.categoria else 'Sem categoria' }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" onclick="editarTrabalho({{ trabalho.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deletarTrabalho({{ trabalho.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if not trabalhos %}
+                    <div class="alert alert-info text-center">
+                        <h5>Nenhum trabalho cadastrado</h5>
+                        <p>Use os botões acima para importar trabalhos do sistema de submissão ou adicionar trabalhos manualmente.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Importar Trabalhos -->
+<div class="modal fade" id="importarModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Importar Trabalhos do Sistema de Submissão</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Selecionar</th>
+                                <th>Título</th>
+                                <th>Autor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trabalho in trabalhos_disponiveis %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="trabalho-checkbox" value="{{ trabalho.id }}">
+                                </td>
+                                <td>{{ trabalho.titulo }}</td>
+                                <td>{{ trabalho.autor.nome if trabalho.autor else 'N/A' }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'success' if trabalho.status == 'aceito' else 'warning' }}">
+                                        {{ trabalho.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="importarTrabalhos()">Importar Selecionados</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Adicionar Trabalho Manual -->
+<div class="modal fade" id="adicionarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Trabalho Manual</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="adicionarTrabalhoForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="titulo">Título do Trabalho</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="descricao">Descrição</label>
+                        <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="autor_info">Informações do Autor</label>
+                        <input type="text" class="form-control" id="autor_info" name="autor_info" 
+                               placeholder="Nome do autor, instituição, etc.">
+                    </div>
+                    <div class="form-group">
+                        <label for="ordem_exibicao">Ordem de Exibição</label>
+                        <input type="number" class="form-control" id="ordem_exibicao" name="ordem_exibicao" 
+                               value="1" min="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Adicionar Trabalho</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Importar trabalhos selecionados
+function importarTrabalhos() {
+    const selecionados = Array.from(document.querySelectorAll('.trabalho-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    if (selecionados.length === 0) {
+        alert('Selecione pelo menos um trabalho para importar.');
+        return;
+    }
+    
+    const data = {
+        trabalhos_ids: selecionados
+    };
+    
+    // Obter token CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    fetch('{{ url_for("voting_routes.gerenciar_trabalhos", voting_event_id=voting_event.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro interno do servidor');
+    });
+}
+
+// Adicionar trabalho manual
+document.getElementById('adicionarTrabalhoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        titulo: formData.get('titulo'),
+        descricao: formData.get('descricao'),
+        autor_info: formData.get('autor_info'),
+        ordem_exibicao: parseInt(formData.get('ordem_exibicao'))
+    };
+    
+    // Obter token CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    fetch('{{ url_for("voting_routes.gerenciar_trabalhos", voting_event_id=voting_event.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro interno do servidor');
+    });
+});
+
+// Atualizar ordem de exibição
+document.querySelectorAll('.ordem-input').forEach(input => {
+    input.addEventListener('change', function() {
+        const trabalhoId = this.closest('tr').dataset.trabalhoId;
+        const novaOrdem = this.value;
+        
+        const data = {
+            action: 'atualizar_ordem',
+            trabalho_id: trabalhoId,
+            nova_ordem: novaOrdem
+        };
+        
+        // Obter token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ url_for("voting_routes.gerenciar_trabalhos", voting_event_id=voting_event.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Erro ao atualizar ordem: ' + data.message);
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro interno do servidor');
+            location.reload();
+        });
+    });
+});
+
+// Editar trabalho
+function editarTrabalho(id) {
+    // Implementar edição
+    alert('Funcionalidade de edição em desenvolvimento');
+}
+
+// Deletar trabalho
+function deletarTrabalho(id) {
+    if (confirm('Tem certeza que deseja deletar este trabalho? Esta ação não pode ser desfeita.')) {
+        const data = {
+            action: 'deletar',
+            trabalho_id: id
+        };
+        
+        // Obter token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ url_for("voting_routes.gerenciar_trabalhos", voting_event_id=voting_event.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro interno do servidor');
+        });
+    }
+}
+</script>
+{% endblock %}
+

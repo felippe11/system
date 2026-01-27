@@ -324,3 +324,4 @@ O sistema está **pronto para produção** e atende bem às necessidades atuais.
 *Versão do sistema analisada: AppFiber v2.0*
 
 
+

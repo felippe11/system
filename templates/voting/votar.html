@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Votar - {{ atribuicao.work.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-vote-yea"></i>
+                        Votação: {{ atribuicao.work.titulo }}
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-info">{{ atribuicao.voting_event.nome }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Informações do trabalho -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <h5>{{ atribuicao.work.titulo }}</h5>
+                            {% if atribuicao.work.resumo %}
+                                <p class="text-muted">{{ atribuicao.work.resumo }}</p>
+                            {% endif %}
+                            {% if atribuicao.work.autores %}
+                                <p><strong>Autores:</strong> {{ atribuicao.work.autores }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Informações da Votação</h6>
+                                    <p><strong>Evento:</strong> {{ atribuicao.voting_event.evento.nome }}</p>
+                                    <p><strong>Prazo:</strong> 
+                                        {% if atribuicao.prazo_votacao %}
+                                            {{ atribuicao.prazo_votacao.strftime('%d/%m/%Y %H:%M') }}
+                                        {% else %}
+                                            Sem prazo definido
+                                        {% endif %}
+                                    </p>
+                                    <p><strong>Status:</strong> 
+                                        {% if atribuicao.concluida %}
+                                            <span class="badge badge-success">Concluída</span>
+                                        {% else %}
+                                            <span class="badge badge-warning">Pendente</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulário de votação -->
+                    <form id="formVotacao">
+                        <input type="hidden" id="voting_event_id" value="{{ atribuicao.voting_event_id }}">
+                        <input type="hidden" id="work_id" value="{{ atribuicao.work_id }}">
+                        
+                        {% for categoria in categorias %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title">
+                                    <i class="fas fa-tag"></i>
+                                    {{ categoria.nome }}
+                                </h5>
+                                {% if categoria.descricao %}
+                                    <p class="card-text">{{ categoria.descricao }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <input type="hidden" name="category_id" value="{{ categoria.id }}">
+                                
+                                {% for pergunta in categoria.perguntas %}
+                                <div class="form-group">
+                                    <label for="pergunta_{{ pergunta.id }}">
+                                        {{ pergunta.texto_pergunta }}
+                                        {% if pergunta.obrigatoria %}
+                                            <span class="text-danger">*</span>
+                                        {% endif %}
+                                    </label>
+                                    
+                                    {% if pergunta.observacao_explicativa %}
+                                        <small class="form-text text-muted">{{ pergunta.observacao_explicativa }}</small>
+                                    {% endif %}
+                                    
+                                    {% if pergunta.tipo_resposta == 'numerica' %}
+                                        <input type="number" 
+                                               class="form-control" 
+                                               id="pergunta_{{ pergunta.id }}"
+                                               name="pergunta_{{ pergunta.id }}"
+                                               min="{{ pergunta.valor_minimo or categoria.pontuacao_minima }}"
+                                               max="{{ pergunta.valor_maximo or categoria.pontuacao_maxima }}"
+                                               step="0.1"
+                                               {% if pergunta.obrigatoria %}required{% endif %}>
+                                    {% elif pergunta.tipo_resposta == 'texto' %}
+                                        <textarea class="form-control" 
+                                                  id="pergunta_{{ pergunta.id }}"
+                                                  name="pergunta_{{ pergunta.id }}"
+                                                  rows="3"
+                                                  {% if pergunta.obrigatoria %}required{% endif %}></textarea>
+                                    {% elif pergunta.tipo_resposta == 'escolha_unica' %}
+                                        {% if pergunta.opcoes_resposta %}
+                                            {% for opcao in pergunta.opcoes_resposta %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="radio" 
+                                                       name="pergunta_{{ pergunta.id }}"
+                                                       id="pergunta_{{ pergunta.id }}_{{ loop.index }}"
+                                                       value="{{ opcao }}"
+                                                       {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <label class="form-check-label" for="pergunta_{{ pergunta.id }}_{{ loop.index }}">
+                                                    {{ opcao }}
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% elif pergunta.tipo_resposta == 'multipla_escolha' %}
+                                        {% if pergunta.opcoes_resposta %}
+                                            {% for opcao in pergunta.opcoes_resposta %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       name="pergunta_{{ pergunta.id }}"
+                                                       id="pergunta_{{ pergunta.id }}_{{ loop.index }}"
+                                                       value="{{ opcao }}">
+                                                <label class="form-check-label" for="pergunta_{{ pergunta.id }}_{{ loop.index }}">
+                                                    {{ opcao }}
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                                
+                                <!-- Observações da categoria -->
+                                <div class="form-group">
+                                    <label for="observacoes_{{ categoria.id }}">Observações (opcional)</label>
+                                    <textarea class="form-control" 
+                                              id="observacoes_{{ categoria.id }}"
+                                              name="observacoes_{{ categoria.id }}"
+                                              rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="form-group">
+                            <button type="button" class="btn btn-primary" onclick="salvarVoto()">
+                                <i class="fas fa-save"></i> Salvar Voto
+                            </button>
+                            {% if not atribuicao.concluida %}
+                                <button type="button" class="btn btn-success" onclick="finalizarVotacao()">
+                                    <i class="fas fa-check"></i> Finalizar Votação
+                                </button>
+                            {% endif %}
+                            <a href="{{ url_for('voting_routes.painel_revisor') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Carregar votos existentes
+document.addEventListener('DOMContentLoaded', function() {
+    {% for voto in votos_existentes %}
+        // Preencher campos com votos existentes
+        {% for resposta in voto.respostas %}
+            const campo = document.getElementById('pergunta_{{ resposta.question_id }}');
+            if (campo) {
+                if (campo.type === 'radio' || campo.type === 'checkbox') {
+                    campo.checked = true;
+                } else {
+                    campo.value = '{{ resposta.valor_numerico or resposta.texto_resposta or "" }}';
+                }
+            }
+        {% endfor %}
+        
+        // Preencher observações
+        const observacoes = document.getElementById('observacoes_{{ voto.category_id }}');
+        if (observacoes) {
+            observacoes.value = '{{ voto.observacoes or "" }}';
+        }
+    {% endfor %}
+});
+
+function salvarVoto() {
+    const formData = new FormData(document.getElementById('formVotacao'));
+    const respostas = [];
+    
+    // Processar cada categoria
+    {% for categoria in categorias %}
+    const categoria_{{ categoria.id }}_respostas = [];
+    {% for pergunta in categoria.perguntas %}
+        const pergunta_{{ pergunta.id }}_valor = document.getElementById('pergunta_{{ pergunta.id }}');
+        if (pergunta_{{ pergunta.id }}_valor) {
+            let valor = null;
+            if (pergunta_{{ pergunta.id }}_valor.type === 'radio') {
+                const checked = document.querySelector('input[name="pergunta_{{ pergunta.id }}"]:checked');
+                valor = checked ? checked.value : null;
+            } else if (pergunta_{{ pergunta.id }}_valor.type === 'checkbox') {
+                const checked = document.querySelectorAll('input[name="pergunta_{{ pergunta.id }}"]:checked');
+                valor = Array.from(checked).map(cb => cb.value);
+            } else {
+                valor = pergunta_{{ pergunta.id }}_valor.value;
+            }
+            
+            categoria_{{ categoria.id }}_respostas.push({
+                question_id: {{ pergunta.id }},
+                valor_numerico: pergunta_{{ pergunta.id }}_valor.type === 'number' ? parseFloat(valor) : null,
+                texto_resposta: pergunta_{{ pergunta.id }}_valor.type === 'textarea' ? valor : null,
+                opcoes_selecionadas: pergunta_{{ pergunta.id }}_valor.type === 'checkbox' ? valor : null
+            });
+        }
+    {% endfor %}
+    
+    respostas.push({
+        category_id: {{ categoria.id }},
+        respostas: categoria_{{ categoria.id }}_respostas,
+        observacoes: document.getElementById('observacoes_{{ categoria.id }}').value
+    });
+    {% endfor %}
+    
+    const data = {
+        voting_event_id: document.getElementById('voting_event_id').value,
+        work_id: document.getElementById('work_id').value,
+        category_id: {{ categorias[0].id if categorias else 0 }},
+        respostas: respostas,
+        observacoes: ''
+    };
+    
+    // Obter token CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    fetch('{{ url_for("voting_routes.salvar_voto") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Voto salvo com sucesso!');
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro interno do servidor');
+    });
+}
+
+function finalizarVotacao() {
+    if (confirm('Tem certeza que deseja finalizar a votação? Esta ação não pode ser desfeita.')) {
+        // Obter token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ url_for("voting_routes.finalizar_votacao", assignment_id=atribuicao.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Votação finalizada com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro interno do servidor');
+        });
+    }
+}
+</script>
+{% endblock %}
