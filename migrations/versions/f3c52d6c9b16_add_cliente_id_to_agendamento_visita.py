@@ -15,6 +15,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("agendamento_visita") or not inspector.has_table("cliente"):
+        return
     with op.batch_alter_table("agendamento_visita") as batch_op:
         batch_op.add_column(sa.Column("cliente_id", sa.Integer(), nullable=True))
         batch_op.create_foreign_key(
@@ -26,6 +30,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("agendamento_visita"):
+        return
     with op.batch_alter_table("agendamento_visita") as batch_op:
         batch_op.drop_constraint(
             "fk_agendamento_visita_cliente_id",

@@ -152,6 +152,12 @@
                 <i class="bi bi-graph-up me-1"></i>Financeiro
               </button>
             </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="gerenciar-tab" data-bs-toggle="tab"
+                      data-bs-target="#gerenciar" type="button">
+                <i class="bi bi-gear me-1"></i>Gerenciar
+              </button>
+            </li>
           </ul>
 
           <div class="tab-content p-4 show active">
@@ -302,6 +308,29 @@
             <!-- Financeiro Tab -->
             <div class="tab-pane fade" id="financeiro">
               {% include 'partials/dashboard_financeiro_admin.html' %}
+            </div>
+
+            <div class="tab-pane fade" id="gerenciar">
+              <div class="row g-4">
+                <div class="col-lg-6 col-xl-4">
+                  <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                      <div class="text-primary mb-3">
+                        <i class="bi bi-list-ol fs-1"></i>
+                      </div>
+                      <h5 class="card-title fw-bold">Ordenar atividades</h5>
+                      <p class="card-text text-muted">
+                        Defina a ordem das atividades exibidas no link de cadastro por data.
+                      </p>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0">
+                      <a href="{{ url_for('dashboard_routes.ordenar_atividades_admin') }}" class="btn btn-primary w-100">
+                        <i class="bi bi-sliders me-1"></i> Configurar ordem
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
           </div>

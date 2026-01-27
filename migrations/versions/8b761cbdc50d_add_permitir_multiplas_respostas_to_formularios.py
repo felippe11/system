@@ -17,6 +17,8 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)
+    if not insp.has_table("formularios"):
+        return
     cols = {c["name"] for c in insp.get_columns("formularios")}
 
     if "permitir_multiplas_respostas" not in cols:
@@ -42,6 +44,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)
+    if not insp.has_table("formularios"):
+        return
     cols = {c["name"] for c in insp.get_columns("formularios")}
 
     if "permitir_multiplas_respostas" in cols:

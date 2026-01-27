@@ -292,6 +292,73 @@ def dashboard_admin():
     )
 
 
+@dashboard_routes.route("/dashboard_admin/ordenar_atividades", methods=["GET", "POST"])
+@login_required
+def ordenar_atividades_admin():
+    """Permite ordenar a exibição de atividades por data no link de cadastro."""
+    if not current_app.config.get("LOGIN_DISABLED") and getattr(current_user, "tipo", None) != "admin":
+        abort(403)
+
+    from collections import defaultdict
+    from models import Evento, Oficina, OficinaDia
+    from extensions import db
+
+    evento_id = request.args.get("evento_id", type=int) or request.form.get("evento_id", type=int)
+    eventos = Evento.query.order_by(Evento.data_inicio.desc().nullslast(), Evento.nome.asc()).all()
+    evento = Evento.query.get(evento_id) if evento_id else None
+
+    grouped_dias = {}
+    if evento:
+        oficina_dias = (
+            OficinaDia.query.join(Oficina, Oficina.id == OficinaDia.oficina_id)
+            .filter(Oficina.evento_id == evento.id)
+            .all()
+        )
+
+        if request.method == "POST":
+            atualizados = 0
+            for dia in oficina_dias:
+                campo = f"ordem_{dia.id}"
+                if campo not in request.form:
+                    continue
+                valor = request.form.get(campo, "").strip()
+                if valor == "":
+                    dia.ordem_exibicao = None
+                    atualizados += 1
+                    continue
+                try:
+                    dia.ordem_exibicao = int(valor)
+                    atualizados += 1
+                except ValueError:
+                    continue
+            db.session.commit()
+            flash(f"Ordem atualizada para {atualizados} atividades.", "success")
+            return redirect(
+                url_for("dashboard_routes.ordenar_atividades_admin", evento_id=evento.id)
+            )
+
+        agrupado = defaultdict(list)
+        for dia in oficina_dias:
+            data_str = dia.data.strftime("%d/%m/%Y")
+            agrupado[data_str].append(dia)
+        grouped_dias = dict(agrupado)
+        for data_key, itens in grouped_dias.items():
+            itens.sort(
+                key=lambda item: (
+                    item.ordem_exibicao if item.ordem_exibicao is not None else 9999,
+                    item.horario_inicio or "",
+                    item.oficina.titulo.lower(),
+                )
+            )
+
+    return render_template(
+        "dashboard/ordenar_atividades.html",
+        eventos=eventos,
+        evento=evento,
+        grouped_dias=grouped_dias,
+    )
+
+
 @dashboard_routes.route("/dashboard_superadmin")
 @login_required
 def dashboard_superadmin():

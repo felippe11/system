@@ -139,6 +139,19 @@ class Config:
     SEND_FILE_MAX_AGE_DEFAULT = 31536000  # 1 ano
 
     # ------------------------------------------------------------------ #
+    #  Uploads persistentes (Render disk)                                 #
+    # ------------------------------------------------------------------ #
+    _RENDER_DISK_PATH = os.getenv("RENDER_DISK_PATH")
+    _RENDER_ENV = os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_HOSTNAME")
+    STATIC_ROOT = (
+        _RENDER_DISK_PATH
+        or ("/opt/render/project/static" if _RENDER_ENV else None)
+        or os.path.join(os.getcwd(), "static")
+    )
+    UPLOADS_ROOT = os.path.join(STATIC_ROOT, "uploads")
+    BANNERS_ROOT = os.path.join(STATIC_ROOT, "banners")
+
+    # ------------------------------------------------------------------ #
     #  Configurações do servidor                                         #
     # ------------------------------------------------------------------ #
     # Configurações para prevenir broken pipe errors
@@ -150,4 +163,3 @@ class Config:
     SOCKETIO_ASYNC_MODE = os.getenv('SOCKETIO_ASYNC_MODE', 'threading')
     SOCKETIO_PING_TIMEOUT = 60
     SOCKETIO_PING_INTERVAL = 25
-

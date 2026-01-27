@@ -193,7 +193,11 @@ def salvar_config_certificado_revisor():
             
             if ext in ALLOWED_EXTENSIONS:
                 unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
-                dir_path = os.path.join('static', 'uploads', 'certificados_revisor')
+                uploads_root = current_app.config.get(
+                    "UPLOADS_ROOT",
+                    os.path.join(current_app.root_path, "static", "uploads"),
+                )
+                dir_path = os.path.join(uploads_root, 'certificados_revisor')
                 os.makedirs(dir_path, exist_ok=True)
                 path = os.path.join(dir_path, unique_name)
                 arquivo.save(path)

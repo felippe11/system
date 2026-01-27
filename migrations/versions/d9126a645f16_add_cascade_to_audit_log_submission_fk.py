@@ -15,6 +15,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("audit_log") or not inspector.has_table("respostas_formulario"):
+        return
     with op.batch_alter_table("audit_log") as batch_op:
         batch_op.drop_constraint(
             "fk_audit_log_submission_id_respostas_formulario",
@@ -30,6 +34,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("audit_log") or not inspector.has_table("respostas_formulario"):
+        return
     with op.batch_alter_table("audit_log") as batch_op:
         batch_op.drop_constraint(
             "fk_audit_log_submission_id_respostas_formulario",

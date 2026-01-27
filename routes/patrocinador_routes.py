@@ -44,7 +44,11 @@ def adicionar_patrocinadores_categorizados():
                 file = request.files[key]
                 if file and file.filename.strip():
                     filename = secure_filename(file.filename)
-                    upload_folder = os.path.join('static', 'uploads', 'patrocinadores')
+                    uploads_root = current_app.config.get(
+                        "UPLOADS_ROOT",
+                        os.path.join(current_app.root_path, "static", "uploads"),
+                    )
+                    upload_folder = os.path.join(uploads_root, 'patrocinadores')
                     os.makedirs(upload_folder, exist_ok=True)
                     file.save(os.path.join(upload_folder, filename))
 

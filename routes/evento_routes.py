@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime, date, time
 from utils import endpoints
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import or_, cast, Date, func, text
 from werkzeug.utils import secure_filename
@@ -244,7 +244,11 @@ def configurar_evento():
         
         if banner:
             filename = secure_filename(banner.filename)
-            caminho_banner = os.path.join('static/banners', filename)
+            banners_root = current_app.config.get(
+                "BANNERS_ROOT",
+                os.path.join(current_app.root_path, "static", "banners"),
+            )
+            caminho_banner = os.path.join(banners_root, filename)
             os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
             banner.save(caminho_banner)
             banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
@@ -874,7 +878,11 @@ def criar_evento():
         
         if banner:
             filename = secure_filename(banner.filename)
-            caminho_banner = os.path.join('static/banners', filename)
+            banners_root = current_app.config.get(
+                "BANNERS_ROOT",
+                os.path.join(current_app.root_path, "static", "banners"),
+            )
+            caminho_banner = os.path.join(banners_root, filename)
             os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
             banner.save(caminho_banner)
             banner_url = url_for('static', filename=f'banners/{filename}', _external=False)
