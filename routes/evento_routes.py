@@ -114,6 +114,7 @@ def _serializa_eventos(eventos):
             'descricao':   ev.descricao,
             'data_inicio': ev.data_inicio.strftime('%d/%m/%Y')
                            if ev.data_inicio else 'Data a definir',
+            'data_inicio_iso': ev.data_inicio.strftime('%Y-%m-%d') if ev.data_inicio else None,
             'data_fim':    ev.data_fim.strftime('%d/%m/%Y')
                            if ev.data_fim else '',
             'localizacao': ev.localizacao or 'Local a definir',

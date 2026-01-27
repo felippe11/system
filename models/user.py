@@ -272,7 +272,7 @@ class Ministrante(db.Model, UserMixin):
     __tablename__ = "ministrante"
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
-    formacao = db.Column(db.String(255), nullable=False)
+    formacao = db.Column(db.Text, nullable=False)
     categorias_formacao = db.Column(
         db.String(512), nullable=True
     )  # Nova coluna para múltiplas categorias

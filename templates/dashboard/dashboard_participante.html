@@ -2,766 +2,387 @@
 {% block title %}Dashboard - Participante{% endblock %}
 
 {% block content %}
-<!-- CSS customizado para o Dashboard -->
-<style>
-  :root {
-    --primary-color: #3a86ff;
-    --secondary-color: #8338ec;
-    --success-color: #38b000;
-    --warning-color: #ffbe0b;
-    --danger-color: #ff006e;
-    --info-color: #3a86ff;
-    --light-bg: #f8f9fa;
-    --dark-text: #212529;
-    --gray-text: #6c757d;
-  }
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_participante.css') }}">
 
-  body {
-    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background-color: #f8fafc;
-  }
-  
-  /* Cabeçalho do Dashboard */
-  .dashboard-header {
-    margin-top: 3rem;
-    margin-bottom: 3rem;
-    padding: 1rem;
-    text-align: center;
-    position: relative;
-  }
-  
-  .dashboard-header h2 {
-    font-size: 2.25rem;
-    font-weight: 800;
-    color: var(--dark-text);
-    margin-bottom: 0.75rem;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  
-  .dashboard-header h3 {
-    font-size: 1.25rem;
-    color: var(--gray-text);
-    font-weight: 400;
-  }
-  
-  /* Seções de evento */
-  .evento-section {
-    margin-bottom: 3rem;
-    animation: fadeIn 0.5s ease-in-out;
-  }
-  
-  .evento-titulo {
-    background: linear-gradient(to right, #ffffff, #f8f9fa);
-    padding: 1rem 1.5rem;
-    border-radius: 1rem;
-    margin-bottom: 2rem;
-    color: var(--dark-text);
-    font-weight: 700;
-    font-size: 1.5rem;
-    border-left: 5px solid var(--primary-color);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .evento-data {
-    margin-top: -1rem;
-    margin-bottom: 1rem;
-    margin-left: 1.5rem;
-    font-size: 0.9rem;
-    color: var(--gray-text);
-  }
-  
-  .evento-titulo::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 30%;
-    height: 100%;
-    background: linear-gradient(to left, rgba(58, 134, 255, 0.1), transparent);
-    border-radius: 0 1rem 1rem 0;
-    color: var(--gray-text);
-    font-weight: 400;
-  }
-  
-  /* Cards de oficina */
-  .card {
-    border: none;
-    border-radius: 1rem;
-    overflow: hidden;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background: white;
-  }
-  
-  .card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-  }
-  
-  .card-header {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    font-size: 1.25rem;
-    font-weight: 700;
-    text-align: center;
-    padding: 1.25rem 1rem;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .card-header::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), transparent);
-    opacity: 0.3;
-  }  
-  
-  .card-body {
-    padding: 1.5rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-  }  
-  
-  .card-body p {
-    margin-bottom: 0.75rem;
-    color: #495057;
-    font-size: 0.95rem;
-  }
-  
-  .card-body p strong {
-    color: var(--dark-text);
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-  
-  .card-body ul {
-    padding-left: 0;
-    margin-bottom: 1rem;
-    list-style-type: none;
-  }
-  
-  .card-body li {
-    margin-bottom: 0.5rem;
-    padding: 0.5rem;
-    background-color: rgba(248, 249, 250, 0.7);
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
-  }
-  
-  .badge-esgotado {
-    background-color: rgba(255, 0, 110, 0.1);
-    color: var(--danger-color);
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
-  }
-  
-  .card-footer {
-    margin-top: auto;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-    padding-top: 1rem;
-  }
-  
-  /* Badges e status */
-  .status-badge {
-    display: inline-block;
-    padding: 0.25em 0.75em;
-    font-size: 0.85em;
-    font-weight: 600;
-    line-height: 1;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: baseline;
-    border-radius: 50rem;
-    margin-left: 0.5rem;
-  }
-  
-  .badge-vagas {
-    background-color: var(--light-bg);
-    color: var(--dark-text);
-  }
-  
-  /* Botões customizados */
-  .btn {
-    border-radius: 0.75rem;
-    font-weight: 600;
-    padding: 0.75rem 1.25rem;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-  
-  .btn i, .btn svg {
-    font-size: 1rem;
-  }
-  
-  .btn-primary {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-  }
-  
-  .btn-primary:hover {
-    background: #2a75ee;
-    border-color: #2a75ee;
-    box-shadow: 0 4px 8px rgba(58, 134, 255, 0.3);
-  }
-  
-  .btn-success {
-    background: var(--success-color);
-    border-color: var(--success-color);
-  }
-  
-  .btn-success:hover {
-    background: #2b9c00;
-    border-color: #2b9c00;
-    box-shadow: 0 4px 8px rgba(56, 176, 0, 0.3);
-  }
-  
-  .btn-danger {
-    background: var(--danger-color);
-    border-color: var(--danger-color);
-  }
-  
-  .btn-danger:hover {
-    background: #e0005e;
-    border-color: #e0005e;
-    box-shadow: 0 4px 8px rgba(255, 0, 110, 0.3);
-  }
-  
-  .btn-warning {
-    background: var(--warning-color);
-    border-color: var(--warning-color);
-    color: #212529;
-  }
-  
-  .btn-warning:hover {
-    background: #e0a800;
-    border-color: #e0a800;
-    box-shadow: 0 4px 8px rgba(255, 190, 11, 0.3);
-    color: #212529;
-  }
-  
-  .btn-info {
-    background: var(--info-color);
-    border-color: var(--info-color);
-    color: white;
-  }
-  
-  .btn-info:hover {
-    background: #2a75ee;
-    border-color: #2a75ee;
-    box-shadow: 0 4px 8px rgba(58, 134, 255, 0.3);
-    color: white;
-  }
-  
-  /* Alertas customizados */
-  .alert {
-    border-radius: 0.75rem;
-    padding: 1rem;
-    border: none;
-    margin-bottom: 1rem;
-  }
-  
-  .alert-info {
-    background-color: rgba(58, 134, 255, 0.1);
-    color: var(--primary-color);
-  }
-  
-  /* Formulários disponíveis */
-  .formularios-card {
-    background: linear-gradient(135deg, #ffffff, #f8fafc);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .formularios-card strong {
-    font-size: 1.1rem;
-    color: var(--dark-text);
-  }
-  
-  /* Informações do tipo de inscrição */
-  .tipo-inscricao-info {
-    background: linear-gradient(135deg, rgba(58, 134, 255, 0.1), rgba(131, 56, 236, 0.1));
-    border-radius: 1rem;
-    padding: 1.25rem;
-    margin: 1.5rem auto;
-    max-width: 800px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    border-left: 4px solid var(--primary-color);
-  }
-  
-  .tipo-inscricao-info p {
-    margin-bottom: 0.5rem;
-    font-size: 1.1rem;
-    color: var(--dark-text);
-  }
-  
-  .tipo-inscricao-info strong {
-    color: var(--primary-color);
-    font-weight: 600;
-  }
-  
-  .limite-oficinas {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .limite-oficinas i {
-    color: var(--info-color);
-  }
-  
-  /* Notificações */
-  .notificacoes-section {
-    background: linear-gradient(135deg, #ffffff, #f8fafc);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    border-left: 4px solid var(--info-color);
-  }
-  
-  .notificacao-item {
-    background: white;
-    border-radius: 0.75rem;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border-left: 4px solid var(--primary-color);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease;
-  }
-  
-  .notificacao-item:hover {
-    transform: translateX(5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  .notificacao-item.nao-lida {
-    border-left-color: var(--warning-color);
-    background: linear-gradient(to right, rgba(255, 190, 11, 0.05), white);
-  }
-  
-  .notificacao-titulo {
-    font-weight: 600;
-    color: var(--dark-text);
-    margin-bottom: 0.5rem;
-  }
-  
-  .notificacao-mensagem {
-    color: var(--gray-text);
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .notificacao-data {
-    font-size: 0.8rem;
-    color: var(--gray-text);
-  }
-  
-  .badge-notificacao {
-    background-color: var(--danger-color);
-    color: white;
-    font-size: 0.7rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 50%;
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    min-width: 18px;
-    text-align: center;
-  }
-  
-  /* Animações */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  /* Media queries */
-  @media (max-width: 768px) {
-    .card {
-      margin-bottom: 1.5rem;
-    }
-    
-    .dashboard-header h2 {
-      font-size: 1.75rem;
-    }
-  }
-</style>
-
-<div class="container">
-  <div class="dashboard-header text-center">
+<div class="event-page-container">
+  <div class="dashboard-header">
     <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
     <h3>Abaixo você encontra as atividades disponíveis</h3>
-    
+
     {% if usuario.tipo_inscricao %}
-      <div class="tipo-inscricao-info">
-        <p>Seu tipo de inscrição: <strong>{{ usuario.tipo_inscricao.nome }}</strong></p>
-        
-        {% set regra = usuario.tipo_inscricao.regras|first %}
-        {% if regra and regra.limite_oficinas > 0 %}
-          {% set inscricoes_evento = usuario.inscricoes|selectattr('oficina.evento_id', 'equalto', regra.evento_id)|list|length %}
-          <p class="limite-oficinas">
-            <i class="fas fa-info-circle"></i> 
-            Você pode se inscrever em até <strong>{{ regra.limite_oficinas }}</strong> oficinas 
-            ({{ inscricoes_evento }} de {{ regra.limite_oficinas }} utilizadas)
-          </p>
-        {% endif %}
-      </div>
+    <div class="tipo-inscricao-info">
+      <p>Seu tipo de inscrição: <strong>{{ usuario.tipo_inscricao.nome }}</strong></p>
+
+      {% set regra = usuario.tipo_inscricao.regras|first %}
+      {% if regra and regra.limite_oficinas > 0 %}
+      {% set inscricoes_evento = usuario.inscricoes|selectattr('oficina.evento_id', 'equalto',
+      regra.evento_id)|list|length %}
+      <p class="limite-oficinas">
+        <i class="fas fa-info-circle"></i>
+        Você pode se inscrever em até <strong>{{ regra.limite_oficinas }}</strong> oficinas
+        ({{ inscricoes_evento }} de {{ regra.limite_oficinas }} utilizadas)
+      </p>
+      {% endif %}
+    </div>
     {% endif %}
   </div>
 
+  <!-- Notification Section -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+      <div class="notificacoes-section">
+        <h4 class="notificacao-titulo d-flex align-items-center justify-content-between mb-3">
+          <span><i class="fas fa-bell me-2"></i> Notificações</span>
+          <span id="badge-notificacoes" class="badge-notificacao" style="display: none;">0</span>
+        </h4>
+        <div id="notificacoes-recentes">
+          <!-- As notificações serão carregadas aqui via JS -->
+          <div class="text-center p-3 text-muted">
+            <i class="fas fa-spinner fa-spin"></i> Carregando...
+          </div>
+        </div>
+        <div class="text-end mt-2">
+          <a href="{{ url_for('agendamento_routes.listar_notificacoes') }}"
+            class="btn btn-sm btn-link text-decoration-none">Ver todas</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% if eventos_sorted|length > 1 %}
-    <form method="get" class="mb-4">
-      <label for="evento_id" class="form-label">Selecione o evento:</label>
-      <select id="evento_id" name="evento_id" class="form-select" onchange="this.form.submit()">
-        {% for ev in eventos_sorted %}
-          <option value="{{ ev.id }}" {% if evento and evento.id == ev.id %}selected{% endif %}>{{ ev.nome }}</option>
-        {% endfor %}
-      </select>
-    </form>
+  <form method="get" class="mb-4">
+    <label for="evento_id" class="form-label">Selecione o evento:</label>
+    <select id="evento_id" name="evento_id" class="form-select" onchange="this.form.submit()">
+      {% for ev in eventos_sorted %}
+      <option value="{{ ev.id }}" {% if evento and evento.id==ev.id %}selected{% endif %}>{{ ev.nome }}</option>
+      {% endfor %}
+    </select>
+  </form>
   {% endif %}
 
   <!-- Container unificado para as ações -->
   <div class="container-fluid px-4 mt-5">
     <div class="d-flex flex-wrap justify-content-center gap-3">
       {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_submissao_trabalhos %}
-        <a href="{{ url_for('trabalho_routes.submeter_trabalho') }}" class="btn btn-success btn-lg">
-          <i class="bi bi-upload me-2"></i> Submeter Trabalho
-        </a>
+      <a href="{{ url_for('trabalho_routes.submeter_trabalho') }}" class="btn btn-success btn-lg">
+        <i class="bi bi-upload me-2"></i> Submeter Trabalho
+      </a>
       {% endif %}
 
       <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg">
         <i class="fas fa-calendar-alt me-2"></i> Meus Agendamentos
       </a>
-      
+
       {% if tem_horarios_agendamento %}
-        <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-primary btn-lg">
-          <i class="fas fa-calendar-plus me-2"></i> Agendar Visita
-        </a>
+      <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}"
+        class="btn btn-primary btn-lg">
+        <i class="fas fa-calendar-plus me-2"></i> Agendar Visita
+      </a>
       {% endif %}
 
       {% if formularios_disponiveis %}
-        <a href="{{ url_for('formularios_routes.listar_formularios_participante', evento_id=evento.id if evento else None) }}" class="btn btn-primary btn-lg">
-          <i class="fas fa-clipboard-list me-2"></i> Formulários
-        </a>
+      <a href="{{ url_for('formularios_routes.listar_formularios_participante', evento_id=evento.id if evento else None) }}"
+        class="btn btn-primary btn-lg">
+        <i class="fas fa-clipboard-list me-2"></i> Formulários
+      </a>
       {% endif %}
-      
+
 
     </div>
   </div>
 
   {% if current_user.tem_pagamento_pendente() %}
 
-{% endif %}
+  {% endif %}
 
 
-  
+
 
   {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_qrcode_evento_credenciamento %}
-    <a href="{{ url_for('routes.gerar_evento_qrcode_pdf_route', evento_id=evento.id) }}" class="btn btn-primary">
-      <i class="fas fa-qrcode"></i> Baixar QR Code do Evento
-    </a>
+  <a href="{{ url_for('routes.gerar_evento_qrcode_pdf_route', evento_id=evento.id) }}" class="btn btn-primary">
+    <i class="fas fa-qrcode"></i> Baixar QR Code do Evento
+  </a>
   {% else %}
-    <p class="text-muted">QR Code do evento desativado.</p>
+  <p class="text-muted">QR Code do evento desativado.</p>
   {% endif %}
 
 
-  
+
   <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
   {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
-  
+
   {% if not eventos_sorted %}
-    <div class="row justify-content-center">
-      <div class="col-md-8">
-        <div class="alert alert-info text-center p-4">
-          <i class="fas fa-info-circle fa-2x mb-3"></i>
-          <p class="mb-0 fs-5">Você não está inscrito em nenhum evento. Entre em contato com a organização para mais informações.</p>
-        </div>
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="alert alert-info text-center p-4">
+        <i class="fas fa-info-circle fa-2x mb-3"></i>
+        <p class="mb-0 fs-5">Você não está inscrito em nenhum evento. Entre em contato com a organização para mais
+          informações.</p>
       </div>
     </div>
+  </div>
   {% else %}
-    <!-- Agrupa oficinas por evento -->
-    {% set eventos = {} %}
-    {% for oficina in oficinas %}
-      {% if not evento or oficina.evento_id == evento.id or oficina.evento_id is none %}
-        {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
-          {% if oficina.evento_id not in eventos %}
-            {% set _ = eventos.update({
-              oficina.evento_id: {
-                'nome': oficina.evento_nome,
-                'data_inicio': oficina.evento_data_inicio,
-                'data_fim': oficina.evento_data_fim,
-                'oficinas': []
-              }
-            }) %}
-          {% else %}
-            {% if not eventos[oficina.evento_id].get('data_inicio') and oficina.evento_data_inicio %}
-              {% set _ = eventos[oficina.evento_id].update({'data_inicio': oficina.evento_data_inicio}) %}
-            {% endif %}
-            {% if not eventos[oficina.evento_id].get('data_fim') and oficina.evento_data_fim %}
-              {% set _ = eventos[oficina.evento_id].update({'data_fim': oficina.evento_data_fim}) %}
-            {% endif %}
-          {% endif %}
-          {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
-        {% endif %}
-      {% endif %}
-    {% endfor %}
-    
-    <!-- Itera sobre cada evento -->
-    {% for evento_id, evento_info in eventos.items() %}
-      <div class="evento-section">
-        <h3 class="evento-titulo">{{ evento_info.nome }}</h3>
-        {% if evento_info.data_inicio %}
-          <p class="evento-data">
-            {{ evento_info.data_inicio.strftime('%d/%m/%Y') }}
-            {% if evento_info.data_fim %}- {{ evento_info.data_fim.strftime('%d/%m/%Y') }}{% endif %}
-          </p>
-        {% endif %}
-
-        <div class="row">
-          {% for oficina in evento_info.oficinas %}
-            <div class="col-md-6 col-lg-4 mb-4">
-              <div class="card" data-oficina-id="{{ oficina.id }}"{% if usuario.tipo_inscricao_id %} data-tipo-inscricao-id="{{ usuario.tipo_inscricao_id }}"{% endif %}>
-                <div class="card-header">
-                  {{ oficina.titulo }}
-                </div>
-                <div class="card-body">
-                  <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
-                  <p><strong>Ministrantes:</strong>
-                    {% if oficina.ministrantes %}
-                      {{ oficina.ministrantes | join(', ') }}
-                    {% else %}
-                      N/A
-                    {% endif %}
-                  </p>
-                  <p><strong>Formador:</strong>
-                    {% if oficina.formador_nome %}
-                      {{ oficina.formador_nome }}
-                    {% else %}
-                      N/A
-                    {% endif %}
-                  </p>
-                  
-                  
-                  
-                  
-                  <p><strong>Datas e Horários:</strong></p>
-                  <ul>
-                    {% for dia in oficina.dias %}
-                      <li>
-                        <i class="far fa-calendar-alt"></i> {{ dia.data.strftime('%d/%m/%Y') }} 
-                        <i class="far fa-clock"></i> {{ dia.horario_inicio }} às {{ dia.horario_fim }}
-                      </li>
-                    {% endfor %}
-                  </ul>
-                  <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
-                  
-                  {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
-                  <p>
-                    <strong>Vagas:</strong>
-                    {% if oficina.vagas == 0 %}
-                      <span class="status-badge badge-esgotado">Esgotado</span>
-                    {% else %}
-                      <span class="status-badge badge-vagas">{{ oficina.vagas }} disponíveis</span>
-                    {% endif %}
-                  </p>
-                  {% endif %}
-                  
-                  <div class="card-footer">
-                    <!-- Se o participante já estiver inscrito nesta oficina -->
-                    {% if oficina.id in inscricoes_ids %}
-                        <div class="d-flex flex-column gap-2">
-                            <!-- Check-in (só aparece se permitir_checkin_global == True) -->
-                            {% if evento and evento.configuracao_evento and evento.configuracao_evento.permitir_checkin_global %}
-                            <a href="{{ url_for('checkin_routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                              <i class="fas fa-clipboard-check"></i> Realizar Check-in
-                            </a>
-                            {% endif %}
-                        
-                            <!-- Botão para cancelar inscrição -->
-                            <form action="{{ url_for('inscricao_routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                                <button type="submit" class="btn btn-danger w-100">
-                                  <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                                </button>
-                            </form>
-
-                            <!-- Comprovante de Inscrição -->
-                            <a href="{{ url_for('comprovante_routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
-                                <i class="fas fa-file-download"></i> Baixar Comprovante
-                            </a>
-
-                            <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
-                            {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_certificado_individual %}
-                            <a href="{{ url_for('comprovante_routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
-                              class="btn btn-success w-100">
-                              <i class="fas fa-graduation-cap"></i> Baixar Certificado
-                            </a>
-                            {% endif %}
-                          
-                            <!-- Feedback (só aparece se habilitar_feedback == True) -->
-                            {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_feedback %}
-                            <a href="{{ url_for('feedback_routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
-                                <i class="fas fa-comment-dots"></i> Enviar Feedback
-                            </a>
-                            {% endif %}
-                        </div>
-
-                    <!-- Se for do tipo sem_inscricao, exibe mensagem informativa -->
-                    {% elif oficina.tipo_inscricao == 'sem_inscricao' %}
-                        <div class="alert alert-info text-center mb-0">
-                            <i class="fas fa-info-circle"></i> Não é necessário inscrição para esta atividade.
-                        </div>
-
-                    <!-- Se não estiver inscrito ainda, houver vagas e for do tipo com inscrição -->
-                    {% elif oficina.vagas > 0 and oficina.tipo_inscricao != 'sem_inscricao' %}
-                        {% if oficina.disponivel_para_inscricao %}
-                            <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
-                                <i class="fas fa-check-circle"></i> Inscrever-se
-                            </button>
-                        {% else %}
-                            <div class="alert alert-warning text-center mb-3">
-                                <i class="fas fa-exclamation-triangle"></i> {{ oficina.motivo_indisponibilidade }}
-                            </div>
-                        {% endif %}
-
-                    <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
-                    {% else %}
-                        {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' or oficina.tipo_inscricao == 'com_inscricao_sem_limite' %}
-                            <div class="alert alert-danger text-center mb-3">
-                              <i class="fas fa-exclamation-triangle"></i> Vagas esgotadas
-                            </div>
-                        {% endif %}
-                    {% endif %}
-                  </div> <!-- Fim card-footer -->
-                </div> <!-- Fim card-body -->
-              </div> <!-- Fim card -->
-            </div> <!-- Fim col -->
-          {% endfor %}
-        </div> <!-- Fim row -->
-      </div> <!-- Fim evento-section -->
-    {% else %}
-      <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="alert alert-warning text-center p-4">
-            <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
-            <p class="mb-0 fs-5">Nenhuma oficina disponível no seu evento.</p>
-          </div>
-        </div>
-      </div>
-    {% endfor %}
+  <!-- Agrupa oficinas por evento -->
+  {% set eventos = {} %}
+  {% for oficina in oficinas %}
+  {% if not evento or oficina.evento_id == evento.id or oficina.evento_id is none %}
+  {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
+  {% if oficina.evento_id not in eventos %}
+  {% set _ = eventos.update({
+  oficina.evento_id: {
+  'nome': oficina.evento_nome,
+  'data_inicio': oficina.evento_data_inicio,
+  'data_fim': oficina.evento_data_fim,
+  'oficinas': []
+  }
+  }) %}
+  {% else %}
+  {% if not eventos[oficina.evento_id].get('data_inicio') and oficina.evento_data_inicio %}
+  {% set _ = eventos[oficina.evento_id].update({'data_inicio': oficina.evento_data_inicio}) %}
   {% endif %}
-  
+  {% if not eventos[oficina.evento_id].get('data_fim') and oficina.evento_data_fim %}
+  {% set _ = eventos[oficina.evento_id].update({'data_fim': oficina.evento_data_fim}) %}
+  {% endif %}
+  {% endif %}
+  {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+
+  <!-- Itera sobre cada evento -->
+  {% for evento_id, evento_info in eventos.items() %}
+  <div class="evento-section">
+    <h3 class="evento-titulo">{{ evento_info.nome }}</h3>
+    {% if evento_info.data_inicio %}
+    <p class="evento-data">
+      {{ evento_info.data_inicio.strftime('%d/%m/%Y') }}
+      {% if evento_info.data_fim %}- {{ evento_info.data_fim.strftime('%d/%m/%Y') }}{% endif %}
+    </p>
+    {% endif %}
+
+    <div class="row">
+      {% for oficina in evento_info.oficinas %}
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card" data-oficina-id="{{ oficina.id }}" {% if usuario.tipo_inscricao_id %}
+          data-tipo-inscricao-id="{{ usuario.tipo_inscricao_id }}" {% endif %}>
+          <div class="card-header">
+            {{ oficina.titulo }}
+          </div>
+          <div class="card-body">
+            <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
+            <p><strong>Ministrantes:</strong>
+              {% if oficina.ministrantes %}
+              {{ oficina.ministrantes | join(', ') }}
+              {% else %}
+              N/A
+              {% endif %}
+            </p>
+            <p><strong>Formador:</strong>
+              {% if oficina.formador_nome %}
+              {{ oficina.formador_nome }}
+              {% else %}
+              N/A
+              {% endif %}
+            </p>
+
+
+
+
+            <p><strong>Datas e Horários:</strong></p>
+            <ul>
+              {% for dia in oficina.dias %}
+              <li>
+                <i class="far fa-calendar-alt"></i> {{ dia.data.strftime('%d/%m/%Y') }}
+                <i class="far fa-clock"></i> {{ dia.horario_inicio }} às {{ dia.horario_fim }}
+              </li>
+              {% endfor %}
+            </ul>
+            <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
+
+            {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
+            <p>
+              <strong>Vagas:</strong>
+              {% if oficina.vagas == 0 %}
+              <span class="status-badge badge-esgotado">Esgotado</span>
+              {% else %}
+              <span class="status-badge badge-vagas">{{ oficina.vagas }} disponíveis</span>
+              {% endif %}
+            </p>
+            {% endif %}
+
+            <div class="card-footer">
+              <!-- Se o participante já estiver inscrito nesta oficina -->
+              {% if oficina.id in inscricoes_ids %}
+              <div class="d-flex flex-column gap-2">
+                <!-- Check-in (só aparece se permitir_checkin_global == True) -->
+                {% if evento and evento.configuracao_evento and evento.configuracao_evento.permitir_checkin_global %}
+                <a href="{{ url_for('checkin_routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
+                  <i class="fas fa-clipboard-check"></i> Realizar Check-in
+                </a>
+                {% endif %}
+
+                <!-- Botão para cancelar inscrição -->
+                <form action="{{ url_for('inscricao_routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
+                  <button type="submit" class="btn btn-danger w-100">
+                    <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                  </button>
+                </form>
+
+                <!-- Comprovante de Inscrição -->
+                <a href="{{ url_for('comprovante_routes.baixar_comprovante', oficina_id=oficina.id) }}"
+                  class="btn btn-primary w-100">
+                  <i class="fas fa-file-download"></i> Baixar Comprovante
+                </a>
+
+                <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
+                {% if evento and evento.configuracao_evento and
+                evento.configuracao_evento.habilitar_certificado_individual %}
+                <a href="{{ url_for('comprovante_routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
+                  class="btn btn-success w-100">
+                  <i class="fas fa-graduation-cap"></i> Baixar Certificado
+                </a>
+                {% endif %}
+
+                <!-- Feedback (só aparece se habilitar_feedback == True) -->
+                {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_feedback %}
+                <a href="{{ url_for('feedback_routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
+                  <i class="fas fa-comment-dots"></i> Enviar Feedback
+                </a>
+                {% endif %}
+              </div>
+
+              <!-- Se for do tipo sem_inscricao, exibe mensagem informativa -->
+              {% elif oficina.tipo_inscricao == 'sem_inscricao' %}
+              <div class="alert alert-info text-center mb-0">
+                <i class="fas fa-info-circle"></i> Não é necessário inscrição para esta atividade.
+              </div>
+
+              <!-- Se não estiver inscrito ainda, houver vagas e for do tipo com inscrição -->
+              {% elif oficina.vagas > 0 and oficina.tipo_inscricao != 'sem_inscricao' %}
+              {% if oficina.disponivel_para_inscricao %}
+              <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
+                <i class="fas fa-check-circle"></i> Inscrever-se
+              </button>
+              {% else %}
+              <div class="alert alert-warning text-center mb-3">
+                <i class="fas fa-exclamation-triangle"></i> {{ oficina.motivo_indisponibilidade }}
+              </div>
+              {% endif %}
+
+              <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
+              {% else %}
+              {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' or oficina.tipo_inscricao ==
+              'com_inscricao_sem_limite' %}
+              <div class="alert alert-danger text-center mb-3">
+                <i class="fas fa-exclamation-triangle"></i> Vagas esgotadas
+              </div>
+              {% endif %}
+              {% endif %}
+            </div> <!-- Fim card-footer -->
+          </div> <!-- Fim card-body -->
+        </div> <!-- Fim card -->
+      </div> <!-- Fim col -->
+      {% endfor %}
+    </div> <!-- Fim row -->
+  </div> <!-- Fim evento-section -->
+  {% else %}
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="alert alert-warning text-center p-4">
+        <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
+        <p class="mb-0 fs-5">Nenhuma oficina disponível no seu evento.</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
 </div> <!-- Fim container -->
 
 <!-- Script para inscrição assíncrona -->
 <script>
-function inscrever(oficinaId) {
+  function inscrever(oficinaId) {
     const oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
     if (!oficinaCard) return;
 
     // Monta o corpo da requisição
     const tipoId = oficinaCard.dataset.tipoInscricaoId;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    const options = { 
-        method: 'POST',
-        headers: { 'X-CSRFToken': csrfToken }
+    const options = {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken }
     };
     if (tipoId) {
-        const body = new URLSearchParams();
-        body.append('tipo_inscricao_id', tipoId);
-        options.body = body;
+      const body = new URLSearchParams();
+      body.append('tipo_inscricao_id', tipoId);
+      options.body = body;
     }
 
     // Envia requisição ao servidor para registrar a inscrição
     fetch(`/inscrever/${oficinaId}`, options)
-    .then(response => response.json())
-    .then(data => {
+      .then(response => response.json())
+      .then(data => {
         if (data.redirect) {
-            window.location.href = data.payment_url;
-            return;
+          window.location.href = data.payment_url;
+          return;
         }
 
         if (data.success) {
-            // Atualiza o número de vagas
-            const vagasElement = oficinaCard.querySelector('.info-vagas');
-            if (vagasElement) {
-                const vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-                vagasElement.innerText = vagasAtualizadas;
+          // Atualiza o número de vagas
+          const vagasElement = oficinaCard.querySelector('.info-vagas');
+          if (vagasElement) {
+            const vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
+            vagasElement.innerText = vagasAtualizadas;
 
-                const badgeElement = vagasElement.nextElementSibling;
-                if (badgeElement) {
-                    if (vagasAtualizadas === 0) {
-                        badgeElement.className = 'status-badge badge-esgotado';
-                        badgeElement.innerText = 'Esgotado';
-                    } else {
-                        badgeElement.innerText = vagasAtualizadas + ' disponíveis';
-                    }
-                }
+            const badgeElement = vagasElement.nextElementSibling;
+            if (badgeElement) {
+              if (vagasAtualizadas === 0) {
+                badgeElement.className = 'status-badge badge-esgotado';
+                badgeElement.innerText = 'Esgotado';
+              } else {
+                badgeElement.innerText = vagasAtualizadas + ' disponíveis';
+              }
             }
+          }
 
-            // Atualiza o rodapé com opções pós-inscrição
-            const cardFooter = oficinaCard.querySelector('.card-footer');
-            if (cardFooter) {
-                cardFooter.innerHTML = '<div class="d-flex flex-column gap-2"></div>';
-                const buttonContainer = cardFooter.querySelector('.d-flex');
+          // Atualiza o rodapé com opções pós-inscrição
+          const cardFooter = oficinaCard.querySelector('.card-footer');
+          if (cardFooter) {
+            cardFooter.innerHTML = '<div class="d-flex flex-column gap-2"></div>';
+            const buttonContainer = cardFooter.querySelector('.d-flex');
 
-                const cancelForm = document.createElement('form');
-                cancelForm.setAttribute('action', `/remover_inscricao/${oficinaId}`);
-                cancelForm.setAttribute('method', 'post');
-                cancelForm.innerHTML = `
+            const cancelForm = document.createElement('form');
+            cancelForm.setAttribute('action', `/remover_inscricao/${oficinaId}`);
+            cancelForm.setAttribute('method', 'post');
+            cancelForm.innerHTML = `
                     <button type="submit" class="btn btn-danger w-100">
                         <i class="fas fa-times-circle"></i> Cancelar Inscrição
                     </button>
                 `;
-                buttonContainer.appendChild(cancelForm);
+            buttonContainer.appendChild(cancelForm);
 
-                if ('{{ evento.configuracao_evento.permitir_checkin_global if evento and evento.configuracao_evento else False }}' === 'True') {
-                    const checkinBtn = document.createElement('a');
-                    checkinBtn.setAttribute('href', `/checkin/${oficinaId}`);
-                    checkinBtn.className = 'btn btn-warning w-100';
-                    checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Realizar Check-in';
-                    buttonContainer.appendChild(checkinBtn);
-                }
-
-                const comprovanteBtn = document.createElement('a');
-                comprovanteBtn.setAttribute('href', data.pdf_url);
-                comprovanteBtn.className = 'btn btn-primary w-100';
-                comprovanteBtn.innerHTML = '<i class="fas fa-file-download"></i> Baixar Comprovante';
-                buttonContainer.appendChild(comprovanteBtn);
+            if ('{{ evento.configuracao_evento.permitir_checkin_global if evento and evento.configuracao_evento else False }}' === 'True') {
+              const checkinBtn = document.createElement('a');
+              checkinBtn.setAttribute('href', `/checkin/${oficinaId}`);
+              checkinBtn.className = 'btn btn-warning w-100';
+              checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Realizar Check-in';
+              buttonContainer.appendChild(checkinBtn);
             }
 
-            // Exibe um toast de sucesso
-            const toast = document.createElement('div');
-            toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3';
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            toast.innerHTML = `
+            const comprovanteBtn = document.createElement('a');
+            comprovanteBtn.setAttribute('href', data.pdf_url);
+            comprovanteBtn.className = 'btn btn-primary w-100';
+            comprovanteBtn.innerHTML = '<i class="fas fa-file-download"></i> Baixar Comprovante';
+            buttonContainer.appendChild(comprovanteBtn);
+          }
+
+          // Exibe um toast de sucesso
+          const toast = document.createElement('div');
+          toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3';
+          toast.setAttribute('role', 'alert');
+          toast.setAttribute('aria-live', 'assertive');
+          toast.setAttribute('aria-atomic', 'true');
+          toast.innerHTML = `
                 <div class="d-flex">
                     <div class="toast-body">
                         <i class="fas fa-check-circle"></i> Inscrição realizada com sucesso!
@@ -769,49 +390,50 @@ function inscrever(oficinaId) {
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             `;
-            document.body.appendChild(toast);
+          document.body.appendChild(toast);
 
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
+          const bsToast = new bootstrap.Toast(toast);
+          bsToast.show();
 
-            setTimeout(() => {
-                toast.remove();
-            }, 5000);
+          setTimeout(() => {
+            toast.remove();
+          }, 5000);
         } else {
-            alert(data.message);
-            location.reload();
+          alert(data.message);
+          location.reload();
         }
-    })
-    .catch(error => {
+      })
+      .catch(error => {
         console.error('Erro:', error);
         location.reload();
-    });
-}
+      });
+  }
 </script>
 
 <script>
-// Função para carregar notificações recentes
-function carregarNotificacoesRecentes() {
+  // Função para carregar notificações recentes
+  function carregarNotificacoesRecentes() {
+    const container = document.getElementById('notificacoes-recentes');
+    if (!container) return; // Se elemento não existe, para execução
+
     fetch('/notificacoes?limit=3')
-        .then(response => response.json())
-        .then(data => {
-            const container = document.getElementById('notificacoes-recentes');
-            
-            if (data.notificacoes && data.notificacoes.length > 0) {
-                container.innerHTML = '';
-                data.notificacoes.forEach(notificacao => {
-                    const item = document.createElement('div');
-                    item.className = `notificacao-item ${!notificacao.lida ? 'nao-lida' : ''}`;
-                    
-                    const dataFormatada = new Date(notificacao.data_criacao).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                    
-                    item.innerHTML = `
+      .then(response => response.json())
+      .then(data => {
+        if (data.notificacoes && data.notificacoes.length > 0) {
+          container.innerHTML = '';
+          data.notificacoes.forEach(notificacao => {
+            const item = document.createElement('div');
+            item.className = `notificacao-item ${!notificacao.lida ? 'nao-lida' : ''}`;
+
+            const dataFormatada = new Date(notificacao.data_criacao).toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+
+            item.innerHTML = `
                         <div class="notificacao-titulo">${notificacao.titulo}</div>
                         <div class="notificacao-mensagem">${notificacao.mensagem}</div>
                         <div class="notificacao-data">
@@ -819,89 +441,94 @@ function carregarNotificacoesRecentes() {
                             ${!notificacao.lida ? '<span class="badge bg-warning ms-2">Nova</span>' : ''}
                         </div>
                     `;
-                    
-                    // Adicionar evento de clique para marcar como lida
-                    if (!notificacao.lida) {
-                        item.style.cursor = 'pointer';
-                        item.addEventListener('click', () => marcarComoLida(notificacao.id, item));
-                    }
-                    
-                    container.appendChild(item);
-                });
-            } else {
-                container.innerHTML = `
+
+            // Adicionar evento de clique para marcar como lida
+            if (!notificacao.lida) {
+              item.style.cursor = 'pointer';
+              item.addEventListener('click', () => marcarComoLida(notificacao.id, item));
+            }
+
+            container.appendChild(item);
+          });
+        } else {
+          container.innerHTML = `
                     <div class="text-center text-muted">
                         <i class="fas fa-inbox me-2"></i>
                         Nenhuma notificação recente
                     </div>
                 `;
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao carregar notificações:', error);
-            document.getElementById('notificacoes-recentes').innerHTML = `
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao carregar notificações:', error);
+        if (container) {
+          container.innerHTML = `
                 <div class="text-center text-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     Erro ao carregar notificações
                 </div>
             `;
-        });
-}
+        }
+      });
+  }
 
-// Função para carregar contador de notificações não lidas
-function carregarContadorNotificacoes() {
+  // Função para carregar contador de notificações não lidas
+  function carregarContadorNotificacoes() {
+    const badge = document.getElementById('badge-notificacoes');
+    if (!badge) return;
+
     fetch('/api/notificacoes/nao-lidas/count')
-        .then(response => response.json())
-        .then(data => {
-            const badge = document.getElementById('badge-notificacoes');
-            if (data.count > 0) {
-                badge.textContent = data.count;
-                badge.style.display = 'block';
-            } else {
-                badge.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao carregar contador de notificações:', error);
-        });
-}
+      .then(response => response.json())
+      .then(data => {
+        if (data.count > 0) {
+          badge.textContent = data.count;
+          badge.style.display = 'block';
+        } else {
+          badge.style.display = 'none';
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao carregar contador de notificações:', error);
+      });
+  }
 
-// Função para marcar notificação como lida
-function marcarComoLida(notificacaoId, elemento) {
+  // Função para marcar notificação como lida
+  function marcarComoLida(notificacaoId, elemento) {
     fetch(`/notificacoes/${notificacaoId}/marcar-lida`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
     })
-    .then(response => response.json())
-    .then(data => {
+      .then(response => response.json())
+      .then(data => {
         if (data.success) {
-            elemento.classList.remove('nao-lida');
-            const badge = elemento.querySelector('.badge');
-            if (badge) badge.remove();
-            elemento.style.cursor = 'default';
-            elemento.removeEventListener('click', arguments.callee);
-            
-            // Atualizar contador
-            carregarContadorNotificacoes();
-        }
-    })
-    .catch(error => {
-        console.error('Erro ao marcar notificação como lida:', error);
-    });
-}
+          elemento.classList.remove('nao-lida');
+          const badge = elemento.querySelector('.badge');
+          if (badge) badge.remove();
+          elemento.style.cursor = 'default';
+          // cannot remove anonymous listener easily but class change is enough
+          // elemento.removeEventListener('click', arguments.callee);
 
-// Carregar notificações quando a página carregar
-document.addEventListener('DOMContentLoaded', function() {
+          // Atualizar contador
+          carregarContadorNotificacoes();
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao marcar notificação como lida:', error);
+      });
+  }
+
+  // Carregar notificações quando a página carregar
+  document.addEventListener('DOMContentLoaded', function () {
     carregarNotificacoesRecentes();
     carregarContadorNotificacoes();
-    
+
     // Atualizar notificações a cada 30 segundos
     setInterval(() => {
-        carregarContadorNotificacoes();
+      carregarContadorNotificacoes();
     }, 30000);
-});
+  });
 </script>
 
 {% endblock %}

@@ -1430,6 +1430,11 @@ function updateProgressBar(step) {
        initMap();
      }
      
+     // Forçar recálculo do tamanho do mapa
+     setTimeout(function() {
+       map.invalidateSize();
+     }, 10);
+     
      // Centralize no local salvo, se existir
      if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
        const lat = parseFloat(document.getElementById('latitude').value);
