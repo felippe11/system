@@ -16,6 +16,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("formularios"):
+        return
     with op.batch_alter_table("formularios") as batch_op:
         batch_op.add_column(
             sa.Column("permitir_multiplas_respostas", sa.Boolean(), nullable=True, server_default=sa.true())
@@ -23,5 +27,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("formularios"):
+        return
     with op.batch_alter_table("formularios") as batch_op:
         batch_op.drop_column("permitir_multiplas_respostas")

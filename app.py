@@ -17,6 +17,7 @@ from models import Inscricao
 import pytz
 import logging
 import os
+import shutil
 
 # Importar configurações de estabilidade do servidor
 try:
@@ -57,6 +58,79 @@ def create_app():
     )
     app.jinja_env.add_extension("jinja2.ext.do")
     app.config["UPLOAD_FOLDER"] = "uploads"
+    app.config["STATIC_ROOT"] = Config.STATIC_ROOT
+    app.config["UPLOADS_ROOT"] = Config.UPLOADS_ROOT
+    app.config["BANNERS_ROOT"] = Config.BANNERS_ROOT
+
+    def _dir_has_files(path: str) -> bool:
+        for _, _, files in os.walk(path):
+            if files:
+                return True
+        return False
+
+    def _ensure_static_symlink(link_path: str, target_path: str) -> None:
+        """Ensure link_path points to target_path for uploads on Render."""
+        if os.path.islink(link_path):
+            return
+        if os.path.exists(link_path):
+            try:
+                if os.path.isdir(link_path) and not _dir_has_files(link_path):
+                    shutil.rmtree(link_path)
+                else:
+                    logging.warning(
+                        "Static path %s exists and is not a symlink; "
+                        "uploads may not be served from %s",
+                        link_path,
+                        target_path,
+                    )
+                    return
+            except OSError:
+                logging.warning(
+                    "Unable to replace existing static path %s; "
+                    "uploads may not be served from %s",
+                    link_path,
+                    target_path,
+                )
+                return
+        os.makedirs(target_path, exist_ok=True)
+        try:
+            os.symlink(target_path, link_path)
+        except OSError:
+            logging.warning(
+                "Could not create symlink %s -> %s; "
+                "uploads may not be served from disk",
+                link_path,
+                target_path,
+            )
+
+    if os.path.abspath(app.config["STATIC_ROOT"]) != os.path.abspath(app.static_folder):
+        _ensure_static_symlink(
+            os.path.join(app.static_folder, "uploads"),
+            app.config["UPLOADS_ROOT"],
+        )
+        _ensure_static_symlink(
+            os.path.join(app.static_folder, "banners"),
+            app.config["BANNERS_ROOT"],
+        )
+
+    def _check_render_disk_health() -> None:
+        if not (os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_HOSTNAME")):
+            app.config["RENDER_DISK_OK"] = True
+            return
+        static_root = app.config.get("STATIC_ROOT")
+        try:
+            os.makedirs(static_root, exist_ok=True)
+            probe_path = os.path.join(static_root, ".disk_healthcheck")
+            with open(probe_path, "w", encoding="utf-8") as handle:
+                handle.write("ok")
+            os.remove(probe_path)
+            app.config["RENDER_DISK_OK"] = True
+            logging.info("Render disk healthcheck OK at %s", static_root)
+        except OSError as exc:
+            app.config["RENDER_DISK_OK"] = False
+            logging.error("Render disk healthcheck failed at %s: %s", static_root, exc)
+
+    _check_render_disk_health()
 
     # Inicialização de extensões
     socketio.init_app(

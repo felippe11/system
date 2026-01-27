@@ -107,6 +107,8 @@ class Oficina(db.Model):
     evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
     evento = db.relationship("Evento", backref=db.backref("oficinas", lazy=True))
 
+    tipos_inscricao_permitidos = db.Column(db.Text, nullable=True)
+
     ministrantes_associados = db.relationship(
         "Ministrante",
         secondary="oficina_ministrantes_association",  # nome da tabela que criamos
@@ -117,6 +119,20 @@ class Oficina(db.Model):
     dias = db.relationship(
         "OficinaDia", back_populates="oficina", lazy=True, cascade="all, delete-orphan"
     )
+
+    def get_tipos_inscricao_permitidos_list(self):
+        if not self.tipos_inscricao_permitidos:
+            return []
+        return [
+            int(t) for t in self.tipos_inscricao_permitidos.split(",") if t.strip().isdigit()
+        ]
+
+    def set_tipos_inscricao_permitidos_list(self, tipos_ids):
+        if not tipos_ids:
+            self.tipos_inscricao_permitidos = None
+            return
+        ids = [str(int(t)) for t in tipos_ids if str(t).isdigit()]
+        self.tipos_inscricao_permitidos = ",".join(ids) if ids else None
 
     # Novo campo: Se True, inscrição gratuita; se False, será necessário realizar pagamento.
     inscricao_gratuita = db.Column(db.Boolean, default=True)
@@ -186,6 +202,7 @@ class OficinaDia(db.Model):
     horario_fim = db.Column(db.String(5), nullable=False)
     palavra_chave_manha = db.Column(db.String(50), nullable=True)
     palavra_chave_tarde = db.Column(db.String(50), nullable=True)
+    ordem_exibicao = db.Column(db.Integer, nullable=True, default=0)
 
     oficina = db.relationship("Oficina", back_populates="dias")
 

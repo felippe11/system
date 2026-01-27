@@ -15,6 +15,10 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if not (insp.has_table('formularios') and insp.has_table('configuracao_cliente')):
+        return
     op.add_column(
         'formularios',
         sa.Column('is_submission_form', sa.Boolean(), nullable=False,
@@ -34,6 +38,10 @@ def upgrade():
 
 
 def downgrade():
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if not (insp.has_table('formularios') and insp.has_table('configuracao_cliente')):
+        return
     op.drop_constraint(
         None, 'configuracao_cliente', type_='foreignkey'
     )

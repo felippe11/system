@@ -435,6 +435,15 @@ def dashboard_participante():
                         disponivel_para_inscricao = False
                         motivo_indisponibilidade = "Seu tipo de inscrição não permite acesso a esta oficina"
                         logger.debug(f"DEBUG [69] -> Oficina indisponível: não está na lista de permitidas")
+
+                tipos_permitidos = set(oficina.get_tipos_inscricao_permitidos_list())
+                if tipos_permitidos:
+                    if current_user.tipo_inscricao_id not in tipos_permitidos:
+                        disponivel_para_inscricao = False
+                        motivo_indisponibilidade = (
+                            "Esta atividade não está habilitada para seu tipo de inscrição"
+                        )
+                        logger.debug("DEBUG [69A] -> Oficina indisponível: tipo de inscrição não permitido")
                 
                 # Se há limite de oficinas e o usuário já atingiu o limite
                 limite_oficinas = regra_evento.get('limite_oficinas', 0)
