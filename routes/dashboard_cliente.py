@@ -106,8 +106,10 @@ def dashboard_cliente():
         eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
         logger.debug("Eventos: %s", eventos)
         data['eventos'] = eventos
+        # Also pass explicitly for sections that iterated on usuario.eventos
+        data['eventos_usuario'] = eventos
 
-        oficinas = Oficina.query.filter_by(cliente_id=current_user.id).all()
+        oficinas = Oficina.query.options(joinedload(Oficina.inscritos)).filter_by(cliente_id=current_user.id).all()
         data['oficinas'] = oficinas
         data['total_oficinas'] = len(oficinas)
 
@@ -265,14 +267,20 @@ def dashboard_cliente():
             cliente_id=current_user.id
         ).first()
         if not config_cliente:
-            config_cliente = ConfiguracaoCliente(
-                cliente_id=current_user.id,
-                permitir_checkin_global=False,
-                habilitar_feedback=False,
-                habilitar_certificado_individual=False,
-            )
-            db.session.add(config_cliente)
-            db.session.commit()
+            try:
+                config_cliente = ConfiguracaoCliente(
+                    cliente_id=current_user.id,
+                    permitir_checkin_global=False,
+                    habilitar_feedback=False,
+                    habilitar_certificado_individual=False,
+                )
+                db.session.add(config_cliente)
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                config_cliente = ConfiguracaoCliente.query.filter_by(
+                    cliente_id=current_user.id
+                ).first()
         data['config_cliente'] = config_cliente
 
         finance_data = db.session.query(
@@ -331,6 +339,7 @@ def dashboard_cliente():
         voting_events = VotingEvent.query.filter_by(cliente_id=current_user.id).all()
         data['voting_events'] = voting_events
     except SQLAlchemyError as exc:
+        db.session.rollback()
         logger.exception('Erro ao carregar dashboard do cliente: %s', exc)
         flash('Não foi possível carregar o dashboard do cliente.', 'error')
 

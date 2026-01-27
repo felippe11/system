@@ -20,7 +20,7 @@ if ('serviceWorker' in navigator) {
 // Lógica para o botão de instalação da PWA
 // Usamos window.deferredPrompt para evitar redeclaração da variável
 window.deferredPrompt = null;
-const installButton = document.getElementById('pwa-install-btn');
+var installButton = document.getElementById('pwa-install-btn');
 
 // Oculta o botão de instalação inicialmente
 if (installButton) {
