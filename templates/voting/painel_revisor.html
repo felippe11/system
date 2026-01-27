@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Painel do Revisor - Votações{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-vote-yea"></i>
+                        Painel do Revisor - Votações
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-warning">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-clock"></i>
+                                        Votações Pendentes
+                                    </h5>
+                                    <h2>{{ atribuicoes_pendentes|length }}</h2>
+                                    <p class="card-text">Trabalhos aguardando sua avaliação</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-success">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-check-circle"></i>
+                                        Votações Concluídas
+                                    </h5>
+                                    <h2>{{ atribuicoes_concluidas|length }}</h2>
+                                    <p class="card-text">Trabalhos já avaliados</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if atribuicoes_pendentes %}
+                        <div class="mt-4">
+                            <h5><i class="fas fa-clock"></i> Votações Pendentes</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Evento</th>
+                                            <th>Trabalho</th>
+                                            <th>Categorias</th>
+                                            <th>Prazo</th>
+                                            <th>Status</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for atribuicao in atribuicoes_pendentes %}
+                                        <tr>
+                                            <td>{{ atribuicao.voting_event.nome }}</td>
+                                            <td>{{ atribuicao.work.titulo }}</td>
+                                            <td>
+                                                {% for categoria in atribuicao.voting_event.categorias %}
+                                                    {% if categoria.ativa %}
+                                                        <span class="badge badge-primary">{{ categoria.nome }}</span>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </td>
+                                            <td>
+                                                {% if atribuicao.prazo_votacao %}
+                                                    {{ atribuicao.prazo_votacao.strftime('%d/%m/%Y %H:%M') }}
+                                                {% else %}
+                                                    Sem prazo definido
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if atribuicao.prazo_votacao and atribuicao.prazo_votacao < moment().utcnow() %}
+                                                    <span class="badge badge-danger">Atrasado</span>
+                                                {% else %}
+                                                    <span class="badge badge-warning">Pendente</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('voting_routes.votar', assignment_id=atribuicao.id) }}" 
+                                                   class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-vote-yea"></i> Votar
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if atribuicoes_concluidas %}
+                        <div class="mt-4">
+                            <h5><i class="fas fa-check-circle"></i> Votações Concluídas</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Evento</th>
+                                            <th>Trabalho</th>
+                                            <th>Categorias</th>
+                                            <th>Concluída em</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for atribuicao in atribuicoes_concluidas %}
+                                        <tr>
+                                            <td>{{ atribuicao.voting_event.nome }}</td>
+                                            <td>{{ atribuicao.work.titulo }}</td>
+                                            <td>
+                                                {% for categoria in atribuicao.voting_event.categorias %}
+                                                    {% if categoria.ativa %}
+                                                        <span class="badge badge-success">{{ categoria.nome }}</span>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </td>
+                                            <td>{{ atribuicao.data_conclusao.strftime('%d/%m/%Y %H:%M') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('voting_routes.votar', assignment_id=atribuicao.id) }}" 
+                                                   class="btn btn-info btn-sm">
+                                                    <i class="fas fa-eye"></i> Ver Voto
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if not atribuicoes_pendentes and not atribuicoes_concluidas %}
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-info-circle"></i> Nenhuma votação atribuída</h5>
+                            <p>Você não possui trabalhos atribuídos para votação no momento.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

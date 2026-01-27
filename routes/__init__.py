@@ -91,6 +91,7 @@ def register_routes(app):
     from .secure_file_routes import secure_file_routes
     from .submission_distribution_routes import submission_distribution_routes
     from .favicon_routes import favicon_routes
+    from .voting_routes import voting_routes
 
     # Importa servicos que registram rotas diretamente no blueprint
     from services import lote_service  # noqa: F401
@@ -156,6 +157,7 @@ def register_routes(app):
     app.register_blueprint(secure_file_routes)
     app.register_blueprint(submission_distribution_routes)
     app.register_blueprint(favicon_routes)
+    app.register_blueprint(voting_routes)
     
     # Registro das novas rotas do sistema de formador
     app.register_blueprint(formador_routes)

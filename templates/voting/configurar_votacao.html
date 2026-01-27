@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Configurar Votação - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-vote-yea"></i>
+                        Configurar Votação - {{ evento.nome }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if not voting_event %}
+                        <!-- Criar novo evento de votação -->
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-info-circle"></i> Criar Evento de Votação</h5>
+                            <p>Configure um novo evento de votação para este evento. Você poderá definir categorias, perguntas e trabalhos participantes.</p>
+                        </div>
+                        
+                        <form id="criar-votacao-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="nome">Nome da Votação</label>
+                                        <input type="text" class="form-control" id="nome" name="nome" 
+                                               value="Votação - {{ evento.nome }}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="modo_revelacao">Modo de Revelação</label>
+                                        <select class="form-control" id="modo_revelacao" name="modo_revelacao">
+                                            <option value="imediato">Imediato</option>
+                                            <option value="progressivo">Progressivo (3º → 2º → 1º)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="data_inicio">Data de Início</label>
+                                        <input type="datetime-local" class="form-control" id="data_inicio" name="data_inicio">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="data_fim">Data de Fim</label>
+                                        <input type="datetime-local" class="form-control" id="data_fim" name="data_fim">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="descricao">Descrição</label>
+                                <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="exibir_resultados_tempo_real" 
+                                               name="exibir_resultados_tempo_real" checked>
+                                        <label class="form-check-label" for="exibir_resultados_tempo_real">
+                                            Exibir resultados em tempo real
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="permitir_votacao_multipla" 
+                                               name="permitir_votacao_multipla">
+                                        <label class="form-check-label" for="permitir_votacao_multipla">
+                                            Permitir votação múltipla
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="exigir_login_revisor" 
+                                               name="exigir_login_revisor" checked>
+                                        <label class="form-check-label" for="exigir_login_revisor">
+                                            Exigir login do revisor
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="permitir_voto_anonimo" 
+                                               name="permitir_voto_anonimo">
+                                        <label class="form-check-label" for="permitir_voto_anonimo">
+                                            Permitir voto anônimo
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Criar Evento de Votação
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <!-- Evento de votação já existe -->
+                        <div class="alert alert-success">
+                            <h5><i class="fas fa-check-circle"></i> Evento de Votação Configurado</h5>
+                            <p><strong>{{ voting_event.nome }}</strong> - Status: 
+                                <span class="badge badge-{% if voting_event.status == 'ativo' %}success{% elif voting_event.status == 'finalizado' %}secondary{% else %}warning{% endif %}">
+                                    {{ voting_event.status|title }}
+                                </span>
+                            </p>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Categorias</h5>
+                                        <h3>{{ voting_event.categorias|length }}</h3>
+                                        <a href="{{ url_for('voting_routes.gerenciar_categorias', voting_event_id=voting_event.id) }}" 
+                                           class="btn btn-light btn-sm">Gerenciar</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Trabalhos</h5>
+                                        <h3>{{ voting_event.trabalhos|length }}</h3>
+                                        <a href="{{ url_for('voting_routes.gerenciar_trabalhos', voting_event_id=voting_event.id) }}" 
+                                           class="btn btn-light btn-sm">Gerenciar</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Atribuições</h5>
+                                        <h3>{{ voting_event.assignments|length }}</h3>
+                                        <a href="{{ url_for('voting_routes.atribuir_revisores', voting_event_id=voting_event.id) }}" 
+                                           class="btn btn-light btn-sm">Gerenciar</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Resultados</h5>
+                                        <h3>{{ voting_event.votes|length }}</h3>
+                                        <a href="{{ url_for('voting_routes.resultados', voting_event_id=voting_event.id) }}" 
+                                           class="btn btn-light btn-sm">Ver</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Configurações Atuais</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Modo de Revelação:</strong> {{ voting_event.modo_revelacao|title }}</p>
+                                    <p><strong>Resultados em Tempo Real:</strong> 
+                                        {% if voting_event.exibir_resultados_tempo_real %}
+                                            <span class="badge badge-success">Ativado</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">Desativado</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Data de Início:</strong> 
+                                        {% if voting_event.data_inicio_votacao %}
+                                            {{ voting_event.data_inicio_votacao.strftime('%d/%m/%Y %H:%M') }}
+                                        {% else %}
+                                            Não definida
+                                        {% endif %}
+                                    </p>
+                                    <p><strong>Data de Fim:</strong> 
+                                        {% if voting_event.data_fim_votacao %}
+                                            {{ voting_event.data_fim_votacao.strftime('%d/%m/%Y %H:%M') }}
+                                        {% else %}
+                                            Não definida
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button class="btn btn-success" onclick="ativarVotacao()">
+                                <i class="fas fa-play"></i> Ativar Votação
+                            </button>
+                            <button class="btn btn-danger" onclick="finalizarVotacao()">
+                                <i class="fas fa-stop"></i> Finalizar Votação
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('criar-votacao-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        evento_id: {{ evento.id }},
+        nome: formData.get('nome'),
+        descricao: formData.get('descricao'),
+        data_inicio: formData.get('data_inicio'),
+        data_fim: formData.get('data_fim'),
+        modo_revelacao: formData.get('modo_revelacao'),
+        exibir_resultados_tempo_real: document.getElementById('exibir_resultados_tempo_real').checked,
+        permitir_votacao_multipla: document.getElementById('permitir_votacao_multipla').checked,
+        exigir_login_revisor: document.getElementById('exigir_login_revisor').checked,
+        permitir_voto_anonimo: document.getElementById('permitir_voto_anonimo').checked
+    };
+    
+    // Obter token CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    fetch('{{ url_for("voting_routes.criar_evento_votacao") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro interno do servidor');
+    });
+});
+
+function ativarVotacao() {
+    if (confirm('Tem certeza que deseja ativar a votação?')) {
+        // Implementar ativação
+        alert('Funcionalidade em desenvolvimento');
+    }
+}
+
+function finalizarVotacao() {
+    if (confirm('Tem certeza que deseja finalizar a votação? Esta ação não pode ser desfeita.')) {
+        // Implementar finalização
+        alert('Funcionalidade em desenvolvimento');
+    }
+}
+</script>
+{% endblock %}

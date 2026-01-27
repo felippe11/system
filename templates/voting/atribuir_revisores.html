@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Atribuir Revisores - {{ voting_event.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-plus"></i>
+                        Atribuir Revisores - {{ voting_event.nome }}
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('voting_routes.configurar_votacao', evento_id=voting_event.evento_id) }}" 
+                           class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar à Configuração
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Botões de Ação -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#atribuirModal">
+                                <i class="fas fa-user-plus"></i> Atribuir Revisores
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-success" data-toggle="modal" data-target="#atribuicaoAutomaticaModal">
+                                <i class="fas fa-magic"></i> Atribuição Automática
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Atribuições -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Trabalho</th>
+                                    <th>Revisor</th>
+                                    <th>Status</th>
+                                    <th>Data de Atribuição</th>
+                                    <th>Prazo</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for atribuicao in atribuicoes %}
+                                <tr data-atribuicao-id="{{ atribuicao.id }}">
+                                    <td>{{ atribuicao.trabalho.titulo }}</td>
+                                    <td>{{ atribuicao.revisor.nome }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ 'success' if atribuicao.status == 'concluida' else 'warning' if atribuicao.status == 'em_andamento' else 'secondary' }}">
+                                            {{ atribuicao.status.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ atribuicao.data_atribuicao.strftime('%d/%m/%Y %H:%M') if atribuicao.data_atribuicao else 'N/A' }}</td>
+                                    <td>{{ atribuicao.prazo.strftime('%d/%m/%Y %H:%M') if atribuicao.prazo else 'Sem prazo' }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="visualizarVoto({{ atribuicao.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-warning" onclick="editarAtribuicao({{ atribuicao.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="removerAtribuicao({{ atribuicao.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if not atribuicoes %}
+                    <div class="alert alert-info text-center">
+                        <h5>Nenhuma atribuição cadastrada</h5>
+                        <p>Use os botões acima para atribuir revisores aos trabalhos.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Atribuir Revisores -->
+<div class="modal fade" id="atribuirModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atribuir Revisores</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="atribuirForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="trabalho_id">Trabalho</label>
+                        <select class="form-control" id="trabalho_id" name="trabalho_id" required>
+                            <option value="">Selecione um trabalho</option>
+                            {% for trabalho in trabalhos %}
+                            <option value="{{ trabalho.id }}">{{ trabalho.titulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="revisor_id">Revisor</label>
+                        <select class="form-control" id="revisor_id" name="revisor_id" required>
+                            <option value="">Selecione um revisor</option>
+                            {% for revisor in revisores_disponiveis %}
+                            <option value="{{ revisor.id }}">{{ revisor.nome }} ({{ revisor.email }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="prazo">Prazo para Votação</label>
+                        <input type="datetime-local" class="form-control" id="prazo" name="prazo">
+                        <small class="form-text text-muted">Deixe em branco para sem prazo específico</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atribuir Revisor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Atribuição Automática -->
+<div class="modal fade" id="atribuicaoAutomaticaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atribuição Automática</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="atribuicaoAutomaticaForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="trabalhos_por_revisor">Trabalhos por Revisor</label>
+                        <input type="number" class="form-control" id="trabalhos_por_revisor" name="trabalhos_por_revisor" 
+                               value="3" min="1" max="10">
+                        <small class="form-text text-muted">Número máximo de trabalhos que cada revisor receberá</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="prazo_automatico">Prazo Padrão (dias)</label>
+                        <input type="number" class="form-control" id="prazo_automatico" name="prazo_automatico" 
+                               value="7" min="1" max="30">
+                        <small class="form-text text-muted">Prazo em dias a partir de hoje</small>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Atenção:</strong> Esta ação irá substituir todas as atribuições existentes.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Executar Atribuição Automática</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Atribuir revisor manualmente
+document.getElementById('atribuirForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        trabalho_id: formData.get('trabalho_id'),
+        revisor_id: formData.get('revisor_id'),
+        prazo: formData.get('prazo')
+    };
+    
+    // Obter token CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    fetch('{{ url_for("voting_routes.atribuir_revisores", voting_event_id=voting_event.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro interno do servidor');
+    });
+});
+
+// Atribuição automática
+document.getElementById('atribuicaoAutomaticaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        action: 'atribuicao_automatica',
+        trabalhos_por_revisor: parseInt(formData.get('trabalhos_por_revisor')),
+        prazo_automatico: parseInt(formData.get('prazo_automatico'))
+    };
+    
+    if (confirm('Tem certeza que deseja executar a atribuição automática? Todas as atribuições existentes serão substituídas.')) {
+        // Obter token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ url_for("voting_routes.atribuir_revisores", voting_event_id=voting_event.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Atribuição automática executada com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro interno do servidor');
+        });
+    }
+});
+
+// Visualizar voto
+function visualizarVoto(id) {
+    // Implementar visualização do voto
+    alert('Funcionalidade de visualização em desenvolvimento');
+}
+
+// Editar atribuição
+function editarAtribuicao(id) {
+    // Implementar edição
+    alert('Funcionalidade de edição em desenvolvimento');
+}
+
+// Remover atribuição
+function removerAtribuicao(id) {
+    if (confirm('Tem certeza que deseja remover esta atribuição?')) {
+        const data = {
+            action: 'remover',
+            atribuicao_id: id
+        };
+        
+        // Obter token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ url_for("voting_routes.atribuir_revisores", voting_event_id=voting_event.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro interno do servidor');
+        });
+    }
+}
+</script>
+{% endblock %}
+

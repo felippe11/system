@@ -47,6 +47,10 @@
   background: linear-gradient(135deg, #d00000 0%, #dc2f02 100%);
 }
 
+.bg-purple-gradient {
+  background: linear-gradient(135deg, #6f42c1 0%, #8b5cf6 100%);
+}
+
 .nav-tabs .nav-link {
   font-weight: 500;
   border: none;

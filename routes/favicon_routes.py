@@ -50,3 +50,4 @@ def webmanifest():
         mimetype='application/manifest+json'
     )
 
+

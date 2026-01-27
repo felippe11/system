@@ -325,6 +325,11 @@ def dashboard_cliente():
             nome='Formulário de Trabalhos'
         ).first()
         data['formulario_trabalho'] = formulario_trabalho
+        
+        # Buscar eventos de votação
+        from models.voting import VotingEvent
+        voting_events = VotingEvent.query.filter_by(cliente_id=current_user.id).all()
+        data['voting_events'] = voting_events
     except SQLAlchemyError as exc:
         logger.exception('Erro ao carregar dashboard do cliente: %s', exc)
         flash('Não foi possível carregar o dashboard do cliente.', 'error')
