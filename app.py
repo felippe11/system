@@ -153,6 +153,14 @@ def create_app():
             value = str(value)
         raw = value.strip().replace("\\", "/")
         if raw.startswith(("http://", "https://", "//")):
+            if raw.startswith("http://"):
+                try:
+                    if request.is_secure or request.headers.get(
+                        "X-Forwarded-Proto"
+                    ) == "https":
+                        return "https://" + raw[len("http://") :]
+                except RuntimeError:
+                    pass
             return raw
         if raw.startswith("/static/"):
             return raw
