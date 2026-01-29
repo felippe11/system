@@ -27,6 +27,7 @@ from io import BytesIO
 from models import (
     Evento,
     Oficina,
+    OficinaDia,
     Inscricao,
     Checkin,
     ConfiguracaoCliente,
@@ -800,26 +801,80 @@ def set_dashboard_agendamentos_data():
         'agendamentos_realizados': agendamentos_realizados,
         'agendamentos_cancelados': agendamentos_cancelados,
         'total_visitantes': total_visitantes,
-        'ocupacao_media': round(ocupacao_media, 1) if ocupacao_media else 0,
-        'agendamentos_hoje': len(agendamentos_hoje),
-        'proximos_agendamentos': len(proximos_agendamentos),
-        'timestamp': datetime.utcnow().timestamp()
-    }
-
-    # Passar os objetos para o contexto global
-    return {
-        'eventos_ativos': eventos_ativos,
-        'agendamentos_totais': agendamentos_totais,
-        'agendamentos_confirmados': agendamentos_confirmados,
-        'agendamentos_realizados': agendamentos_realizados,
-        'agendamentos_cancelados': agendamentos_cancelados,
-        'total_visitantes': total_visitantes,
-        'agendamentos_hoje': agendamentos_hoje,
-        'proximos_agendamentos': proximos_agendamentos,
         'ocupacao_media': ocupacao_media,
         'periodos_agendamento': periodos_agendamento,
         'config_agendamento': config_agendamento
     }
+
+@dashboard_routes.route("/dashboard_cliente/ordenar_atividades", methods=["GET", "POST"])
+@login_required
+def ordenar_atividades_cliente():
+    """Permite ao cliente ordenar a exibição de atividades por data no link de cadastro."""
+    if current_user.tipo != "cliente":
+        abort(403)
+
+    evento_id = request.args.get("evento_id", type=int) or request.form.get("evento_id", type=int)
+    
+    # Busca apenas eventos do cliente logado
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).order_by(Evento.data_inicio.desc().nullslast(), Evento.nome.asc()).all()
+    
+    evento = None
+    if evento_id:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if not evento:
+            flash("Evento não encontrado ou acesso não autorizado.", "danger")
+            return redirect(url_for("dashboard_routes.ordenar_atividades_cliente"))
+
+    grouped_dias = {}
+    if evento:
+        oficina_dias = (
+            OficinaDia.query.join(Oficina, Oficina.id == OficinaDia.oficina_id)
+            .filter(Oficina.evento_id == evento.id)
+            .all()
+        )
+
+        if request.method == "POST":
+            atualizados = 0
+            for dia in oficina_dias:
+                campo = f"ordem_{dia.id}"
+                if campo not in request.form:
+                    continue
+                valor = request.form.get(campo, "").strip()
+                if valor == "":
+                    dia.ordem_exibicao = None
+                    atualizados += 1
+                    continue
+                try:
+                    dia.ordem_exibicao = int(valor)
+                    atualizados += 1
+                except ValueError:
+                    continue
+            db.session.commit()
+            flash(f"Ordem atualizada para {atualizados} atividades.", "success")
+            return redirect(
+                url_for("dashboard_routes.ordenar_atividades_cliente", evento_id=evento.id)
+            )
+
+        agrupado = defaultdict(list)
+        for dia in oficina_dias:
+            data_str = dia.data.strftime("%d/%m/%Y")
+            agrupado[data_str].append(dia)
+        grouped_dias = dict(agrupado)
+        for data_key, itens in grouped_dias.items():
+            itens.sort(
+                key=lambda item: (
+                    item.ordem_exibicao if item.ordem_exibicao is not None else 9999,
+                    item.horario_inicio or "",
+                    item.oficina.titulo.lower(),
+                )
+            )
+
+    return render_template(
+        "dashboard/ordenar_atividades_cliente.html",
+        eventos=eventos,
+        evento=evento,
+        grouped_dias=grouped_dias,
+    )
 
 @dashboard_routes.route('/dashboard-agendamentos')
 @login_required

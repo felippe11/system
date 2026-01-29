@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Ordenar Atividades{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold mb-0">Ordenar atividades no cadastro</h1>
+    <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="GET" class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">Evento</label>
+          <select name="evento_id" class="form-select" required>
+            <option value="">Selecione um evento</option>
+            {% for ev in eventos %}
+              <option value="{{ ev.id }}" {% if evento and ev.id == evento.id %}selected{% endif %}>
+                {{ ev.nome }}{% if ev.data_inicio %} - {{ ev.data_inicio.strftime('%d/%m/%Y') }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4 d-grid">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-list-ol me-1"></i> Carregar atividades
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if evento %}
+  <div class="card shadow-sm">
+    <div class="card-body">
+      {% if grouped_dias %}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="evento_id" value="{{ evento.id }}">
+
+        {% for data_key, itens in grouped_dias.items() %}
+          <div class="mb-4">
+            <h5 class="fw-semibold mb-3">{{ data_key }}</h5>
+            <div class="table-responsive">
+              <table class="table table-striped align-middle">
+                <thead>
+                  <tr>
+                    <th>Atividade</th>
+                    <th>Horário</th>
+                    <th style="width: 160px;">Ordem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for dia in itens %}
+                    <tr>
+                      <td>{{ dia.oficina.titulo }}</td>
+                      <td>{{ dia.horario_inicio }} - {{ dia.horario_fim }}</td>
+                      <td>
+                        <input
+                          type="number"
+                          class="form-control"
+                          name="ordem_{{ dia.id }}"
+                          value="{{ dia.ordem_exibicao if dia.ordem_exibicao is not none else '' }}"
+                          min="0"
+                          step="1"
+                        >
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endfor %}
+
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-save me-1"></i> Salvar ordem
+          </button>
+        </div>
+      </form>
+      {% else %}
+        <p class="text-muted mb-0">Nenhuma atividade encontrada para este evento.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

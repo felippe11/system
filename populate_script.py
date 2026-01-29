@@ -94,6 +94,7 @@ from models import (
     Assignment,
     AuditLog,
     ArquivoBinario,
+    RespostaFormulario,
 )
 
 # Inicialize o Faker
@@ -1111,12 +1112,13 @@ def criar_agendamentos_visita(eventos, usuarios):
 
 
 def criar_submissoes(eventos, usuarios, quantidade_por_evento=3):
-    """Gera trabalhos submetidos (Submission) ligados a participantes."""
+    """Gera trabalhos submetidos (Submission) e suas RespostaFormulario."""
     participantes = [u for u in usuarios if u.tipo in ("participante", "professor")]
     if not participantes:
-        return [], []
+        return [], [], []
 
     submissoes = []
+    respostas_formulario = []
     logs = []
 
     for evento in eventos:
@@ -1137,17 +1139,32 @@ def criar_submissoes(eventos, usuarios, quantidade_por_evento=3):
             db.session.add(sub)
             db.session.flush()
 
-            log = AuditLog(user_id=autor.id, submission_id=sub.id, event_type="submission")
+            resposta = RespostaFormulario(
+                formulario_id=None,
+                usuario_id=autor.id,
+                trabalho_id=sub.id,
+                evento_id=evento.id,
+                data_submissao=datetime.now(),
+            )
+            db.session.add(resposta)
+            db.session.flush()
+
+            log = AuditLog(
+                user_id=autor.id,
+                submission_id=resposta.id,
+                event_type="submission",
+            )
             db.session.add(log)
 
             submissoes.append(sub)
+            respostas_formulario.append(resposta)
             logs.append(log)
 
     db.session.commit()
-    return submissoes, logs
+    return submissoes, respostas_formulario, logs
 
 
-def criar_reviews_assignments(submissoes, usuarios):
+def criar_reviews_assignments(submissoes, respostas_formulario, usuarios):
     """Cria tarefas de revisão e registros de Review para as submissões."""
     revisores = [u for u in usuarios if u.tipo in ("professor", "cliente", "superadmin")]
     if not revisores:
@@ -1156,12 +1173,18 @@ def criar_reviews_assignments(submissoes, usuarios):
     reviews = []
     assignments = []
     logs = []
+    resposta_por_trabalho = {
+        resposta.trabalho_id: resposta for resposta in respostas_formulario
+    }
 
     for sub in submissoes:
+        resposta = resposta_por_trabalho.get(sub.id)
+        if not resposta:
+            continue
         selecionados = random.sample(revisores, min(2, len(revisores)))
         for reviewer in selecionados:
             assignment = Assignment(
-                submission_id=sub.id,
+                resposta_formulario_id=resposta.id,
                 reviewer_id=reviewer.id,
                 deadline=datetime.now() + timedelta(days=random.randint(5, 15)),  # Usando now() em vez de utcnow() para evitar aviso
                 completed=True,
@@ -1183,7 +1206,11 @@ def criar_reviews_assignments(submissoes, usuarios):
             db.session.add(review)
             reviews.append(review)
 
-            log = AuditLog(user_id=reviewer.id, submission_id=sub.id, event_type="review")
+            log = AuditLog(
+                user_id=reviewer.id,
+                submission_id=resposta.id,
+                event_type="review",
+            )
             db.session.add(log)
             logs.append(log)
 
@@ -1243,10 +1270,12 @@ def popular_banco():
     inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
 
     logger.info("Criando submissões...")
-    submissoes, logs_sub = criar_submissoes(eventos, usuarios)
+    submissoes, respostas_formulario, logs_sub = criar_submissoes(eventos, usuarios)
 
     logger.info("Criando reviews e assignments...")
-    reviews, assignments, logs_rev = criar_reviews_assignments(submissoes, usuarios)
+    reviews, assignments, logs_rev = criar_reviews_assignments(
+        submissoes, respostas_formulario, usuarios
+    )
 
     logger.info("Criando arquivos binários...")
     arquivos = criar_binarios(submissoes)
