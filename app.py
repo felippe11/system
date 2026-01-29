@@ -169,8 +169,33 @@ def create_app():
         except Exception:
             logging.exception("Failed to ensure oficina schema")
 
+    def _ensure_oficinadia_schema() -> None:
+        """Ensure expected columns exist when migrations were skipped."""
+        try:
+            from sqlalchemy import inspect
+
+            if db.engine.dialect.name != "postgresql":
+                return
+            inspector = inspect(db.engine)
+            if "oficinadia" not in inspector.get_table_names():
+                return
+            existing = {col["name"] for col in inspector.get_columns("oficinadia")}
+            if "ordem_exibicao" in existing:
+                return
+            with db.engine.begin() as conn:
+                conn.exec_driver_sql(
+                    "ALTER TABLE oficinadia "
+                    "ADD COLUMN ordem_exibicao INTEGER DEFAULT 0"
+                )
+            logging.info(
+                "Added missing column oficinadia.ordem_exibicao"
+            )
+        except Exception:
+            logging.exception("Failed to ensure oficinadia schema")
+
     with app.app_context():
         _ensure_oficina_schema()
+        _ensure_oficinadia_schema()
 
     # CSRF error handler for API endpoints
     from flask_wtf.csrf import CSRFError

@@ -13,8 +13,14 @@
     <h1 class="h2 fw-bold text-primary">
       <i class="bi bi-speedometer2 me-2"></i>Painel Administrativo
     </h1>
-    <a href="{{ url_for('cliente_routes.cadastrar_cliente') }}" class="btn btn-success">      <i class="bi bi-plus-circle me-2"></i>Novo Cliente
-    </a>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('dashboard_routes.ordenar_atividades_admin') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-sort-numeric-down me-2"></i>Ordenar Atividades
+      </a>
+      <a href="{{ url_for('cliente_routes.cadastrar_cliente') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle me-2"></i>Novo Cliente
+      </a>
+    </div>
   </div>
   <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTaxa">
     <i class="bi bi-cash-coin"></i> Taxa do sistema
