@@ -146,6 +146,32 @@ def create_app():
     csrf.init_app(app)
     CORS(app)
 
+    def _ensure_oficina_schema() -> None:
+        """Ensure expected columns exist when migrations were skipped."""
+        try:
+            from sqlalchemy import inspect
+
+            if db.engine.dialect.name != "postgresql":
+                return
+            inspector = inspect(db.engine)
+            if "oficina" not in inspector.get_table_names():
+                return
+            existing = {col["name"] for col in inspector.get_columns("oficina")}
+            if "tipos_inscricao_permitidos" in existing:
+                return
+            with db.engine.begin() as conn:
+                conn.exec_driver_sql(
+                    "ALTER TABLE oficina ADD COLUMN tipos_inscricao_permitidos TEXT"
+                )
+            logging.info(
+                "Added missing column oficina.tipos_inscricao_permitidos"
+            )
+        except Exception:
+            logging.exception("Failed to ensure oficina schema")
+
+    with app.app_context():
+        _ensure_oficina_schema()
+
     # CSRF error handler for API endpoints
     from flask_wtf.csrf import CSRFError
     from flask import jsonify, request

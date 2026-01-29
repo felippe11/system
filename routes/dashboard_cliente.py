@@ -102,6 +102,7 @@ def dashboard_cliente():
         'reviewer_apps': [],
         'revisor_candidaturas': [],
         'revisor_candidaturas_aprovadas': [],
+        'revisor_filter_options': [],
     }
     try:
         eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
