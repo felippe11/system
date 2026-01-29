@@ -146,6 +146,26 @@ def create_app():
     csrf.init_app(app)
     CORS(app)
 
+    def _media_url(value: str | None) -> str:
+        if not value:
+            return ""
+        if not isinstance(value, str):
+            value = str(value)
+        raw = value.strip().replace("\\", "/")
+        if raw.startswith(("http://", "https://", "//")):
+            return raw
+        if raw.startswith("/static/"):
+            return raw
+        if raw.startswith("static/"):
+            return f"/{raw}"
+        if "/static/" in raw:
+            return f"/static/{raw.split('/static/', 1)[1]}"
+        if raw.startswith("/"):
+            raw = raw.lstrip("/")
+        return flask_url_for("static", filename=raw)
+
+    app.jinja_env.filters["media_url"] = _media_url
+
     def _ensure_oficina_schema() -> None:
         """Ensure expected columns exist when migrations were skipped."""
         try:

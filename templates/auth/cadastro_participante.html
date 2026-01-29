@@ -13,7 +13,7 @@
     <section class="event-hero">
         {% if evento.banner_url %}
         <div class="event-banner">
-            <img src="{{ evento.banner_url }}" alt="Banner do evento {{ evento.nome }}" loading="lazy">
+            <img src="{{ evento.banner_url | media_url }}" alt="Banner do evento {{ evento.nome }}" loading="lazy">
         </div>
         {% endif %}
         
@@ -105,8 +105,8 @@
                                 {% if item.ministrante or (item.oficina and item.oficina.ministrantes_associados) %}
                                 <div class="speakers-container">
                                     {% if item.ministrante %}
-                                    <div class="speaker-card" onclick="openSpeakerModal('{{ item.ministrante.nome }}', '{{ item.ministrante.formacao }}', '{{ url_for('static', filename=item.ministrante.foto or 'default-profile.png') }}')">
-                                        <img src="{{ url_for('static', filename=item.ministrante.foto or 'default-profile.png') }}"
+                                    <div class="speaker-card" onclick="openSpeakerModal('{{ item.ministrante.nome }}', '{{ item.ministrante.formacao }}', '{{ (item.ministrante.foto or 'default-profile.png') | media_url }}')">
+                                        <img src="{{ (item.ministrante.foto or 'default-profile.png') | media_url }}"
                                              alt="{{ item.ministrante.nome }}" 
                                              class="speaker-photo">
                                         <span class="speaker-name">{{ item.ministrante.nome }}</span>
@@ -115,8 +115,8 @@
                                     
                                     {% if item.oficina and item.oficina.ministrantes_associados %}
                                         {% for m in item.oficina.ministrantes_associados %}
-                                        <div class="speaker-card" onclick="openSpeakerModal('{{ m.nome }}', '{{ m.formacao }}', '{{ url_for('static', filename=m.foto or 'default-profile.png') }}')">
-                                            <img src="{{ url_for('static', filename=m.foto or 'default-profile.png') }}"
+                                        <div class="speaker-card" onclick="openSpeakerModal('{{ m.nome }}', '{{ m.formacao }}', '{{ (m.foto or 'default-profile.png') | media_url }}')">
+                                            <img src="{{ (m.foto or 'default-profile.png') | media_url }}"
                                                  alt="{{ m.nome }}"
                                                  class="speaker-photo">
                                             <span class="speaker-name">{{ m.nome }}</span>
@@ -144,8 +144,8 @@
             {% if ministrantes %}
             <div class="speakers-grid">
                 {% for ministrante in ministrantes %}
-                <div class="speaker-card" onclick="openSpeakerModal('{{ ministrante.nome }}', '{{ ministrante.formacao }}', '{{ url_for('static', filename=ministrante.foto or 'default-profile.png') }}')">
-                    <img src="{{ url_for('static', filename=ministrante.foto or 'default-profile.png') }}"
+                <div class="speaker-card" onclick="openSpeakerModal('{{ ministrante.nome }}', '{{ ministrante.formacao }}', '{{ (ministrante.foto or 'default-profile.png') | media_url }}')">
+                    <img src="{{ (ministrante.foto or 'default-profile.png') | media_url }}"
                          alt="{{ ministrante.nome }}"
                          class="speaker-photo">
                     <div class="speaker-info">
@@ -192,7 +192,7 @@
                     <div class="sponsor-grid">
                         {% for pat in patrocinadores_categoria %}
                         <div class="sponsor-logo">
-                            <img src="{{ url_for('static', filename=pat.logo_path) }}" 
+                            <img src="{{ pat.logo_path | media_url }}" 
                                  alt="Logo {{ categoria }} {{ pat.nome if pat.nome else '' }}">
                         </div>
                         {% endfor %}
