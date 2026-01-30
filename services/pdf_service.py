@@ -9108,142 +9108,103 @@ from textwrap import wrap
 
 def gerar_placas_oficinas_pdf(evento_id):
     """
-    Gera um PDF com placas individuais, modernas e harmoniosas para cada oficina de um evento.
-    O design foi aprimorado para ter um visual mais profissional, com gradientes,
-    ícones vetoriais e uma hierarquia visual clara.
+    Gera um PDF com placas das oficinas seguindo o Design System AppFiber.
+    Estilo: Clean, Tecnológico, Glassmorphism.
+    Cores: Navy (#0F172A), Electric Blue (#1E88E5), Blue Gray (#4E7597).
     """
     from models import Evento, Oficina
     from extensions import db
     from flask import current_app, send_file
+    from reportlab.lib import colors
 
-    # --- Paleta de Cores Refinada ---
+    # --- Paleta de Cores AppFiber ---
     COLORS = {
-        'primary_dark': HexColor('#0D1B2A'),    # Azul quase preto para textos principais
-        'primary_medium': HexColor('#1B263B'),  # Azul escuro para fundos de destaque
-        'primary_light': HexColor('#415A77'),   # Azul acinzentado para subtextos
-        'accent': HexColor('#E0E1DD'),          # Bege claro para detalhes e fundos
-        'highlight': HexColor('#D90429'),       # Vermelho vibrante para destaques importantes
+        'primary_dark': HexColor('#0F172A'),    # Adicionando Navy profundo
+        'primary_medium': HexColor('#1E88E5'),  # Electric Blue (Ação/Destaque)
+        'primary_light': HexColor('#4E7597'),   # Blue Gray (Texto secundário)
+        'accent': HexColor('#F1F5F9'),          # Surface Subtle
         'white': HexColor('#FFFFFF'),
-        'light_gray': HexColor('#F8F9FA'),
-        'shadow': Color(0, 0, 0, alpha=0.15)
+        'light_gray': HexColor('#F8FAFC'),      # Surface Page
+        'shadow': Color(0, 0, 0, alpha=0.10)    # Sombra mais suave
     }
 
     # --- Funções de Desenho Auxiliares ---
 
     def draw_background(c, width, height):
-        """Desenha um fundo com um gradiente vertical sutil."""
-        # O gradiente vai do cinza claro (topo) para o branco (base)
+        """Desenha um fundo clean com a cor da marca."""
         c.setFillColor(COLORS['light_gray'])
         c.rect(0, 0, width, height, fill=1, stroke=0)
-        # Adiciona um retângulo decorativo na base
-        c.setFillColor(COLORS['primary_medium'])
-        c.rect(0, 0, width, 2*cm, fill=1, stroke=0)
-
-    def draw_card(c, x, y, width, height):
-        """Desenha o cartão principal com sombra e bordas arredondadas."""
-        # Sombra sutil
-        c.setFillColor(COLORS['shadow'])
-        c.roundRect(x + 0.1*cm, y - 0.1*cm, width, height, radius=0.5*cm, fill=1, stroke=0)
         
+        # Barra lateral decorativa (AppFiber identity)
+        c.setFillColor(COLORS['primary_dark'])
+        c.rect(0, 0, 1.5*cm, height, fill=1, stroke=0)
+        
+        # Detalhe em azul elétrico
+        c.setFillColor(COLORS['primary_medium'])
+        c.rect(1.5*cm, 0, 0.2*cm, height, fill=1, stroke=0)
+
+    def draw_glass_card(c, x, y, width, height):
+        """Simula um cartão com efeito glassmorphism."""
+        # Sombra suave e difusa
+        c.setFillColor(COLORS['shadow'])
+        c.roundRect(x + 1*mm, y - 1*mm, width, height, radius=5*mm, fill=1, stroke=0)
+
         # Cartão branco
         c.setFillColor(COLORS['white'])
-        c.roundRect(x, y, width, height, radius=0.5*cm, fill=1, stroke=0)
-
-    def draw_header(c, x, y, width, height):
-        """Desenha a faixa de destaque no topo do cartão."""
-        c.setFillColor(COLORS['highlight'])
-        c.roundRect(x, y + height - 1.5*cm, width, 1.5*cm, radius=0.5*cm, fill=1, stroke=0)
+        # Stroke sutil para definição
+        c.setStrokeColor(HexColor('#E2E8F0'))
+        c.setLineWidth(0.5)
+        c.roundRect(x, y, width, height, radius=5*mm, fill=1, stroke=1)
 
     def draw_workshop_title(c, box, title):
-        """Desenha o título da oficina, centralizado e com quebra de linha automática."""
+        """Desenha o título com tipografia forte e cor primária."""
         c.setFillColor(COLORS['primary_dark'])
         
-        # Tenta diferentes tamanhos de fonte para caber o título
-        for size in [32, 28, 24, 20]:
-            c.setFont('Helvetica-Bold', size)
-            lines = wrap(title, width=int(box.width / (size * 0.02))) # Heurística para quebra
-            line_height = size * 1.2
-            total_height = len(lines) * line_height
-            if total_height < box.height:
-                break
+        # Ajuste dinâmico de fonte
+        font_size = 36
+        leading = font_size * 1.2
+        c.setFont('Helvetica-Bold', font_size)
         
+        # Quebrar texto
+        lines = wrap(title, width=int(box.width / (font_size * 0.45)))
+        
+        # Se ultrapassar altura, reduz fonte
+        if len(lines) * leading > box.height:
+            font_size = 28
+            leading = font_size * 1.2
+            c.setFont('Helvetica-Bold', font_size)
+            lines = wrap(title, width=int(box.width / (font_size * 0.45)))
+
+        total_height = len(lines) * leading
+        # Centralizar verticalmente na caixa de título
         start_y = box.y + box.height - (box.height - total_height) / 2
         
         for i, line in enumerate(lines):
-            text_width = c.stringWidth(line, 'Helvetica-Bold', size)
-            c.drawCentredString(box.x + box.width / 2, start_y - i * line_height, line)
+            c.drawCentredString(box.x + box.width / 2, start_y - i * leading, line)
 
-    def draw_info_block(c, box, icon_func, primary_text, secondary_text=""):
-        """
-        Desenha um bloco de informação genérico com ícone, texto primário e secundário.
-        Retorna a altura total do bloco desenhado.
-        """
-        icon_size = 0.8 * cm
-        padding = 0.5 * cm
-        text_x = box.x + icon_size + padding
-        text_width = box.width - icon_size - padding
-
-        # Desenha o ícone
-        icon_func(c, box.x, box.y + (box.height - icon_size) / 2, icon_size)
-
-        # Texto Primário (ex: Nome do ministrante)
-        c.setFont('Helvetica-Bold', 16)
+    def draw_info_row(c, x, y, width, label, content, icon_char=""):
+        """Desenha uma linha de informação com ícone simples (caractere/bullet)."""
+        # Ícone/Marcador
+        c.setFillColor(COLORS['primary_medium'])
+        c.circle(x + 3*mm, y + 2*mm, 1.5*mm, fill=1, stroke=0)
+        
+        # Label (ex: "Ministrante")
+        c.setFillColor(COLORS['primary_light'])
+        c.setFont('Helvetica', 12)
+        c.drawString(x + 10*mm, y + 4*mm, label.upper())
+        
+        # Conteúdo (ex: Nome)
         c.setFillColor(COLORS['primary_dark'])
-        c.drawString(text_x, box.y + box.height * 0.55, primary_text)
+        c.setFont('Helvetica-Bold', 16)
+        # Ajustar texto longo se necessário
+        text_width = c.stringWidth(content, 'Helvetica-Bold', 16)
+        available_width = width - 15*mm
+        if text_width > available_width:
+             c.setFont('Helvetica-Bold', 12) # Reduzir fonte se muito longo
+             
+        c.drawString(x + 10*mm, y, content)
         
-        # Texto Secundário (ex: Formação)
-        if secondary_text:
-            c.setFont('Helvetica', 12)
-            c.setFillColor(COLORS['primary_light'])
-            c.drawString(text_x, box.y + box.height * 0.2, secondary_text)
-        
-        return box.height + 0.5*cm # Retorna altura do bloco mais um espaçamento
-
-    # --- Funções para Desenhar Ícones Vetoriais ---
-
-    def draw_user_icon(c, x, y, size):
-        c.setFillColor(COLORS['primary_light'])
-        c.setStrokeColor(COLORS['primary_light'])
-        c.setLineWidth(2)
-        # Cabeça
-        c.circle(x + size/2, y + size*0.65, size*0.2, fill=0)
-        # Corpo
-        path = c.beginPath()
-        path.moveTo(x + size*0.2, y + size*0.4)
-        path.lineTo(x + size*0.8, y + size*0.4)
-        path.arcTo(x, y, x + size, y + size*0.8, startAng=200, endAng=340)
-        c.drawPath(path, fill=0)
-
-    def draw_calendar_icon(c, x, y, size):
-        c.setFillColor(COLORS['primary_light'])
-        c.setStrokeColor(COLORS['primary_light'])
-        c.setLineWidth(2)
-        # Corpo do calendário
-        c.roundRect(x, y, size, size, radius=size*0.1, fill=0)
-        # Linha do topo
-        c.line(x, y + size*0.7, x + size, y + size*0.7)
-        # Pinos do fichário
-        c.rect(x + size*0.2, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
-        c.rect(x + size*0.7, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
-
-    def draw_pin_icon(c, x, y, size):
-        c.setFillColor(COLORS['primary_light'])
-        c.setStrokeColor(COLORS['primary_light'])
-        c.setLineWidth(2)
-        path = c.beginPath()
-        path.moveTo(x + size/2, y + size)
-        path.arcTo(x, y + size*0.2, x + size, y + size, startAng=180, endAng=0)
-        path.lineTo(x + size/2, y)
-        c.drawPath(path, fill=0)
-        c.circle(x + size/2, y + size*0.65, size*0.15, fill=1, stroke=0)
-
-    # --- Classe para gerenciar caixas de layout ---
-    class BoundingBox:
-        def __init__(self, x, y, width, height):
-            self.x = x
-            self.y = y
-            self.width = width
-            self.height = height
+        return 1.8*cm # Altura da linha
 
     # --- Lógica Principal ---
 
@@ -9262,98 +9223,86 @@ def gerar_placas_oficinas_pdf(evento_id):
 
     c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
     page_width, page_height = landscape(A4)
+    
+    # Margens e dimensões
+    margin = 2*cm
+    # O cartão ocupa a maior parte da página, respeitando a barra lateral
+    card_x = 3.5*cm 
+    card_y = margin
+    card_width = page_width - card_x - margin
+    card_height = page_height - 2*margin
+
+    class BoundingBox:
+        def __init__(self, x, y, width, height):
+            self.x, self.y, self.width, self.height = x, y, width, height
 
     for oficina in oficinas:
         draw_background(c, page_width, page_height)
+        draw_glass_card(c, card_x, card_y, card_width, card_height)
         
-        # Define a área do cartão principal
-        card_margin = 2.5 * cm
-        card_width = page_width - 2 * card_margin
-        card_height = page_height - 2 * card_margin
-        draw_card(c, card_margin, card_margin, card_width, card_height)
+        # Área de Conteúdo dentro do Card
+        # Dividimos o card em: Título (Topo) e Detalhes (Centro/Base)
         
-        # Define a área de conteúdo dentro do cartão
-        content_padding = 1.5 * cm
-        content_box = BoundingBox(
-            card_margin + content_padding,
-            card_margin,
-            card_width - 2 * content_padding,
-            card_height - content_padding
-        )
-        
-        # --- Desenha o Título ---
+        # Título ocupa os 40% superiores
         title_box = BoundingBox(
-            content_box.x,
-            content_box.y + content_box.height * 0.6,
-            content_box.width,
-            content_box.height * 0.4
+            card_x + 1*cm, 
+            card_y + card_height * 0.6, 
+            card_width - 2*cm, 
+            card_height * 0.35
         )
         draw_workshop_title(c, title_box, oficina.titulo)
         
-        # Posição inicial para os blocos de informação
-        current_y = content_box.y + content_box.height * 0.5
-        
-        # --- Bloco do Ministrante ---
+        # Linha divisória sutil
+        c.setStrokeColor(COLORS['accent'])
+        c.setLineWidth(2)
+        line_y = card_y + card_height * 0.55
+        c.line(card_x + 2*cm, line_y, card_x + card_width - 2*cm, line_y)
+
+        # Detalhes começam abaixo da linha
+        current_y = line_y - 2*cm
+        details_width = card_width - 4*cm
+        details_x = card_x + 2*cm
+
+        # Bloco Ministrante
         if oficina.ministrante_obj:
-            info_box = BoundingBox(content_box.x, current_y - 1.5*cm, content_box.width, 1.5*cm)
-            height_drawn = draw_info_block(
-                c, info_box, draw_user_icon,
-                f"Ministrante: {oficina.ministrante_obj.nome}",
-                oficina.ministrante_obj.formacao
-            )
-            current_y -= height_drawn
+            h = draw_info_row(c, details_x, current_y, details_width, "Ministrante", oficina.ministrante_obj.nome)
+            current_y -= h * 1.5 # Espaçamento extra
 
-        # --- Bloco da Programação ---
+        # Bloco Horário
         if oficina.dias:
-            # Helper para obter um objeto de data para ordenação, tratando strings.
+            # Ordenação segura das datas
             def get_date_for_sort(d):
-                if hasattr(d.data, 'strftime'):
-                    return d.data
-                try:
-                    # Tenta converter uma data em string (formato comum de BD).
-                    return datetime.strptime(str(d.data), '%Y-%m-%d').date()
-                except (ValueError, TypeError):
-                    # Se a conversão falhar, retorna uma data que ficará por último na ordenação.
-                    return datetime.max.date()
-
+                if hasattr(d.data, 'strftime'): return d.data
+                try: return datetime.strptime(str(d.data), '%Y-%m-%d').date()
+                except: return datetime.max.date()
+                
             dias_sorted = sorted(oficina.dias, key=get_date_for_sort)
             
-            for dia in dias_sorted:
-                # Formata a data de forma segura
-                if hasattr(dia.data, 'strftime'):
-                    data_str = dia.data.strftime('%d/%m/%Y')
-                else:
-                    data_str = str(dia.data)
-
-                # Formata a hora de início de forma segura
-                if hasattr(dia.horario_inicio, 'strftime'):
-                    inicio_str = dia.horario_inicio.strftime('%H:%M')
-                else:
-                    inicio_str = str(dia.horario_inicio)
-
-                # Formata a hora de fim de forma segura
-                if hasattr(dia.horario_fim, 'strftime'):
-                    fim_str = dia.horario_fim.strftime('%H:%M')
-                else:
-                    fim_str = str(dia.horario_fim)
+            # Formatação do primeiro/principal dia para mostrar no card
+            # Se houver múltiplos, mostramos o intervalo ou lista simples
+            texto_datas = []
+            for dia in dias_sorted[:2]: # Limitar a 2 linhas para não estourar
+                d_str = dia.data.strftime('%d/%m') if hasattr(dia.data, 'strftime') else str(dia.data)
+                h_ini = dia.horario_inicio.strftime('%H:%M') if hasattr(dia.horario_inicio, 'strftime') else str(dia.horario_inicio)
+                h_fim = dia.horario_fim.strftime('%H:%M') if hasattr(dia.horario_fim, 'strftime') else str(dia.horario_fim)
+                texto_datas.append(f"{d_str} das {h_ini} às {h_fim}")
+            
+            conteudo_data = " | ".join(texto_datas)
+            if len(dias_sorted) > 2:
+                conteudo_data += " ..."
                 
-                horario_str = f"{inicio_str} - {fim_str}"
+            h = draw_info_row(c, details_x, current_y, details_width, "Data e Horário", conteudo_data)
+            current_y -= h * 1.5
 
-                info_box = BoundingBox(content_box.x, current_y - 1.5*cm, content_box.width, 1.5*cm)
-                height_drawn = draw_info_block(c, info_box, draw_calendar_icon, data_str, horario_str)
-                current_y -= height_drawn
-
-        # --- Bloco do Local ---
+        # Bloco Local
         if hasattr(oficina, 'local') and oficina.local:
-            info_box = BoundingBox(content_box.x, current_y - 1.5*cm, content_box.width, 1.5*cm)
-            height_drawn = draw_info_block(c, info_box, draw_pin_icon, "Local", oficina.local)
-            current_y -= height_drawn
+            draw_info_row(c, details_x, current_y, details_width, "Local", oficina.local)
 
-        # --- Rodapé com nome do evento ---
-        c.setFont('Helvetica', 10)
+        # Rodapé do Evento (Fora do Card, canto inferior direito)
         c.setFillColor(COLORS['primary_light'])
-        c.drawCentredString(page_width / 2, card_margin - 1*cm, evento.nome)
-        
+        c.setFont('Helvetica', 10)
+        c.drawRightString(page_width - margin, 1*cm, f"{evento.nome}")
+
         c.showPage()
     
     c.save()
