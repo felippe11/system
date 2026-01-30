@@ -122,11 +122,35 @@
         oficinas|length }} encontrados</span>
     </div>
 
+    {% set card_colors = ['blue', 'violet', 'emerald', 'amber', 'rose', 'cyan'] %}
     {% for atividade in oficinas %}
+    {% set color = card_colors[loop.index0 % 6] %}
     <div
-      class="atividade-card bg-white dark:bg-card-dark rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden group"
+      class="atividade-card relative bg-white dark:bg-card-dark rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden group {% if atividade.inscrito %}ring-2 ring-secondary/40{% endif %}"
       data-categoria="{{ atividade.categoria or 'todas' }}">
-      <div class="p-4 flex gap-4">
+
+      <!-- Barra de cor individualizada -->
+      <div class="absolute left-0 top-0 bottom-0 w-1.5 
+        {% if color == 'blue' %}bg-blue-500
+        {% elif color == 'violet' %}bg-violet-500
+        {% elif color == 'emerald' %}bg-emerald-500
+        {% elif color == 'amber' %}bg-amber-500
+        {% elif color == 'rose' %}bg-rose-500
+        {% elif color == 'cyan' %}bg-cyan-500
+        {% endif %}"></div>
+
+      {% if atividade.inscrito %}
+      <!-- Selo de Inscrito -->
+      <div class="absolute top-3 right-3 z-10">
+        <span
+          class="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary text-white text-[10px] font-bold rounded-full shadow-md uppercase tracking-wider">
+          <span class="material-icons-round text-xs">check_circle</span>
+          Inscrito
+        </span>
+      </div>
+      {% endif %}
+
+      <div class="p-4 pl-5 flex gap-4">
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1">
             {% if atividade.categoria %}
@@ -190,21 +214,24 @@
 
           {% if atividade.inscrito %}
           <button onclick="toggleInscricao('{{ atividade.id }}', 'cancelar')"
-            class="bg-red-100 text-red-600 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-red-200 transition-all active:scale-95"
+            class="flex flex-col items-center gap-1 bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2.5 rounded-2xl shadow-lg shadow-red-200/50 transition-all active:scale-95"
             title="Cancelar Inscrição">
-            <span class="material-icons-round">remove_circle_outline</span>
+            <span class="material-icons-round text-lg">remove_circle_outline</span>
+            <span class="text-[9px] font-bold uppercase tracking-wider">Cancelar</span>
           </button>
           {% elif atividade.disponivel_para_inscricao %}
           <button onclick="toggleInscricao('{{ atividade.id }}', 'inscrever')"
-            class="bg-secondary hover:bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-secondary/20 transition-all active:scale-95"
+            class="flex flex-col items-center gap-1 bg-secondary hover:bg-emerald-600 text-white px-3 py-2.5 rounded-2xl shadow-lg shadow-secondary/30 transition-all active:scale-95"
             title="Inscrever-se">
-            <span class="material-icons-round">add_circle_outline</span>
+            <span class="material-icons-round text-lg">add_circle_outline</span>
+            <span class="text-[9px] font-bold uppercase tracking-wider">Inscrever-se</span>
           </button>
           {% else %}
           <button onclick="mostrarMotivoIndisponibilidade('{{ atividade.motivo_indisponibilidade }}')"
-            class="bg-gray-100 text-gray-400 hover:bg-gray-200 w-12 h-12 rounded-2xl flex items-center justify-center transition-all"
+            class="flex flex-col items-center gap-1 bg-gray-100 text-gray-400 hover:bg-gray-200 px-3 py-2.5 rounded-2xl transition-all"
             title="Indisponível">
-            <span class="material-icons-round">block</span>
+            <span class="material-icons-round text-lg">block</span>
+            <span class="text-[9px] font-bold uppercase tracking-wider">Indisponível</span>
           </button>
           {% endif %}
         </div>
