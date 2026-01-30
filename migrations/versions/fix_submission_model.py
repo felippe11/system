@@ -17,51 +17,62 @@ depends_on = None
 
 def upgrade():
     """Upgrade database schema to fix submission model constraints."""
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+
+    def has_column(table_name, column_name):
+        if not inspector.has_table(table_name):
+            return False
+        return any(col["name"] == column_name for col in inspector.get_columns(table_name))
 
     # ------------------------------------------------------------
     # 0) Garantir FK review/assignment -> submission com CASCADE
     #    (usamos SQL bruto p/ IF EXISTS e depois recriamos via Alembic)
     # ------------------------------------------------------------
-    op.execute("ALTER TABLE review DROP CONSTRAINT IF EXISTS review_submission_id_fkey;")
-    op.create_foreign_key(
-        "review_submission_id_fkey",
-        source_table="review",
-        referent_table="submission",
-        local_cols=["submission_id"],
-        remote_cols=["id"],
-        ondelete="CASCADE",
-    )
+    if has_column("review", "submission_id"):
+        op.execute("ALTER TABLE review DROP CONSTRAINT IF EXISTS review_submission_id_fkey;")
+        op.create_foreign_key(
+            "review_submission_id_fkey",
+            source_table="review",
+            referent_table="submission",
+            local_cols=["submission_id"],
+            remote_cols=["id"],
+            ondelete="CASCADE",
+        )
 
-    op.execute("ALTER TABLE assignment DROP CONSTRAINT IF EXISTS assignment_submission_id_fkey;")
-    op.create_foreign_key(
-        "assignment_submission_id_fkey",
-        source_table="assignment",
-        referent_table="submission",
-        local_cols=["submission_id"],
-        remote_cols=["id"],
-        ondelete="CASCADE",
-    )
+    if has_column("assignment", "submission_id"):
+        op.execute("ALTER TABLE assignment DROP CONSTRAINT IF EXISTS assignment_submission_id_fkey;")
+        op.create_foreign_key(
+            "assignment_submission_id_fkey",
+            source_table="assignment",
+            referent_table="submission",
+            local_cols=["submission_id"],
+            remote_cols=["id"],
+            ondelete="CASCADE",
+        )
 
     # ------------------------------------------------------------
     # 1) Remover filhos que apontam para submissions inválidos
     # ------------------------------------------------------------
-    op.execute(
-        """
-        DELETE FROM review r
-        USING submission s
-        WHERE r.submission_id = s.id
-          AND (s.author_id IS NULL OR s.evento_id IS NULL);
-        """
-    )
+    if has_column("review", "submission_id"):
+        op.execute(
+            """
+            DELETE FROM review r
+            USING submission s
+            WHERE r.submission_id = s.id
+              AND (s.author_id IS NULL OR s.evento_id IS NULL);
+            """
+        )
 
-    op.execute(
-        """
-        DELETE FROM assignment a
-        USING submission s
-        WHERE a.submission_id = s.id
-          AND (s.author_id IS NULL OR s.evento_id IS NULL);
-        """
-    )
+    if has_column("assignment", "submission_id"):
+        op.execute(
+            """
+            DELETE FROM assignment a
+            USING submission s
+            WHERE a.submission_id = s.id
+              AND (s.author_id IS NULL OR s.evento_id IS NULL);
+            """
+        )
 
     # ------------------------------------------------------------
     # 2) Remover submissions inválidos (sem autor ou evento)
@@ -118,9 +129,10 @@ def upgrade():
     op.execute(
         "CREATE INDEX IF NOT EXISTS idx_submission_status ON submission(status);"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_review_submission ON review(submission_id);"
-    )
+    if has_column("review", "submission_id"):
+        op.execute(
+            "CREATE INDEX IF NOT EXISTS idx_review_submission ON review(submission_id);"
+        )
     op.execute(
         "CREATE INDEX IF NOT EXISTS idx_assignment_reviewer ON assignment(reviewer_id);"
     )

@@ -41,6 +41,7 @@ def register_routes(app):
     from .patrocinador_routes import patrocinador_routes
     from .campo_routes import campo_routes
     from .checkin_routes import checkin_routes
+    from .atividade_multipla_routes import atividade_multipla_routes
     from .feedback_routes import feedback_routes
     from .reminder_routes import reminder_routes
     from .config_cliente_routes import config_cliente_routes
@@ -117,6 +118,7 @@ def register_routes(app):
     app.register_blueprint(patrocinador_routes)
     app.register_blueprint(campo_routes)
     app.register_blueprint(checkin_routes)
+    app.register_blueprint(atividade_multipla_routes)
     app.register_blueprint(feedback_routes)
     app.register_blueprint(reminder_routes)
     app.register_blueprint(config_cliente_routes)
@@ -164,6 +166,5 @@ def register_routes(app):
     app.register_blueprint(monitor_formador_routes)
     app.register_blueprint(cliente_formador_routes)
     app.register_blueprint(formador_relatorio_routes)
-
 
 
