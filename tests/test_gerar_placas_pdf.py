@@ -17,9 +17,10 @@ from services.pdf_service import gerar_placas_oficinas_pdf
 @pytest.fixture
 def app():
     from flask import Flask
-    app = Flask(__name__)
+    app = Flask(__name__, 
+                static_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static')),
+                template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates')))
     app.config['TESTING'] = True
-    app.static_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
     return app
 
 @pytest.fixture

@@ -9109,205 +9109,232 @@ from textwrap import wrap
 def gerar_placas_oficinas_pdf(evento_id):
     """
     Gera um PDF com placas das oficinas seguindo o Design System AppFiber.
+    Implementação via ReportLab para garantir compatibilidade (sem GTK3 required).
     Estilo: Clean, Tecnológico, Glassmorphism.
-    Cores: Navy (#0F172A), Electric Blue (#1E88E5), Blue Gray (#4E7597).
     """
     from models import Evento, Oficina
     from extensions import db
     from flask import current_app, send_file
     from reportlab.lib import colors
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import cm, mm
+    from reportlab.lib.colors import HexColor, Color
+    from reportlab.lib.utils import ImageReader
+    from textwrap import wrap
+    import os
+    from datetime import datetime
 
-    # --- Paleta de Cores AppFiber ---
+    # --- Paleta de Cores (Baseada no HTML) ---
     COLORS = {
-        'primary_dark': HexColor('#0F172A'),    # Adicionando Navy profundo
-        'primary_medium': HexColor('#1E88E5'),  # Electric Blue (Ação/Destaque)
-        'primary_light': HexColor('#4E7597'),   # Blue Gray (Texto secundário)
-        'accent': HexColor('#F1F5F9'),          # Surface Subtle
-        'white': HexColor('#FFFFFF'),
-        'light_gray': HexColor('#F8FAFC'),      # Surface Page
-        'shadow': Color(0, 0, 0, alpha=0.10)    # Sombra mais suave
+        'primary': HexColor('#2563eb'),        # tailwind blue-600
+        'primary_bg': HexColor('#f1f5f9'),     # slate-100
+        'slate_900': HexColor('#0f172a'),      # slate-900 (Text main)
+        'slate_500': HexColor('#64748b'),      # slate-500 (Text muted)
+        'slate_400': HexColor('#94a3b8'),      # slate-400
+        'slate_200': HexColor('#e2e8f0'),      # slate-200 (Borders)
+        'white': HexColor('#ffffff'),
+        'glass_bg': Color(1, 1, 1, alpha=0.9), # White 90% opacity
+        'shadow': Color(0, 0, 0, alpha=0.15)
     }
 
-    # --- Funções de Desenho Auxiliares ---
+    def draw_geometric_pattern(c, width, height):
+        """Desenha um padrão de pontos sutil no fundo."""
+        c.saveState()
+        c.setFillColor(COLORS['primary'])
+        c.setFillAlpha(0.05)
+        # Padrão simples de pontos
+        step = 20
+        for x in range(0, int(width), step):
+            for y in range(0, int(height), step):
+                c.circle(x, y, 0.5, fill=1, stroke=0)
+        c.restoreState()
 
-    def draw_background(c, width, height):
-        """Desenha um fundo clean com a cor da marca."""
-        c.setFillColor(COLORS['light_gray'])
-        c.rect(0, 0, width, height, fill=1, stroke=0)
-        
-        # Barra lateral decorativa (AppFiber identity)
-        c.setFillColor(COLORS['primary_dark'])
-        c.rect(0, 0, 1.5*cm, height, fill=1, stroke=0)
-        
-        # Detalhe em azul elétrico
-        c.setFillColor(COLORS['primary_medium'])
-        c.rect(1.5*cm, 0, 0.2*cm, height, fill=1, stroke=0)
+    def draw_orb(c, x, y, size, color, alpha):
+        """Desenha um orbe decorativo desfocado (simulado com transparência radial simples)."""
+        c.saveState()
+        c.setFillColor(color)
+        c.setFillAlpha(alpha)
+        c.circle(x, y, size/2, fill=1, stroke=0)
+        c.restoreState()
 
     def draw_glass_card(c, x, y, width, height):
-        """Simula um cartão com efeito glassmorphism."""
-        # Sombra suave e difusa
+        """Desenha o cartão principal com sombra e efeito glass."""
+        # Sombra (simulada com offset)
+        c.saveState()
         c.setFillColor(COLORS['shadow'])
-        c.roundRect(x + 1*mm, y - 1*mm, width, height, radius=5*mm, fill=1, stroke=0)
+        c.roundRect(x + 5, y - 5, width, height, radius=15, fill=1, stroke=0)
+        c.restoreState()
+        
+        # Cartão
+        c.saveState()
+        c.setFillColor(COLORS['glass_bg'])
+        c.setStrokeColor(COLORS['white']) # Borda branca
+        c.setLineWidth(1)
+        c.roundRect(x, y, width, height, radius=15, fill=1, stroke=1)
+        c.restoreState()
 
-        # Cartão branco
+    def draw_badge(c, x, y, text):
+        """Desenha a badge da turma (Pílula azul)."""
+        c.saveState()
+        c.setFont("Helvetica-Bold", 24)
+        text_w = c.stringWidth(text, "Helvetica-Bold", 24)
+        pad_x = 30
+        pad_y = 15
+        
+        bg_w = text_w + (pad_x * 2)
+        bg_h = 24 + (pad_y * 1.5) # Aprox height based on font
+        
+        # Centralizar badge no X, Y é o topo
+        rect_x = x - bg_w/2
+        rect_y = y - bg_h
+        
+        # Sombra
+        c.setFillColor(Color(0.14, 0.38, 0.92, 0.3)) # Shadow blue
+        c.roundRect(rect_x, rect_y - 2, bg_w, bg_h, radius=bg_h/2, fill=1, stroke=0)
+
+        # Background
+        c.setFillColor(COLORS['primary'])
+        c.roundRect(rect_x, rect_y, bg_w, bg_h, radius=bg_h/2, fill=1, stroke=0)
+        
+        # Texto
         c.setFillColor(COLORS['white'])
-        # Stroke sutil para definição
-        c.setStrokeColor(HexColor('#E2E8F0'))
-        c.setLineWidth(0.5)
-        c.roundRect(x, y, width, height, radius=5*mm, fill=1, stroke=1)
+        c.drawCentredString(x, rect_y + 12, text.upper()) # +12 ajuste vertical
+        c.restoreState()
+        return rect_y # Retorna a base da badge
 
-    def draw_workshop_title(c, box, title):
-        """Desenha o título com tipografia forte e cor primária."""
-        c.setFillColor(COLORS['primary_dark'])
+    def draw_icon_box(c, x, y, icon_char):
+        """Desenha caixa de ícone."""
+        size = 48
+        c.saveState()
+        c.setFillColor(Color(0.14, 0.38, 0.92, 0.1)) # Primary 10%
+        c.roundRect(x, y, size, size, radius=10, fill=1, stroke=0)
         
-        # Ajuste dinâmico de fonte
-        font_size = 36
-        leading = font_size * 1.2
-        c.setFont('Helvetica-Bold', font_size)
-        
-        # Quebrar texto
-        lines = wrap(title, width=int(box.width / (font_size * 0.45)))
-        
-        # Se ultrapassar altura, reduz fonte
-        if len(lines) * leading > box.height:
-            font_size = 28
-            leading = font_size * 1.2
-            c.setFont('Helvetica-Bold', font_size)
-            lines = wrap(title, width=int(box.width / (font_size * 0.45)))
+        # Placeholder para Ícone (usando caractere ou desenho simples)
+        c.setFillColor(COLORS['primary'])
+        c.setFont("Helvetica-Bold", 20)
+        c.drawCentredString(x + size/2, y + size/2 - 7, icon_char)
+        c.restoreState()
+        return size
 
-        total_height = len(lines) * leading
-        # Centralizar verticalmente na caixa de título
-        start_y = box.y + box.height - (box.height - total_height) / 2
-        
-        for i, line in enumerate(lines):
-            c.drawCentredString(box.x + box.width / 2, start_y - i * leading, line)
-
-    def draw_info_row(c, x, y, width, label, content, icon_char=""):
-        """Desenha uma linha de informação com ícone simples (caractere/bullet)."""
-        # Ícone/Marcador
-        c.setFillColor(COLORS['primary_medium'])
-        c.circle(x + 3*mm, y + 2*mm, 1.5*mm, fill=1, stroke=0)
-        
-        # Label (ex: "Ministrante")
-        c.setFillColor(COLORS['primary_light'])
-        c.setFont('Helvetica', 12)
-        c.drawString(x + 10*mm, y + 4*mm, label.upper())
-        
-        # Conteúdo (ex: Nome)
-        c.setFillColor(COLORS['primary_dark'])
-        c.setFont('Helvetica-Bold', 16)
-        # Ajustar texto longo se necessário
-        text_width = c.stringWidth(content, 'Helvetica-Bold', 16)
-        available_width = width - 15*mm
-        if text_width > available_width:
-             c.setFont('Helvetica-Bold', 12) # Reduzir fonte se muito longo
-             
-        c.drawString(x + 10*mm, y, content)
-        
-        return 1.8*cm # Altura da linha
-
-    # --- Lógica Principal ---
-
+    # --- Setup ---
     evento = Evento.query.get_or_404(evento_id)
-    oficinas = (
-        Oficina.query
-        .filter_by(evento_id=evento_id)
-        .options(db.joinedload(Oficina.dias), db.joinedload(Oficina.ministrante_obj))
-        .all()
-    )
-
-    pdf_dir = os.path.join(current_app.static_folder, 'placas', str(evento_id))
-    os.makedirs(pdf_dir, exist_ok=True)
-    filename = f"placas_oficinas_{evento_id}.pdf"
-    pdf_path = os.path.join(pdf_dir, filename)
-
+    oficinas = Oficina.query.filter_by(evento_id=evento_id).all()
+    
+    pdf_filename = f"placas_oficinas_{evento_id}.pdf"
+    output_dir = os.path.join(current_app.static_folder, 'placas', str(evento_id))
+    os.makedirs(output_dir, exist_ok=True)
+    pdf_path = os.path.join(output_dir, pdf_filename)
+    
     c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
-    page_width, page_height = landscape(A4)
+    width, height = landscape(A4)
     
-    # Margens e dimensões
-    margin = 2*cm
-    # O cartão ocupa a maior parte da página, respeitando a barra lateral
-    card_x = 3.5*cm 
-    card_y = margin
-    card_width = page_width - card_x - margin
-    card_height = page_height - 2*margin
-
-    class BoundingBox:
-        def __init__(self, x, y, width, height):
-            self.x, self.y, self.width, self.height = x, y, width, height
-
     for oficina in oficinas:
-        draw_background(c, page_width, page_height)
-        draw_glass_card(c, card_x, card_y, card_width, card_height)
+        # Fundo Base
+        c.setFillColor(COLORS['primary_bg'])
+        c.rect(0, 0, width, height, fill=1, stroke=0)
         
-        # Área de Conteúdo dentro do Card
-        # Dividimos o card em: Título (Topo) e Detalhes (Centro/Base)
+        # Orbes Decorativos
+        draw_orb(c, width, height, 400, COLORS['primary'], 0.1)
+        draw_orb(c, width*0.2, 0, 300, HexColor('#60a5fa'), 0.1)
         
-        # Título ocupa os 40% superiores
-        title_box = BoundingBox(
-            card_x + 1*cm, 
-            card_y + card_height * 0.6, 
-            card_width - 2*cm, 
-            card_height * 0.35
-        )
-        draw_workshop_title(c, title_box, oficina.titulo)
+        draw_geometric_pattern(c, width, height)
         
-        # Linha divisória sutil
-        c.setStrokeColor(COLORS['accent'])
-        c.setLineWidth(2)
-        line_y = card_y + card_height * 0.55
-        c.line(card_x + 2*cm, line_y, card_x + card_width - 2*cm, line_y)
-
-        # Detalhes começam abaixo da linha
-        current_y = line_y - 2*cm
-        details_width = card_width - 4*cm
-        details_x = card_x + 2*cm
-
-        # Bloco Ministrante
-        if oficina.ministrante_obj:
-            h = draw_info_row(c, details_x, current_y, details_width, "Ministrante", oficina.ministrante_obj.nome)
-            current_y -= h * 1.5 # Espaçamento extra
-
-        # Bloco Horário
-        if oficina.dias:
-            # Ordenação segura das datas
-            def get_date_for_sort(d):
-                if hasattr(d.data, 'strftime'): return d.data
-                try: return datetime.strptime(str(d.data), '%Y-%m-%d').date()
-                except: return datetime.max.date()
-                
-            dias_sorted = sorted(oficina.dias, key=get_date_for_sort)
+        # Container Principal
+        card_w = width * 0.85
+        card_h = height * 0.85
+        card_x = (width - card_w) / 2
+        card_y = (height - card_h) / 2
+        
+        draw_glass_card(c, card_x, card_y, card_w, card_h)
+        
+        # --- Conteúdo ---
+        active_y = card_y + card_h - 60
+        center_x = width / 2
+        
+        # Título
+        title = oficina.titulo.upper()
+        c.setFillColor(COLORS['slate_900'])
+        c.setFont("Helvetica-Bold", 36)
+        
+        # Quebra de linha básica do título
+        lines = wrap(title, width=40) # Aprox chars
+        for line in lines:
+            c.drawCentredString(center_x, active_y, line)
+            active_y -= 45
             
-            # Formatação do primeiro/principal dia para mostrar no card
-            # Se houver múltiplos, mostramos o intervalo ou lista simples
-            texto_datas = []
-            for dia in dias_sorted[:2]: # Limitar a 2 linhas para não estourar
-                d_str = dia.data.strftime('%d/%m') if hasattr(dia.data, 'strftime') else str(dia.data)
-                h_ini = dia.horario_inicio.strftime('%H:%M') if hasattr(dia.horario_inicio, 'strftime') else str(dia.horario_inicio)
-                h_fim = dia.horario_fim.strftime('%H:%M') if hasattr(dia.horario_fim, 'strftime') else str(dia.horario_fim)
-                texto_datas.append(f"{d_str} das {h_ini} às {h_fim}")
+        active_y -= 20
+        
+        # Turma (Badge)
+        if hasattr(oficina, 'turma') and oficina.turma:
+            base_badge = draw_badge(c, center_x, active_y, f"TURMA {oficina.turma}")
+            active_y = base_badge - 40
+        else:
+            active_y -= 20
             
-            conteudo_data = " | ".join(texto_datas)
-            if len(dias_sorted) > 2:
-                conteudo_data += " ..."
-                
-            h = draw_info_row(c, details_x, current_y, details_width, "Data e Horário", conteudo_data)
-            current_y -= h * 1.5
+        # Divisor
+        c.setStrokeColor(COLORS['slate_200'])
+        c.setLineWidth(1)
+        c.line(center_x - 200, active_y, center_x + 200, active_y)
+        active_y -= 40
+        
+        # Grid Info (Data e Local)
+        # Esquerda: Data | Direita: Local
+        # Posições relativas ao centro
+        
+        # Data
+        data_x = center_x - 150
+        box_data_y = active_y - 50 
+        icon_size = draw_icon_box(c, data_x - 180, box_data_y, "D") # D de Data
+        
+        c.setFillColor(COLORS['slate_500'])
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(data_x - 120, box_data_y + 35, "DATA E HORÁRIO")
+        
+        c.setFillColor(COLORS['slate_900'])
+        c.setFont("Helvetica-Bold", 14)
+        
+        dias_str_lines = []
+        for dia in oficina.dias:
+             d_txt = dia.data.strftime('%d/%m') if hasattr(dia.data, 'strftime') else str(dia.data)
+             h_ini = dia.horario_inicio.strftime('%H:%M') if hasattr(dia.horario_inicio, 'strftime') else str(dia.horario_inicio)
+             h_fim = dia.horario_fim.strftime('%H:%M') if hasattr(dia.horario_fim, 'strftime') else str(dia.horario_fim)
+             dias_str_lines.append(f"{d_txt} das {h_ini} às {h_fim}")
 
-        # Bloco Local
-        if hasattr(oficina, 'local') and oficina.local:
-            draw_info_row(c, details_x, current_y, details_width, "Local", oficina.local)
-
-        # Rodapé do Evento (Fora do Card, canto inferior direito)
-        c.setFillColor(COLORS['primary_light'])
-        c.setFont('Helvetica', 10)
-        c.drawRightString(page_width - margin, 1*cm, f"{evento.nome}")
-
+        y_offset = 0
+        for line in dias_str_lines[:3]: # Limit 3
+            c.drawString(data_x - 120, box_data_y + 15 - y_offset, line)
+            y_offset += 16
+            
+        # Local
+        loc_x = center_x + 50
+        draw_icon_box(c, loc_x, box_data_y, "L") # L de Local
+        
+        c.setFillColor(COLORS['slate_500'])
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(loc_x + 60, box_data_y + 35, "LOCALIZAÇÃO")
+        
+        c.setFillColor(COLORS['slate_900'])
+        c.setFont("Helvetica-Bold", 14)
+        local_txt = oficina.local or "A definir"
+        # Wrap local text
+        local_lines = wrap(local_txt, 25)
+        y_offset = 0
+        for line in local_lines[:3]:
+            c.drawString(loc_x + 60, box_data_y + 15 - y_offset, line)
+            y_offset += 16
+            
+        # Footer (Nome do Evento)
+        footer_y = card_y + 20
+        c.setFillColor(COLORS['slate_400'])
+        c.setFont("Helvetica-Oblique", 10)
+        c.drawRightString(card_x + card_w - 40, footer_y, evento.nome)
+        
         c.showPage()
-    
+        
     c.save()
-    
-    return send_file(pdf_path, as_attachment=True, download_name=f"Placas_{evento.nome}.pdf", mimetype='application/pdf')
+    return send_file(pdf_path, as_attachment=True)
+
 
 
 def gerar_etiquetas(cliente_id):

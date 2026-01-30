@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Placa Oficina</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Outfit:wght@500;700&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Reset & Base */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            /* bg-background-light */
+            color: #0f172a;
+            /* text-slate-900 (default) */
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* Utility approximations */
+        .fixed {
+            position: fixed;
+        }
+
+        .absolute {
+            position: absolute;
+        }
+
+        .relative {
+            position: relative;
+        }
+
+        .inset-0 {
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .h-full {
+            height: 100%;
+        }
+
+        .h-px {
+            height: 1px;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-center {
+            justify-content: center;
+        }
+
+        .justify-end {
+            justify-content: flex-end;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .font-extrabold {
+            font-weight: 800;
+        }
+
+        .font-medium {
+            font-weight: 500;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .rounded-full {
+            border-radius: 9999px;
+        }
+
+        .rounded-xl {
+            border-radius: 0.75rem;
+        }
+
+        .rounded-3xl {
+            border-radius: 1.5rem;
+        }
+
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .shadow-2xl {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .overflow-hidden {
+            overflow: hidden;
+        }
+
+        .z-10 {
+            z-index: -10;
+        }
+
+        .z-20 {
+            z-index: -20;
+        }
+
+        /* Spacing */
+        .p-8 {
+            padding: 2rem;
+        }
+
+        .p-12 {
+            padding: 3rem;
+        }
+
+        .p-20 {
+            padding: 5rem;
+        }
+
+        .px-8 {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        .px-12 {
+            padding-left: 3rem;
+            padding-right: 3rem;
+        }
+
+        .py-3 {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+
+        .py-4 {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        .mt-8 {
+            margin-top: 2rem;
+        }
+
+        .mb-1 {
+            margin-bottom: 0.25rem;
+        }
+
+        .my-16 {
+            margin-top: 4rem;
+            margin-bottom: 4rem;
+        }
+
+        .gap-4 {
+            gap: 1rem;
+        }
+
+        .gap-12 {
+            gap: 3rem;
+        }
+
+        /* Typography */
+        .font-display {
+            font-family: 'Outfit', 'Inter', sans-serif;
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+            line-height: 1rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+        }
+
+        .text-xl {
+            font-size: 1.25rem;
+            line-height: 1.75rem;
+        }
+
+        .text-2xl {
+            font-size: 1.5rem;
+            line-height: 2rem;
+        }
+
+        .text-3xl {
+            font-size: 1.875rem;
+            line-height: 2.25rem;
+        }
+
+        .text-4xl {
+            font-size: 2.25rem;
+            line-height: 2.5rem;
+        }
+
+        .text-5xl {
+            font-size: 3rem;
+            line-height: 1;
+        }
+
+        .text-6xl {
+            font-size: 3.75rem;
+            line-height: 1;
+        }
+
+        .leading-tight {
+            line-height: 1.25;
+        }
+
+        .tracking-tight {
+            letter-spacing: -0.025em;
+        }
+
+        .tracking-widest {
+            letter-spacing: 0.1em;
+        }
+
+        /* Colors */
+        .text-white {
+            color: #ffffff;
+        }
+
+        .text-slate-400 {
+            color: #94a3b8;
+        }
+
+        .text-slate-500 {
+            color: #64748b;
+        }
+
+        .text-slate-800 {
+            color: #1e293b;
+        }
+
+        .text-slate-900 {
+            color: #0f172a;
+        }
+
+        .text-primary {
+            color: #2563eb;
+        }
+
+        .bg-white {
+            background-color: #ffffff;
+        }
+
+        .bg-primary {
+            background-color: #2563eb;
+        }
+
+        .bg-primary-10 {
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+
+        /* bg-primary/10 */
+        .bg-slate-50 {
+            background-color: #f8fafc;
+        }
+
+        .bg-slate-200 {
+            background-color: #e2e8f0;
+        }
+
+        .bg-sidebar {
+            background-color: #0a1224;
+        }
+
+        .border-white {
+            border-color: #ffffff;
+        }
+
+        .border-slate-100 {
+            border-color: #f1f5f9;
+        }
+
+        .border {
+            border-width: 1px;
+            border-style: solid;
+        }
+
+        .border-t {
+            border-top-width: 1px;
+            border-top-style: solid;
+        }
+
+        /* Custom Visuals */
+        .glass-effect {
+            /* WeasyPrint doesn't support backdrop-filter perfectly, so we fake it with opacity */
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+
+        .geometric-pattern {
+            background-color: transparent;
+            background-image: radial-gradient(#2563eb 0.5px, transparent 0.5px), radial-gradient(#2563eb 0.5px, #f1f5f9 0.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            opacity: 0.05;
+        }
+
+        /* Layout modifications */
+        .max-w-5xl {
+            max-width: 64rem;
+            width: 100%;
+        }
+
+        .max-w-3xl {
+            max-width: 48rem;
+            width: 100%;
+        }
+
+        .max-w-2xl {
+            max-width: 42rem;
+            width: 100%;
+        }
+
+        .w-12 {
+            width: 3rem;
+        }
+
+        .h-12 {
+            height: 3rem;
+        }
+
+        .w-4 {
+            width: 1rem;
+        }
+
+        .w-2 {
+            width: 0.5rem;
+        }
+
+        .shrink-0 {
+            flex-shrink: 0;
+        }
+
+        /* Decor Elements */
+        .decor-bar-left {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 1rem;
+            background-color: #0a1224;
+        }
+
+        .decor-bar-line {
+            position: fixed;
+            left: 1rem;
+            top: 0;
+            height: 100%;
+            width: 0.5rem;
+            background-color: #2563eb;
+        }
+
+        .main-container {
+            /* Center vertically and horizontally on the page */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 1000px;
+        }
+
+        .card-container {
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .grid-cols-2 {
+            display: flex;
+            /* WeasyPrint flex grid approx */
+            flex-wrap: wrap;
+        }
+
+        .grid-cols-2>div {
+            flex: 1;
+            min-width: 45%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="decor-bar-left"></div>
+    <div class="decor-bar-line"></div>
+
+    <main class="main-container">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 geometric-pattern rounded-3xl z-10"></div>
+
+        <div class="card-container">
+            <div class="p-12 px-12 py-4 flex-col items-center text-center">
+
+                <!-- Workshop Title -->
+                <h1 class="font-display font-extrabold text-4xl text-slate-900 leading-tight uppercase tracking-tight"
+                    style="margin-bottom: 2rem; margin-top: 2rem;">
+                    {{ workshop.titulo }}
+                </h1>
+
+                <!-- Turma Badge -->
+                {% if workshop.turma %}
+                <div class="mt-8">
+                    <div
+                        style="display: inline-block; padding: 0.75rem 2rem; background-color: #2563eb; border-radius: 9999px; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);">
+                        <span class="text-white font-display font-bold text-3xl uppercase tracking-widest">
+                            {{ workshop.turma }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Divider -->
+                <div class="h-px bg-slate-200 my-16" style="margin-left: auto; margin-right: auto; width: 80%;"></div>
+
+                <!-- Info Grid -->
+                <!-- Using a table for better grid stability in PDF if flex fails, but flex works in WeasyPrint mostly. -->
+                <div class="grid-cols-2 gap-12"
+                    style="display: flex; justify-content: center; gap: 3rem; margin-bottom: 3rem;">
+
+                    <!-- Date/Time -->
+                    <div class="flex items-center gap-4 text-left" style="flex: 0 1 auto;">
+                        <div class="w-12 h-12 rounded-xl bg-primary-10 flex items-center justify-center shrink-0"
+                            style="display: inline-flex;">
+                            <!-- Material Icon fallback content or image -->
+                            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgOTYgOTYwIDk2MCIgd2lkdGg9IjI0IiBmaWxsPSIjMjU2M2ViIj48cGF0aCBkPSJNMjAwIDg1NnEtMzMgMC01Ni41LTIzLjVUMTIwIDc3NlYyOThxMC0zMyAyMy41LTU2LjVUMjAwIDIxOGg0MHYtODBoODB2ODB0MzIwIDIxOHYtODBoODB2ODB0NDAgMjE4cTAgMzMtMjMuNSA1Ni41VDg4MCA3NzZIMjAwZm0wLTgwaDY4MHYtNDgwSDIwMHY0ODBabTAtNDgwdjQ4MC00ODBabTM0MCAyNDBxLTI1IDAtNDIuNS0xNy41VCA0ODAgNTU2cTAtMjUgMTcuNS00Mi41VDU0MCA0OTZxMjUgMCA0Mi41IDE3LjVUNTkwIDU1NnEwIDI1LTE3LjUgNDIuNVQ1NDAgNTk2WiIvPjwvc3ZnPg=="
+                                width="24" height="24" />
+                        </div>
+                        <div style="margin-left: 1rem;">
+                            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Data e Horário
+                            </p>
+                            <p class="text-xl font-bold text-slate-800">
+                                {% for dia in workshop.dias %}
+                                {{ dia.data|format_date }} <br> {{ dia.inicio }} às {{ dia.fim }}
+                                {% endfor %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="flex items-center gap-4 text-left" style="flex: 0 1 auto;">
+                        <div class="w-12 h-12 rounded-xl bg-primary-10 flex items-center justify-center shrink-0"
+                            style="display: inline-flex;">
+                            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgOTYgOTYwIDk2MCIgd2lkdGg9IjI0IiBmaWxsPSIjMjU2M2ViIj48cGF0aCBkPSJNNDgwIDg5NnEtMTMzLTEzMy0yMDYuNS0yNjJUNDE5NiAzOTZxMC0xMTggODEuNS0xOTdUNDgwIDEyMHExMTggMCAxOTkgNzkuNVQ3NjAgMzk2cTAgMTMzLTczLjUgMjYyVDQ4MCA4OTZabTAtNDIwcTMzIDAgNTYuNS0yMy41VDU2MCAzOTZxMC0zMy0yMy41LTU2LjVUNDgwIDMxNnEtMzMgMC01Ni41IDIzLjVUNDAwIDM5NnEwIDMzIDIzLjUgNTYuNVQ0ODAgNDc2WiIvPjwvc3ZnPg=="
+                                width="24" height="24" />
+                        </div>
+                        <div style="margin-left: 1rem;">
+                            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Localização</p>
+                            <p class="text-xl font-bold text-slate-800">{{ workshop.local }}</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-slate-50 px-12 py-4 border-t border-slate-100 flex justify-end" style="text-align: right;">
+                <p class="text-xs font-medium text-slate-400 italic">
+                    {{ workshop.evento_nome }}
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Background Orbs -->
+    <div class="fixed top-0 right-0 z-20 w-1/3 h-1/3 bg-primary-10 rounded-full"
+        style="opacity: 0.5; filter: blur(80px); right: -100px; top: -100px; width: 400px; height: 400px; background-color: rgba(37, 99, 235, 0.1);">
+    </div>
+    <div class="fixed bottom-0 left-1/4 z-20 w-1/4 h-1/4 bg-blue-400 rounded-full"
+        style="opacity: 0.1; filter: blur(80px); left: 20%; bottom: -50px; width: 300px; height: 300px;"></div>
+
+</body>
+
+</html>

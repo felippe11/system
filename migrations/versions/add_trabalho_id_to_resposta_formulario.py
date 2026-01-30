@@ -17,28 +17,57 @@ depends_on = None
 
 
 def upgrade():
-    # Add trabalho_id column to respostas_formulario table
-    op.add_column('respostas_formulario', sa.Column('trabalho_id', sa.Integer(), nullable=True))
-    
-    # Add foreign key constraint
-    op.create_foreign_key(
-        'fk_respostas_formulario_trabalho_id',
-        'respostas_formulario', 'submission',
-        ['trabalho_id'], ['id']
-    )
-    
-    # Make formulario_id and usuario_id nullable
-    op.alter_column('respostas_formulario', 'formulario_id', nullable=True)
-    op.alter_column('respostas_formulario', 'usuario_id', nullable=True)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_cols = {
+        col["name"] for col in inspector.get_columns("respostas_formulario")
+    }
+
+    if "trabalho_id" not in existing_cols:
+        op.add_column(
+            "respostas_formulario",
+            sa.Column("trabalho_id", sa.Integer(), nullable=True),
+        )
+
+    existing_fks = {
+        fk["name"] for fk in inspector.get_foreign_keys("respostas_formulario")
+    }
+    if "fk_respostas_formulario_trabalho_id" not in existing_fks:
+        op.create_foreign_key(
+            "fk_respostas_formulario_trabalho_id",
+            "respostas_formulario",
+            "submission",
+            ["trabalho_id"],
+            ["id"],
+        )
+
+    if "formulario_id" in existing_cols:
+        op.alter_column("respostas_formulario", "formulario_id", nullable=True)
+    if "usuario_id" in existing_cols:
+        op.alter_column("respostas_formulario", "usuario_id", nullable=True)
 
 
 def downgrade():
-    # Remove foreign key constraint
-    op.drop_constraint('fk_respostas_formulario_trabalho_id', 'respostas_formulario', type_='foreignkey')
-    
-    # Remove trabalho_id column
-    op.drop_column('respostas_formulario', 'trabalho_id')
-    
-    # Make formulario_id and usuario_id not nullable again
-    op.alter_column('respostas_formulario', 'formulario_id', nullable=False)
-    op.alter_column('respostas_formulario', 'usuario_id', nullable=False)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_cols = {
+        col["name"] for col in inspector.get_columns("respostas_formulario")
+    }
+    existing_fks = {
+        fk["name"] for fk in inspector.get_foreign_keys("respostas_formulario")
+    }
+
+    if "fk_respostas_formulario_trabalho_id" in existing_fks:
+        op.drop_constraint(
+            "fk_respostas_formulario_trabalho_id",
+            "respostas_formulario",
+            type_="foreignkey",
+        )
+
+    if "trabalho_id" in existing_cols:
+        op.drop_column("respostas_formulario", "trabalho_id")
+
+    if "formulario_id" in existing_cols:
+        op.alter_column("respostas_formulario", "formulario_id", nullable=False)
+    if "usuario_id" in existing_cols:
+        op.alter_column("respostas_formulario", "usuario_id", nullable=False)
