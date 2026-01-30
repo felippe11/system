@@ -107,8 +107,9 @@
                                     {% if item.ministrante %}
                                     <div class="speaker-card" onclick="openSpeakerModal('{{ item.ministrante.nome }}', '{{ item.ministrante.formacao }}', '{{ (item.ministrante.foto or 'default-profile.png') | media_url }}')">
                                         <img src="{{ (item.ministrante.foto or 'default-profile.png') | media_url }}"
-                                             alt="{{ item.ministrante.nome }}" 
-                                             class="speaker-photo">
+                                             alt="{{ item.ministrante.nome }}"
+                                             class="speaker-photo"
+                                             onerror="this.onerror=null;this.src='{{ 'default-profile.png' | media_url }}';">
                                         <span class="speaker-name">{{ item.ministrante.nome }}</span>
                                     </div>
                                     {% endif %}
@@ -118,7 +119,8 @@
                                         <div class="speaker-card" onclick="openSpeakerModal('{{ m.nome }}', '{{ m.formacao }}', '{{ (m.foto or 'default-profile.png') | media_url }}')">
                                             <img src="{{ (m.foto or 'default-profile.png') | media_url }}"
                                                  alt="{{ m.nome }}"
-                                                 class="speaker-photo">
+                                                 class="speaker-photo"
+                                                 onerror="this.onerror=null;this.src='{{ 'default-profile.png' | media_url }}';">
                                             <span class="speaker-name">{{ m.nome }}</span>
                                         </div>
                                         {% endfor %}
@@ -147,7 +149,8 @@
                 <div class="speaker-card" onclick="openSpeakerModal('{{ ministrante.nome }}', '{{ ministrante.formacao }}', '{{ (ministrante.foto or 'default-profile.png') | media_url }}')">
                     <img src="{{ (ministrante.foto or 'default-profile.png') | media_url }}"
                          alt="{{ ministrante.nome }}"
-                         class="speaker-photo">
+                         class="speaker-photo"
+                         onerror="this.onerror=null;this.src='{{ 'default-profile.png' | media_url }}';">
                     <div class="speaker-info">
                         <h3 class="speaker-name">{{ ministrante.nome }}</h3>
                         <p class="speaker-bio">{{ ministrante.formacao }}</p>
@@ -482,10 +485,17 @@
         }
     }
     
+    const defaultSpeakerPhoto = "{{ 'default-profile.png' | media_url }}";
+
     function openSpeakerModal(name, bio, photo) {
         document.getElementById('speakerModalName').textContent = name;
         document.getElementById('speakerModalBio').textContent = bio;
-        document.getElementById('speakerModalPhoto').src = photo;
+        const photoEl = document.getElementById('speakerModalPhoto');
+        photoEl.onerror = () => {
+            photoEl.onerror = null;
+            photoEl.src = defaultSpeakerPhoto;
+        };
+        photoEl.src = photo || defaultSpeakerPhoto;
         document.getElementById('speakerModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
         document.body.classList.add('modal-open');
