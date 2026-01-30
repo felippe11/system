@@ -21,52 +21,59 @@ depends_on = None
 
 def upgrade():
     conn = op.get_bind()
-    rows = conn.execute(
-        sa.text(
-            """
-            SELECT id, titulo, resumo, arquivo_pdf, area_tematica, locator,
-                   status, usuario_id, evento_id
-            FROM trabalhos_cientificos
-            """
-        )
-    ).fetchall()
+    inspector = sa.inspect(conn)
+    has_trabalhos = inspector.has_table("trabalhos_cientificos")
 
-    for row in rows:
-        code = uuid.uuid4().hex[:8]
-        attrs = (
-            json.dumps({"area_tematica": row.area_tematica})
-            if row.area_tematica
-            else None
-        )
-        conn.execute(
+    if has_trabalhos:
+        rows = conn.execute(
             sa.text(
                 """
-                INSERT INTO submission (
-                    id, title, abstract, file_path, locator, status,
-                    author_id, evento_id, code_hash, attributes
-                ) VALUES (
-                    :id, :title, :abstract, :file_path, :locator, :status,
-                    :author_id, :evento_id, :code_hash, :attributes
-                )
+                SELECT id, titulo, resumo, arquivo_pdf, area_tematica, locator,
+                       status, usuario_id, evento_id
+                FROM trabalhos_cientificos
                 """
-            ),
-            {
-                "id": row.id,
-                "title": row.titulo,
-                "abstract": row.resumo,
-                "file_path": row.arquivo_pdf,
-                "locator": row.locator,
-                "status": row.status,
-                "author_id": row.usuario_id,
-                "evento_id": row.evento_id,
-                "code_hash": generate_password_hash(code, method="pbkdf2:sha256"),
-                "attributes": attrs,
-            },
-        )
+            )
+        ).fetchall()
 
-    op.drop_table("avaliacao_trabalho")
-    op.drop_table("apresentacao_trabalho")
-    op.drop_table("trabalhos_cientificos")
+        for row in rows:
+            code = uuid.uuid4().hex[:8]
+            attrs = (
+                json.dumps({"area_tematica": row.area_tematica})
+                if row.area_tematica
+                else None
+            )
+            conn.execute(
+                sa.text(
+                    """
+                    INSERT INTO submission (
+                        id, title, abstract, file_path, locator, status,
+                        author_id, evento_id, code_hash, attributes
+                    ) VALUES (
+                        :id, :title, :abstract, :file_path, :locator, :status,
+                        :author_id, :evento_id, :code_hash, :attributes
+                    )
+                    """
+                ),
+                {
+                    "id": row.id,
+                    "title": row.titulo,
+                    "abstract": row.resumo,
+                    "file_path": row.arquivo_pdf,
+                    "locator": row.locator,
+                    "status": row.status,
+                    "author_id": row.usuario_id,
+                    "evento_id": row.evento_id,
+                    "code_hash": generate_password_hash(
+                        code, method="pbkdf2:sha256"
+                    ),
+                    "attributes": attrs,
+                },
+            )
+
+    # Drop legacy tables only if they exist to keep migration idempotent.
+    conn.execute(sa.text("DROP TABLE IF EXISTS avaliacao_trabalho"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS apresentacao_trabalho"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS trabalhos_cientificos"))
 
 
 def downgrade():
