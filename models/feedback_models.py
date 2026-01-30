@@ -17,6 +17,45 @@ class TipoPergunta(enum.Enum):
     SIM_NAO = "sim_nao"
 
 
+class FeedbackTemplate(db.Model):
+    """Modelo para templates de feedback."""
+    __tablename__ = "feedback_templates"
+
+    id = Column(Integer, primary_key=True)
+    cliente_id = Column(Integer, ForeignKey("cliente.id"), nullable=False)
+    nome = Column(String(120), nullable=False)
+    descricao = Column(Text, nullable=True)
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    cliente = relationship("Cliente", backref="feedback_templates")
+    perguntas = relationship(
+        "PerguntaFeedback",
+        backref="template",
+        primaryjoin="FeedbackTemplate.id==PerguntaFeedback.template_id",
+    )
+
+    def __repr__(self):
+        return f"<FeedbackTemplate {self.nome}>"
+
+
+class FeedbackTemplateOficina(db.Model):
+    """Vincula um template a uma oficina."""
+    __tablename__ = "feedback_template_oficina"
+
+    id = Column(Integer, primary_key=True)
+    template_id = Column(Integer, ForeignKey("feedback_templates.id"), nullable=False)
+    oficina_id = Column(Integer, ForeignKey("oficina.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    template = relationship("FeedbackTemplate", backref="oficinas_vinculadas")
+    oficina = relationship("Oficina", backref="feedback_template_vinculo")
+
+    def __repr__(self):
+        return f"<FeedbackTemplateOficina template={self.template_id} oficina={self.oficina_id}>"
+
+
 class PerguntaFeedback(db.Model):
     """Modelo para perguntas personalizadas de feedback definidas pelo cliente."""
     __tablename__ = 'perguntas_feedback'
@@ -24,6 +63,7 @@ class PerguntaFeedback(db.Model):
     id = Column(Integer, primary_key=True)
     cliente_id = Column(Integer, ForeignKey('cliente.id'), nullable=False)
     oficina_id = Column(Integer, ForeignKey('oficina.id'), nullable=True)  # Se None, aplica a todas as oficinas
+    template_id = Column(Integer, ForeignKey("feedback_templates.id"), nullable=True)
     atividade_id = Column(Integer, nullable=True)  # ID opcional para vincular a uma atividade específica
     titulo = Column(String(255), nullable=False)
     descricao = Column(Text, nullable=True)
@@ -47,6 +87,7 @@ class PerguntaFeedback(db.Model):
         """Converte o objeto para dicionário."""
         return {
             'id': self.id,
+            'template_id': self.template_id,
             'titulo': self.titulo,
             'descricao': self.descricao,
             'tipo': self.tipo.value,
@@ -63,7 +104,7 @@ class RespostaFeedback(db.Model):
     
     id = Column(Integer, primary_key=True)
     pergunta_id = Column(Integer, ForeignKey('perguntas_feedback.id'), nullable=False)
-    usuario_id = Column(Integer, ForeignKey('usuario.id'), nullable=False)
+    usuario_id = Column(Integer, ForeignKey('usuario.id'), nullable=True)
     oficina_id = Column(Integer, ForeignKey('oficina.id'), nullable=False)
     resposta_texto = Column(Text, nullable=True)
     resposta_numerica = Column(Integer, nullable=True)

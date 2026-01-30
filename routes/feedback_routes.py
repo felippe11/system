@@ -13,6 +13,8 @@ from models import (
     Feedback,
     Usuario,
     Evento,
+    FeedbackTemplate,
+    FeedbackTemplateOficina,
 )
 from services.feedback_service import FeedbackService
 from extensions import db
@@ -53,6 +55,9 @@ def criar_pergunta(oficina_id):
     if request.method == 'POST':
         try:
             data = request.get_json()
+
+            # Se a oficina estiver vinculada a um template, desfaz o vínculo e copia as perguntas
+            FeedbackService.desvincular_oficina(oficina_id)
             
             pergunta = FeedbackService.criar_pergunta(
                 cliente_id=current_user.cliente_id,
@@ -118,6 +123,20 @@ def editar_pergunta(pergunta_id):
             }), 400
     
     return render_template('feedback/editar_pergunta.html', pergunta=pergunta)
+
+
+@feedback_routes.route('/feedback/perguntas/detalhes/<int:pergunta_id>')
+@login_required
+def detalhes_pergunta(pergunta_id):
+    pergunta = PerguntaFeedback.query.get_or_404(pergunta_id)
+    data = pergunta.to_dict()
+    try:
+        data["opcoes"] = json.loads(pergunta.opcoes) if pergunta.opcoes else []
+    except Exception:
+        data["opcoes"] = []
+    data["oficina_id"] = pergunta.oficina_id
+    data["atividade_id"] = pergunta.atividade_id
+    return jsonify(data)
 
 
 @feedback_routes.route('/feedback/perguntas/<int:pergunta_id>/deletar', methods=['POST'])
@@ -213,6 +232,36 @@ def salvar_feedback(token):
         }), 500
 
 
+@feedback_routes.route('/feedback/responder/oficina/<int:oficina_id>')
+def responder_feedback_publico(oficina_id):
+    """Página pública para responder feedback por oficina."""
+    oficina = Oficina.query.get_or_404(oficina_id)
+    perguntas = FeedbackService.listar_perguntas(oficina.cliente_id, oficina.id)
+    return render_template(
+        'feedback/responder_feedback_publico.html',
+        oficina=oficina,
+        perguntas=perguntas,
+    )
+
+
+@feedback_routes.route('/feedback/responder/oficina/<int:oficina_id>', methods=['POST'])
+def salvar_feedback_publico(oficina_id):
+    """Salvar respostas públicas de feedback."""
+    try:
+        data = request.get_json()
+        respostas = data.get('respostas', {})
+        FeedbackService.salvar_respostas_publico(oficina_id, respostas)
+        return jsonify({
+            'success': True,
+            'message': 'Feedback enviado com sucesso! Obrigado pela sua participação.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao salvar feedback: {str(e)}'
+        }), 500
+
+
 @feedback_routes.route('/feedback/estatisticas/<int:oficina_id>')
 @login_required
 def estatisticas_feedback(oficina_id):
@@ -270,8 +319,12 @@ def gerar_qr_code_geral(oficina_id):
         from io import BytesIO
         from flask import Response
         
-        # URL para o feedback da oficina
-        feedback_url = url_for('feedback_routes.feedback_oficina', oficina_id=oficina_id, _external=True)
+        # URL pública para responder feedback da oficina
+        feedback_url = url_for(
+            'feedback_routes.responder_feedback_publico',
+            oficina_id=oficina_id,
+            _external=True
+        )
         
         # Criar QR Code
         qr = qrcode.QRCode(
@@ -420,6 +473,8 @@ def gerenciar_perguntas():
     if not cliente_ids:
         oficinas = []
         eventos = []
+        templates = []
+        template_padrao = None
         print("DEBUG: Usuário sem clientes associados. Nenhuma oficina carregada.")
     else:
         oficinas = (
@@ -443,8 +498,117 @@ def gerenciar_perguntas():
                 "DEBUG: Oficina - ID: {oficina.id}, "
                 f"Título: {oficina.titulo}, Cliente ID: {oficina.cliente_id}"
             )
+
+        cliente_base_id = next(iter(cliente_ids)) if cliente_ids else None
+        templates = (
+            FeedbackTemplate.query
+            .filter(FeedbackTemplate.cliente_id == cliente_base_id)
+            .order_by(FeedbackTemplate.nome.asc())
+            .all()
+        )
+        template_padrao = next((t for t in templates if t.is_default), None)
     
-    return render_template('feedback/gerenciar_perguntas.html', oficinas=oficinas, eventos=eventos)
+    return render_template(
+        'feedback/gerenciar_perguntas.html',
+        oficinas=oficinas,
+        eventos=eventos,
+        templates=templates,
+        template_padrao=template_padrao,
+    )
+
+
+@feedback_routes.route('/feedback/templates')
+@login_required
+def gerenciar_templates():
+    cliente_id = getattr(current_user, "cliente_id", None)
+    if isinstance(current_user, Cliente) and not cliente_id:
+        cliente_id = current_user.id
+    templates = FeedbackTemplate.query.filter_by(cliente_id=cliente_id).order_by(
+        FeedbackTemplate.nome.asc()
+    ).all()
+    template_padrao = next((t for t in templates if t.is_default), None)
+    return render_template(
+        'feedback/gerenciar_templates.html',
+        templates=templates,
+        template_padrao=template_padrao,
+    )
+
+
+@feedback_routes.route('/feedback/templates/criar', methods=['POST'])
+@login_required
+def criar_template():
+    data = request.get_json()
+    cliente_id = getattr(current_user, "cliente_id", None)
+    if isinstance(current_user, Cliente) and not cliente_id:
+        cliente_id = current_user.id
+    template = FeedbackService.criar_template(
+        cliente_id=cliente_id,
+        nome=data.get("nome"),
+        descricao=data.get("descricao"),
+        is_default=bool(data.get("is_default")),
+    )
+    return jsonify({"success": True, "template": {"id": template.id, "nome": template.nome}})
+
+
+@feedback_routes.route('/feedback/templates/<int:template_id>/definir-padrao', methods=['POST'])
+@login_required
+def definir_template_padrao(template_id):
+    cliente_id = getattr(current_user, "cliente_id", None)
+    if isinstance(current_user, Cliente) and not cliente_id:
+        cliente_id = current_user.id
+    FeedbackService.definir_template_padrao(cliente_id, template_id)
+    return jsonify({"success": True})
+
+
+@feedback_routes.route('/feedback/templates/<int:template_id>/aplicar', methods=['POST'])
+@login_required
+def aplicar_template(template_id):
+    data = request.get_json()
+    oficina_ids = data.get("oficina_ids", [])
+    cliente_id = getattr(current_user, "cliente_id", None)
+    if isinstance(current_user, Cliente) and not cliente_id:
+        cliente_id = current_user.id
+    oficinas = Oficina.query.filter(
+        Oficina.id.in_(oficina_ids),
+        Oficina.cliente_id == cliente_id,
+    ).all()
+    oficina_ids = [oficina.id for oficina in oficinas]
+    FeedbackService.aplicar_template(template_id, oficina_ids)
+    return jsonify({"success": True})
+
+
+@feedback_routes.route('/feedback/templates/<int:template_id>/perguntas')
+@login_required
+def gerenciar_perguntas_template(template_id):
+    template = FeedbackTemplate.query.get_or_404(template_id)
+    perguntas = PerguntaFeedback.query.filter_by(
+        template_id=template_id, ativa=True
+    ).order_by(PerguntaFeedback.ordem, PerguntaFeedback.id).all()
+    return render_template(
+        "feedback/gerenciar_template.html",
+        template=template,
+        perguntas=perguntas,
+    )
+
+
+@feedback_routes.route('/feedback/templates/<int:template_id>/perguntas/criar', methods=['POST'])
+@login_required
+def criar_pergunta_template(template_id):
+    data = request.get_json()
+    template = FeedbackTemplate.query.get_or_404(template_id)
+    pergunta = FeedbackService.criar_pergunta_template(
+        template_id=template_id,
+        cliente_id=template.cliente_id,
+        titulo=data.get("titulo"),
+        descricao=data.get("descricao", ""),
+        tipo=data.get("tipo"),
+        opcoes=data.get("opcoes", []),
+        obrigatoria=data.get("obrigatoria", True),
+        ordem=data.get("ordem", 0),
+    )
+    return jsonify(
+        {"success": True, "message": "Pergunta criada com sucesso!", "pergunta": pergunta.to_dict()}
+    )
 
 
 @feedback_routes.route('/feedback/oficinas-por-evento/<int:evento_id>')

@@ -2,7 +2,16 @@
 Serviço para gerenciar perguntas e respostas de feedback personalizadas.
 """
 
-from models import PerguntaFeedback, RespostaFeedback, FeedbackSession, Oficina, Usuario, Inscricao
+from models import (
+    PerguntaFeedback,
+    RespostaFeedback,
+    FeedbackSession,
+    Oficina,
+    Usuario,
+    Inscricao,
+    FeedbackTemplate,
+    FeedbackTemplateOficina,
+)
 from extensions import db
 from datetime import datetime, timedelta
 import json
@@ -47,6 +56,94 @@ class FeedbackService:
         db.session.add(pergunta)
         db.session.commit()
         return pergunta
+
+    @staticmethod
+    def criar_pergunta_template(template_id, cliente_id, titulo, descricao, tipo, opcoes=None, obrigatoria=True, ordem=0):
+        pergunta = PerguntaFeedback(
+            cliente_id=cliente_id,
+            template_id=template_id,
+            titulo=titulo,
+            descricao=descricao,
+            tipo=tipo,
+            opcoes=json.dumps(opcoes) if opcoes else None,
+            obrigatoria=obrigatoria,
+            ordem=ordem,
+        )
+        db.session.add(pergunta)
+        db.session.commit()
+        return pergunta
+
+    @staticmethod
+    def criar_template(cliente_id, nome, descricao=None, is_default=False):
+        if is_default:
+            FeedbackTemplate.query.filter_by(cliente_id=cliente_id, is_default=True).update(
+                {"is_default": False}
+            )
+        template = FeedbackTemplate(
+            cliente_id=cliente_id,
+            nome=nome,
+            descricao=descricao,
+            is_default=is_default,
+        )
+        db.session.add(template)
+        db.session.commit()
+        return template
+
+    @staticmethod
+    def definir_template_padrao(cliente_id, template_id):
+        FeedbackTemplate.query.filter_by(cliente_id=cliente_id, is_default=True).update(
+            {"is_default": False}
+        )
+        template = FeedbackTemplate.query.get_or_404(template_id)
+        template.is_default = True
+        db.session.commit()
+        return template
+
+    @staticmethod
+    def aplicar_template(template_id, oficina_ids):
+        template = FeedbackTemplate.query.get_or_404(template_id)
+        for oficina_id in oficina_ids:
+            # Desativa perguntas personalizadas da oficina (mantém histórico)
+            PerguntaFeedback.query.filter_by(
+                oficina_id=oficina_id, ativa=True
+            ).update({"ativa": False})
+            vinculo = FeedbackTemplateOficina.query.filter_by(oficina_id=oficina_id).first()
+            if vinculo:
+                vinculo.template_id = template.id
+            else:
+                vinculo = FeedbackTemplateOficina(
+                    template_id=template.id,
+                    oficina_id=oficina_id,
+                )
+                db.session.add(vinculo)
+        db.session.commit()
+        return template
+
+    @staticmethod
+    def desvincular_oficina(oficina_id):
+        vinculo = FeedbackTemplateOficina.query.filter_by(oficina_id=oficina_id).first()
+        if not vinculo:
+            return None
+        template = vinculo.template
+        perguntas_template = PerguntaFeedback.query.filter_by(
+            template_id=template.id, ativa=True
+        ).order_by(PerguntaFeedback.ordem, PerguntaFeedback.id).all()
+        for pergunta in perguntas_template:
+            clone = PerguntaFeedback(
+                cliente_id=template.cliente_id,
+                oficina_id=oficina_id,
+                titulo=pergunta.titulo,
+                descricao=pergunta.descricao,
+                tipo=pergunta.tipo,
+                opcoes=pergunta.opcoes,
+                obrigatoria=pergunta.obrigatoria,
+                ordem=pergunta.ordem,
+                ativa=True,
+            )
+            db.session.add(clone)
+        db.session.delete(vinculo)
+        db.session.commit()
+        return template
     
     @staticmethod
     def listar_perguntas(cliente_id, oficina_id=None, atividade_id=None):
@@ -61,10 +158,7 @@ class FeedbackService:
         Returns:
             List[PerguntaFeedback]: Lista de perguntas
         """
-        query = PerguntaFeedback.query.filter_by(
-            cliente_id=cliente_id,
-            ativa=True
-        )
+        query = PerguntaFeedback.query.filter_by(cliente_id=cliente_id, ativa=True)
         
         if oficina_id and atividade_id:
             # Perguntas específicas da atividade OU globais da oficina OU globais do cliente
@@ -82,11 +176,40 @@ class FeedbackService:
                 )
             )
         elif oficina_id:
-            # Perguntas específicas da oficina OU globais do cliente
+            # Se houver perguntas customizadas da oficina, usa apenas elas
+            perguntas_custom = PerguntaFeedback.query.filter_by(
+                cliente_id=cliente_id,
+                oficina_id=oficina_id,
+                ativa=True,
+            ).order_by(PerguntaFeedback.ordem, PerguntaFeedback.id).all()
+            if perguntas_custom:
+                return perguntas_custom
+
+            # Se houver template vinculado, usa perguntas do template
+            vinculo = FeedbackTemplateOficina.query.filter_by(oficina_id=oficina_id).first()
+            if vinculo:
+                return PerguntaFeedback.query.filter_by(
+                    cliente_id=cliente_id,
+                    template_id=vinculo.template_id,
+                    ativa=True,
+                ).order_by(PerguntaFeedback.ordem, PerguntaFeedback.id).all()
+
+            # Se houver template padrão, usa perguntas do template padrão
+            template_padrao = FeedbackTemplate.query.filter_by(
+                cliente_id=cliente_id, is_default=True
+            ).first()
+            if template_padrao:
+                return PerguntaFeedback.query.filter_by(
+                    cliente_id=cliente_id,
+                    template_id=template_padrao.id,
+                    ativa=True,
+                ).order_by(PerguntaFeedback.ordem, PerguntaFeedback.id).all()
+
+            # Fallback: perguntas globais legadas
             query = query.filter(
-                db.or_(
-                    PerguntaFeedback.oficina_id == oficina_id,
-                    PerguntaFeedback.oficina_id.is_(None)
+                db.and_(
+                    PerguntaFeedback.oficina_id.is_(None),
+                    PerguntaFeedback.template_id.is_(None),
                 )
             )
         elif atividade_id:
@@ -102,6 +225,7 @@ class FeedbackService:
             query = query.filter(
                 db.and_(
                     PerguntaFeedback.oficina_id.is_(None),
+                    PerguntaFeedback.template_id.is_(None),
                     PerguntaFeedback.atividade_id.is_(None)
                 )
             )
@@ -290,6 +414,35 @@ class FeedbackService:
         sessao.respondida = True
         sessao.updated_at = datetime.utcnow()
         
+        db.session.commit()
+        return respostas_salvas
+
+    @staticmethod
+    def salvar_respostas_publico(oficina_id, respostas):
+        respostas_salvas = []
+
+        for pergunta_id, resposta in respostas.items():
+            pergunta = PerguntaFeedback.query.get(pergunta_id)
+            if not pergunta or not pergunta.ativa:
+                continue
+
+            resposta_obj = RespostaFeedback(
+                pergunta_id=pergunta_id,
+                usuario_id=None,
+                oficina_id=oficina_id,
+            )
+            db.session.add(resposta_obj)
+
+            if pergunta.tipo.value == 'texto_livre':
+                resposta_obj.resposta_texto = resposta
+            elif pergunta.tipo.value == 'escala_numerica':
+                resposta_obj.resposta_numerica = int(resposta)
+            elif pergunta.tipo.value in ['multipla_escolha', 'sim_nao']:
+                resposta_obj.resposta_escolha = resposta
+
+            resposta_obj.updated_at = datetime.utcnow()
+            respostas_salvas.append(resposta_obj)
+
         db.session.commit()
         return respostas_salvas
     

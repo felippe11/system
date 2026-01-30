@@ -61,6 +61,19 @@
                                         Adicionar Opção
                                     </button>
                                 </div>
+
+                                <div class="mb-3" id="escala-container" style="display: none;">
+                                    <label class="form-label">Rótulos da Escala (1-5)</label>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <input type="text" class="form-control" id="escala-min-label" name="escala_min_label" placeholder="Ex: Muito ruim">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <input type="text" class="form-control" id="escala-max-label" name="escala_max_label" placeholder="Ex: Excelente">
+                                        </div>
+                                    </div>
+                                    <div class="form-text">Aparece nos extremos da escala.</div>
+                                </div>
                                 
                                 <div class="mb-3">
                                     <div class="form-check">
@@ -114,10 +127,22 @@
 document.addEventListener('DOMContentLoaded', function() {
     const tipoSelect = document.getElementById('tipo');
     const opcoesContainer = document.getElementById('opcoes-container');
+    const escalaContainer = document.getElementById('escala-container');
     const previewContainer = document.getElementById('preview-container');
+    const escalaMinLabel = document.getElementById('escala-min-label');
+    const escalaMaxLabel = document.getElementById('escala-max-label');
     
     // Atualizar preview quando campos mudarem
     document.getElementById('perguntaForm').addEventListener('input', atualizarPreview);
+
+    if (tipoSelect) {
+        tipoSelect.addEventListener('change', () => {
+            const tipo = tipoSelect.value;
+            opcoesContainer.style.display = tipo === 'multipla_escolha' ? 'block' : 'none';
+            escalaContainer.style.display = tipo === 'escala_numerica' ? 'block' : 'none';
+            atualizarPreview();
+        });
+    }
     
     // Mostrar/ocultar opções baseado no tipo
     tipoSelect.addEventListener('change', function() {
@@ -189,11 +214,16 @@ function atualizarPreview() {
                 preview += '<textarea class="form-control" rows="3" placeholder="Digite sua resposta aqui..."></textarea>';
                 break;
             case 'escala_numerica':
+                const labelMin = escalaMinLabel ? escalaMinLabel.value.trim() : '';
+                const labelMax = escalaMaxLabel ? escalaMaxLabel.value.trim() : '';
                 preview += '<div class="d-flex justify-content-between">';
+                preview += `<span class="text-muted small">1 - ${labelMin || 'Muito ruim'}</span>`;
+                preview += '<div class="d-flex gap-2">';
                 for (let i = 1; i <= 5; i++) {
                     preview += `<label class="form-check-label"><input type="radio" name="preview" class="form-check-input me-1">${i}</label>`;
                 }
                 preview += '</div>';
+                preview += `<span class="text-muted small">5 - ${labelMax || 'Excelente'}</span>`;
                 break;
             case 'multipla_escolha':
                 const opcoes = Array.from(document.querySelectorAll('.opcao-input')).map(input => input.value).filter(val => val);
@@ -243,6 +273,13 @@ function salvarPergunta() {
         }
         
         data.opcoes = opcoes;
+    } else if (data.tipo === 'escala_numerica') {
+        data.opcoes = {
+            min: 1,
+            max: 5,
+            label_min: formData.get('escala_min_label') || 'Muito ruim',
+            label_max: formData.get('escala_max_label') || 'Excelente'
+        };
     }
     
     fetch(`/feedback/perguntas/{{ oficina.id }}/criar`, {

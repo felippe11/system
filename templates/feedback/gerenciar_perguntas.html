@@ -47,6 +47,31 @@
                         </div>
                     </div>
 
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <h5>Template de Perguntas</h5>
+                            <select id="templateSelect" class="form-select">
+                                <option value="">Selecione um template</option>
+                                {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                Padrão: {{ template_padrao.nome if template_padrao else 'não definido' }}
+                            </small>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button id="aplicarTemplateBtn" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-link me-2"></i>
+                                Aplicar à oficina selecionada
+                            </button>
+                            <a href="{{ url_for('feedback_routes.gerenciar_templates') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-layer-group me-2"></i>
+                                Gerenciar Templates
+                            </a>
+                        </div>
+                    </div>
+
                     {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
                             {% for category, message in messages %}
@@ -106,6 +131,18 @@
                         <label for="opcoes" class="form-label">Opções (uma por linha)</label>
                         <textarea class="form-control" id="opcoes" name="opcoes" rows="3" placeholder="Opção 1&#10;Opção 2&#10;Opção 3"></textarea>
                     </div>
+
+                    <div class="mb-3" id="escalaContainer" style="display: none;">
+                        <label class="form-label">Rótulos da Escala (1-5)</label>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="escalaMinLabel" name="escala_min_label" placeholder="Ex: Muito ruim">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="escalaMaxLabel" name="escala_max_label" placeholder="Ex: Excelente">
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="mb-3">
                         <div class="form-check">
@@ -144,6 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipoSelect = document.getElementById('tipo');
     const opcoesContainer = document.getElementById('opcoesContainer');
     const opcoesTextarea = document.getElementById('opcoes');
+    const escalaContainer = document.getElementById('escalaContainer');
+    const escalaMinLabel = document.getElementById('escalaMinLabel');
+    const escalaMaxLabel = document.getElementById('escalaMaxLabel');
     const modalTitle = document.getElementById('modalTitle');
     const perguntaIdInput = document.getElementById('perguntaId');
     const oficinaIdInput = document.getElementById('oficinaId');
@@ -154,6 +194,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const ordemInput = document.getElementById('ordem');
     const salvarPerguntaBtn = document.getElementById('salvarPergunta');
     const debugOficinasBtn = document.getElementById('debugOficinasBtn');
+    const templateSelect = document.getElementById('templateSelect');
+    const aplicarTemplateBtn = document.getElementById('aplicarTemplateBtn');
 
     const bootstrapModal = (
         typeof bootstrap !== 'undefined' &&
@@ -195,6 +237,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         opcoesContainer.style.display =
             tipo === 'multipla_escolha' ? 'block' : 'none';
+        if (escalaContainer) {
+            escalaContainer.style.display =
+                tipo === 'escala_numerica' ? 'block' : 'none';
+        }
     };
 
     const renderSelecioneMensagem = () => {
@@ -316,6 +362,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 data.opcoes = [];
             }
+            if (data.tipo === 'escala_numerica') {
+                data.opcoes = {
+                    min: 1,
+                    max: 5,
+                    label_min: escalaMinLabel ? (escalaMinLabel.value || 'Muito ruim') : 'Muito ruim',
+                    label_max: escalaMaxLabel ? (escalaMaxLabel.value || 'Excelente') : 'Excelente',
+                };
+            }
             const url = data.pergunta_id
                 ? `/feedback/perguntas/${data.pergunta_id}/editar`
                 : `/feedback/perguntas/${data.oficina_id}/criar`;
@@ -411,10 +465,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     ordemInput.value = ordemValor;
                 }
                 if (opcoesTextarea) {
-                    const linhas = Array.isArray(pergunta.opcoes)
-                        ? pergunta.opcoes.join('\n')
-                        : '';
-                    opcoesTextarea.value = linhas;
+                    if (Array.isArray(pergunta.opcoes)) {
+                        opcoesTextarea.value = pergunta.opcoes.join('\n');
+                    } else if (pergunta.tipo === 'escala_numerica' && pergunta.opcoes) {
+                        opcoesTextarea.value = '';
+                    } else {
+                        opcoesTextarea.value = '';
+                    }
+                }
+                if (pergunta.tipo === 'escala_numerica' && pergunta.opcoes) {
+                    if (escalaMinLabel) {
+                        escalaMinLabel.value = pergunta.opcoes.label_min || '';
+                    }
+                    if (escalaMaxLabel) {
+                        escalaMaxLabel.value = pergunta.opcoes.label_max || '';
+                    }
                 }
                 atualizarOpcoes(pergunta.tipo || '');
                 showModal();
@@ -438,6 +503,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Inicialização: mostrar mensagem para selecionar evento
     renderSelecioneMensagem();
+
+    if (aplicarTemplateBtn) {
+        aplicarTemplateBtn.addEventListener('click', () => {
+            const templateId = templateSelect ? templateSelect.value : '';
+            const oficinaId = oficinaSelect ? oficinaSelect.value : '';
+            if (!templateId) {
+                alert('Selecione um template para aplicar.');
+                return;
+            }
+            if (!oficinaId) {
+                alert('Selecione uma oficina para aplicar o template.');
+                return;
+            }
+            fetch(`/feedback/templates/${templateId}/aplicar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oficina_ids: [parseInt(oficinaId, 10)] }),
+            })
+                .then((response) => response.json())
+                .then((result) => {
+                    if (!result.success) {
+                        alert('Erro ao aplicar template.');
+                        return;
+                    }
+                    alert('Template aplicado com sucesso.');
+                    carregarPerguntas(oficinaId);
+                })
+                .catch((error) => {
+                    console.error('Erro ao aplicar template:', error);
+                    alert('Erro ao aplicar template.');
+                });
+        });
+    }
 });
 
 // Função para abrir página de criar pergunta

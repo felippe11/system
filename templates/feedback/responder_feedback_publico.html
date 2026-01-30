@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback - {{ oficina.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header text-center bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-comment-dots me-2"></i>
+                        Feedback da Oficina
+                    </h4>
+                    <p class="mb-0">{{ oficina.titulo }}</p>
+                </div>
+                
+                <div class="card-body">
+                    <form id="feedbackForm">
+                        {% for pergunta in perguntas %}
+                        <div class="mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        {{ pergunta.titulo }}
+                                        {% if pergunta.obrigatoria %}
+                                            <span class="text-danger">*</span>
+                                        {% endif %}
+                                    </h6>
+                                    
+                                    {% if pergunta.descricao %}
+                                        <p class="text-muted small mb-3">{{ pergunta.descricao }}</p>
+                                    {% endif %}
+                                    
+                                    <div class="pergunta-resposta" data-pergunta-id="{{ pergunta.id }}" data-tipo="{{ pergunta.tipo.value }}">
+                                        {% if pergunta.tipo.value == 'texto_livre' %}
+                                            <textarea class="form-control" rows="4" 
+                                                      placeholder="Digite sua resposta aqui..."
+                                                      {% if pergunta.obrigatoria %}required{% endif %}></textarea>
+                                        
+                                        {% elif pergunta.tipo.value == 'escala_numerica' %}
+                                            <div class="escala-numerica">
+                                                {% set escala = pergunta.opcoes|from_json %}
+                                                {% set min_val = escala.get('min', 1) if escala is mapping else 1 %}
+                                                {% set max_val = escala.get('max', 5) if escala is mapping else 5 %}
+                                                {% set label_min = escala.get('label_min', 'Muito ruim') if escala is mapping else 'Muito ruim' %}
+                                                {% set label_max = escala.get('label_max', 'Excelente') if escala is mapping else 'Excelente' %}
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="text-muted">{{ min_val }} - {{ label_min }}</span>
+                                                    <div class="btn-group" role="group">
+                                                        {% for i in range(min_val, max_val + 1) %}
+                                                        <input type="radio" class="btn-check" name="pergunta_{{ pergunta.id }}" 
+                                                               id="pergunta_{{ pergunta.id }}_{{ i }}" value="{{ i }}"
+                                                               {% if pergunta.obrigatoria %}required{% endif %}>
+                                                        <label class="btn btn-outline-primary" for="pergunta_{{ pergunta.id }}_{{ i }}">
+                                                            {{ i }}
+                                                        </label>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-muted">{{ max_val }} - {{ label_max }}</span>
+                                                </div>
+                                            </div>
+                                        
+                                        {% elif pergunta.tipo.value == 'multipla_escolha' %}
+                                            {% set opcoes = pergunta.opcoes|from_json %}
+                                            {% for opcao in opcoes %}
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" 
+                                                       name="pergunta_{{ pergunta.id }}" 
+                                                       id="pergunta_{{ pergunta.id }}_{{ loop.index }}" 
+                                                       value="{{ opcao }}"
+                                                       {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <label class="form-check-label" for="pergunta_{{ pergunta.id }}_{{ loop.index }}">
+                                                    {{ opcao }}
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        
+                                        {% elif pergunta.tipo.value == 'sim_nao' %}
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" 
+                                                       name="pergunta_{{ pergunta.id }}" 
+                                                       id="pergunta_{{ pergunta.id }}_sim" 
+                                                       value="Sim"
+                                                       {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <label class="form-check-label" for="pergunta_{{ pergunta.id }}_sim">
+                                                    <i class="fas fa-check text-success me-2"></i>Sim
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" 
+                                                       name="pergunta_{{ pergunta.id }}" 
+                                                       id="pergunta_{{ pergunta.id }}_nao" 
+                                                       value="Não"
+                                                       {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <label class="form-check-label" for="pergunta_{{ pergunta.id }}_nao">
+                                                    <i class="fas fa-times text-danger me-2"></i>Não
+                                                </label>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% if perguntas %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Enviar Feedback
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhuma pergunta de feedback disponível</h5>
+                            <p class="text-muted">Esta oficina ainda não possui perguntas de feedback configuradas.</p>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                <h4 class="text-success">Feedback Enviado!</h4>
+                <p class="text-muted">Obrigado pela sua participação. Seu feedback foi registrado com sucesso.</p>
+                <button type="button" class="btn btn-primary" onclick="window.close()">
+                    <i class="fas fa-times me-1"></i>
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('feedbackForm');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        enviarFeedback();
+    });
+    
+    document.querySelectorAll('.btn-check').forEach(btn => {
+        btn.addEventListener('change', function() {
+            const groupName = this.name;
+            document.querySelectorAll(`input[name="${groupName}"]`).forEach(input => {
+                input.nextElementSibling.classList.remove('btn-primary');
+                input.nextElementSibling.classList.add('btn-outline-primary');
+            });
+            if (this.checked) {
+                this.nextElementSibling.classList.remove('btn-outline-primary');
+                this.nextElementSibling.classList.add('btn-primary');
+            }
+        });
+    });
+});
+
+function enviarFeedback() {
+    const form = document.getElementById('feedbackForm');
+    const respostas = {};
+    const perguntaElements = document.querySelectorAll('.pergunta-resposta');
+    
+    perguntaElements.forEach(element => {
+        const perguntaId = element.dataset.perguntaId;
+        const tipo = element.dataset.tipo;
+        let resposta = null;
+        
+        if (tipo === 'texto_livre') {
+            resposta = element.querySelector('textarea').value.trim();
+        } else if (tipo === 'escala_numerica') {
+            const radio = element.querySelector('input[type="radio"]:checked');
+            resposta = radio ? radio.value : null;
+        } else if (tipo === 'multipla_escolha' || tipo === 'sim_nao') {
+            const radio = element.querySelector('input[type="radio"]:checked');
+            resposta = radio ? radio.value : null;
+        }
+        
+        if (resposta) {
+            respostas[perguntaId] = resposta;
+        }
+    });
+    
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+    submitBtn.disabled = true;
+    
+    fetch(`/feedback/responder/oficina/{{ oficina.id }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ respostas: respostas })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const modal = new bootstrap.Modal(document.getElementById('successModal'));
+            modal.show();
+        } else {
+            alert('Erro: ' + data.message);
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao enviar feedback');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

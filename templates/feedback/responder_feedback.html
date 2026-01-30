@@ -45,10 +45,15 @@
                                         
                                         {% elif pergunta.tipo.value == 'escala_numerica' %}
                                             <div class="escala-numerica">
+                                                {% set escala = pergunta.opcoes|from_json %}
+                                                {% set min_val = escala.get('min', 1) if escala is mapping else 1 %}
+                                                {% set max_val = escala.get('max', 5) if escala is mapping else 5 %}
+                                                {% set label_min = escala.get('label_min', 'Muito ruim') if escala is mapping else 'Muito ruim' %}
+                                                {% set label_max = escala.get('label_max', 'Excelente') if escala is mapping else 'Excelente' %}
                                                 <div class="d-flex justify-content-between align-items-center">
-                                                    <span class="text-muted">1 - Muito Ruim</span>
+                                                    <span class="text-muted">{{ min_val }} - {{ label_min }}</span>
                                                     <div class="btn-group" role="group">
-                                                        {% for i in range(1, 6) %}
+                                                        {% for i in range(min_val, max_val + 1) %}
                                                         <input type="radio" class="btn-check" name="pergunta_{{ pergunta.id }}" 
                                                                id="pergunta_{{ pergunta.id }}_{{ i }}" value="{{ i }}"
                                                                {% if pergunta.obrigatoria %}required{% endif %}>
@@ -57,7 +62,7 @@
                                                         </label>
                                                         {% endfor %}
                                                     </div>
-                                                    <span class="text-muted">5 - Excelente</span>
+                                                    <span class="text-muted">{{ max_val }} - {{ label_max }}</span>
                                                 </div>
                                             </div>
                                         

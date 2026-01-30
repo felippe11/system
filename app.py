@@ -18,6 +18,7 @@ import pytz
 import logging
 import os
 import shutil
+import json
 
 # Importar configurações de estabilidade do servidor
 try:
@@ -348,6 +349,17 @@ def create_app():
             return datetime.strptime(value, "%Y-%m-%d").strftime("%d/%m/%Y")
         except (ValueError, TypeError):
             return value
+
+    @app.template_filter("from_json")
+    def from_json(value):
+        if value is None:
+            return []
+        if isinstance(value, (list, dict)):
+            return value
+        try:
+            return json.loads(value)
+        except Exception:
+            return []
 
     @app.template_filter("brasilia")
     def brasilia_filter(dt):

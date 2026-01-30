@@ -510,8 +510,18 @@ def dashboard_participante():
         else:
             vagas_restantes = None
 
-        logger.debug(f"DEBUG [77] -> Adicionando oficina formatada: id={oficina.id}, disponível={disponivel_para_inscricao}")
+        # Determine sort order from the first day or default
+        ordem_exibicao = 9999
+        if dias:
+            # Sort days to find the meaningful first one
+            # Logic similar to inscricao_routes: order by custom order field, then date/time
+            dias_sorted = sorted(dias, key=lambda d: (d.ordem_exibicao if d.ordem_exibicao is not None else 9999, d.data, d.horario_inicio))
+            primary_day = dias_sorted[0]
+            ordem_exibicao = primary_day.ordem_exibicao if primary_day.ordem_exibicao is not None else 9999
+
+        logger.debug(f"DEBUG [77] -> Adicionando oficina formatada: id={oficina.id}, ordem={ordem_exibicao}, disponível={disponivel_para_inscricao}")
         oficinas_formatadas.append({
+            'ordem_exibicao': ordem_exibicao,
             'vagas_restantes': vagas_restantes,
             'id': oficina.id,
             'titulo': oficina.titulo,
@@ -532,6 +542,9 @@ def dashboard_participante():
             'evento_data_fim': evento_info['data_fim'] if evento_info else None,
             'evento_status': evento_info['status'] if evento_info else 'Atual'
         })
+
+    # Ordenar oficinas conforme solicitado (respeitando ordem_exibicao)
+    oficinas_formatadas.sort(key=lambda x: (x['ordem_exibicao'], x['titulo'].lower()))
 
     logger.debug(f"DEBUG [78] -> Estatísticas finais de oficinas:")
     logger.debug(f"DEBUG [79] -> Total de oficinas formatadas: {len(oficinas_formatadas)}")
