@@ -20,6 +20,9 @@ def upgrade() -> None:
     inspector = sa.inspect(bind)
     if not inspector.has_table("formularios"):
         return
+    existing_cols = {col["name"] for col in inspector.get_columns("formularios")}
+    if "permitir_multiplas_respostas" in existing_cols:
+        return
     with op.batch_alter_table("formularios") as batch_op:
         batch_op.add_column(
             sa.Column("permitir_multiplas_respostas", sa.Boolean(), nullable=True, server_default=sa.true())
