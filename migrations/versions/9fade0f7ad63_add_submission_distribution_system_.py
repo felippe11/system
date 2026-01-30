@@ -212,7 +212,10 @@ def upgrade():
             batch_op.drop_index('idx_assignment_reviewer')
         if 'assignment_submission_id_fkey' in existing_fks:
             batch_op.drop_constraint('assignment_submission_id_fkey', type_='foreignkey')
-        if batch_op.f('fk_assignment_submission_id_submission') not in existing_fks:
+        if (
+            'submission_id' in existing_cols
+            and batch_op.f('fk_assignment_submission_id_submission') not in existing_fks
+        ):
             batch_op.create_foreign_key(
                 batch_op.f('fk_assignment_submission_id_submission'),
                 'submission',
@@ -228,7 +231,10 @@ def upgrade():
             batch_op.drop_index('idx_review_submission')
         if 'review_submission_id_fkey' in existing_fks:
             batch_op.drop_constraint('review_submission_id_fkey', type_='foreignkey')
-        if batch_op.f('fk_review_submission_id_submission') not in existing_fks:
+        if (
+            'submission_id' in existing_cols
+            and batch_op.f('fk_review_submission_id_submission') not in existing_fks
+        ):
             batch_op.create_foreign_key(
                 batch_op.f('fk_review_submission_id_submission'),
                 'submission',
@@ -340,7 +346,7 @@ def downgrade():
         existing_indexes = {idx['name'] for idx in inspector.get_indexes("review")}
         if batch_op.f('fk_review_submission_id_submission') in existing_fks:
             batch_op.drop_constraint(batch_op.f('fk_review_submission_id_submission'), type_='foreignkey')
-        if 'review_submission_id_fkey' not in existing_fks:
+        if 'submission_id' in existing_cols and 'review_submission_id_fkey' not in existing_fks:
             batch_op.create_foreign_key(
                 'review_submission_id_fkey',
                 'submission',
@@ -360,7 +366,7 @@ def downgrade():
                 batch_op.f('fk_assignment_submission_id_submission'),
                 type_='foreignkey',
             )
-        if 'assignment_submission_id_fkey' not in existing_fks:
+        if 'submission_id' in existing_cols and 'assignment_submission_id_fkey' not in existing_fks:
             batch_op.create_foreign_key(
                 'assignment_submission_id_fkey',
                 'submission',
