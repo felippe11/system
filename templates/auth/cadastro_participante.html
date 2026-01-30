@@ -449,8 +449,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
     // Variáveis globais
-    const eventoId = {% if evento %}{ { evento.id } } {% else %} null{% endif %};
-    let currentLoteId = {% if lote_vigente %}{ { lote_vigente.id } } {% else %} null{% endif %};
+    const eventoId = {% if evento %}{{ evento.id }}{% else %}null{% endif %};
+    let currentLoteId = {% if lote_vigente %}{{ lote_vigente.id }}{% else %}null{% endif %};
     let loteCheckInterval = null;
     let estadosBrasil = [];
     let statesFailed = false;
