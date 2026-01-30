@@ -673,10 +673,9 @@
         if (!mapContainer) return;
 
         {% if evento and evento.latitude and evento.longitude %}
-        const latitude = {{ evento.latitude }
-    };
-    const longitude = {{ evento.longitude }};
-    setupMap(latitude, longitude);
+        const latitude = {{ evento.latitude }};
+        const longitude = {{ evento.longitude }};
+        setupMap(latitude, longitude);
     {% elif evento and evento.link_mapa %}
     try {
         const mapLink = "{{ evento.link_mapa }}";

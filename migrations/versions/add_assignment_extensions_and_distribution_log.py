@@ -44,46 +44,49 @@ def upgrade():
         )
     
     # Create distribution_log table
-    op.create_table(
-        'distribution_log',
-        sa.Column('id', sa.Integer, primary_key=True),
-        sa.Column('evento_id', sa.Integer, nullable=False),
-        sa.Column('distribution_type', sa.String(20), nullable=False),
-        sa.Column('total_works', sa.Integer, nullable=False),
-        sa.Column('total_reviewers', sa.Integer, nullable=False),
-        sa.Column('assignments_created', sa.Integer, nullable=False),
-        sa.Column('distribution_date', sa.DateTime, nullable=False),
-        sa.Column('distributed_by', sa.Integer, nullable=False),
-        sa.Column('filters_applied', sa.JSON, nullable=True),
-        sa.Column('notes', sa.Text, nullable=True),
-        sa.Column('created_at', sa.DateTime, nullable=False, server_default=sa.func.now()),
-        sa.Column('updated_at', sa.DateTime, nullable=False, server_default=sa.func.now(), onupdate=sa.func.now())
-    )
+    if not inspector.has_table("distribution_log"):
+        op.create_table(
+            'distribution_log',
+            sa.Column('id', sa.Integer, primary_key=True),
+            sa.Column('evento_id', sa.Integer, nullable=False),
+            sa.Column('distribution_type', sa.String(20), nullable=False),
+            sa.Column('total_works', sa.Integer, nullable=False),
+            sa.Column('total_reviewers', sa.Integer, nullable=False),
+            sa.Column('assignments_created', sa.Integer, nullable=False),
+            sa.Column('distribution_date', sa.DateTime, nullable=False),
+            sa.Column('distributed_by', sa.Integer, nullable=False),
+            sa.Column('filters_applied', sa.JSON, nullable=True),
+            sa.Column('notes', sa.Text, nullable=True),
+            sa.Column('created_at', sa.DateTime, nullable=False, server_default=sa.func.now()),
+            sa.Column('updated_at', sa.DateTime, nullable=False, server_default=sa.func.now(), onupdate=sa.func.now())
+        )
     
     # Add foreign key constraints for distribution_log
-    existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("distribution_log")}
-    if "fk_distribution_log_evento" not in existing_fks:
-        op.create_foreign_key(
-            'fk_distribution_log_evento',
-            'distribution_log', 'evento',
-            ['evento_id'], ['id'],
-            ondelete='CASCADE'
-        )
-    
-    existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("distribution_log")}
-    if "fk_distribution_log_distributed_by" not in existing_fks:
-        op.create_foreign_key(
-            'fk_distribution_log_distributed_by',
-            'distribution_log', 'usuario',
-            ['distributed_by'], ['id'],
-            ondelete='CASCADE'
-        )
+    if inspector.has_table("distribution_log"):
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("distribution_log")}
+        if "fk_distribution_log_evento" not in existing_fks:
+            op.create_foreign_key(
+                'fk_distribution_log_evento',
+                'distribution_log', 'evento',
+                ['evento_id'], ['id'],
+                ondelete='CASCADE'
+            )
+        
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("distribution_log")}
+        if "fk_distribution_log_distributed_by" not in existing_fks:
+            op.create_foreign_key(
+                'fk_distribution_log_distributed_by',
+                'distribution_log', 'usuario',
+                ['distributed_by'], ['id'],
+                ondelete='CASCADE'
+            )
     
     # Create indexes for better performance
     op.create_index('idx_assignment_distribution_type', 'assignment', ['distribution_type'])
     op.create_index('idx_assignment_distribution_date', 'assignment', ['distribution_date'])
-    op.create_index('idx_distribution_log_evento', 'distribution_log', ['evento_id'])
-    op.create_index('idx_distribution_log_date', 'distribution_log', ['distribution_date'])
+    if inspector.has_table("distribution_log"):
+        op.create_index('idx_distribution_log_evento', 'distribution_log', ['evento_id'])
+        op.create_index('idx_distribution_log_date', 'distribution_log', ['distribution_date'])
 
 
 def downgrade():
