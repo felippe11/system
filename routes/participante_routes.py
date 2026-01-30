@@ -12,6 +12,8 @@ from models.event import Oficina
 from extensions import db
 from datetime import datetime
 from services import certificado_service
+from models import Inscricao
+from utils import enviar_email
 
 
 
@@ -170,8 +172,8 @@ def meus_certificados():
     
     # Calcular estatísticas de participação
     eventos_participante = Evento.query.join(
-        'participantes'
-    ).filter_by(usuario_id=current_user.id).all()
+        Inscricao, Inscricao.evento_id == Evento.id
+    ).filter(Inscricao.usuario_id == current_user.id).all()
     
     for evento in eventos_participante:
         dados = certificado_service.calcular_atividades_participadas(
@@ -415,3 +417,72 @@ def marcar_notificacao_lida_participante(notificacao_id):
     db.session.commit()
     
     return jsonify({'success': True})
+
+@participante_routes.route('/inscrever/<int:oficina_id>', methods=['POST'])
+@login_required
+def inscrever(oficina_id):
+    if current_user.tipo != 'participante':
+        return jsonify({'success': False, 'message': 'Apenas participantes podem se inscrever.'}), 403
+
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Verificar se já está inscrito
+    inscricao_existente = Inscricao.query.filter_by(
+        usuario_id=current_user.id, 
+        oficina_id=oficina_id
+    ).first()
+    
+    if inscricao_existente:
+        return jsonify({'success': False, 'message': 'Você já está inscrito nesta oficina.'}), 400
+        
+    # Verificar vagas
+    if oficina.tipo_inscricao == 'com_inscricao_com_limite':
+        inscritos_count = Inscricao.query.filter_by(oficina_id=oficina_id).count()
+        if inscritos_count >= oficina.vagas:
+            return jsonify({'success': False, 'message': 'Vagas esgotadas.'}), 400
+
+    # Criar inscrição
+    nova_inscricao = Inscricao(
+        usuario_id=current_user.id,
+        oficina_id=oficina_id,
+        cliente_id=oficina.cliente_id,
+        evento_id=oficina.evento_id,
+        status_pagamento='approved' if oficina.inscricao_gratuita else 'pending'
+    )
+    
+    db.session.add(nova_inscricao)
+    db.session.commit()
+    
+    # Enviar email de confirmação (pode ser assíncrono)
+    try:
+        enviar_email(
+            destinatario=current_user.email,
+            nome_participante=current_user.nome,
+            nome_oficina=oficina.titulo,
+            assunto='Confirmação de Inscrição',
+            corpo_texto=f'Você se inscreveu com sucesso na oficina: {oficina.titulo}',
+            corpo_html=f'<p>Parabéns, {current_user.nome}!</p><p>Sua inscrição na oficina <strong>{oficina.titulo}</strong> foi confirmada.</p>'
+        )
+    except Exception as e:
+        print(f"Erro ao enviar email: {e}")
+
+    return jsonify({'success': True, 'message': 'Inscrição realizada com sucesso!'})
+
+@participante_routes.route('/cancelar_inscricao/<int:oficina_id>', methods=['POST'])
+@login_required
+def cancelar_inscricao(oficina_id):
+    if current_user.tipo != 'participante':
+        return jsonify({'success': False, 'message': 'Acesso negado.'}), 403
+
+    inscricao = Inscricao.query.filter_by(
+        usuario_id=current_user.id, 
+        oficina_id=oficina_id
+    ).first()
+    
+    if not inscricao:
+        return jsonify({'success': False, 'message': 'Inscrição não encontrada.'}), 404
+        
+    db.session.delete(inscricao)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Inscrição cancelada com sucesso.'})

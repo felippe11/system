@@ -6,6 +6,7 @@
   rel="stylesheet" />
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
   tailwind.config = {
     darkMode: "class",
@@ -147,25 +148,65 @@
             <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <span class="material-icons-round text-sm">schedule</span>
               <span class="text-xs">
-                {{ primeira_data.horario_inicio if primeira_data.horario_inicio is string else primeira_data.horario_inicio.strftime('%H:%M') }}
+                {{ primeira_data.horario_inicio if primeira_data.horario_inicio is string else
+                primeira_data.horario_inicio.strftime('%H:%M') }}
                 -
-                {{ primeira_data.horario_fim if primeira_data.horario_fim is string else primeira_data.horario_fim.strftime('%H:%M') }}
+                {{ primeira_data.horario_fim if primeira_data.horario_fim is string else
+                primeira_data.horario_fim.strftime('%H:%M') }}
               </span>
             </div>
             {% endif %}
 
-            <!-- Lógica de Vagas (Simulada ou Real se disponível) -->
+            <!-- Lógica de Vagas -->
             <div class="flex items-center gap-2 text-secondary font-medium col-span-2 mt-1">
               <span class="material-icons-round text-sm">group</span>
-              <span class="text-xs">Inscrições Abertas</span>
+              <span class="text-xs">
+                {% if atividade.vagas_restantes is not none %}
+                {{ atividade.vagas_restantes }} vagas restantes
+                {% else %}
+                Inscrições Abertas
+                {% endif %}
+              </span>
             </div>
           </div>
+
+          <!-- Detalhes Expansíveis -->
+          <div id="detalhes-{{ atividade.id }}"
+            class="hidden mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-sm text-slate-600 dark:text-slate-400">
+            <p class="mb-2">{{ atividade.descricao }}</p>
+            {% if atividade.ministrantes %}
+            <p class="font-semibold">Ministrantes: <span class="font-normal">{{ atividade.ministrantes|join(', ')
+                }}</span></p>
+            {% endif %}
+          </div>
+
         </div>
-        <div class="flex flex-col justify-center border-l border-slate-100 dark:border-slate-800 pl-4">
-          <a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}"
-            class="bg-secondary hover:bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-secondary/20 transition-all active:scale-95">
-            <span class="material-icons-round">add</span>
-          </a>
+        <div
+          class="flex flex-col justify-between border-l border-slate-100 dark:border-slate-800 pl-4 items-center gap-2">
+          <button onclick="toggleDetalhes('{{ atividade.id }}')"
+            class="text-slate-400 hover:text-primary transition-colors" title="Ver detalhes">
+            <span class="material-icons-round">expand_more</span>
+          </button>
+
+          {% if atividade.inscrito %}
+          <button onclick="toggleInscricao('{{ atividade.id }}', 'cancelar')"
+            class="bg-red-100 text-red-600 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-red-200 transition-all active:scale-95"
+            title="Cancelar Inscrição">
+            <span class="material-icons-round">remove_circle_outline</span>
+          </button>
+          {% elif atividade.disponivel_para_inscricao %}
+          <button onclick="toggleInscricao('{{ atividade.id }}', 'inscrever')"
+            class="bg-secondary hover:bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-secondary/20 transition-all active:scale-95"
+            title="Inscrever-se">
+            <span class="material-icons-round">add_circle_outline</span>
+          </button>
+          {% else %}
+          <button onclick="mostrarMotivoIndisponibilidade('{{ atividade.motivo_indisponibilidade }}')"
+            class="bg-gray-100 text-gray-400 hover:bg-gray-200 w-12 h-12 rounded-2xl flex items-center justify-center transition-all"
+            title="Indisponível">
+            <span class="material-icons-round">block</span>
+          </button>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -242,6 +283,108 @@
     } else {
       noMsg.classList.add('hidden');
     }
+  }
+  function toggleDetalhes(id) {
+    const el = document.getElementById(`detalhes-${id}`);
+    if (el.classList.contains('hidden')) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
+  function mostrarMotivoIndisponibilidade(motivo) {
+    Swal.fire({
+      icon: 'info',
+      title: 'Não é possível realizar a inscrição',
+      text: motivo || 'Esta atividade não está disponível para inscrição no momento.',
+      confirmButtonColor: '#3b82f6',
+      confirmButtonText: 'Entendi',
+      background: '#ffffff',
+      color: '#1e293b',
+      customClass: {
+        popup: 'rounded-2xl',
+        confirmButton: 'rounded-xl px-6 py-2'
+      }
+    });
+  }
+
+  function toggleInscricao(oficinaId, acao) {
+    const url = acao === 'inscrever'
+      ? `/participante_routes/inscrever/${oficinaId}`
+      : `/participante_routes/cancelar_inscricao/${oficinaId}`;
+
+    // Mostrar loading
+    Swal.fire({
+      title: 'Processando...',
+      didOpen: () => {
+        Swal.showLoading();
+      },
+      background: '#ffffff',
+      color: '#1e293b',
+      showConfirmButton: false,
+      allowOutsideClick: false,
+      customClass: {
+        popup: 'rounded-2xl'
+      }
+    });
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: data.message || (acao === 'inscrever' ? 'Inscrição realizada!' : 'Inscrição cancelada!'),
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'OK',
+            background: '#ffffff',
+            color: '#1e293b',
+            customClass: {
+              popup: 'rounded-2xl',
+              confirmButton: 'rounded-xl px-6 py-2'
+            }
+          }).then(() => {
+            window.location.reload();
+          });
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Atenção',
+            text: data.message || 'Erro ao processar solicitação',
+            confirmButtonColor: '#f59e0b',
+            confirmButtonText: 'OK',
+            background: '#ffffff',
+            color: '#1e293b',
+            customClass: {
+              popup: 'rounded-2xl',
+              confirmButton: 'rounded-xl px-6 py-2'
+            }
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erro',
+          text: 'Erro ao comunicar com o servidor',
+          confirmButtonColor: '#ef4444',
+          confirmButtonText: 'OK',
+          background: '#ffffff',
+          color: '#1e293b',
+          customClass: {
+            popup: 'rounded-2xl',
+            confirmButton: 'rounded-xl px-6 py-2'
+          }
+        });
+      });
   }
 </script>
 {% endblock %}

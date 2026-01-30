@@ -33,8 +33,8 @@
                         {% for dia in inscricao.oficina.dias %}
                         <div class="d-flex align-items-center text-secondary mb-1">
                             <i class="fas fa-calendar-day me-2"></i>
-                            <span>{{ dia.data.strftime('%d/%m/%Y') }} - {{ dia.horario_inicio.strftime('%H:%M') }} às {{
-                                dia.horario_fim.strftime('%H:%M') }}</span>
+                            <span>{{ dia.data.strftime('%d/%m/%Y') }} - {{ dia.horario_inicio }} às {{
+                                dia.horario_fim }}</span>
                         </div>
                         {% endfor %}
                         {% else %}
