@@ -503,8 +503,16 @@ def dashboard_participante():
             evento_encerrado = False
             evento_futuro = False
         
+        if oficina.vagas:
+            from models import Inscricao
+            inscritos_count = Inscricao.query.filter_by(oficina_id=oficina.id).count()
+            vagas_restantes = max(0, oficina.vagas - inscritos_count)
+        else:
+            vagas_restantes = None
+
         logger.debug(f"DEBUG [77] -> Adicionando oficina formatada: id={oficina.id}, disponível={disponivel_para_inscricao}")
         oficinas_formatadas.append({
+            'vagas_restantes': vagas_restantes,
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,

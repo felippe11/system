@@ -311,8 +311,8 @@
 
   function toggleInscricao(oficinaId, acao) {
     const url = acao === 'inscrever'
-      ? `/participante_routes/inscrever/${oficinaId}`
-      : `/participante_routes/cancelar_inscricao/${oficinaId}`;
+      ? "{{ url_for('participante_routes.inscrever', oficina_id=0) }}".replace('0', oficinaId)
+      : "{{ url_for('participante_routes.cancelar_inscricao', oficina_id=0) }}".replace('0', oficinaId);
 
     // Mostrar loading
     Swal.fire({
