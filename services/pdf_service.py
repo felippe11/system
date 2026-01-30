@@ -9316,7 +9316,16 @@ def gerar_placas_oficinas_pdf(evento_id):
         
         c.setFillColor(COLORS['slate_900'])
         c.setFont("Helvetica-Bold", 14)
-        local_txt = oficina.local or "A definir"
+        local_txt = getattr(oficina, "local", None)
+        if not local_txt:
+            cidade = getattr(oficina, "cidade", None)
+            estado = getattr(oficina, "estado", None)
+            if cidade and estado:
+                local_txt = f"{cidade}/{estado}"
+            elif cidade:
+                local_txt = cidade
+            else:
+                local_txt = "A definir"
         # Wrap local text
         local_lines = wrap(local_txt, 25)
         y_offset = 0
