@@ -14,7 +14,11 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    op.add_column('horario_visitacao', sa.Column('fechado', sa.Boolean(), nullable=False, server_default=sa.false()))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_cols = {col['name'] for col in inspector.get_columns("horario_visitacao")}
+    if "fechado" not in existing_cols:
+        op.add_column('horario_visitacao', sa.Column('fechado', sa.Boolean(), nullable=False, server_default=sa.false()))
 
 
 def downgrade():

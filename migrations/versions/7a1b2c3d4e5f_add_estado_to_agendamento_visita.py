@@ -15,10 +15,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "agendamento_visita",
-        sa.Column("estado", sa.String(length=2), nullable=True),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_cols = {col['name'] for col in inspector.get_columns("agendamento_visita")}
+    if "estado" not in existing_cols:
+        op.add_column(
+            "agendamento_visita",
+            sa.Column("estado", sa.String(length=2), nullable=True),
+        )
 
 
 def downgrade() -> None:

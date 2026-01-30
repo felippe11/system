@@ -17,19 +17,31 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     # Add new columns to assignment table
-    op.add_column('assignment', sa.Column('distribution_type', sa.String(20), nullable=True))
-    op.add_column('assignment', sa.Column('distribution_date', sa.DateTime, nullable=True))
-    op.add_column('assignment', sa.Column('distributed_by', sa.Integer, nullable=True))
-    op.add_column('assignment', sa.Column('notes', sa.Text, nullable=True))
+    existing_cols = {col['name'] for col in inspector.get_columns("assignment")}
+    if "distribution_type" not in existing_cols:
+        op.add_column('assignment', sa.Column('distribution_type', sa.String(20), nullable=True))
+    existing_cols = {col['name'] for col in inspector.get_columns("assignment")}
+    if "distribution_date" not in existing_cols:
+        op.add_column('assignment', sa.Column('distribution_date', sa.DateTime, nullable=True))
+    existing_cols = {col['name'] for col in inspector.get_columns("assignment")}
+    if "distributed_by" not in existing_cols:
+        op.add_column('assignment', sa.Column('distributed_by', sa.Integer, nullable=True))
+    existing_cols = {col['name'] for col in inspector.get_columns("assignment")}
+    if "notes" not in existing_cols:
+        op.add_column('assignment', sa.Column('notes', sa.Text, nullable=True))
     
     # Add foreign key constraint for distributed_by
-    op.create_foreign_key(
-        'fk_assignment_distributed_by',
-        'assignment', 'usuario',
-        ['distributed_by'], ['id'],
-        ondelete='SET NULL'
-    )
+    existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("assignment")}
+    if "fk_assignment_distributed_by" not in existing_fks:
+        op.create_foreign_key(
+            'fk_assignment_distributed_by',
+            'assignment', 'usuario',
+            ['distributed_by'], ['id'],
+            ondelete='SET NULL'
+        )
     
     # Create distribution_log table
     op.create_table(
@@ -49,19 +61,23 @@ def upgrade():
     )
     
     # Add foreign key constraints for distribution_log
-    op.create_foreign_key(
-        'fk_distribution_log_evento',
-        'distribution_log', 'evento',
-        ['evento_id'], ['id'],
-        ondelete='CASCADE'
-    )
+    existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("distribution_log")}
+    if "fk_distribution_log_evento" not in existing_fks:
+        op.create_foreign_key(
+            'fk_distribution_log_evento',
+            'distribution_log', 'evento',
+            ['evento_id'], ['id'],
+            ondelete='CASCADE'
+        )
     
-    op.create_foreign_key(
-        'fk_distribution_log_distributed_by',
-        'distribution_log', 'usuario',
-        ['distributed_by'], ['id'],
-        ondelete='CASCADE'
-    )
+    existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("distribution_log")}
+    if "fk_distribution_log_distributed_by" not in existing_fks:
+        op.create_foreign_key(
+            'fk_distribution_log_distributed_by',
+            'distribution_log', 'usuario',
+            ['distributed_by'], ['id'],
+            ondelete='CASCADE'
+        )
     
     # Create indexes for better performance
     op.create_index('idx_assignment_distribution_type', 'assignment', ['distribution_type'])

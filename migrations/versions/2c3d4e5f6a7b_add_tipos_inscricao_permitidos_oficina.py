@@ -15,10 +15,19 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     with op.batch_alter_table("oficina") as batch_op:
-        batch_op.add_column(sa.Column("tipos_inscricao_permitidos", sa.Text(), nullable=True))
+        existing_cols = {col['name'] for col in inspector.get_columns("oficina")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("oficina")}
+        if "tipos_inscricao_permitidos" not in existing_cols:
+            batch_op.add_column(sa.Column("tipos_inscricao_permitidos", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     with op.batch_alter_table("oficina") as batch_op:
+        existing_cols = {col['name'] for col in inspector.get_columns("oficina")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("oficina")}
         batch_op.drop_column("tipos_inscricao_permitidos")

@@ -17,6 +17,8 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     op.drop_constraint(
         "fk_revisor_process_formulario_id_formularios",
         "revisor_process",
@@ -38,10 +40,12 @@ def downgrade():
         "revisor_process",
         type_="foreignkey",
     )
-    op.create_foreign_key(
-        "fk_revisor_process_formulario_id_formularios",
-        "revisor_process",
-        "formularios",
-        ["formulario_id"],
-        ["id"],
-    )
+    existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("revisor_process")}
+    if "fk_revisor_process_formulario_id_formularios" not in existing_fks:
+        op.create_foreign_key(
+            "fk_revisor_process_formulario_id_formularios",
+            "revisor_process",
+            "formularios",
+            ["formulario_id"],
+            ["id"],
+        )

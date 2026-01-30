@@ -12,17 +12,23 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "submission",
-        sa.Column("evento_id", sa.Integer(), nullable=True),
-    )
-    op.create_foreign_key(
-        "fk_submission_evento",
-        "submission",
-        "evento",
-        ["evento_id"],
-        ["id"],
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_cols = {col['name'] for col in inspector.get_columns("submission")}
+    if "evento_id" not in existing_cols:
+        op.add_column(
+            "submission",
+            sa.Column("evento_id", sa.Integer(), nullable=True),
+        )
+    existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("submission")}
+    if "fk_submission_evento" not in existing_fks:
+        op.create_foreign_key(
+            "fk_submission_evento",
+            "submission",
+            "evento",
+            ["evento_id"],
+            ["id"],
+        )
 
 
 def downgrade() -> None:

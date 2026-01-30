@@ -15,6 +15,8 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     """Add incluir_assinatura_cliente field to certificado_revisor_config table."""
     # Verificar se a coluna já existe
     connection = op.get_bind()

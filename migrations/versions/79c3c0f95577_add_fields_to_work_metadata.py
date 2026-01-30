@@ -56,6 +56,8 @@ def _fk_exists(bind, table: str, constraint_name: str) -> bool:
 
 def upgrade() -> None:
     bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    bind = op.get_bind()
 
     # Esquema alvo desta migração
     # (mantive exatamente as colunas que você definiu)
@@ -76,6 +78,8 @@ def upgrade() -> None:
         # Garante apenas as colunas que estiverem faltando
         existing = _column_names(bind, "work_metadata")
         with op.batch_alter_table("work_metadata") as batch_op:
+            existing_cols = {col['name'] for col in inspector.get_columns("work_metadata")}
+            existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("work_metadata")}
             for col in spec:
                 if col.name == "id":
                     continue
@@ -85,6 +89,8 @@ def upgrade() -> None:
     # Cria a FK se ainda não existir e se a tabela work_metadata existe
     if _table_exists(bind, "work_metadata") and not _fk_exists(bind, "work_metadata", "fk_work_metadata_evento"):
         with op.batch_alter_table("work_metadata") as batch_op:
+            existing_cols = {col['name'] for col in inspector.get_columns("work_metadata")}
+            existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("work_metadata")}
             batch_op.create_foreign_key(
                 "fk_work_metadata_evento",
                 referent_table="evento",
@@ -95,6 +101,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    bind = op.get_bind()
 
     if not _table_exists(bind, "work_metadata"):
         return
@@ -102,6 +110,8 @@ def downgrade() -> None:
     # Remove a FK se existir
     if _fk_exists(bind, "work_metadata", "fk_work_metadata_evento"):
         with op.batch_alter_table("work_metadata") as batch_op:
+            existing_cols = {col['name'] for col in inspector.get_columns("work_metadata")}
+            existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("work_metadata")}
             batch_op.drop_constraint("fk_work_metadata_evento", type_="foreignkey")
 
     # Heurística: se a tabela contém apenas id + colunas desta migração, podemos derrubar a tabela;
@@ -113,6 +123,8 @@ def downgrade() -> None:
         op.drop_table("work_metadata")
     else:
         with op.batch_alter_table("work_metadata") as batch_op:
+            existing_cols = {col['name'] for col in inspector.get_columns("work_metadata")}
+            existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("work_metadata")}
             for name in sorted(our_cols):
                 if name in existing:
                     batch_op.drop_column(name)

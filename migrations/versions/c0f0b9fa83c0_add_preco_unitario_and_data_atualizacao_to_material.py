@@ -16,15 +16,24 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     with op.batch_alter_table('material', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('preco_unitario', sa.Float(), nullable=True))
+        existing_cols = {col['name'] for col in inspector.get_columns("material")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("material")}
+        if "preco_unitario" not in existing_cols:
+            batch_op.add_column(sa.Column('preco_unitario', sa.Float(), nullable=True))
         batch_op.add_column(
             sa.Column('data_atualizacao', sa.DateTime(), server_default=sa.func.now(), nullable=True)
         )
 
 
 def downgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     with op.batch_alter_table('material', schema=None) as batch_op:
+        existing_cols = {col['name'] for col in inspector.get_columns("material")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("material")}
         batch_op.drop_column('data_atualizacao')
         batch_op.drop_column('preco_unitario')
 

@@ -17,6 +17,8 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     # Create new table for auto distribution logs
     op.create_table(
         'auto_distribution_log',
@@ -47,10 +49,13 @@ def upgrade():
 
     # Safely add columns to revisor_process with defaults to satisfy NOT NULL
     with op.batch_alter_table('revisor_process', schema=None) as batch_op:
+        existing_cols = {col['name'] for col in inspector.get_columns("revisor_process")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("revisor_process")}
         batch_op.add_column(
             sa.Column('nome', sa.String(length=255), nullable=False, server_default='')
         )
-        batch_op.add_column(sa.Column('descricao', sa.Text(), nullable=True))
+        if "descricao" not in existing_cols:
+            batch_op.add_column(sa.Column('descricao', sa.Text(), nullable=True))
         batch_op.add_column(
             sa.Column('status', sa.String(length=50), nullable=False, server_default='ativo')
         )
@@ -60,8 +65,12 @@ def upgrade():
 
 
 def downgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     # Drop columns from revisor_process
     with op.batch_alter_table('revisor_process', schema=None) as batch_op:
+        existing_cols = {col['name'] for col in inspector.get_columns("revisor_process")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("revisor_process")}
         batch_op.drop_column('status')
         batch_op.drop_column('descricao')
         batch_op.drop_column('nome')

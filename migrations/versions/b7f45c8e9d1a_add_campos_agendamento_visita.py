@@ -15,26 +15,49 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     with op.batch_alter_table("agendamento_visita") as batch_op:
-        batch_op.add_column(sa.Column("rede_ensino", sa.String(length=100), nullable=True))
-        batch_op.add_column(sa.Column("municipio", sa.String(length=100), nullable=True))
-        batch_op.add_column(sa.Column("bairro", sa.String(length=100), nullable=True))
-        batch_op.add_column(sa.Column("responsavel_nome", sa.String(length=150), nullable=True))
-        batch_op.add_column(sa.Column("responsavel_cargo", sa.String(length=100), nullable=True))
-        batch_op.add_column(sa.Column("responsavel_whatsapp", sa.String(length=20), nullable=True))
-        batch_op.add_column(sa.Column("responsavel_email", sa.String(length=120), nullable=True))
-        batch_op.add_column(sa.Column("acompanhantes_nomes", sa.String(length=255), nullable=True))
-        batch_op.add_column(sa.Column("acompanhantes_qtd", sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column("precisa_transporte", sa.Boolean(), nullable=True))
-        batch_op.add_column(sa.Column("observacoes", sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column("compromisso_1", sa.Boolean(), nullable=True))
-        batch_op.add_column(sa.Column("compromisso_2", sa.Boolean(), nullable=True))
-        batch_op.add_column(sa.Column("compromisso_3", sa.Boolean(), nullable=True))
-        batch_op.add_column(sa.Column("compromisso_4", sa.Boolean(), nullable=True))
+        existing_cols = {col['name'] for col in inspector.get_columns("agendamento_visita")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("agendamento_visita")}
+        if "rede_ensino" not in existing_cols:
+            batch_op.add_column(sa.Column("rede_ensino", sa.String(length=100), nullable=True))
+        if "municipio" not in existing_cols:
+            batch_op.add_column(sa.Column("municipio", sa.String(length=100), nullable=True))
+        if "bairro" not in existing_cols:
+            batch_op.add_column(sa.Column("bairro", sa.String(length=100), nullable=True))
+        if "responsavel_nome" not in existing_cols:
+            batch_op.add_column(sa.Column("responsavel_nome", sa.String(length=150), nullable=True))
+        if "responsavel_cargo" not in existing_cols:
+            batch_op.add_column(sa.Column("responsavel_cargo", sa.String(length=100), nullable=True))
+        if "responsavel_whatsapp" not in existing_cols:
+            batch_op.add_column(sa.Column("responsavel_whatsapp", sa.String(length=20), nullable=True))
+        if "responsavel_email" not in existing_cols:
+            batch_op.add_column(sa.Column("responsavel_email", sa.String(length=120), nullable=True))
+        if "acompanhantes_nomes" not in existing_cols:
+            batch_op.add_column(sa.Column("acompanhantes_nomes", sa.String(length=255), nullable=True))
+        if "acompanhantes_qtd" not in existing_cols:
+            batch_op.add_column(sa.Column("acompanhantes_qtd", sa.Integer(), nullable=True))
+        if "precisa_transporte" not in existing_cols:
+            batch_op.add_column(sa.Column("precisa_transporte", sa.Boolean(), nullable=True))
+        if "observacoes" not in existing_cols:
+            batch_op.add_column(sa.Column("observacoes", sa.Text(), nullable=True))
+        if "compromisso_1" not in existing_cols:
+            batch_op.add_column(sa.Column("compromisso_1", sa.Boolean(), nullable=True))
+        if "compromisso_2" not in existing_cols:
+            batch_op.add_column(sa.Column("compromisso_2", sa.Boolean(), nullable=True))
+        if "compromisso_3" not in existing_cols:
+            batch_op.add_column(sa.Column("compromisso_3", sa.Boolean(), nullable=True))
+        if "compromisso_4" not in existing_cols:
+            batch_op.add_column(sa.Column("compromisso_4", sa.Boolean(), nullable=True))
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     with op.batch_alter_table("agendamento_visita") as batch_op:
+        existing_cols = {col['name'] for col in inspector.get_columns("agendamento_visita")}
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("agendamento_visita")}
         batch_op.drop_column("compromisso_4")
         batch_op.drop_column("compromisso_3")
         batch_op.drop_column("compromisso_2")

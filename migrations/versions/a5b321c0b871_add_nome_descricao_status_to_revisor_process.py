@@ -16,18 +16,26 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        "revisor_process",
-        sa.Column("nome", sa.String(length=255), nullable=False, server_default=""),
-    )
-    op.add_column(
-        "revisor_process",
-        sa.Column("descricao", sa.Text(), nullable=True),
-    )
-    op.add_column(
-        "revisor_process",
-        sa.Column("status", sa.String(length=50), nullable=False, server_default="ativo"),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_cols = {col['name'] for col in inspector.get_columns("revisor_process")}
+    if "nome" not in existing_cols:
+        op.add_column(
+            "revisor_process",
+            sa.Column("nome", sa.String(length=255), nullable=False, server_default=""),
+        )
+    existing_cols = {col['name'] for col in inspector.get_columns("revisor_process")}
+    if "descricao" not in existing_cols:
+        op.add_column(
+            "revisor_process",
+            sa.Column("descricao", sa.Text(), nullable=True),
+        )
+    existing_cols = {col['name'] for col in inspector.get_columns("revisor_process")}
+    if "status" not in existing_cols:
+        op.add_column(
+            "revisor_process",
+            sa.Column("status", sa.String(length=50), nullable=False, server_default="ativo"),
+        )
 
 
 def downgrade():

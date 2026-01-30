@@ -27,6 +27,8 @@ def _constraint_exists(bind, constraint_name: str) -> bool:
         return False
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     """Remove incorrect foreign key constraint that references submission table."""
     bind = op.get_bind()
     
@@ -37,12 +39,14 @@ def upgrade():
     
     # Ensure the correct foreign key exists (it should already exist)
     if not _constraint_exists(bind, 'assignment_resposta_formulario_id_fkey'):
-        op.create_foreign_key(
-            'assignment_resposta_formulario_id_fkey',
-            'assignment', 'respostas_formulario',
-            ['resposta_formulario_id'], ['id'],
-            ondelete='CASCADE'
-        )
+        existing_fks = {fk['name'] for fk in inspector.get_foreign_keys("assignment")}
+        if "assignment_resposta_formulario_id_fkey" not in existing_fks:
+            op.create_foreign_key(
+                'assignment_resposta_formulario_id_fkey',
+                'assignment', 'respostas_formulario',
+                ['resposta_formulario_id'], ['id'],
+                ondelete='CASCADE'
+            )
         print("Created correct foreign key constraint: assignment_resposta_formulario_id_fkey")
 
 def downgrade():

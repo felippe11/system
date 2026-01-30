@@ -17,9 +17,15 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     # Add tipo_necessidade_especial and descricao_necessidade_especial columns to aluno_visitante table
-    op.add_column('aluno_visitante', sa.Column('tipo_necessidade_especial', sa.String(100), nullable=True))
-    op.add_column('aluno_visitante', sa.Column('descricao_necessidade_especial', sa.Text(), nullable=True))
+    existing_cols = {col['name'] for col in inspector.get_columns("aluno_visitante")}
+    if "tipo_necessidade_especial" not in existing_cols:
+        op.add_column('aluno_visitante', sa.Column('tipo_necessidade_especial', sa.String(100), nullable=True))
+    existing_cols = {col['name'] for col in inspector.get_columns("aluno_visitante")}
+    if "descricao_necessidade_especial" not in existing_cols:
+        op.add_column('aluno_visitante', sa.Column('descricao_necessidade_especial', sa.Text(), nullable=True))
 
 
 def downgrade():
