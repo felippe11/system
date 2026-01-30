@@ -77,12 +77,25 @@ def upgrade():
     # ------------------------------------------------------------
     # 2) Remover submissions inválidos (sem autor ou evento)
     # ------------------------------------------------------------
-    op.execute(
-        """
-        DELETE FROM submission
-        WHERE author_id IS NULL OR evento_id IS NULL;
-        """
-    )
+    if inspector.has_table("respostas_formulario"):
+        op.execute(
+            """
+            DELETE FROM submission s
+            WHERE (s.author_id IS NULL OR s.evento_id IS NULL)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM respostas_formulario rf
+                  WHERE rf.trabalho_id = s.id
+              );
+            """
+        )
+    else:
+        op.execute(
+            """
+            DELETE FROM submission
+            WHERE author_id IS NULL OR evento_id IS NULL;
+            """
+        )
 
     # ------------------------------------------------------------
     # 3) Tornar campos obrigatórios

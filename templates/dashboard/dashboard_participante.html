@@ -313,6 +313,7 @@
     const url = acao === 'inscrever'
       ? "{{ url_for('participante_routes.inscrever', oficina_id=0) }}".replace('0', oficinaId)
       : "{{ url_for('participante_routes.cancelar_inscricao', oficina_id=0) }}".replace('0', oficinaId);
+    const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '';
 
     // Mostrar loading
     Swal.fire({
@@ -332,7 +333,8 @@
     fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
       }
     })
       .then(response => response.json())
