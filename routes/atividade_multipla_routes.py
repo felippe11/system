@@ -8,8 +8,7 @@ from datetime import datetime, date, time
 from extensions import db
 from models.atividade_multipla_data import AtividadeMultiplaData, AtividadeData, FrequenciaAtividade, CheckinAtividade
 from models.event import Evento, Checkin
-from models.user import Usuario
-from models.cliente import Cliente
+from models.user import Usuario, Cliente
 from decorators import admin_required, cliente_required
 from utils.endpoints import DASHBOARD
 import logging
