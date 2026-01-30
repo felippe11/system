@@ -8,8 +8,7 @@
 {% endblock %}
 
 {% block page_actions %}
-<a href="{{ url_for('atividade_multipla_routes.listar_atividades') }}" 
-   class="btn btn-outline-secondary">
+<a href="{{ url_for('atividade_multipla_routes.listar_atividades') }}" class="btn btn-outline-secondary">
     <i class="fas fa-arrow-left me-2"></i>Voltar
 </a>
 {% endblock %}
@@ -24,7 +23,7 @@
                     Criar Nova Atividade
                 </h5>
             </div>
-            
+
             <div class="card-body">
                 <form method="POST" id="atividadeForm">
                     <!-- Informações Básicas -->
@@ -35,9 +34,9 @@
                             </h6>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-3">
-                        <div class="col-md-8">
+                        <div class="col-md-4">
                             <label for="titulo" class="form-label">Título da Atividade *</label>
                             <input type="text" class="form-control" id="titulo" name="titulo" required>
                         </div>
@@ -53,21 +52,26 @@
                                 <option value="outros">Outros</option>
                             </select>
                         </div>
+                        <div class="col-md-4">
+                            <label for="categoria" class="form-label">Categoria / Tag</label>
+                            <input type="text" class="form-control" id="categoria" name="categoria"
+                                placeholder="Ex: Educação, Tecnologia, Gestão">
+                        </div>
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-12">
                             <label for="descricao" class="form-label">Descrição</label>
-                            <textarea class="form-control" id="descricao" name="descricao" rows="3" 
-                                      placeholder="Descreva a atividade..."></textarea>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3"
+                                placeholder="Descreva a atividade..."></textarea>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-md-3">
                             <label for="carga_horaria_total" class="form-label">Carga Horária Total *</label>
-                            <input type="number" class="form-control" id="carga_horaria_total" 
-                                   name="carga_horaria_total" step="0.5" min="0" required>
+                            <input type="number" class="form-control" id="carga_horaria_total"
+                                name="carga_horaria_total" step="0.5" min="0" required>
                         </div>
                         <div class="col-md-3">
                             <label for="estado" class="form-label">Estado *</label>
@@ -116,7 +120,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <!-- Configurações -->
                     <div class="row mb-4">
                         <div class="col-12">
@@ -125,12 +129,12 @@
                             </h6>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-12">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="permitir_checkin_multiplas_datas" 
-                                       name="permitir_checkin_multiplas_datas" checked>
+                                <input class="form-check-input" type="checkbox" id="permitir_checkin_multiplas_datas"
+                                    name="permitir_checkin_multiplas_datas" checked>
                                 <label class="form-check-label" for="permitir_checkin_multiplas_datas">
                                     <strong>Permitir check-in em múltiplas datas</strong>
                                     <small class="d-block text-muted">
@@ -140,12 +144,12 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-12">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="gerar_lista_frequencia" 
-                                       name="gerar_lista_frequencia" checked>
+                                <input class="form-check-input" type="checkbox" id="gerar_lista_frequencia"
+                                    name="gerar_lista_frequencia" checked>
                                 <label class="form-check-label" for="gerar_lista_frequencia">
                                     <strong>Gerar lista de frequência</strong>
                                     <small class="d-block text-muted">
@@ -155,12 +159,12 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="exigir_presenca_todas_datas" 
-                                       name="exigir_presenca_todas_datas">
+                                <input class="form-check-input" type="checkbox" id="exigir_presenca_todas_datas"
+                                    name="exigir_presenca_todas_datas">
                                 <label class="form-check-label" for="exigir_presenca_todas_datas">
                                     <strong>Exigir presença em todas as datas</strong>
                                     <small class="d-block text-muted">
@@ -170,7 +174,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Datas da Atividade -->
                     <div class="row mb-4">
                         <div class="col-12">
@@ -184,17 +188,17 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div id="datas-container">
                         <!-- As datas serão adicionadas dinamicamente aqui -->
                     </div>
-                    
+
                     <!-- Botões de Ação -->
                     <div class="row mt-4">
                         <div class="col-12">
                             <div class="d-flex justify-content-end gap-2">
-                                <a href="{{ url_for('atividade_multipla_routes.listar_atividades') }}" 
-                                   class="btn btn-outline-secondary">
+                                <a href="{{ url_for('atividade_multipla_routes.listar_atividades') }}"
+                                    class="btn btn-outline-secondary">
                                     <i class="fas fa-times me-2"></i>Cancelar
                                 </a>
                                 <button type="submit" class="btn btn-primary">
@@ -213,31 +217,31 @@
 {% block extra_js %}
 <script>
     // Adicionar primeira data automaticamente
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         adicionarNovaData();
     });
-    
+
     // Validação do formulário
-    document.getElementById('atividadeForm').addEventListener('submit', function(e) {
+    document.getElementById('atividadeForm').addEventListener('submit', function (e) {
         const datas = document.querySelectorAll('input[name="datas[]"]');
         let hasValidData = false;
-        
-        datas.forEach(function(input) {
+
+        datas.forEach(function (input) {
             if (input.value) {
                 hasValidData = true;
             }
         });
-        
+
         if (!hasValidData) {
             e.preventDefault();
             alert('Adicione pelo menos uma data para a atividade.');
             return false;
         }
-        
+
         // Validar se todas as datas têm horários
         const horariosInicio = document.querySelectorAll('input[name="horarios_inicio[]"]');
         const horariosFim = document.querySelectorAll('input[name="horarios_fim[]"]');
-        
+
         for (let i = 0; i < datas.length; i++) {
             if (datas[i].value && (!horariosInicio[i].value || !horariosFim[i].value)) {
                 e.preventDefault();

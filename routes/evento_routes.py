@@ -207,12 +207,28 @@ def configurar_evento():
             config_certificado = ConfiguracaoCertificadoEvento.query.filter_by(evento_id=evento.id).first()
             oficinas = Oficina.query.filter_by(evento_id=evento.id).order_by(Oficina.titulo).all()
 
+    mostrar_permissoes_atividades = False
+    if evento and not evento.inscricao_gratuita:
+        tipos = evento.tipos_inscricao or []
+        if not tipos:
+            mostrar_permissoes_atividades = True
+        else:
+            for tipo in tipos:
+                try:
+                    preco = float(tipo.preco) if tipo.preco is not None else 0
+                except (TypeError, ValueError):
+                    preco = 0
+                if preco <= 0:
+                    mostrar_permissoes_atividades = True
+                    break
+
     template_args = {
         'eventos': eventos,
         'evento': evento,
         'habilita_pagamento': True,
         'config_certificado': config_certificado,
         'oficinas': oficinas,
+        'mostrar_permissoes_atividades': mostrar_permissoes_atividades,
     }
 
     if request.method == 'POST':

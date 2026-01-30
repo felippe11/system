@@ -32,6 +32,7 @@ class AtividadeMultiplaData(db.Model):
     
     # Status
     ativa = Column(Boolean, default=True)
+    categoria = Column(String(100), nullable=True)  # Added category field
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

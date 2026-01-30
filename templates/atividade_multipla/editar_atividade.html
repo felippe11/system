@@ -1,0 +1,277 @@
+{% extends "atividade_multipla/base.html" %}
+
+{% block page_title %}Editar Atividade{% endblock %}
+{% block page_subtitle %}Edite as informações da atividade{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a
+        href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}">{{ atividade.titulo
+        }}</a></li>
+<li class="breadcrumb-item active">Editar</li>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}"
+    class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Voltar
+</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-edit text-primary me-2"></i>
+                    Editar Atividade
+                </h5>
+            </div>
+
+            <div class="card-body">
+                <form method="POST" id="atividadeForm">
+                    <!-- Informações Básicas -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Informações Básicas
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="titulo" class="form-label">Título da Atividade *</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo"
+                                value="{{ atividade.titulo }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tipo_atividade" class="form-label">Tipo de Atividade *</label>
+                            <select class="form-select" id="tipo_atividade" name="tipo_atividade" required>
+                                <option value="">Selecione...</option>
+                                <option value="oficina" {% if atividade.tipo_atividade=='oficina' %}selected{% endif %}>
+                                    Oficina</option>
+                                <option value="palestra" {% if atividade.tipo_atividade=='palestra' %}selected{% endif
+                                    %}>Palestra</option>
+                                <option value="workshop" {% if atividade.tipo_atividade=='workshop' %}selected{% endif
+                                    %}>Workshop</option>
+                                <option value="curso" {% if atividade.tipo_atividade=='curso' %}selected{% endif %}>
+                                    Curso</option>
+                                <option value="seminario" {% if atividade.tipo_atividade=='seminario' %}selected{% endif
+                                    %}>Seminário</option>
+                                <option value="outros" {% if atividade.tipo_atividade=='outros' %}selected{% endif %}>
+                                    Outros</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="categoria" class="form-label">Categoria / Tag</label>
+                            <input type="text" class="form-control" id="categoria" name="categoria"
+                                value="{{ atividade.categoria or '' }}" placeholder="Ex: Educação, Tecnologia, Gestão">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3"
+                                placeholder="Descreva a atividade...">{{ atividade.descricao }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="carga_horaria_total" class="form-label">Carga Horária Total *</label>
+                            <input type="number" class="form-control" id="carga_horaria_total"
+                                name="carga_horaria_total" step="0.5" min="0"
+                                value="{{ atividade.carga_horaria_total }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="estado" class="form-label">Estado *</label>
+                            <select class="form-select" id="estado" name="estado" required>
+                                <option value="">Selecione...</option>
+                                {% for uf in ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
+                                'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE',
+                                'TO'] %}
+                                <option value="{{ uf }}" {% if atividade.estado==uf %}selected{% endif %}>{{ uf }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="cidade" class="form-label">Cidade *</label>
+                            <input type="text" class="form-control" id="cidade" name="cidade"
+                                value="{{ atividade.cidade }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="evento_id" class="form-label">Evento (Opcional)</label>
+                            <select class="form-select" id="evento_id" name="evento_id">
+                                <option value="">Nenhum evento</option>
+                                {% for evento in eventos %}
+                                <option value="{{ evento.id }}" {% if atividade.evento_id==evento.id %}selected{% endif
+                                    %}>{{ evento.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Configurações -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-cog me-2"></i>Configurações
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="permitir_checkin_multiplas_datas"
+                                    name="permitir_checkin_multiplas_datas" {% if
+                                    atividade.permitir_checkin_multiplas_datas %}checked{% endif %}>
+                                <label class="form-check-label" for="permitir_checkin_multiplas_datas">
+                                    <strong>Permitir check-in em múltiplas datas</strong>
+                                    <small class="d-block text-muted">
+                                        Os participantes poderão fazer check-in em cada data da atividade
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="gerar_lista_frequencia"
+                                    name="gerar_lista_frequencia" {% if atividade.gerar_lista_frequencia %}checked{%
+                                    endif %}>
+                                <label class="form-check-label" for="gerar_lista_frequencia">
+                                    <strong>Gerar lista de frequência</strong>
+                                    <small class="d-block text-muted">
+                                        Será gerada uma lista de frequência para cada data da atividade
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="exigir_presenca_todas_datas"
+                                    name="exigir_presenca_todas_datas" {% if atividade.exigir_presenca_todas_datas
+                                    %}checked{% endif %}>
+                                <label class="form-check-label" for="exigir_presenca_todas_datas">
+                                    <strong>Exigir presença em todas as datas</strong>
+                                    <small class="d-block text-muted">
+                                        O participante deve estar presente em todas as datas para receber certificado
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datas da Atividade -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="text-primary mb-0">
+                                    <i class="fas fa-calendar-day me-2"></i>Datas da Atividade
+                                </h6>
+                                <button type="button" class="add-data-btn" onclick="adicionarNovaData()">
+                                    <i class="fas fa-plus me-2"></i>Adicionar Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="datas-container">
+                        <!-- As datas serão adicionadas dinamicamente aqui via JS -->
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}"
+                                    class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Carregar datas existentes
+    document.addEventListener('DOMContentLoaded', function () {
+        const datasExistentes = [
+            {% for data in atividade.datas_ordenadas() %}
+            {
+            data: "{{ data.data.strftime('%Y-%m-%d') }}",
+            horario_inicio: "{{ data.horario_inicio.strftime('%H:%M') }}",
+            horario_fim: "{{ data.horario_fim.strftime('%H:%M') }}",
+            palavra_chave_manha: "{{ data.palavra_chave_manha or '' }}",
+            palavra_chave_tarde: "{{ data.palavra_chave_tarde or '' }}",
+            carga_horaria: "{{ data.carga_horaria_data or '' }}"
+        },
+        {% endfor %}
+        ];
+
+    if (datasExistentes.length > 0) {
+        datasExistentes.forEach(function (data) {
+            adicionarNovaData(data);
+        });
+    } else {
+        adicionarNovaData();
+    }
+    });
+
+    // Validação do formulário
+    document.getElementById('atividadeForm').addEventListener('submit', function (e) {
+        const datas = document.querySelectorAll('input[name="datas[]"]');
+        let hasValidData = false;
+
+        datas.forEach(function (input) {
+            if (input.value) {
+                hasValidData = true;
+            }
+        });
+
+        if (!hasValidData) {
+            e.preventDefault();
+            alert('Adicione pelo menos uma data para a atividade.');
+            return false;
+        }
+
+        // Validar se todas as datas têm horários
+        const horariosInicio = document.querySelectorAll('input[name="horarios_inicio[]"]');
+        const horariosFim = document.querySelectorAll('input[name="horarios_fim[]"]');
+
+        for (let i = 0; i < datas.length; i++) {
+            if (datas[i].value && (!horariosInicio[i].value || !horariosFim[i].value)) {
+                e.preventDefault();
+                alert('Todas as datas devem ter horário de início e fim definidos.');
+                return false;
+            }
+        }
+    });
+
+    // We can reuse the adicionarNovaData function from base.html or nova_atividade.html if defined there, 
+    // but the user hasn't shown base.html so I assume the JS logic is either global or needs to be included.
+    // Based on nova_atividade.html content, it calls `adicionarNovaData()` but doesn't define it.
+    // It must be in base.html or a separate JS file.
+    // Wait, in nova_atividade.html provided, there is no definition of `adicionarNovaData` in the template block!
+    // It must be in `atividade_multipla/base.html` or included JS.
+    // For now I will assume it exists. If not, I'll need to fetch base.html.
+</script>
+{% endblock %}

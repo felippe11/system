@@ -296,6 +296,19 @@
             </div>
           </div>
 
+          {% if evento and mostrar_permissoes_atividades %}
+          <div class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+            <div class="mb-2 mb-md-0">
+              <strong>Permissões por atividade:</strong> este evento possui tipos de inscrição com preço 0,00
+              ou sem preço definido. Configure quais tipos podem se inscrever em cada atividade.
+            </div>
+            <a class="btn btn-outline-primary"
+               href="{{ url_for('dashboard_routes.configurar_permissoes_atividades', evento_id=evento.id) }}">
+              <i class="bi bi-shield-lock me-1"></i> Configurar permissões
+            </a>
+          </div>
+          {% endif %}
+
           <!-- lotes de inscrição -->
 
           <div id="lotes-section" class="mb-4" {% if not evento or not evento.habilitar_lotes %}style="display:none;"{% endif %}>

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Permissões por Atividade{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold mb-0">Permissões por atividade</h1>
+    <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="GET" class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">Evento</label>
+          <select name="evento_id" class="form-select" required>
+            <option value="">Selecione um evento</option>
+            {% for ev in eventos %}
+              <option value="{{ ev.id }}" {% if evento and ev.id == evento.id %}selected{% endif %}>
+                {{ ev.nome }}{% if ev.data_inicio %} - {{ ev.data_inicio.strftime('%d/%m/%Y') }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4 d-grid">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-list-check me-1"></i> Carregar atividades
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if evento %}
+  <div class="card shadow-sm">
+    <div class="card-body">
+      {% if alerta_preco_zero %}
+        <div class="alert alert-info">
+          Este evento possui tipos de inscrição com preço 0,00 ou sem preço definido.
+          Use as permissões abaixo para controlar quais tipos podem se inscrever em
+          cada atividade.
+        </div>
+      {% endif %}
+      {% if oficinas and tipos_inscricao %}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="evento_id" value="{{ evento.id }}">
+
+        <div class="alert alert-warning">
+          Se nenhum tipo for marcado em uma atividade, ela ficará liberada para
+          todos os tipos de inscrição.
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>Atividade</th>
+                <th>Datas/Horários</th>
+                <th>Tipos permitidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for oficina in oficinas %}
+                {% set permitidos = oficina.get_tipos_inscricao_permitidos_list() %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold">{{ oficina.titulo }}</div>
+                    {% if oficina.tipo_oficina %}
+                      <small class="text-muted">{{ oficina.tipo_oficina }}</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if oficina.dias %}
+                      <ul class="list-unstyled mb-0">
+                        {% for dia in oficina.dias %}
+                          <li>
+                            {{ dia.data.strftime('%d/%m/%Y') }}{% if dia.horario_inicio %} • {{ dia.horario_inicio }}{% endif %}{% if dia.horario_fim %} - {{ dia.horario_fim }}{% endif %}
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% else %}
+                      <span class="text-muted">Sem data definida</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="d-flex flex-wrap gap-3">
+                      {% for tipo in tipos_inscricao %}
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox"
+                                 name="tipos_{{ oficina.id }}" value="{{ tipo.id }}"
+                                 id="tipo-{{ oficina.id }}-{{ tipo.id }}"
+                                 {% if tipo.id in permitidos %}checked{% endif %}>
+                          <label class="form-check-label" for="tipo-{{ oficina.id }}-{{ tipo.id }}">
+                            {{ tipo.nome }}
+                          </label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-save me-1"></i> Salvar permissões
+          </button>
+        </div>
+      </form>
+      {% elif not tipos_inscricao %}
+        <p class="text-muted mb-0">Este evento não possui tipos de inscrição.</p>
+      {% else %}
+        <p class="text-muted mb-0">Nenhuma atividade encontrada para este evento.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

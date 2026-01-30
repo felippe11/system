@@ -62,37 +62,71 @@ def create_app():
     app.config["UPLOADS_ROOT"] = Config.UPLOADS_ROOT
     app.config["BANNERS_ROOT"] = Config.BANNERS_ROOT
 
-    def _dir_has_files(path: str) -> bool:
-        for _, _, files in os.walk(path):
-            if files:
-                return True
-        return False
+    def _move_dir_contents(src_dir: str, dest_dir: str) -> bool:
+        """Move files from src_dir into dest_dir, preserving subfolders."""
+        try:
+            for root, dirs, files in os.walk(src_dir):
+                rel_root = os.path.relpath(root, src_dir)
+                dest_root = dest_dir if rel_root == "." else os.path.join(dest_dir, rel_root)
+                os.makedirs(dest_root, exist_ok=True)
+                for name in files:
+                    src_path = os.path.join(root, name)
+                    dest_path = os.path.join(dest_root, name)
+                    if not os.path.exists(dest_path):
+                        shutil.move(src_path, dest_path)
+                    else:
+                        try:
+                            os.remove(src_path)
+                        except OSError:
+                            logging.warning(
+                                "Unable to remove duplicate file %s", src_path
+                            )
+                for dname in dirs:
+                    os.makedirs(os.path.join(dest_root, dname), exist_ok=True)
+            return True
+        except OSError:
+            logging.warning(
+                "Unable to migrate static files from %s to %s",
+                src_dir,
+                dest_dir,
+            )
+            return False
 
     def _ensure_static_symlink(link_path: str, target_path: str) -> None:
         """Ensure link_path points to target_path for uploads on Render."""
         if os.path.islink(link_path):
             return
+        os.makedirs(target_path, exist_ok=True)
         if os.path.exists(link_path):
-            try:
-                if os.path.isdir(link_path) and not _dir_has_files(link_path):
-                    shutil.rmtree(link_path)
+            if os.path.isdir(link_path):
+                migrated = _move_dir_contents(link_path, target_path)
+                if migrated:
+                    try:
+                        shutil.rmtree(link_path)
+                    except OSError:
+                        logging.warning(
+                            "Unable to remove old static directory %s; "
+                            "uploads may not be served from %s",
+                            link_path,
+                            target_path,
+                        )
+                        return
                 else:
                     logging.warning(
-                        "Static path %s exists and is not a symlink; "
+                        "Static path %s exists and could not be migrated; "
                         "uploads may not be served from %s",
                         link_path,
                         target_path,
                     )
                     return
-            except OSError:
+            else:
                 logging.warning(
-                    "Unable to replace existing static path %s; "
+                    "Static path %s exists and is not a directory; "
                     "uploads may not be served from %s",
                     link_path,
                     target_path,
                 )
                 return
-        os.makedirs(target_path, exist_ok=True)
         try:
             os.symlink(target_path, link_path)
         except OSError:

@@ -25,3 +25,8 @@ DASHBOARD_PARTICIPANTE = "dashboard_participante_routes.dashboard_participante"
 
 DASHBOARD_REVISOR = "peer_review_routes.reviewer_dashboard"
 """Endpoint for the reviewer dashboard."""
+
+DASHBOARD_CLIENTE_PERMISSOES_ATIVIDADES = (
+    "dashboard_routes.configurar_permissoes_atividades"
+)
+"""Endpoint for managing activity permissions by subscription type."""

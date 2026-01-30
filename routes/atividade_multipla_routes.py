@@ -44,6 +44,7 @@ def nova_atividade():
             descricao = request.form.get('descricao')
             carga_horaria_total = request.form.get('carga_horaria_total')
             tipo_atividade = request.form.get('tipo_atividade')
+            categoria = request.form.get('categoria')
             estado = request.form.get('estado')
             cidade = request.form.get('cidade')
             evento_id = request.form.get('evento_id') or None
@@ -59,6 +60,7 @@ def nova_atividade():
                 descricao=descricao,
                 carga_horaria_total=carga_horaria_total,
                 tipo_atividade=tipo_atividade,
+                categoria=categoria,
                 estado=estado,
                 cidade=cidade,
                 cliente_id=current_user.id,
@@ -147,6 +149,7 @@ def editar_atividade(id):
             atividade.descricao = request.form.get('descricao')
             atividade.carga_horaria_total = request.form.get('carga_horaria_total')
             atividade.tipo_atividade = request.form.get('tipo_atividade')
+            atividade.categoria = request.form.get('categoria')
             atividade.estado = request.form.get('estado')
             atividade.cidade = request.form.get('cidade')
             atividade.evento_id = request.form.get('evento_id') or None

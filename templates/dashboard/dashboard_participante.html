@@ -2,533 +2,235 @@
 {% block title %}Dashboard - Participante{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_participante.css') }}">
-
-<div class="event-page-container">
-  <div class="dashboard-header">
-    <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
-    <h3>Abaixo você encontra as atividades disponíveis</h3>
-
-    {% if usuario.tipo_inscricao %}
-    <div class="tipo-inscricao-info">
-      <p>Seu tipo de inscrição: <strong>{{ usuario.tipo_inscricao.nome }}</strong></p>
-
-      {% set regra = usuario.tipo_inscricao.regras|first %}
-      {% if regra and regra.limite_oficinas > 0 %}
-      {% set inscricoes_evento = usuario.inscricoes|selectattr('oficina.evento_id', 'equalto',
-      regra.evento_id)|list|length %}
-      <p class="limite-oficinas">
-        <i class="fas fa-info-circle"></i>
-        Você pode se inscrever em até <strong>{{ regra.limite_oficinas }}</strong> oficinas
-        ({{ inscricoes_evento }} de {{ regra.limite_oficinas }} utilizadas)
-      </p>
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Notification Section -->
-  <div class="row justify-content-center mb-4">
-    <div class="col-lg-8">
-      <div class="notificacoes-section">
-        <h4 class="notificacao-titulo d-flex align-items-center justify-content-between mb-3">
-          <span><i class="fas fa-bell me-2"></i> Notificações</span>
-          <span id="badge-notificacoes" class="badge-notificacao" style="display: none;">0</span>
-        </h4>
-        <div id="notificacoes-recentes">
-          <!-- As notificações serão carregadas aqui via JS -->
-          <div class="text-center p-3 text-muted">
-            <i class="fas fa-spinner fa-spin"></i> Carregando...
-          </div>
-        </div>
-        <div class="text-end mt-2">
-          <a href="{{ url_for('agendamento_routes.listar_notificacoes') }}"
-            class="btn btn-sm btn-link text-decoration-none">Ver todas</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {% if eventos_sorted|length > 1 %}
-  <form method="get" class="mb-4">
-    <label for="evento_id" class="form-label">Selecione o evento:</label>
-    <select id="evento_id" name="evento_id" class="form-select" onchange="this.form.submit()">
-      {% for ev in eventos_sorted %}
-      <option value="{{ ev.id }}" {% if evento and evento.id==ev.id %}selected{% endif %}>{{ ev.nome }}</option>
-      {% endfor %}
-    </select>
-  </form>
-  {% endif %}
-
-  <!-- Container unificado para as ações -->
-  <div class="container-fluid px-4 mt-5">
-    <div class="d-flex flex-wrap justify-content-center gap-3">
-      {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_submissao_trabalhos %}
-      <a href="{{ url_for('trabalho_routes.submeter_trabalho') }}" class="btn btn-success btn-lg">
-        <i class="bi bi-upload me-2"></i> Submeter Trabalho
-      </a>
-      {% endif %}
-
-      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg">
-        <i class="fas fa-calendar-alt me-2"></i> Meus Agendamentos
-      </a>
-
-      {% if tem_horarios_agendamento %}
-      <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}"
-        class="btn btn-primary btn-lg">
-        <i class="fas fa-calendar-plus me-2"></i> Agendar Visita
-      </a>
-      {% endif %}
-
-      {% if formularios_disponiveis %}
-      <a href="{{ url_for('formularios_routes.listar_formularios_participante', evento_id=evento.id if evento else None) }}"
-        class="btn btn-primary btn-lg">
-        <i class="fas fa-clipboard-list me-2"></i> Formulários
-      </a>
-      {% endif %}
-
-
-    </div>
-  </div>
-
-  {% if current_user.tem_pagamento_pendente() %}
-
-  {% endif %}
-
-
-
-
-  {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_qrcode_evento_credenciamento %}
-  <a href="{{ url_for('routes.gerar_evento_qrcode_pdf_route', evento_id=evento.id) }}" class="btn btn-primary">
-    <i class="fas fa-qrcode"></i> Baixar QR Code do Evento
-  </a>
-  {% else %}
-  <p class="text-muted">QR Code do evento desativado.</p>
-  {% endif %}
-
-
-
-  <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
-  {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
-
-  {% if not eventos_sorted %}
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="alert alert-info text-center p-4">
-        <i class="fas fa-info-circle fa-2x mb-3"></i>
-        <p class="mb-0 fs-5">Você não está inscrito em nenhum evento. Entre em contato com a organização para mais
-          informações.</p>
-      </div>
-    </div>
-  </div>
-  {% else %}
-  <!-- Agrupa oficinas por evento -->
-  {% set eventos = {} %}
-  {% for oficina in oficinas %}
-  {% if not evento or oficina.evento_id == evento.id or oficina.evento_id is none %}
-  {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
-  {% if oficina.evento_id not in eventos %}
-  {% set _ = eventos.update({
-  oficina.evento_id: {
-  'nome': oficina.evento_nome,
-  'data_inicio': oficina.evento_data_inicio,
-  'data_fim': oficina.evento_data_fim,
-  'oficinas': []
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+  rel="stylesheet" />
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          primary: "#3b82f6", // Clean Blue
+          secondary: "#10b981", // Success Green
+          "background-light": "#f8fafc",
+          "background-dark": "#0f172a",
+          "card-light": "#ffffff",
+          "card-dark": "#1e293b",
+        },
+        fontFamily: {
+          display: ["Inter", "sans-serif"],
+        },
+        borderRadius: {
+          DEFAULT: "12px",
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
   }
-  }) %}
-  {% else %}
-  {% if not eventos[oficina.evento_id].get('data_inicio') and oficina.evento_data_inicio %}
-  {% set _ = eventos[oficina.evento_id].update({'data_inicio': oficina.evento_data_inicio}) %}
-  {% endif %}
-  {% if not eventos[oficina.evento_id].get('data_fim') and oficina.evento_data_fim %}
-  {% set _ = eventos[oficina.evento_id].update({'data_fim': oficina.evento_data_fim}) %}
-  {% endif %}
-  {% endif %}
-  {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
-  {% endif %}
-  {% endif %}
-  {% endfor %}
 
-  <!-- Itera sobre cada evento -->
-  {% for evento_id, evento_info in eventos.items() %}
-  <div class="evento-section">
-    <h3 class="evento-titulo">{{ evento_info.nome }}</h3>
-    {% if evento_info.data_inicio %}
-    <p class="evento-data">
-      {{ evento_info.data_inicio.strftime('%d/%m/%Y') }}
-      {% if evento_info.data_fim %}- {{ evento_info.data_fim.strftime('%d/%m/%Y') }}{% endif %}
-    </p>
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+
+<div class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen pb-24">
+  <header class="px-5 pt-8 pb-4">
+    <div class="flex justify-between items-start mb-6">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">
+          Olá, <span class="text-primary">{{ usuario.nome.split()[0] }}</span>
+        </h1>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+          Encontre sua próxima atividade hoje.
+        </p>
+      </div>
+      <button
+        class="w-10 h-10 rounded-full bg-white dark:bg-card-dark shadow-sm flex items-center justify-center border border-slate-200 dark:border-slate-700 relative">
+        <span class="material-icons-round text-slate-600 dark:text-slate-300">notifications</span>
+        <!-- Lógica de notificação simplificada -->
+        <span id="badge-notificacoes"
+          class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-card-dark"
+          style="display: none;"></span>
+      </button>
+    </div>
+
+    <!-- Card de Inscrição Ativa (Exemplo - Pegando a última inscrição) -->
+    {% if usuario.inscricoes %}
+    {% set ultima_inscricao = usuario.inscricoes[-1] %}
+    <div
+      class="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm mb-6 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-primary">
+        <span class="material-icons-round">assignment_ind</span>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Inscrição Recente</p>
+        <p class="font-semibold text-sm">{{ ultima_inscricao.oficina.titulo if ultima_inscricao.oficina else 'Inscrição
+          no Evento' }}</p>
+      </div>
+      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}"
+        class="ml-auto text-primary text-xs font-bold uppercase tracking-wider">Ver</a>
+    </div>
     {% endif %}
 
-    <div class="row">
-      {% for oficina in evento_info.oficinas %}
-      <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card" data-oficina-id="{{ oficina.id }}" {% if usuario.tipo_inscricao_id %}
-          data-tipo-inscricao-id="{{ usuario.tipo_inscricao_id }}" {% endif %}>
-          <div class="card-header">
-            {{ oficina.titulo }}
+    <!-- Filtros de Categoria -->
+    <div class="flex overflow-x-auto gap-3 pb-2 hide-scrollbar">
+      <button onclick="filtrarCategoria('todas')"
+        class="categoria-btn active whitespace-nowrap px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold shadow-md shadow-primary/20"
+        data-categoria="todas">
+        Todos
+      </button>
+
+      {% set categorias = [] %}
+      {% for atividade in atividades if atividade.categoria %}
+      {% if atividade.categoria not in categorias %}
+      {% if categorias.append(atividade.categoria) %}{% endif %}
+      {% endif %}
+      {% endfor %}
+
+      {% for categoria in categorias %}
+      <button onclick="filtrarCategoria('{{ categoria }}')"
+        class="categoria-btn whitespace-nowrap px-5 py-2.5 rounded-full bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-sm font-medium"
+        data-categoria="{{ categoria }}">
+        {{ categoria }}
+      </button>
+      {% endfor %}
+    </div>
+  </header>
+
+  <main class="px-5 space-y-4">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-lg font-bold">Workshops Disponíveis</h2>
+      <span class="text-xs font-medium px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-md" id="contador-atividades">{{
+        atividades|length }} encontrados</span>
+    </div>
+
+    {% for atividade in atividades %}
+    <div
+      class="atividade-card bg-white dark:bg-card-dark rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden group"
+      data-categoria="{{ atividade.categoria or 'todas' }}">
+      <div class="p-4 flex gap-4">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            {% if atividade.categoria %}
+            <span
+              class="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 text-[10px] font-bold rounded uppercase">{{
+              atividade.categoria }}</span>
+            {% endif %}
+            <span class="text-[10px] font-medium text-slate-400">• {{ atividade.tipo_atividade|capitalize }}</span>
           </div>
-          <div class="card-body">
-            <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
-            <p><strong>Ministrantes:</strong>
-              {% if oficina.ministrantes %}
-              {{ oficina.ministrantes | join(', ') }}
-              {% else %}
-              N/A
-              {% endif %}
-            </p>
-            <p><strong>Formador:</strong>
-              {% if oficina.formador_nome %}
-              {{ oficina.formador_nome }}
-              {% else %}
-              N/A
-              {% endif %}
-            </p>
-
-
-
-
-            <p><strong>Datas e Horários:</strong></p>
-            <ul>
-              {% for dia in oficina.dias %}
-              <li>
-                <i class="far fa-calendar-alt"></i> {{ dia.data.strftime('%d/%m/%Y') }}
-                <i class="far fa-clock"></i> {{ dia.horario_inicio }} às {{ dia.horario_fim }}
-              </li>
-              {% endfor %}
-            </ul>
-            <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
-
-            {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
-            <p>
-              <strong>Vagas:</strong>
-              {% if oficina.vagas == 0 %}
-              <span class="status-badge badge-esgotado">Esgotado</span>
-              {% else %}
-              <span class="status-badge badge-vagas">{{ oficina.vagas }} disponíveis</span>
-              {% endif %}
-            </p>
+          <h3 class="font-bold text-slate-800 dark:text-white leading-snug mb-3">{{ atividade.titulo }}</h3>
+          <div class="grid grid-cols-2 gap-y-2">
+            {% if atividade.datas %}
+            {% set primeira_data = atividade.get_datas_ordenadas()[0] %}
+            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <span class="material-icons-round text-sm">calendar_today</span>
+              <span class="text-xs">{{ primeira_data.data.strftime('%d %b, %Y') }}</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <span class="material-icons-round text-sm">schedule</span>
+              <span class="text-xs">{{ primeira_data.horario_inicio.strftime('%H:%M') }} - {{
+                primeira_data.horario_fim.strftime('%H:%M') }}</span>
+            </div>
             {% endif %}
 
-            <div class="card-footer">
-              <!-- Se o participante já estiver inscrito nesta oficina -->
-              {% if oficina.id in inscricoes_ids %}
-              <div class="d-flex flex-column gap-2">
-                <!-- Check-in (só aparece se permitir_checkin_global == True) -->
-                {% if evento and evento.configuracao_evento and evento.configuracao_evento.permitir_checkin_global %}
-                <a href="{{ url_for('checkin_routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                  <i class="fas fa-clipboard-check"></i> Realizar Check-in
-                </a>
-                {% endif %}
-
-                <!-- Botão para cancelar inscrição -->
-                <form action="{{ url_for('inscricao_routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                  <button type="submit" class="btn btn-danger w-100">
-                    <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                  </button>
-                </form>
-
-                <!-- Comprovante de Inscrição -->
-                <a href="{{ url_for('comprovante_routes.baixar_comprovante', oficina_id=oficina.id) }}"
-                  class="btn btn-primary w-100">
-                  <i class="fas fa-file-download"></i> Baixar Comprovante
-                </a>
-
-                <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
-                {% if evento and evento.configuracao_evento and
-                evento.configuracao_evento.habilitar_certificado_individual %}
-                <a href="{{ url_for('comprovante_routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
-                  class="btn btn-success w-100">
-                  <i class="fas fa-graduation-cap"></i> Baixar Certificado
-                </a>
-                {% endif %}
-
-                <!-- Feedback (só aparece se habilitar_feedback == True) -->
-                {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_feedback %}
-                <a href="{{ url_for('feedback_routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
-                  <i class="fas fa-comment-dots"></i> Enviar Feedback
-                </a>
-                {% endif %}
-              </div>
-
-              <!-- Se for do tipo sem_inscricao, exibe mensagem informativa -->
-              {% elif oficina.tipo_inscricao == 'sem_inscricao' %}
-              <div class="alert alert-info text-center mb-0">
-                <i class="fas fa-info-circle"></i> Não é necessário inscrição para esta atividade.
-              </div>
-
-              <!-- Se não estiver inscrito ainda, houver vagas e for do tipo com inscrição -->
-              {% elif oficina.vagas > 0 and oficina.tipo_inscricao != 'sem_inscricao' %}
-              {% if oficina.disponivel_para_inscricao %}
-              <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
-                <i class="fas fa-check-circle"></i> Inscrever-se
-              </button>
-              {% else %}
-              <div class="alert alert-warning text-center mb-3">
-                <i class="fas fa-exclamation-triangle"></i> {{ oficina.motivo_indisponibilidade }}
-              </div>
-              {% endif %}
-
-              <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
-              {% else %}
-              {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' or oficina.tipo_inscricao ==
-              'com_inscricao_sem_limite' %}
-              <div class="alert alert-danger text-center mb-3">
-                <i class="fas fa-exclamation-triangle"></i> Vagas esgotadas
-              </div>
-              {% endif %}
-              {% endif %}
-            </div> <!-- Fim card-footer -->
-          </div> <!-- Fim card-body -->
-        </div> <!-- Fim card -->
-      </div> <!-- Fim col -->
-      {% endfor %}
-    </div> <!-- Fim row -->
-  </div> <!-- Fim evento-section -->
-  {% else %}
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="alert alert-warning text-center p-4">
-        <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
-        <p class="mb-0 fs-5">Nenhuma oficina disponível no seu evento.</p>
+            <!-- Lógica de Vagas (Simulada ou Real se disponível) -->
+            <div class="flex items-center gap-2 text-secondary font-medium col-span-2 mt-1">
+              <span class="material-icons-round text-sm">group</span>
+              <span class="text-xs">Inscrições Abertas</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col justify-center border-l border-slate-100 dark:border-slate-800 pl-4">
+          <a href="{{ url_for('atividade_multipla_routes.visualizar_atividade', id=atividade.id) }}"
+            class="bg-secondary hover:bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-secondary/20 transition-all active:scale-95">
+            <span class="material-icons-round">add</span>
+          </a>
+        </div>
       </div>
     </div>
+    {% endfor %}
+
+    <!-- Mensagem quando não há atividades -->
+    <div id="no-activities-msg" class="hidden text-center py-10 text-slate-500">
+      <span class="material-icons-round text-4xl mb-2">event_busy</span>
+      <p>Nenhuma atividade encontrada nesta categoria.</p>
+    </div>
+
+  </main>
+
+  <nav
+    class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 px-6 py-3 flex justify-between items-center z-50">
+    <button class="flex flex-col items-center gap-1 text-primary">
+      <span class="material-icons-round">explore</span>
+      <span class="text-[10px] font-bold">Explorar</span>
+    </button>
+    <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}"
+      class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
+      <span class="material-icons-round">bookmark_border</span>
+      <span class="text-[10px] font-medium">Inscritos</span>
+    </a>
+    <button class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
+      <span class="material-icons-round">receipt_long</span>
+      <span class="text-[10px] font-medium">Comprovantes</span>
+    </button>
+    <button class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
+      <span class="material-icons-round">person_outline</span>
+      <span class="text-[10px] font-medium">Perfil</span>
+    </button>
+  </nav>
+
+  <div class="fixed bottom-24 right-5">
+    <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}"
+      class="bg-primary text-white flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl shadow-primary/30 active:scale-95 transition-transform no-underline hover:text-white">
+      <span class="material-icons-round">calendar_month</span>
+      <span class="font-bold text-sm">Meus Agendamentos</span>
+    </a>
   </div>
-  {% endfor %}
-  {% endif %}
-
-</div> <!-- Fim container -->
-
-<!-- Script para inscrição assíncrona -->
-<script>
-  function inscrever(oficinaId) {
-    const oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
-    if (!oficinaCard) return;
-
-    // Monta o corpo da requisição
-    const tipoId = oficinaCard.dataset.tipoInscricaoId;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    const options = {
-      method: 'POST',
-      headers: { 'X-CSRFToken': csrfToken }
-    };
-    if (tipoId) {
-      const body = new URLSearchParams();
-      body.append('tipo_inscricao_id', tipoId);
-      options.body = body;
-    }
-
-    // Envia requisição ao servidor para registrar a inscrição
-    fetch(`/inscrever/${oficinaId}`, options)
-      .then(response => response.json())
-      .then(data => {
-        if (data.redirect) {
-          window.location.href = data.payment_url;
-          return;
-        }
-
-        if (data.success) {
-          // Atualiza o número de vagas
-          const vagasElement = oficinaCard.querySelector('.info-vagas');
-          if (vagasElement) {
-            const vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-            vagasElement.innerText = vagasAtualizadas;
-
-            const badgeElement = vagasElement.nextElementSibling;
-            if (badgeElement) {
-              if (vagasAtualizadas === 0) {
-                badgeElement.className = 'status-badge badge-esgotado';
-                badgeElement.innerText = 'Esgotado';
-              } else {
-                badgeElement.innerText = vagasAtualizadas + ' disponíveis';
-              }
-            }
-          }
-
-          // Atualiza o rodapé com opções pós-inscrição
-          const cardFooter = oficinaCard.querySelector('.card-footer');
-          if (cardFooter) {
-            cardFooter.innerHTML = '<div class="d-flex flex-column gap-2"></div>';
-            const buttonContainer = cardFooter.querySelector('.d-flex');
-
-            const cancelForm = document.createElement('form');
-            cancelForm.setAttribute('action', `/remover_inscricao/${oficinaId}`);
-            cancelForm.setAttribute('method', 'post');
-            cancelForm.innerHTML = `
-                    <button type="submit" class="btn btn-danger w-100">
-                        <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                    </button>
-                `;
-            buttonContainer.appendChild(cancelForm);
-
-            if ('{{ evento.configuracao_evento.permitir_checkin_global if evento and evento.configuracao_evento else False }}' === 'True') {
-              const checkinBtn = document.createElement('a');
-              checkinBtn.setAttribute('href', `/checkin/${oficinaId}`);
-              checkinBtn.className = 'btn btn-warning w-100';
-              checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Realizar Check-in';
-              buttonContainer.appendChild(checkinBtn);
-            }
-
-            const comprovanteBtn = document.createElement('a');
-            comprovanteBtn.setAttribute('href', data.pdf_url);
-            comprovanteBtn.className = 'btn btn-primary w-100';
-            comprovanteBtn.innerHTML = '<i class="fas fa-file-download"></i> Baixar Comprovante';
-            buttonContainer.appendChild(comprovanteBtn);
-          }
-
-          // Exibe um toast de sucesso
-          const toast = document.createElement('div');
-          toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3';
-          toast.setAttribute('role', 'alert');
-          toast.setAttribute('aria-live', 'assertive');
-          toast.setAttribute('aria-atomic', 'true');
-          toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fas fa-check-circle"></i> Inscrição realizada com sucesso!
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            `;
-          document.body.appendChild(toast);
-
-          const bsToast = new bootstrap.Toast(toast);
-          bsToast.show();
-
-          setTimeout(() => {
-            toast.remove();
-          }, 5000);
-        } else {
-          alert(data.message);
-          location.reload();
-        }
-      })
-      .catch(error => {
-        console.error('Erro:', error);
-        location.reload();
-      });
-  }
-</script>
+</div>
 
 <script>
-  // Função para carregar notificações recentes
-  function carregarNotificacoesRecentes() {
-    const container = document.getElementById('notificacoes-recentes');
-    if (!container) return; // Se elemento não existe, para execução
-
-    fetch('/notificacoes?limit=3')
-      .then(response => response.json())
-      .then(data => {
-        if (data.notificacoes && data.notificacoes.length > 0) {
-          container.innerHTML = '';
-          data.notificacoes.forEach(notificacao => {
-            const item = document.createElement('div');
-            item.className = `notificacao-item ${!notificacao.lida ? 'nao-lida' : ''}`;
-
-            const dataFormatada = new Date(notificacao.data_criacao).toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-
-            item.innerHTML = `
-                        <div class="notificacao-titulo">${notificacao.titulo}</div>
-                        <div class="notificacao-mensagem">${notificacao.mensagem}</div>
-                        <div class="notificacao-data">
-                            <i class="fas fa-clock me-1"></i>${dataFormatada}
-                            ${!notificacao.lida ? '<span class="badge bg-warning ms-2">Nova</span>' : ''}
-                        </div>
-                    `;
-
-            // Adicionar evento de clique para marcar como lida
-            if (!notificacao.lida) {
-              item.style.cursor = 'pointer';
-              item.addEventListener('click', () => marcarComoLida(notificacao.id, item));
-            }
-
-            container.appendChild(item);
-          });
-        } else {
-          container.innerHTML = `
-                    <div class="text-center text-muted">
-                        <i class="fas fa-inbox me-2"></i>
-                        Nenhuma notificação recente
-                    </div>
-                `;
-        }
-      })
-      .catch(error => {
-        console.error('Erro ao carregar notificações:', error);
-        if (container) {
-          container.innerHTML = `
-                <div class="text-center text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Erro ao carregar notificações
-                </div>
-            `;
-        }
-      });
-  }
-
-  // Função para carregar contador de notificações não lidas
-  function carregarContadorNotificacoes() {
-    const badge = document.getElementById('badge-notificacoes');
-    if (!badge) return;
-
-    fetch('/api/notificacoes/nao-lidas/count')
-      .then(response => response.json())
-      .then(data => {
-        if (data.count > 0) {
-          badge.textContent = data.count;
-          badge.style.display = 'block';
-        } else {
-          badge.style.display = 'none';
-        }
-      })
-      .catch(error => {
-        console.error('Erro ao carregar contador de notificações:', error);
-      });
-  }
-
-  // Função para marcar notificação como lida
-  function marcarComoLida(notificacaoId, elemento) {
-    fetch(`/notificacoes/${notificacaoId}/marcar-lida`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  function filtrarCategoria(categoria) {
+    // Atualizar estado dos botões
+    document.querySelectorAll('.categoria-btn').forEach(btn => {
+      if (btn.dataset.categoria === categoria) {
+        btn.className = 'categoria-btn active whitespace-nowrap px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold shadow-md shadow-primary/20';
+      } else {
+        btn.className = 'categoria-btn whitespace-nowrap px-5 py-2.5 rounded-full bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-sm font-medium';
       }
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          elemento.classList.remove('nao-lida');
-          const badge = elemento.querySelector('.badge');
-          if (badge) badge.remove();
-          elemento.style.cursor = 'default';
-          // cannot remove anonymous listener easily but class change is enough
-          // elemento.removeEventListener('click', arguments.callee);
+    });
 
-          // Atualizar contador
-          carregarContadorNotificacoes();
-        }
-      })
-      .catch(error => {
-        console.error('Erro ao marcar notificação como lida:', error);
-      });
+    // Filtrar cards
+    let visibleCount = 0;
+    document.querySelectorAll('.atividade-card').forEach(card => {
+      if (categoria === 'todas' || card.dataset.categoria === categoria) {
+        card.style.display = 'block';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    // Atualizar contador e mensagem de vazio
+    document.getElementById('contador-atividades').textContent = `${visibleCount} encontrados`;
+
+    const noMsg = document.getElementById('no-activities-msg');
+    if (visibleCount === 0) {
+      noMsg.classList.remove('hidden');
+    } else {
+      noMsg.classList.add('hidden');
+    }
   }
-
-  // Carregar notificações quando a página carregar
-  document.addEventListener('DOMContentLoaded', function () {
-    carregarNotificacoesRecentes();
-    carregarContadorNotificacoes();
-
-    // Atualizar notificações a cada 30 segundos
-    setInterval(() => {
-      carregarContadorNotificacoes();
-    }, 30000);
-  });
 </script>
-
 {% endblock %}

@@ -877,6 +877,93 @@ def ordenar_atividades_cliente():
         grouped_dias=grouped_dias,
     )
 
+
+@dashboard_routes.route(
+    "/dashboard_cliente/permissoes_atividades", methods=["GET", "POST"]
+)
+@login_required
+def configurar_permissoes_atividades():
+    """Define tipos de inscrição permitidos por atividade."""
+    if current_user.tipo != "cliente":
+        abort(403)
+
+    evento_id = request.args.get("evento_id", type=int) or request.form.get(
+        "evento_id", type=int
+    )
+    eventos = (
+        Evento.query.filter_by(cliente_id=current_user.id)
+        .order_by(Evento.data_inicio.desc().nullslast(), Evento.nome.asc())
+        .all()
+    )
+
+    evento = None
+    oficinas = []
+    tipos_inscricao = []
+    alerta_preco_zero = False
+
+    if evento_id:
+        evento = Evento.query.filter_by(
+            id=evento_id, cliente_id=current_user.id
+        ).first()
+        if not evento:
+            flash("Evento não encontrado ou acesso não autorizado.", "danger")
+            return redirect(
+                url_for("dashboard_routes.configurar_permissoes_atividades")
+            )
+        tipos_inscricao = EventoInscricaoTipo.query.filter_by(
+            evento_id=evento.id
+        ).all()
+        oficinas = (
+            Oficina.query.options(joinedload(Oficina.dias))
+            .filter_by(evento_id=evento.id)
+            .order_by(Oficina.titulo.asc())
+            .all()
+        )
+        if not evento.inscricao_gratuita:
+            for tipo in tipos_inscricao:
+                try:
+                    preco = float(tipo.preco) if tipo.preco is not None else 0
+                except (TypeError, ValueError):
+                    preco = 0
+                if preco <= 0:
+                    alerta_preco_zero = True
+                    break
+
+    if request.method == "POST" and evento:
+        tipos_evento_ids = {str(t.id) for t in tipos_inscricao}
+        atualizados = 0
+        for oficina in oficinas:
+            selecionados = [
+                tid
+                for tid in request.form.getlist(f"tipos_{oficina.id}")
+                if tid in tipos_evento_ids
+            ]
+            antes = set(oficina.get_tipos_inscricao_permitidos_list())
+            oficina.set_tipos_inscricao_permitidos_list(selecionados)
+            depois = set(oficina.get_tipos_inscricao_permitidos_list())
+            if antes != depois:
+                atualizados += 1
+        db.session.commit()
+        flash(
+            f"Permissões atualizadas para {atualizados} atividade(s).",
+            "success",
+        )
+        return redirect(
+            url_for(
+                "dashboard_routes.configurar_permissoes_atividades",
+                evento_id=evento.id,
+            )
+        )
+
+    return render_template(
+        "dashboard/gerenciar_permissoes_atividades.html",
+        eventos=eventos,
+        evento=evento,
+        oficinas=oficinas,
+        tipos_inscricao=tipos_inscricao,
+        alerta_preco_zero=alerta_preco_zero,
+    )
+
 @dashboard_routes.route('/dashboard-agendamentos')
 @login_required
 def dashboard_agendamentos():
