@@ -16,38 +16,65 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table(
-        "auto_distribution_log",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("evento_id", sa.Integer, nullable=False),
-        sa.Column("total_submissions", sa.Integer, nullable=False),
-        sa.Column("total_assignments", sa.Integer, nullable=False),
-        sa.Column("distribution_seed", sa.String(length=50), nullable=True),
-        sa.Column("conflicts_detected", sa.Integer, nullable=True),
-        sa.Column("fallback_assignments", sa.Integer, nullable=True),
-        sa.Column("failed_assignments", sa.Integer, nullable=True),
-        sa.Column("distribution_details", sa.JSON, nullable=True),
-        sa.Column("error_log", sa.JSON, nullable=True),
-        sa.Column("started_at", sa.DateTime, nullable=True),
-        sa.Column("completed_at", sa.DateTime, nullable=True),
-        sa.Column("duration_seconds", sa.Integer, nullable=True),
-        sa.ForeignKeyConstraint([
-            "evento_id"
-        ], ["evento.id"], name="fk_auto_distribution_log_evento", ondelete="CASCADE"),
-    )
-    op.create_index(
-        "idx_auto_distribution_log_evento",
-        "auto_distribution_log",
-        ["evento_id"],
-    )
-    op.create_index(
-        "idx_auto_distribution_log_started_at",
-        "auto_distribution_log",
-        ["started_at"],
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+    if "auto_distribution_log" not in existing_tables:
+        op.create_table(
+            "auto_distribution_log",
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("evento_id", sa.Integer, nullable=False),
+            sa.Column("total_submissions", sa.Integer, nullable=False),
+            sa.Column("total_assignments", sa.Integer, nullable=False),
+            sa.Column("distribution_seed", sa.String(length=50), nullable=True),
+            sa.Column("conflicts_detected", sa.Integer, nullable=True),
+            sa.Column("fallback_assignments", sa.Integer, nullable=True),
+            sa.Column("failed_assignments", sa.Integer, nullable=True),
+            sa.Column("distribution_details", sa.JSON, nullable=True),
+            sa.Column("error_log", sa.JSON, nullable=True),
+            sa.Column("started_at", sa.DateTime, nullable=True),
+            sa.Column("completed_at", sa.DateTime, nullable=True),
+            sa.Column("duration_seconds", sa.Integer, nullable=True),
+            sa.ForeignKeyConstraint(
+                ["evento_id"],
+                ["evento.id"],
+                name="fk_auto_distribution_log_evento",
+                ondelete="CASCADE",
+            ),
+        )
+    existing_indexes = {
+        idx["name"] for idx in inspector.get_indexes("auto_distribution_log")
+    } if "auto_distribution_log" in inspector.get_table_names() else set()
+    if "idx_auto_distribution_log_evento" not in existing_indexes:
+        op.create_index(
+            "idx_auto_distribution_log_evento",
+            "auto_distribution_log",
+            ["evento_id"],
+        )
+    if "idx_auto_distribution_log_started_at" not in existing_indexes:
+        op.create_index(
+            "idx_auto_distribution_log_started_at",
+            "auto_distribution_log",
+            ["started_at"],
+        )
 
 
 def downgrade():
-    op.drop_index("idx_auto_distribution_log_started_at", table_name="auto_distribution_log")
-    op.drop_index("idx_auto_distribution_log_evento", table_name="auto_distribution_log")
-    op.drop_table("auto_distribution_log")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+    if "auto_distribution_log" in existing_tables:
+        existing_indexes = {
+            idx["name"] for idx in inspector.get_indexes("auto_distribution_log")
+        }
+        if "idx_auto_distribution_log_started_at" in existing_indexes:
+            op.drop_index(
+                "idx_auto_distribution_log_started_at",
+                table_name="auto_distribution_log",
+            )
+        if "idx_auto_distribution_log_evento" in existing_indexes:
+            op.drop_index(
+                "idx_auto_distribution_log_evento",
+                table_name="auto_distribution_log",
+            )
+        op.drop_table("auto_distribution_log")
