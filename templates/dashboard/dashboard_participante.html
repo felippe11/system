@@ -79,8 +79,13 @@
         <p class="font-semibold text-sm">{{ ultima_inscricao.oficina.titulo if ultima_inscricao.oficina else 'Inscrição
           no Evento' }}</p>
       </div>
+      {% if ultima_inscricao.oficina %}
+      <a href="{{ url_for('comprovante_routes.baixar_comprovante', oficina_id=ultima_inscricao.oficina_id) }}"
+        class="ml-auto text-primary text-xs font-bold uppercase tracking-wider">Ver</a>
+      {% else %}
       <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}"
         class="ml-auto text-primary text-xs font-bold uppercase tracking-wider">Ver</a>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -93,7 +98,7 @@
       </button>
 
       {% set categorias = [] %}
-      {% for atividade in atividades if atividade.categoria %}
+      {% for atividade in oficinas if atividade.categoria %}
       {% if atividade.categoria not in categorias %}
       {% if categorias.append(atividade.categoria) %}{% endif %}
       {% endif %}
@@ -113,10 +118,10 @@
     <div class="flex items-center justify-between mb-2">
       <h2 class="text-lg font-bold">Workshops Disponíveis</h2>
       <span class="text-xs font-medium px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-md" id="contador-atividades">{{
-        atividades|length }} encontrados</span>
+        oficinas|length }} encontrados</span>
     </div>
 
-    {% for atividade in atividades %}
+    {% for atividade in oficinas %}
     <div
       class="atividade-card bg-white dark:bg-card-dark rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden group"
       data-categoria="{{ atividade.categoria or 'todas' }}">
@@ -128,12 +133,13 @@
               class="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 text-[10px] font-bold rounded uppercase">{{
               atividade.categoria }}</span>
             {% endif %}
-            <span class="text-[10px] font-medium text-slate-400">• {{ atividade.tipo_atividade|capitalize }}</span>
+            <span class="text-[10px] font-medium text-slate-400">• {{ atividade.tipo_inscricao|capitalize if
+              atividade.tipo_inscricao else 'Oficina' }}</span>
           </div>
           <h3 class="font-bold text-slate-800 dark:text-white leading-snug mb-3">{{ atividade.titulo }}</h3>
           <div class="grid grid-cols-2 gap-y-2">
-            {% if atividade.datas %}
-            {% set primeira_data = atividade.get_datas_ordenadas()[0] %}
+            {% if atividade.dias %}
+            {% set primeira_data = atividade.dias[0] %}
             <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <span class="material-icons-round text-sm">calendar_today</span>
               <span class="text-xs">{{ primeira_data.data.strftime('%d %b, %Y') }}</span>
@@ -176,19 +182,21 @@
       <span class="material-icons-round">explore</span>
       <span class="text-[10px] font-bold">Explorar</span>
     </button>
-    <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}"
+    <a href="{{ url_for('participante_routes.minhas_inscricoes') }}"
       class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
       <span class="material-icons-round">bookmark_border</span>
-      <span class="text-[10px] font-medium">Inscritos</span>
+      <span class="text-[10px] font-medium">Inscrições</span>
     </a>
-    <button class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
+    <a href="{{ url_for('participante_routes.meus_certificados') }}"
+      class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
       <span class="material-icons-round">receipt_long</span>
       <span class="text-[10px] font-medium">Comprovantes</span>
-    </button>
-    <button class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
+    </a>
+    <a href="{{ url_for('participante_routes.meu_perfil') }}"
+      class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
       <span class="material-icons-round">person_outline</span>
       <span class="text-[10px] font-medium">Perfil</span>
-    </button>
+    </a>
   </nav>
 
   <div class="fixed bottom-24 right-5">

@@ -19,6 +19,9 @@ def upgrade() -> None:
     inspector = sa.inspect(bind)
     if not inspector.has_table("agendamento_visita") or not inspector.has_table("cliente"):
         return
+    existing_cols = {col["name"] for col in inspector.get_columns("agendamento_visita")}
+    if "cliente_id" in existing_cols:
+        return
     with op.batch_alter_table("agendamento_visita") as batch_op:
         batch_op.add_column(sa.Column("cliente_id", sa.Integer(), nullable=True))
         batch_op.create_foreign_key(

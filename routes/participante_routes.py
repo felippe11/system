@@ -15,6 +15,53 @@ from services import certificado_service
 
 
 
+@participante_routes.route('/minhas_inscricoes')
+@login_required
+def minhas_inscricoes():
+    if current_user.tipo != 'participante':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    # Ordenar inscrições por data da oficina (mais recente primeiro)
+    inscricoes = sorted(
+        current_user.inscricoes, 
+        key=lambda i: i.oficina.dias[0].data if i.oficina and i.oficina.dias else datetime.min.date(), 
+        reverse=True
+    )
+    
+    return render_template('participante/minhas_inscricoes.html', inscricoes=inscricoes)
+
+@participante_routes.route('/meu_perfil', methods=['GET', 'POST'])
+@login_required
+def meu_perfil():
+    if current_user.tipo != 'participante':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD))
+
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        telefone = request.form.get('telefone')
+        # Adicione outros campos conforme necessário
+
+        current_user.nome = nome
+        current_user.email = email
+        current_user.telefone = telefone
+        
+        if request.form.get('senha'):
+            current_user.senha = generate_password_hash(request.form.get('senha'), method="pbkdf2:sha256")
+
+        try:
+            db.session.commit()
+            flash('Perfil atualizado com sucesso!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar perfil: {str(e)}', 'danger')
+        
+        return redirect(url_for('participante_routes.meu_perfil'))
+
+    return render_template('participante/perfil.html', usuario=current_user)
+
 @participante_routes.route('/gerenciar_participantes', methods=['GET'])
 @login_required
 def gerenciar_participantes():

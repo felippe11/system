@@ -18,6 +18,12 @@ def upgrade() -> None:
     inspector = sa.inspect(bind)
     if not inspector.has_table("audit_log") or not inspector.has_table("respostas_formulario"):
         return
+    existing_fks = inspector.get_foreign_keys("audit_log")
+    if any(
+        fk.get("name") == "fk_audit_log_submission_id_respostas_formulario"
+        for fk in existing_fks
+    ):
+        return
     op.execute(
         sa.text(
             """
