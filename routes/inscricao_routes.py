@@ -935,6 +935,13 @@ def inscrever(oficina_id):
                 'pdf_url': url_for('comprovante_routes.baixar_comprovante',
                                    oficina_id=oficina.id)
             })
+
+        return jsonify({
+            'success': True,
+            'message': 'Inscrição realizada com sucesso!',
+            'pdf_url': url_for('comprovante_routes.baixar_comprovante',
+                               oficina_id=oficina.id)
+        })
         
     except Exception as e:
         db.session.rollback()

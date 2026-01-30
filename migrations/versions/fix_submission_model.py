@@ -100,18 +100,27 @@ def upgrade():
     # ------------------------------------------------------------
     # 3) Tornar campos obrigatórios
     # ------------------------------------------------------------
-    op.alter_column(
-        "submission",
-        "author_id",
-        existing_type=sa.Integer(),
-        nullable=False,
-    )
-    op.alter_column(
-        "submission",
-        "evento_id",
-        existing_type=sa.Integer(),
-        nullable=False,
-    )
+    author_nulls = conn.execute(
+        sa.text("SELECT COUNT(*) FROM submission WHERE author_id IS NULL")
+    ).scalar() or 0
+    if author_nulls == 0:
+        op.alter_column(
+            "submission",
+            "author_id",
+            existing_type=sa.Integer(),
+            nullable=False,
+        )
+
+    evento_nulls = conn.execute(
+        sa.text("SELECT COUNT(*) FROM submission WHERE evento_id IS NULL")
+    ).scalar() or 0
+    if evento_nulls == 0:
+        op.alter_column(
+            "submission",
+            "evento_id",
+            existing_type=sa.Integer(),
+            nullable=False,
+        )
 
     # ------------------------------------------------------------
     # 4) Constraint de identificação de revisor em review (idempotente)
