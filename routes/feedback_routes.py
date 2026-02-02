@@ -616,21 +616,47 @@ def criar_pergunta_template(template_id):
 def oficinas_por_evento(evento_id):
     """Retorna oficinas de um evento específico."""
     evento = Evento.query.get_or_404(evento_id)
-    
+
+    user_role = getattr(current_user, "tipo", None)
+    is_admin = user_role in ("admin", "superadmin")
+    cliente_id = getattr(current_user, "cliente_id", None)
+    if isinstance(current_user, Cliente) and not cliente_id:
+        cliente_id = current_user.id
+
     # Verificar permissão
-    if evento.cliente_id != current_user.cliente_id:
-        return jsonify({'error': 'Acesso negado'}), 403
+    if not is_admin and evento.cliente_id != cliente_id:
+        return jsonify({"error": "Acesso negado"}), 403
     
     # Buscar oficinas do evento
     oficinas = Oficina.query.filter_by(evento_id=evento_id).order_by(Oficina.titulo.asc()).all()
     
     oficinas_data = []
     for oficina in oficinas:
+        primeira_data = None
+        if getattr(oficina, "dias", None):
+            try:
+                primeira_data = min(
+                    (dia.data for dia in oficina.dias if getattr(dia, "data", None)),
+                    default=None,
+                )
+            except TypeError:
+                primeira_data = None
+        local = getattr(oficina, "local", None)
+        if not local:
+            cidade = getattr(oficina, "cidade", None)
+            estado = getattr(oficina, "estado", None)
+            if cidade and estado:
+                local = f"{cidade}/{estado}"
+            elif cidade:
+                local = cidade
+        if not local and getattr(oficina, "evento", None):
+            local = getattr(oficina.evento, "localizacao", None)
+
         oficinas_data.append({
             'id': oficina.id,
             'titulo': oficina.titulo,
-            'data_inicio': oficina.data_inicio.isoformat() if oficina.data_inicio else None,
-            'local': oficina.local
+            'data_inicio': primeira_data.isoformat() if primeira_data else None,
+            'local': local
         })
     
     return jsonify({'oficinas': oficinas_data})

@@ -169,6 +169,7 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script src="{{ url_for('static', filename='js/feedback-debug.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -261,10 +262,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         fetch(`/feedback/oficinas-por-evento/${eventoId}`)
-            .then((response) => response.json())
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
             .then((data) => {
                 oficinaSelect.innerHTML = '<option value="">Selecione uma oficina</option>';
-                data.oficinas.forEach((oficina) => {
+                const oficinas = Array.isArray(data.oficinas) ? data.oficinas : [];
+                if (!oficinas.length) {
+                    oficinaSelect.innerHTML = '<option value="">Nenhuma oficina disponível</option>';
+                    oficinaSelect.disabled = true;
+                    return;
+                }
+                oficinas.forEach((oficina) => {
                     const option = document.createElement('option');
                     option.value = oficina.id;
                     option.textContent = oficina.titulo;
