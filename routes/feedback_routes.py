@@ -632,10 +632,19 @@ def oficinas_por_evento(evento_id):
     
     oficinas_data = []
     for oficina in oficinas:
+        primeira_data = None
+        if getattr(oficina, "dias", None):
+            try:
+                primeira_data = min(
+                    (dia.data for dia in oficina.dias if getattr(dia, "data", None)),
+                    default=None,
+                )
+            except TypeError:
+                primeira_data = None
         oficinas_data.append({
             'id': oficina.id,
             'titulo': oficina.titulo,
-            'data_inicio': oficina.data_inicio.isoformat() if oficina.data_inicio else None,
+            'data_inicio': primeira_data.isoformat() if primeira_data else None,
             'local': oficina.local
         })
     
