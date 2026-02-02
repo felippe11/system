@@ -19,6 +19,7 @@ from .relatorio_config import *  # noqa: F401,F403
 from .orcamento import *  # noqa: F401,F403
 from .atividade_multipla_data import *  # noqa: F401,F403
 from .feedback_models import *  # noqa: F401,F403
+from .open_feedback_models import *  # noqa: F401,F403
 from .voting import *  # noqa: F401,F403
 
 # Importações explícitas para garantir disponibilidade
@@ -49,4 +50,3 @@ from .reminder import (
     TipoLembrete,
     StatusLembrete,
 )
-

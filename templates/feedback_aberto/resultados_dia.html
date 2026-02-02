@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Resultados do Dia{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <div>
+      <h2 class="mb-1">Resultados do Dia</h2>
+      <p class="text-muted mb-0">{{ dia.titulo or 'Feedback do dia' }} - {{ dia.data.strftime('%d/%m/%Y') }}</p>
+    </div>
+    <a href="{{ url_for('open_feedback_routes.feedback_aberto_resultados') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+  </div>
+
+  <div class="alert alert-info">
+    Total de envios: <strong>{{ total_envios }}</strong>
+  </div>
+
+  <div class="mb-3">
+    <a href="{{ url_for('open_feedback_routes.exportar_feedback_aberto_csv', dia_id=dia.id) }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-download"></i> Exportar CSV
+    </a>
+  </div>
+
+  {% for item in estatisticas %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h5 class="mb-1">{{ item.pergunta.titulo }}</h5>
+        {% if item.pergunta.descricao %}
+          <p class="text-muted">{{ item.pergunta.descricao }}</p>
+        {% endif %}
+        <p class="small text-muted mb-2">Respostas: {{ item.total }}</p>
+
+        {% if item.tipo.value == 'escala_numerica' %}
+          {% if item.total %}
+            <p class="mb-0">Media: {{ '%.2f'|format(item.media) }} | Min: {{ item.min }} | Max: {{ item.max }}</p>
+          {% else %}
+            <p class="text-muted mb-0">Nenhuma resposta.</p>
+          {% endif %}
+        {% elif item.tipo.value in ['multipla_escolha', 'sim_nao'] %}
+          {% if item.total %}
+            <ul class="mb-0">
+              {% for opcao, total in item.contagem.items() %}
+                <li>{{ opcao }}: {{ total }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-muted mb-0">Nenhuma resposta.</p>
+          {% endif %}
+        {% else %}
+          {% if item.total %}
+            <ul class="mb-0">
+              {% for valor in item.valores %}
+                <li>{{ valor }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-muted mb-0">Nenhuma resposta.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
