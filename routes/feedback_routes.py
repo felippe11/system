@@ -641,11 +641,22 @@ def oficinas_por_evento(evento_id):
                 )
             except TypeError:
                 primeira_data = None
+        local = getattr(oficina, "local", None)
+        if not local:
+            cidade = getattr(oficina, "cidade", None)
+            estado = getattr(oficina, "estado", None)
+            if cidade and estado:
+                local = f"{cidade}/{estado}"
+            elif cidade:
+                local = cidade
+        if not local and getattr(oficina, "evento", None):
+            local = getattr(oficina.evento, "localizacao", None)
+
         oficinas_data.append({
             'id': oficina.id,
             'titulo': oficina.titulo,
             'data_inicio': primeira_data.isoformat() if primeira_data else None,
-            'local': oficina.local
+            'local': local
         })
     
     return jsonify({'oficinas': oficinas_data})
