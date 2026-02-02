@@ -2,93 +2,247 @@
 
 {% block title %}Feedback Aberto{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        /* Paleta de Cores AppFiber (Tokens) */
+        --text-primary: #0F172A;
+        --text-secondary: #4E7597;
+        --text-muted: #94A3B8;
+        --text-on-brand: #FFFFFF;
+        
+        --surface-page: #F8FAFC;
+        --surface-card: rgba(255, 255, 255, 0.7);
+        --surface-section: #FFFFFF;
+        
+        --action-primary: #1E88E5;
+        --action-primary-hover: #1565C0;
+        
+        --border-default: #E2E8F0;
+        --border-focus: #1E88E5;
+        
+        --radius-lg: 0.5rem;   /* bootstrap default-ish */
+        --radius-xl: 1rem;
+        --radius-full: 9999px; /* Pill */
+        
+        --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --shadow-button: 0 4px 6px -1px rgba(30, 136, 229, 0.2), 0 2px 4px -1px rgba(30, 136, 229, 0.1);
+    }
+
+    body {
+        background-color: var(--surface-page);
+        color: var(--text-primary);
+    }
+
+    .appfiber-card {
+        background: var(--surface-card);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-card);
+    }
+
+    .appfiber-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
+
+    .appfiber-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .form-control, .form-select {
+        background-color: var(--surface-section);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        color: var(--text-primary);
+        padding: 0.75rem 1rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--border-focus);
+        box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.2); /* Ring externo */
+    }
+    
+    .form-control::placeholder {
+        color: var(--text-muted);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--action-primary);
+        border-color: var(--action-primary);
+    }
+
+    .btn-appfiber-primary {
+        background-color: var(--action-primary);
+        color: var(--text-on-brand);
+        border-radius: var(--radius-full);
+        box-shadow: var(--shadow-button);
+        font-weight: 600;
+        padding: 0.75rem 2rem;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-appfiber-primary:hover {
+        background-color: var(--action-primary-hover);
+        color: var(--text-on-brand);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(30, 136, 229, 0.3);
+    }
+    
+    .text-muted-appfiber {
+        color: var(--text-muted) !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
   <div class="row justify-content-center">
     <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h4 class="mb-0">Feedback Aberto</h4>
-          <small class="text-muted">{{ dia.titulo or 'Feedback do dia' }} - {{ dia.data.strftime('%d/%m/%Y') }}</small>
-        </div>
-        <div class="card-body">
+      <div class="card appfiber-card border-0">
+        <div class="card-body p-4 p-md-5">
+            
+          <div class="text-center mb-5">
+            <h2 class="appfiber-title mb-2">Feedback Aberto</h2>
+            <p class="appfiber-subtitle h5 fw-normal">{{ dia.titulo or 'Sua opinião é importante para nós' }}</p>
+            <div class="text-muted-appfiber mt-2 small">
+                <i class="bi bi-calendar-event me-1"></i>{{ dia.data.strftime('%d/%m/%Y') }}
+            </div>
+          </div>
+
           <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="mb-4">
-              <h6 class="text-uppercase text-muted">Identificacao</h6>
-              <div class="row g-2">
-                <div class="col-md-6">
-                  <input type="text" class="form-control" name="nome" placeholder="Nome" {% if dia.exigir_nome %}required{% endif %}>
+            
+            {% if dia.exigir_nome or dia.exigir_email or dia.exigir_telefone or dia.exigir_identificador %}
+            <div class="mb-5">
+              <h6 class="text-uppercase text-secondary fw-bold small mb-3 letter-spacing-1">Identificação</h6>
+              <div class="row g-3">
+                {% if dia.exigir_nome %}
+                <div class="col-md-12">
+                  <label class="form-label">Nome Completo</label>
+                  <input type="text" class="form-control" name="nome" placeholder="Seu nome completo" required>
                 </div>
+                {% endif %}
+                
+                {% if dia.exigir_email %}
                 <div class="col-md-6">
-                  <input type="email" class="form-control" name="email" placeholder="Email" {% if dia.exigir_email %}required{% endif %}>
+                  <label class="form-label">Email</label>
+                  <input type="email" class="form-control" name="email" placeholder="nome@exemplo.com" required>
                 </div>
+                {% endif %}
+                
+                {% if dia.exigir_telefone %}
                 <div class="col-md-6">
-                  <input type="text" class="form-control" name="telefone" placeholder="Telefone" {% if dia.exigir_telefone %}required{% endif %}>
+                  <label class="form-label">Telefone</label>
+                  <input type="text" class="form-control phone-mask" name="telefone" placeholder="(00) 00000-0000" required>
                 </div>
-                <div class="col-md-6">
-                  <input type="text" class="form-control" name="identificador" placeholder="Matricula / ID interno" {% if dia.exigir_identificador %}required{% endif %}>
+                {% endif %}
+                
+                {% if dia.exigir_identificador %}
+                <div class="col-md-12">
+                  <label class="form-label">Matrícula / ID</label>
+                  <input type="text" class="form-control" name="identificador" placeholder="Identificação interna" required>
                 </div>
+                {% endif %}
               </div>
             </div>
+            <hr class="border-secondary opacity-10 my-4">
+            {% endif %}
+
+            <div class="questions-container">
             {% for item in perguntas %}
               {% set pergunta = item.obj %}
               <div class="mb-4">
-                <label class="form-label fw-semibold">{{ pergunta.titulo }}</label>
+                <label class="form-label d-block mb-2">{{ pergunta.titulo }} {% if pergunta.obrigatoria %}<span class="text-danger">*</span>{% endif %}</label>
+                
                 {% if pergunta.descricao %}
-                  <div class="text-muted small mb-2">{{ pergunta.descricao }}</div>
+                  <p class="text-muted-appfiber small mb-3">{{ pergunta.descricao }}</p>
                 {% endif %}
+
                 {% if pergunta.tipo.value == 'texto_livre' %}
-                  <textarea class="form-control" name="q_{{ pergunta.id }}" rows="3" {% if pergunta.obrigatoria %}required{% endif %}></textarea>
+                  <textarea class="form-control" name="q_{{ pergunta.id }}" rows="4" placeholder="Digite sua resposta aqui..." {% if pergunta.obrigatoria %}required{% endif %}></textarea>
+                
                 {% elif pergunta.tipo.value == 'escala_numerica' %}
-                  <input type="number" class="form-control" name="q_{{ pergunta.id }}" min="1" max="10" {% if pergunta.obrigatoria %}required{% endif %}>
-                  <small class="text-muted">Informe uma nota de 1 a 10.</small>
+                  <div class="d-flex align-items-center gap-2">
+                    <input type="number" class="form-control" name="q_{{ pergunta.id }}" min="1" max="10" placeholder="1-10" style="max-width: 100px;" {% if pergunta.obrigatoria %}required{% endif %}>
+                    <small class="text-muted-appfiber">de 10</small>
+                  </div>
+                
                 {% elif pergunta.tipo.value == 'multipla_escolha' %}
-                  {% if item.opcoes %}
-                    {% for opcao in item.opcoes %}
-                      <div class="form-check">
-                        <input class="form-check-input" type="radio" name="q_{{ pergunta.id }}" value="{{ opcao }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                        <label class="form-check-label">{{ opcao }}</label>
-                      </div>
-                    {% endfor %}
-                  {% else %}
-                    <input type="text" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                  {% endif %}
-                {% elif pergunta.tipo.value == 'multipla_escolha_multipla' %}
-                  {% if item.opcoes %}
-                    {% for opcao in item.opcoes %}
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="q_{{ pergunta.id }}" value="{{ opcao }}">
-                        <label class="form-check-label">{{ opcao }}</label>
-                      </div>
-                    {% endfor %}
-                    {% if pergunta.obrigatoria %}
-                      <small class="text-muted">Selecione pelo menos uma opcao.</small>
+                  <div class="bg-white bg-opacity-50 p-3 rounded-3 border border-light">
+                    {% if item.opcoes %}
+                        {% for opcao in item.opcoes %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_{{ loop.index }}" value="{{ opcao }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                            <label class="form-check-label" for="q_{{ pergunta.id }}_{{ loop.index }}">{{ opcao }}</label>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <input type="text" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
                     {% endif %}
-                  {% else %}
-                    <input type="text" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                  {% endif %}
+                  </div>
+
+                {% elif pergunta.tipo.value == 'multipla_escolha_multipla' %}
+                  <div class="bg-white bg-opacity-50 p-3 rounded-3 border border-light">
+                    {% if item.opcoes %}
+                        {% for opcao in item.opcoes %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_{{ loop.index }}" value="{{ opcao }}">
+                            <label class="form-check-label" for="q_{{ pergunta.id }}_{{ loop.index }}">{{ opcao }}</label>
+                        </div>
+                        {% endfor %}
+                        {% if pergunta.obrigatoria %}
+                        <div class="form-text text-muted-appfiber mt-2"><i class="bi bi-info-circle me-1"></i>Selecione pelo menos uma opção</div>
+                        {% endif %}
+                    {% else %}
+                        <input type="text" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                    {% endif %}
+                  </div>
+
                 {% elif pergunta.tipo.value == 'sim_nao' %}
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="q_{{ pergunta.id }}" value="Sim" {% if pergunta.obrigatoria %}required{% endif %}>
-                    <label class="form-check-label">Sim</label>
+                  <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_sim" value="Sim" {% if pergunta.obrigatoria %}required{% endif %}>
+                    <label class="btn btn-outline-primary" for="q_{{ pergunta.id }}_sim">Sim</label>
+
+                    <input type="radio" class="btn-check" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_nao" value="Nao" {% if pergunta.obrigatoria %}required{% endif %}>
+                    <label class="btn btn-outline-primary" for="q_{{ pergunta.id }}_nao">Não</label>
                   </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="q_{{ pergunta.id }}" value="Nao" {% if pergunta.obrigatoria %}required{% endif %}>
-                    <label class="form-check-label">Nao</label>
-                  </div>
+
                 {% elif pergunta.tipo.value == 'email' %}
-                  <input type="email" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                  <input type="email" class="form-control" name="q_{{ pergunta.id }}" placeholder="ex: nome@email.com" {% if pergunta.obrigatoria %}required{% endif %}>
+                
                 {% elif pergunta.tipo.value == 'telefone' %}
-                  <input type="text" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                  <input type="text" class="form-control" name="q_{{ pergunta.id }}" placeholder="(00) 00000-0000" {% if pergunta.obrigatoria %}required{% endif %}>
+                
                 {% elif pergunta.tipo.value == 'data' %}
                   <input type="date" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                
                 {% elif pergunta.tipo.value == 'numero' %}
-                  <input type="number" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                  <input type="number" class="form-control" name="q_{{ pergunta.id }}" placeholder="0" {% if pergunta.obrigatoria %}required{% endif %}>
+                
                 {% endif %}
               </div>
             {% endfor %}
-            <button class="btn btn-primary" type="submit">Enviar feedback</button>
+            </div>
+
+            <div class="d-grid gap-2 mt-5">
+              <button class="btn btn-appfiber-primary py-3" type="submit">
+                Enviar Feedback
+                <i class="bi bi-send-fill ms-2"></i>
+              </button>
+            </div>
+            
           </form>
         </div>
       </div>
