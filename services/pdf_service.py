@@ -904,8 +904,11 @@ def gerar_pdf_inscritos_pdf(oficina_id):
     # Tabela de inscritos com estilo moderno
     if oficina.inscritos and len(oficina.inscritos) > 0:
         table_data = [["#", "Nome", "CPF", "E-mail"]]
+
+        # Ordenar inscritos por nome
+        inscritos_sorted = sorted(oficina.inscritos, key=lambda x: x.usuario.nome.lower() if hasattr(x, 'usuario') and x.usuario else (x.get('nome', '').lower() if isinstance(x, dict) else ''))
         
-        for idx, inscricao in enumerate(oficina.inscritos, 1):
+        for idx, inscricao in enumerate(inscritos_sorted, 1):
             # Verifica se é um objeto mapeado ou um objeto de modelo regular
             if hasattr(inscricao, 'usuario'):
                 nome = inscricao.usuario.nome
@@ -1040,7 +1043,7 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
     table_data = [["Nº", "Nome Completo", "Assinatura"]]
 
     # Buscando participantes reais inscritos
-    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
+    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).join(Usuario).order_by(Usuario.nome).all()
 
     for i, inscricao in enumerate(inscricoes, 1):
         nome_participante = inscricao.usuario.nome if inscricao.usuario else 'N/A'
@@ -1355,7 +1358,7 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
     table_data = [["Nº", "Nome Completo", "Assinatura"]]
 
     # Buscando participantes reais inscritos
-    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
+    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).join(Usuario).order_by(Usuario.nome).all()
 
     for i, inscricao in enumerate(inscricoes, 1):
         nome_participante = inscricao.usuario.nome if inscricao.usuario else 'N/A'
@@ -6242,8 +6245,11 @@ def gerar_pdf_inscritos_pdf(oficina_id):
     # Tabela de inscritos com estilo moderno
     if oficina.inscritos and len(oficina.inscritos) > 0:
         table_data = [["#", "Nome", "CPF", "E-mail"]]
+
+        # Ordenar inscritos por nome
+        inscritos_sorted = sorted(oficina.inscritos, key=lambda x: x.usuario.nome.lower() if hasattr(x, 'usuario') and x.usuario else (x.get('nome', '').lower() if isinstance(x, dict) else ''))
         
-        for idx, inscricao in enumerate(oficina.inscritos, 1):
+        for idx, inscricao in enumerate(inscritos_sorted, 1):
             # Verifica se é um objeto mapeado ou um objeto de modelo regular
             if hasattr(inscricao, 'usuario'):
                 nome = inscricao.usuario.nome
@@ -6378,7 +6384,7 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
     table_data = [["Nº", "Nome Completo", "Assinatura"]]
 
     # Buscando participantes reais inscritos
-    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
+    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).join(Usuario).order_by(Usuario.nome).all()
 
     for i, inscricao in enumerate(inscricoes, 1):
         nome_participante = inscricao.usuario.nome if inscricao.usuario else 'N/A'
@@ -6651,7 +6657,7 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
     import os
     from datetime import datetime
     from flask import send_file
-    from models import Oficina, Inscricao
+    from models import Oficina, Inscricao, Usuario
 
     # Obter a oficina real pelo ID
     oficina = Oficina.query.get(oficina_id)
@@ -6693,7 +6699,7 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
     table_data = [["Nº", "Nome Completo", "Assinatura"]]
 
     # Buscando participantes reais inscritos
-    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
+    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).join(Usuario).order_by(Usuario.nome).all()
 
     for i, inscricao in enumerate(inscricoes, 1):
         nome_participante = inscricao.usuario.nome if inscricao.usuario else 'N/A'

@@ -20,26 +20,27 @@ def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     # Create new table for auto distribution logs
-    op.create_table(
-        'auto_distribution_log',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('evento_id', sa.Integer(), nullable=False),
-        sa.Column('total_submissions', sa.Integer(), nullable=False),
-        sa.Column('total_assignments', sa.Integer(), nullable=False),
-        sa.Column('distribution_seed', sa.String(length=50), nullable=True),
-        sa.Column('conflicts_detected', sa.Integer(), nullable=True),
-        sa.Column('fallback_assignments', sa.Integer(), nullable=True),
-        sa.Column('failed_assignments', sa.Integer(), nullable=True),
-        sa.Column('distribution_details', sa.JSON(), nullable=True),
-        sa.Column('error_log', sa.JSON(), nullable=True),
-        sa.Column('started_at', sa.DateTime(), nullable=True),
-        sa.Column('completed_at', sa.DateTime(), nullable=True),
-        sa.Column('duration_seconds', sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ['evento_id'], ['evento.id'], name=op.f('fk_auto_distribution_log_evento_id_evento')
-        ),
-        sa.PrimaryKeyConstraint('id', name=op.f('pk_auto_distribution_log')),
-    )
+    if not inspector.has_table("auto_distribution_log"):
+        op.create_table(
+            'auto_distribution_log',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('evento_id', sa.Integer(), nullable=False),
+            sa.Column('total_submissions', sa.Integer(), nullable=False),
+            sa.Column('total_assignments', sa.Integer(), nullable=False),
+            sa.Column('distribution_seed', sa.String(length=50), nullable=True),
+            sa.Column('conflicts_detected', sa.Integer(), nullable=True),
+            sa.Column('fallback_assignments', sa.Integer(), nullable=True),
+            sa.Column('failed_assignments', sa.Integer(), nullable=True),
+            sa.Column('distribution_details', sa.JSON(), nullable=True),
+            sa.Column('error_log', sa.JSON(), nullable=True),
+            sa.Column('started_at', sa.DateTime(), nullable=True),
+            sa.Column('completed_at', sa.DateTime(), nullable=True),
+            sa.Column('duration_seconds', sa.Integer(), nullable=True),
+            sa.ForeignKeyConstraint(
+                ['evento_id'], ['evento.id'], name=op.f('fk_auto_distribution_log_evento_id_evento')
+            ),
+            sa.PrimaryKeyConstraint('id', name=op.f('pk_auto_distribution_log')),
+        )
 
     # Drop legacy distribution_log table if it exists
     bind = op.get_bind()
