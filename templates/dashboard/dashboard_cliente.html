@@ -1080,10 +1080,28 @@
                   </div>
                   <h5 class="card-title fw-bold">Relatório</h5>
                   <p class="card-text text-muted">Gere relatórios detalhados dos eventos</p>
-                  <!-- Fallback to direct path to avoid BuildError when endpoint alias differs -->
-                  <a href="/gerar_relatorio_evento" class="btn btn-primary mt-2 w-100">
-                    <i class="bi bi-file-earmark-bar-graph me-2"></i> Gerar Relatório
-                  </a>
+                  {% if eventos %}
+                  <div class="dropdown mt-2">
+                    <button class="btn btn-primary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      <i class="bi bi-file-earmark-bar-graph me-2"></i> Gerar Relatório
+                    </button>
+                    <ul class="dropdown-menu w-100">
+                      {% for evento in eventos %}
+                      <li>
+                        <a class="dropdown-item"
+                          href="{{ url_for('relatorio_pdf_routes.gerar_relatorio_evento', evento_id=evento.id) }}">
+                          <i class="bi bi-calendar-event me-2"></i>{{ evento.nome }}
+                        </a>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                  {% else %}
+                  <button class="btn btn-primary mt-2 w-100" disabled>
+                    <i class="bi bi-file-earmark-bar-graph me-2"></i> Sem Eventos
+                  </button>
+                  {% endif %}
                 </div>
               </div>
             </div>

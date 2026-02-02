@@ -190,13 +190,25 @@ class CertificateEditor {
     // Configurar zona de drop para elementos da biblioteca
     interact('#canvas').dropzone({
       accept: '.element-item',
-      overlap: 0.75,
+      overlap: 0.50,
       ondrop: (event) => {
         const elementType = event.relatedTarget.dataset.type;
+        const ghostId = event.relatedTarget.dataset.ghostId;
+        const ghost = document.getElementById(ghostId);
+
         if (elementType) {
           const rect = this.canvas.getBoundingClientRect();
-          const x = event.dragEvent.client.x - rect.left;
-          const y = event.dragEvent.client.y - rect.top;
+          let x, y;
+
+          if (ghost) {
+             const ghostRect = ghost.getBoundingClientRect();
+             x = ghostRect.left - rect.left;
+             y = ghostRect.top - rect.top;
+          } else {
+             x = event.dragEvent.client.x - rect.left;
+             y = event.dragEvent.client.y - rect.top;
+          }
+
           this.addElement(elementType, null, x, y);
         }
       }
@@ -209,10 +221,51 @@ class CertificateEditor {
         autoScroll: true,
         listeners: {
           start: (event) => {
-            event.target.style.opacity = '0.5';
+            const element = event.target;
+            const rect = element.getBoundingClientRect();
+            
+            // Criar clone para arrastar (ghost)
+            const ghost = element.cloneNode(true);
+            ghost.classList.add('dragging-ghost');
+            ghost.style.position = 'fixed';
+            ghost.style.left = rect.left + 'px';
+            ghost.style.top = rect.top + 'px';
+            ghost.style.width = rect.width + 'px';
+            ghost.style.height = rect.height + 'px';
+            ghost.style.zIndex = '9999';
+            ghost.style.opacity = '0.8';
+            ghost.style.pointerEvents = 'none'; // Importante para não bloquear eventos
+            
+            document.body.appendChild(ghost);
+            element.dataset.ghostId = 'ghost-' + Date.now();
+            ghost.id = element.dataset.ghostId;
+            
+            // Guardar posição inicial
+            element.dataset.startX = rect.left;
+            element.dataset.startY = rect.top;
+          },
+          move: (event) => {
+            const element = event.target;
+            const ghost = document.getElementById(element.dataset.ghostId);
+            
+            if (ghost) {
+                const x = (parseFloat(ghost.dataset.x) || 0) + event.dx;
+                const y = (parseFloat(ghost.dataset.y) || 0) + event.dy;
+                
+                ghost.style.transform = `translate(${x}px, ${y}px)`;
+                ghost.dataset.x = x;
+                ghost.dataset.y = y;
+            }
           },
           end: (event) => {
-            event.target.style.opacity = '';
+            const element = event.target;
+            const ghost = document.getElementById(element.dataset.ghostId);
+            if (ghost) {
+                ghost.remove();
+            }
+            delete element.dataset.ghostId;
+            delete element.dataset.startX;
+            delete element.dataset.startY;
           }
         }
       });
@@ -426,53 +479,8 @@ class CertificateEditor {
   }
 
   setupElementInteractions(element) {
-    if (typeof interact === 'undefined') return;
-
-    // Configurar drag and drop para o elemento específico
-    interact(element)
-      .draggable({
-        inertia: true,
-        modifiers: [
-          interact.modifiers.restrictRect({
-            restriction: 'parent',
-            endOnly: true
-          })
-        ],
-        autoScroll: true,
-        listeners: {
-          start: (event) => {
-            this.selectElement(event.target);
-            event.target.style.zIndex = 1000;
-          },
-          move: this.dragMoveListener.bind(this),
-          end: (event) => {
-            event.target.style.zIndex = '';
-            this.saveState();
-            this.hideGuidelines();
-          }
-        }
-      })
-      .resizable({
-        edges: { left: true, right: true, bottom: true, top: true },
-        listeners: {
-          start: (event) => {
-            this.selectElement(event.target);
-          },
-          move: this.resizeMoveListener.bind(this),
-          end: (event) => {
-            this.saveState();
-          }
-        },
-        modifiers: [
-          interact.modifiers.restrictEdges({
-            outer: 'parent'
-          }),
-          interact.modifiers.restrictSize({
-            min: { width: 20, height: 20 }
-          })
-        ],
-        inertia: true
-      });
+    // Método mantido vazio para compatibilidade, 
+    // a inicialização via seletor .draggable-element já cobre novos elementos
   }
 
   createElement(type) {
