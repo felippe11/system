@@ -427,6 +427,7 @@ class Checkin(db.Model):
             turnos = {
                 'manha': 'Manhã',
                 'tarde': 'Tarde',
+                'noite': 'Noite',
                 'dia_inteiro': 'Dia Inteiro'
             }
             return turnos.get(self.turno, self.turno)

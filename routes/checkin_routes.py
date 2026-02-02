@@ -181,11 +181,19 @@ def checkin_manual(usuario_id, oficina_id):
         flash(mensagem, 'danger')
         return redirect(request.referrer or url_for(endpoints.DASHBOARD))
 
+    turno = (request.form.get('turno') or '').strip().lower()
+    turnos_validos = {'manha', 'tarde', 'noite'}
+    if turno not in turnos_validos:
+        flash('Turno de check-in inv?lido.', 'danger')
+        return redirect(
+            request.referrer or url_for('inscricao_routes.gerenciar_inscricoes')
+        )
+
     checkin_existente = Checkin.query.filter_by(
-        usuario_id=usuario_id, oficina_id=oficina_id
+        usuario_id=usuario_id, oficina_id=oficina_id, turno=turno
     ).first()
     if checkin_existente:
-        flash('Participante já realizou check-in.', 'warning')
+        flash('Participante j? realizou check-in neste turno.', 'warning')
         return redirect(
             request.referrer or url_for('inscricao_routes.gerenciar_inscricoes')
         )
@@ -195,9 +203,10 @@ def checkin_manual(usuario_id, oficina_id):
     checkin = Checkin(
         usuario_id=usuario_id,
         oficina_id=oficina_id,
-        palavra_chave="manual",
+        palavra_chave=f"manual-{turno}",
         cliente_id=oficina.cliente_id,
         evento_id=oficina.evento_id,
+        turno=turno,
     )
     db.session.add(checkin)
     db.session.commit()

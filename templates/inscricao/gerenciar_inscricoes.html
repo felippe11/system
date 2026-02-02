@@ -13,7 +13,7 @@
         <i class="bi bi-people-fill me-2"></i>Gerenciar Inscrições
       </h1>
       <a href="{{ url_for('dashboard_routes.dashboard') }}"
-         class="btn btn-outline-primary d-none d-md-inline-flex align-items-center">
+        class="btn btn-outline-primary d-none d-md-inline-flex align-items-center">
         <i class="bi bi-arrow-left me-2"></i>Voltar
       </a>
     </div>
@@ -34,7 +34,7 @@
         <div class="col-md-5">
           <div class="form-floating">
             <input type="text" class="form-control shadow-sm" id="filtroParticipante"
-                   placeholder="Digite o nome do participante">
+              placeholder="Digite o nome do participante">
             <label for="filtroParticipante">
               <i class="bi bi-search me-2"></i>Filtrar por Participante
             </label>
@@ -45,7 +45,7 @@
             <select class="form-select shadow-sm" id="filtroOficina">
               <option value="">Todas as Oficinas</option>
               {% for oficina in oficinas %}
-                <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
+              <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
               {% endfor %}
             </select>
             <label for="filtroOficina">
@@ -55,9 +55,8 @@
         </div>
         <div class="col-md-2">
           <button type="button"
-                  class="btn btn-primary w-100 h-100 d-flex align-items-center justify-content-center shadow-sm"
-                  data-bs-toggle="modal" data-bs-target="#moverInscricoesModal"
-                  id="btnMoverInscricoes" disabled>
+            class="btn btn-primary w-100 h-100 d-flex align-items-center justify-content-center shadow-sm"
+            data-bs-toggle="modal" data-bs-target="#moverInscricoesModal" id="btnMoverInscricoes" disabled>
             <i class="bi bi-arrow-right-circle me-2"></i>Mover&nbsp;/&nbsp;Copiar
           </button>
         </div>
@@ -82,12 +81,12 @@
           <table class="table table-hover align-middle mb-0 border-0">
             <thead class="table-dark">
               <tr>
-                <th width="5%"  class="text-center">
+                <th width="5%" class="text-center">
                   <div class="form-check d-flex justify-content-center">
                     <input class="form-check-input" type="checkbox" id="selecionarTodos">
                   </div>
                 </th>
-                <th width="8%"  class="text-center">ID</th>
+                <th width="8%" class="text-center">ID</th>
                 <th width="30%">Participante</th>
                 <th width="30%">Oficina</th>
                 <th width="27%" class="text-center">Ações</th>
@@ -95,20 +94,19 @@
             </thead>
             <tbody id="tabelaInscricoes">
               {% for insc in inscritos %}
-              <tr data-oficina-id="{{ insc.oficina.id }}"
-                  data-event-id="{{ insc.oficina.evento_id }}"
-                  data-participante-nome="{{ insc.usuario.nome | lower }}"
-                  class="align-middle">
+              <tr data-oficina-id="{{ insc.oficina.id }}" data-event-id="{{ insc.oficina.evento_id }}"
+                data-participante-nome="{{ insc.usuario.nome | lower }}" class="align-middle">
                 <td class="text-center">
                   <div class="form-check d-flex justify-content-center">
-                    <input class="form-check-input selecao-inscricao" type="checkbox"
-                           name="inscricao_ids" value="{{ insc.id }}">
+                    <input class="form-check-input selecao-inscricao" type="checkbox" name="inscricao_ids"
+                      value="{{ insc.id }}">
                   </div>
                 </td>
                 <td class="text-center fw-medium">{{ insc.id }}</td>
                 <td>
                   <div class="d-flex align-items-center">
-                    <div class="avatar-circle bg-light text-primary me-2 d-flex justify-content-center align-items-center">
+                    <div
+                      class="avatar-circle bg-light text-primary me-2 d-flex justify-content-center align-items-center">
                       <i class="bi bi-person"></i>
                     </div>
                     <div>{{ insc.usuario.nome }}</div>
@@ -116,7 +114,8 @@
                 </td>
                 <td>
                   <div class="d-flex align-items-center">
-                    <div class="avatar-circle bg-light text-primary me-2 d-flex justify-content-center align-items-center">
+                    <div
+                      class="avatar-circle bg-light text-primary me-2 d-flex justify-content-center align-items-center">
                       <i class="bi bi-book"></i>
                     </div>
                     <div>{{ insc.oficina.titulo }}</div>
@@ -126,36 +125,79 @@
                   <div class="d-flex gap-2 justify-content-center">
                     <a href="{{ url_for('inscricao_routes.editar_participante',
                                         usuario_id=insc.usuario.id,
-                                        oficina_id=insc.oficina.id) }}"
-                       class="btn btn-sm btn-outline-primary">
+                                        oficina_id=insc.oficina.id) }}" class="btn btn-sm btn-outline-primary">
                       <i class="bi bi-person-lines-fill me-1"></i> Gerenciar
                     </a>
 
-                    {% set checkin_realizado = insc.usuario.checkins
-                      | selectattr('oficina_id', 'equalto', insc.oficina.id)
-                      | list
-                      | length > 0 %}
-                  
-                  {% if checkin_realizado %}
-                    <button class="btn btn-sm btn-outline-secondary" disabled>
-                      <i class="bi bi-check2-circle me-1"></i> Check-in Realizado
-                    </button>
-                  {% else %}
-                    <form method="POST"
-                          action="{{ url_for('checkin_routes.checkin_manual',
-                                             usuario_id=insc.usuario.id,
-                                             oficina_id=insc.oficina.id) }}">
-                      <button type="submit" class="btn btn-sm btn-success"
-                              onclick="return confirm('Deseja registrar o check-in manual?');">
-                        <i class="bi bi-check-circle me-1"></i> Habilitar Check-in
+                    {% set checkins_oficina = insc.usuario.checkins
+                    | selectattr('oficina_id', 'equalto', insc.oficina.id)
+                    | list %}
+                    {% set checkin_manha = checkins_oficina
+                    | selectattr('turno', 'equalto', 'manha')
+                    | list
+                    | length > 0 %}
+                    {% set checkin_tarde = checkins_oficina
+                    | selectattr('turno', 'equalto', 'tarde')
+                    | list
+                    | length > 0 %}
+                    {% set checkin_noite = checkins_oficina
+                    | selectattr('turno', 'equalto', 'noite')
+                    | list
+                    | length > 0 %}
+
+                    <div class="d-flex flex-wrap gap-2 justify-content-center">
+                      {% if checkin_manha %}
+                      <button class="btn btn-sm btn-outline-secondary" disabled>
+                        <i class="bi bi-check2-circle me-1"></i> Manh?? OK
                       </button>
-                    </form>
-                  {% endif %}
-                  
+                      {% else %}
+                      <form method="POST" action="{{ url_for('checkin_routes.checkin_manual',
+                                               usuario_id=insc.usuario.id,
+                                               oficina_id=insc.oficina.id) }}">
+                        <input type="hidden" name="turno" value="manha">
+                        <button type="submit" class="btn btn-sm btn-success"
+                          onclick="return confirm('Deseja registrar o check-in da manh???');">
+                          <i class="bi bi-check-circle me-1"></i> Check-in Manh??
+                        </button>
+                      </form>
+                      {% endif %}
+
+                      {% if checkin_tarde %}
+                      <button class="btn btn-sm btn-outline-secondary" disabled>
+                        <i class="bi bi-check2-circle me-1"></i> Tarde OK
+                      </button>
+                      {% else %}
+                      <form method="POST" action="{{ url_for('checkin_routes.checkin_manual',
+                                               usuario_id=insc.usuario.id,
+                                               oficina_id=insc.oficina.id) }}">
+                        <input type="hidden" name="turno" value="tarde">
+                        <button type="submit" class="btn btn-sm btn-success"
+                          onclick="return confirm('Deseja registrar o check-in da tarde?');">
+                          <i class="bi bi-check-circle me-1"></i> Check-in Tarde
+                        </button>
+                      </form>
+                      {% endif %}
+
+                      {% if checkin_noite %}
+                      <button class="btn btn-sm btn-outline-secondary" disabled>
+                        <i class="bi bi-check2-circle me-1"></i> Noite OK
+                      </button>
+                      {% else %}
+                      <form method="POST" action="{{ url_for('checkin_routes.checkin_manual',
+                                               usuario_id=insc.usuario.id,
+                                               oficina_id=insc.oficina.id) }}">
+                        <input type="hidden" name="turno" value="noite">
+                        <button type="submit" class="btn btn-sm btn-success"
+                          onclick="return confirm('Deseja registrar o check-in da noite?');">
+                          <i class="bi bi-check-circle me-1"></i> Check-in Noite
+                        </button>
+                      </form>
+                      {% endif %}
+                    </div>
+
 
                     <form action="{{ url_for('inscricao_routes.cancelar_inscricao', inscricao_id=insc.id) }}"
-                          method="POST" style="display:inline;"
-                          onsubmit="return confirm('Cancelar esta inscrição?')">
+                      method="POST" style="display:inline;" onsubmit="return confirm('Cancelar esta inscrição?')">
                       <button type="submit" class="btn btn-sm btn-danger">
                         <i class="bi bi-x-circle me-1"></i> Cancelar
                       </button>
@@ -199,21 +241,17 @@
         </div>
 
         <div class="modal-body p-4">
-          <form id="formMoverInscricoes"
-                action="{{ url_for('inscricao_routes.inscricoes_lote') }}"
-                method="POST">
+          <form id="formMoverInscricoes" action="{{ url_for('inscricao_routes.inscricoes_lote') }}" method="POST">
 
             <!-- Ação: mover x copiar -->
             <div class="mb-4">
               <label class="form-label fw-medium mb-2">O que deseja fazer?</label><br>
               <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="acao"
-                       id="acaoMover" value="mover" checked>
+                <input class="form-check-input" type="radio" name="acao" id="acaoMover" value="mover" checked>
                 <label class="form-check-label" for="acaoMover">Mover</label>
               </div>
               <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="acao"
-                       id="acaoCopiar" value="copiar">
+                <input class="form-check-input" type="radio" name="acao" id="acaoCopiar" value="copiar">
                 <label class="form-check-label" for="acaoCopiar">Copiar</label>
               </div>
             </div>
@@ -234,8 +272,7 @@
             <!-- Oficina destino -->
             <div class="mb-4">
               <label for="oficina_destino" class="form-label fw-medium mb-2">Oficina de Destino</label>
-              <select id="oficina_destino" name="oficina_destino"
-                      class="form-select form-select-lg" required disabled>
+              <select id="oficina_destino" name="oficina_destino" class="form-select form-select-lg" required disabled>
                 <option value="">-- Selecione uma Oficina --</option>
               </select>
               <div class="form-text">Escolha primeiro o evento, depois a oficina</div>
@@ -248,10 +285,9 @@
             <div class="alert alert-info d-flex align-items-center">
               <i class="bi bi-info-circle-fill me-2 fs-5"></i>
               <div><span class="fw-bold" id="num_selecionados">0</span>
-                   participante(s) selecionado(s).</div>
+                participante(s) selecionado(s).</div>
             </div>
-            <div id="alerta_vagas"
-                 class="alert alert-danger d-none d-flex align-items-center">
+            <div id="alerta_vagas" class="alert alert-danger d-none d-flex align-items-center">
               <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
               <div>Não há vagas suficientes na oficina selecionada.</div>
             </div>
@@ -259,12 +295,10 @@
         </div>
 
         <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-outline-secondary"
-                  data-bs-dismiss="modal">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x me-1"></i>Cancelar
           </button>
-          <button type="submit" form="formMoverInscricoes"
-                  class="btn btn-primary" id="btnConfirmarMover" disabled>
+          <button type="submit" form="formMoverInscricoes" class="btn btn-primary" id="btnConfirmarMover" disabled>
             <i class="bi bi-check2-circle me-1"></i>Confirmar
           </button>
         </div>
@@ -278,52 +312,52 @@
   <!-- =================================================== -->
   <script>
     /* utilitário simples */
-    function toggleClass(el, cls, cond){el.classList[cond?'add':'remove'](cls);}
+    function toggleClass(el, cls, cond) { el.classList[cond ? 'add' : 'remove'](cls); }
 
     /* ------------------------------------------------- */
     /* SELEÇÃO / CONTADOR                               */
     /* ------------------------------------------------- */
-    function atualizarBotaoMover(){
+    function atualizarBotaoMover() {
       const qtd = document.querySelectorAll('.selecao-inscricao:checked').length;
-      document.getElementById('btnMoverInscricoes').disabled = qtd===0;
+      document.getElementById('btnMoverInscricoes').disabled = qtd === 0;
       document.getElementById('num_selecionados').textContent = qtd;
       const badge = document.getElementById('infoSelecao');
       badge.textContent = `${qtd} selecionados`;
-      toggleClass(badge,'bg-primary',qtd>0);
-      toggleClass(badge,'bg-secondary',qtd===0);
+      toggleClass(badge, 'bg-primary', qtd > 0);
+      toggleClass(badge, 'bg-secondary', qtd === 0);
     }
 
     /* ------------------------------------------------- */
     /* VALIDAR VAGAS                                    */
     /* ------------------------------------------------- */
-    function verificarVagas(){
+    function verificarVagas() {
       const selOf = document.getElementById('oficina_destino');
-      const btn   = document.getElementById('btnConfirmarMover');
-      const al    = document.getElementById('alerta_vagas');
-      const qtdSel= document.querySelectorAll('.selecao-inscricao:checked').length;
+      const btn = document.getElementById('btnConfirmarMover');
+      const al = document.getElementById('alerta_vagas');
+      const qtdSel = document.querySelectorAll('.selecao-inscricao:checked').length;
 
-      if(!selOf.value){btn.disabled=true;al.classList.add('d-none');return;}
+      if (!selOf.value) { btn.disabled = true; al.classList.add('d-none'); return; }
 
       const vagas = parseInt(selOf[selOf.selectedIndex].dataset.vagas);
-      const ok    = vagas>=qtdSel;
-      btn.disabled=!ok;
-      toggleClass(al,'d-none',ok);
-      if(!ok){
-        al.innerHTML=
-        `<i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>`+
-        `Não há vagas suficientes. Disponíveis: ${vagas}, Necessárias: ${qtdSel}`;
+      const ok = vagas >= qtdSel;
+      btn.disabled = !ok;
+      toggleClass(al, 'd-none', ok);
+      if (!ok) {
+        al.innerHTML =
+          `<i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>` +
+          `Não há vagas suficientes. Disponíveis: ${vagas}, Necessárias: ${qtdSel}`;
       }
     }
 
     /* ------------------------------------------------- */
     /* PREPARA HIDDEN INPUTS                            */
     /* ------------------------------------------------- */
-    function prepararFormulario(){
+    function prepararFormulario() {
       const cont = document.getElementById('inscricoes_selecionadas_container');
-      cont.innerHTML='';
-      document.querySelectorAll('.selecao-inscricao:checked').forEach(cb=>{
-        const inp=document.createElement('input');
-        inp.type='hidden';inp.name='inscricao_ids';inp.value=cb.value;
+      cont.innerHTML = '';
+      document.querySelectorAll('.selecao-inscricao:checked').forEach(cb => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'inscricao_ids'; inp.value = cb.value;
         cont.appendChild(inp);
       });
     }
@@ -331,111 +365,111 @@
     /* ------------------------------------------------- */
     /* CONTADOR VISÍVEIS                                */
     /* ------------------------------------------------- */
-    function atualizarContadorInscricoes(){
-      const tot=[...document.querySelectorAll('#tabelaInscricoes tr')]
-                 .filter(r=>r.style.display!=='none').length;
-      document.getElementById('contadorInscricoes').textContent=tot;
+    function atualizarContadorInscricoes() {
+      const tot = [...document.querySelectorAll('#tabelaInscricoes tr')]
+        .filter(r => r.style.display !== 'none').length;
+      document.getElementById('contadorInscricoes').textContent = tot;
     }
 
     /* ------------------------------------------------- */
     /* FILTRO                                            */
     /* ------------------------------------------------- */
-    function filtrarInscricoes(){
-      const nome=document.getElementById('filtroParticipante').value.toLowerCase();
-      const ofid=document.getElementById('filtroOficina').value;
-      document.querySelectorAll('#tabelaInscricoes tr').forEach(r=>{
-        const okNome=r.dataset.participanteNome.includes(nome);
-        const okOf=ofid===''||ofid===r.dataset.oficinaId;
-        r.style.display=okNome&&okOf?'':'none';
+    function filtrarInscricoes() {
+      const nome = document.getElementById('filtroParticipante').value.toLowerCase();
+      const ofid = document.getElementById('filtroOficina').value;
+      document.querySelectorAll('#tabelaInscricoes tr').forEach(r => {
+        const okNome = r.dataset.participanteNome.includes(nome);
+        const okOf = ofid === '' || ofid === r.dataset.oficinaId;
+        r.style.display = okNome && okOf ? '' : 'none';
       });
       atualizarContadorInscricoes();
-      document.getElementById('selecionarTodos').checked=false;
+      document.getElementById('selecionarTodos').checked = false;
     }
 
     /* ------------------------------------------------- */
     /* DOM READY                                         */
     /* ------------------------------------------------- */
-    document.addEventListener('DOMContentLoaded',()=>{
+    document.addEventListener('DOMContentLoaded', () => {
       /* checkboxes */
       document.getElementById('selecionarTodos')
-        .addEventListener('change',function(){
-          const vis=document.querySelectorAll('#tabelaInscricoes tr')
-          .forEach(r=>{
-            const cb=r.querySelector('.selecao-inscricao');
-            if(r.style.display!=='none')cb.checked=this.checked;
-          });
+        .addEventListener('change', function () {
+          const vis = document.querySelectorAll('#tabelaInscricoes tr')
+            .forEach(r => {
+              const cb = r.querySelector('.selecao-inscricao');
+              if (r.style.display !== 'none') cb.checked = this.checked;
+            });
           atualizarBotaoMover();
         });
       document.querySelectorAll('.selecao-inscricao')
-        .forEach(cb=>cb.addEventListener('change',atualizarBotaoMover));
+        .forEach(cb => cb.addEventListener('change', atualizarBotaoMover));
 
       /* filtros */
-      document.getElementById('filtroParticipante').addEventListener('input',filtrarInscricoes);
-      document.getElementById('filtroOficina').addEventListener('change',filtrarInscricoes);
+      document.getElementById('filtroParticipante').addEventListener('input', filtrarInscricoes);
+      document.getElementById('filtroOficina').addEventListener('change', filtrarInscricoes);
 
       /* prepara form antes submit */
       document.getElementById('formMoverInscricoes')
-        .addEventListener('submit',prepararFormulario);
+        .addEventListener('submit', prepararFormulario);
 
       /* modal logic */
-      const modal=document.getElementById('moverInscricoesModal');
-      const selEvento=document.getElementById('evento_destino');
-      const selOf=document.getElementById('oficina_destino');
+      const modal = document.getElementById('moverInscricoesModal');
+      const selEvento = document.getElementById('evento_destino');
+      const selOf = document.getElementById('oficina_destino');
 
       /* ---------- abrir modal --------- */
-      modal.addEventListener('show.bs.modal',()=>{
+      modal.addEventListener('show.bs.modal', () => {
         /* reseta selects */
-        selEvento.innerHTML='<option value="">-- Selecione um Evento --</option>';
-        selOf.innerHTML   ='<option value="">-- Selecione uma Oficina --</option>';
-        selOf.disabled=true;
+        selEvento.innerHTML = '<option value="">-- Selecione um Evento --</option>';
+        selOf.innerHTML = '<option value="">-- Selecione uma Oficina --</option>';
+        selOf.disabled = true;
 
         /* evento origem info */
-        const checked=document.querySelector('.selecao-inscricao:checked');
-        if(checked){
-          const linha=checked.closest('tr');
-          const evId=linha.dataset.eventId;
-          document.getElementById('modalEventoNome').textContent='…';
+        const checked = document.querySelector('.selecao-inscricao:checked');
+        if (checked) {
+          const linha = checked.closest('tr');
+          const evId = linha.dataset.eventId;
+          document.getElementById('modalEventoNome').textContent = '…';
           fetch('/api/eventos_com_oficinas')
-            .then(r=>r.json())
-            .then(list=>{
-              const ev=list.find(e=>e.id==evId);
-              if(ev)document.getElementById('modalEventoNome').textContent=ev.nome;
+            .then(r => r.json())
+            .then(list => {
+              const ev = list.find(e => e.id == evId);
+              if (ev) document.getElementById('modalEventoNome').textContent = ev.nome;
             });
         }
 
         /* carrega eventos destino */
         fetch('/api/eventos_com_oficinas')
-          .then(r=>r.json())
-          .then(list=>{
-            list.forEach(ev=>{
-              const opt=document.createElement('option');
-              opt.value=ev.id;
-              opt.textContent=ev.nome;
-              opt.dataset.oficinas=JSON.stringify(ev.oficinas);
+          .then(r => r.json())
+          .then(list => {
+            list.forEach(ev => {
+              const opt = document.createElement('option');
+              opt.value = ev.id;
+              opt.textContent = ev.nome;
+              opt.dataset.oficinas = JSON.stringify(ev.oficinas);
               selEvento.appendChild(opt);
             });
           });
       });
 
       /* ---------- change evento -> preenche oficinas ----- */
-      selEvento.addEventListener('change',()=>{
-        selOf.innerHTML='<option value="">-- Selecione uma Oficina --</option>';
-        selOf.disabled=true;
-        if(!selEvento.value)return;
-        const oficinas=JSON.parse(selEvento[selEvento.selectedIndex].dataset.oficinas);
-        oficinas.forEach(o=>{
-          const opt=document.createElement('option');
-          opt.value=o.id;
-          opt.dataset.vagas=o.vagas;
-          opt.textContent=`${o.titulo} (${o.vagas} vagas)`;
+      selEvento.addEventListener('change', () => {
+        selOf.innerHTML = '<option value="">-- Selecione uma Oficina --</option>';
+        selOf.disabled = true;
+        if (!selEvento.value) return;
+        const oficinas = JSON.parse(selEvento[selEvento.selectedIndex].dataset.oficinas);
+        oficinas.forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = o.id;
+          opt.dataset.vagas = o.vagas;
+          opt.textContent = `${o.titulo} (${o.vagas} vagas)`;
           selOf.appendChild(opt);
         });
-        selOf.disabled=false;
+        selOf.disabled = false;
         verificarVagas();
       });
 
       /* ---------- change oficina -> revalida ------------- */
-      selOf.addEventListener('change',verificarVagas);
+      selOf.addEventListener('change', verificarVagas);
 
       atualizarBotaoMover();
     });
@@ -445,19 +479,54 @@
   <!-- ESTILO -------------------------------------------- -->
   <!-- =================================================== -->
   <style>
-    .table th{font-weight:600;vertical-align:middle}
-    .table-hover tbody tr:hover{background-color:rgba(0,123,255,.08)}
-    .btn{font-weight:500;letter-spacing:.3px}
-    .card{border-radius:10px;overflow:hidden}
-    .form-control:focus,.form-select:focus{
-      border-color:#86b7fe;box-shadow:0 0 0 .25rem rgba(13,110,253,.25)
+    .table th {
+      font-weight: 600;
+      vertical-align: middle
     }
-    .alert{border-radius:8px}
-    .avatar-circle{width:32px;height:32px;border-radius:50%;
-      display:flex;align-items:center;justify-content:center;font-size:14px}
-    @media(max-width:768px){
-      .btn{font-size:.85rem}
-      .table th,.table td{padding:.5rem}
+
+    .table-hover tbody tr:hover {
+      background-color: rgba(0, 123, 255, .08)
+    }
+
+    .btn {
+      font-weight: 500;
+      letter-spacing: .3px
+    }
+
+    .card {
+      border-radius: 10px;
+      overflow: hidden
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25)
+    }
+
+    .alert {
+      border-radius: 8px
+    }
+
+    .avatar-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px
+    }
+
+    @media(max-width:768px) {
+      .btn {
+        font-size: .85rem
+      }
+
+      .table th,
+      .table td {
+        padding: .5rem
+      }
     }
   </style>
-{% endblock %}
+  {% endblock %}
