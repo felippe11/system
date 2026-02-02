@@ -4,7 +4,7 @@ from datetime import datetime
 import random
 from models import Sorteio, Inscricao, Evento, Oficina
 from models.user import Usuario
-from extensions import db
+from extensions import db, csrf
 from utils import endpoints
 
 # Criação do blueprint
@@ -34,6 +34,7 @@ def get_sorteio_info(sorteio_id):
 
 
 @sorteio_routes.route('/excluir_sorteio/<int:sorteio_id>', methods=['POST'])
+@csrf.exempt
 @login_required
 def excluir_sorteio(sorteio_id):
     """
@@ -271,10 +272,11 @@ def get_sorteio(sorteio_id):
         return jsonify({'success': False, 'message': str(e)})
 
 @sorteio_routes.route('/realizar_sorteio/<int:sorteio_id>', methods=['POST'])
+@csrf.exempt
 @login_required
 def realizar_sorteio(sorteio_id):
     """
-    Rota para realizar um sorteio, selecionando um ganhador aleatório.
+    Rota para realizar um sorteio, selecionando ganhador(es) aleatório(s).
     """
     try:
         sorteio = Sorteio.query.get_or_404(sorteio_id)
@@ -306,15 +308,31 @@ def realizar_sorteio(sorteio_id):
         if not participantes:
             return jsonify({'success': False, 'message': 'Não há participantes elegíveis para este sorteio'})
         
-        # Selecionar um participante aleatoriamente
-        ganhador = random.choice(participantes)
+        # Obter número de vencedores (padrão: 1)
+        num_vencedores = sorteio.num_vencedores if hasattr(sorteio, 'num_vencedores') and sorteio.num_vencedores else 1
         
-        # Atualizar o sorteio com o ganhador
-        sorteio.ganhador_id = ganhador.id
+        # Garantir que não selecionamos mais vencedores do que participantes disponíveis
+        num_vencedores = min(num_vencedores, len(participantes))
+        
+        # Selecionar participante(s) aleatoriamente
+        ganhadores = random.sample(participantes, num_vencedores)
+        
+        # Atualizar o sorteio com os ganhadores
+        sorteio.ganhadores = ganhadores
         sorteio.status = 'realizado'
         sorteio.data_sorteio = datetime.utcnow()
         
         db.session.commit()
+        
+        # Formatar dados dos ganhadores
+        ganhadores_data = [
+            {
+                'id': g.id,
+                'nome': g.nome,
+                'email': g.email
+            }
+            for g in ganhadores
+        ]
         
         # Formatar dados do sorteio realizado
         return jsonify({
@@ -327,134 +345,18 @@ def realizar_sorteio(sorteio_id):
                 'descricao': sorteio.descricao,
                 'data_sorteio': sorteio.data_sorteio.isoformat(),
                 'status': sorteio.status,
-                'ganhador': {
-                    'id': ganhador.id,
-                    'nome': ganhador.nome,
-                    'email': ganhador.email
-                }
+                'ganhadores': ganhadores_data
             }
         })
     except Exception as e:
+        import traceback
+        print(f"❌ ERRO NO SORTEIO: {str(e)}")
+        print(traceback.format_exc())
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
-    """
-    Rota para realizar um sorteio, selecionando um ganhador aleatório.
-    """
-    try:
-        sorteio = Sorteio.query.get_or_404(sorteio_id)
-        
-        # Verificar se o usuário atual é o dono do sorteio
-        if sorteio.cliente_id != current_user.id:
-            return jsonify({'success': False, 'message': 'Acesso negado'})
-        
-        # Verificar se o sorteio já foi realizado ou cancelado
-        if sorteio.status != 'pendente':
-            return jsonify({'success': False, 'message': f'O sorteio não pode ser realizado porque está com status: {sorteio.status}'})
-        
-        # Buscar participantes elegíveis baseado no tipo de sorteio (evento ou oficina)
-        participantes = []
-        if sorteio.oficina_id:
-            # Sorteio para uma oficina específica - buscar usuários diretamente
-            participantes = Usuario.query.filter_by(oficina_id=sorteio.oficina_id).all()
-        else:
-            # Sorteio para todo o evento - buscar usuários diretamente
-            participantes = Usuario.query.filter_by(evento_id=sorteio.evento_id).all()
-        
-        if not participantes:
-            return jsonify({'success': False, 'message': 'Não há participantes elegíveis para este sorteio'})
-        
-        # Selecionar um participante aleatoriamente
-        ganhador = random.choice(participantes)
-        
-        # Atualizar o sorteio com o ganhador
-        sorteio.ganhador_id = ganhador.id
-        sorteio.status = 'realizado'
-        sorteio.data_sorteio = datetime.utcnow()
-        
-        db.session.commit()
-        
-        # Formatar dados do sorteio realizado
-        return jsonify({
-            'success': True,
-            'message': 'Sorteio realizado com sucesso!',
-            'sorteio': {
-                'id': sorteio.id,
-                'titulo': sorteio.titulo,
-                'premio': sorteio.premio,
-                'descricao': sorteio.descricao,
-                'data_sorteio': sorteio.data_sorteio.isoformat(),
-                'status': sorteio.status,
-                'ganhador': {
-                    'id': ganhador.id,
-                    'nome': ganhador.nome,
-                    'email': ganhador.email
-                }
-            }
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
-    """
-    Rota para realizar um sorteio, selecionando um ganhador aleatório.
-    """
-    try:
-        sorteio = Sorteio.query.get_or_404(sorteio_id)
-        
-        # Verificar se o usuário atual é o dono do sorteio
-        if sorteio.cliente_id != current_user.id:
-            return jsonify({'success': False, 'message': 'Acesso negado'})
-        
-        # Verificar se o sorteio já foi realizado ou cancelado
-        if sorteio.status != 'pendente':
-            return jsonify({'success': False, 'message': f'O sorteio não pode ser realizado porque está com status: {sorteio.status}'})
-        
-        # Buscar participantes elegíveis baseado no tipo de sorteio (evento ou oficina)
-        if sorteio.oficina_id:
-            # Sorteio para uma oficina específica
-            participantes = Inscricao.query.filter_by(oficina_id=sorteio.oficina_id).all()
-        else:
-            # Sorteio para todo o evento
-            participantes = Inscricao.query.filter_by(evento_id=sorteio.evento_id).all()
-        
-        if not participantes:
-            return jsonify({'success': False, 'message': 'Não há participantes elegíveis para este sorteio'})
-        
-        # Selecionar um participante aleatoriamente
-        inscricao_sorteada = random.choice(participantes)
-        
-        # Atualizar o sorteio com o ganhador
-        sorteio.ganhador_id = inscricao_sorteada.usuario_id
-        sorteio.status = 'realizado'
-        sorteio.data_sorteio = datetime.utcnow()
-        
-        db.session.commit()
-        
-        # Buscar dados completos do ganhador
-        ganhador = Usuario.query.get(inscricao_sorteada.usuario_id)
-        
-        # Formatar dados do sorteio realizado
-        return jsonify({
-            'success': True,
-            'message': 'Sorteio realizado com sucesso!',
-            'sorteio': {
-                'id': sorteio.id,
-                'titulo': sorteio.titulo,
-                'premio': sorteio.premio,
-                'descricao': sorteio.descricao,
-                'data_sorteio': sorteio.data_sorteio.isoformat(),
-                'status': sorteio.status,
-                'ganhador': {
-                    'id': ganhador.id,
-                    'nome': ganhador.nome,
-                    'email': ganhador.email
-                }
-            }
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @sorteio_routes.route('/cancelar_sorteio/<int:sorteio_id>', methods=['POST'])
+@csrf.exempt
 @login_required
 def cancelar_sorteio(sorteio_id):
     """
