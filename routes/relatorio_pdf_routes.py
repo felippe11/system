@@ -1,4 +1,4 @@
-from flask import Blueprint, send_file, flash, redirect, url_for, request, current_app
+from flask import Blueprint, send_file, flash, redirect, url_for, request, current_app, render_template
 from flask_login import login_required, current_user
 from io import BytesIO
 from utils import endpoints
@@ -43,6 +43,7 @@ from services.relatorio_service import (
     converter_para_pdf,
     gerar_texto_relatorio,  # usar a versão do relatorio_service
 )
+from datetime import datetime
 
 relatorio_pdf_routes = Blueprint("relatorio_pdf_routes", __name__)
 
@@ -196,10 +197,10 @@ def exportar_financeiro():
     return send_file(output, as_attachment=True, download_name='financeiro.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
-@relatorio_pdf_routes.route('/gerar_relatorio_evento/<int:evento_id>', methods=['POST'])
+@relatorio_pdf_routes.route('/exportar_relatorio_evento/<int:evento_id>', methods=['POST'])
 @login_required
-def gerar_relatorio_evento(evento_id):
-    """Gera relatório detalhado do evento com prévia, Word e PDF."""
+def exportar_relatorio_evento(evento_id):
+    """Gera relatório detalhado do evento com prévia, Word e PDF (API)."""
     evento = Evento.query.get_or_404(evento_id)
     if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
         flash('Acesso negado ao evento.', 'danger')
@@ -235,3 +236,67 @@ def gerar_relatorio_evento(evento_id):
     pdf_buffer.seek(0)
     nome = f'relatorio_evento_{evento.id}.pdf'
     return send_file(pdf_buffer, as_attachment=True, download_name=nome, mimetype='application/pdf')
+
+
+@relatorio_pdf_routes.route('/gerar_relatorio_evento/<int:evento_id>')
+@login_required
+def gerar_relatorio_evento(evento_id):
+    """Dashboard interativo de relatório do evento."""
+    evento = Evento.query.get_or_404(evento_id)
+    
+    # Verificação de permissão
+    if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
+        flash('Acesso negado ao evento.', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+        
+    # Coleta de dados para o dashboard
+    total_inscritos = Inscricao.query.filter_by(evento_id=evento.id).count()
+    
+    # Check-ins (Assumindo que Checkin tem relacionamento com Oficina ou Evento, 
+    # aqui buscamos via oficinas do evento pois Checkin geralmente é por oficina/atividade)
+    oficinas_ids = [o.id for o in evento.oficinas]
+    total_presentes = 0
+    if oficinas_ids:
+        total_presentes = Checkin.query.filter(Checkin.oficina_id.in_(oficinas_ids)).count()
+    
+    # Receita (Inscrições aprovadas)
+    receita_total = db.session.query(func.sum(InscricaoTipo.preco))\
+        .join(Inscricao, Inscricao.tipo_inscricao_id == InscricaoTipo.id)\
+        .filter(Inscricao.evento_id == evento.id, Inscricao.status_pagamento == 'approved')\
+        .scalar() or 0.0
+        
+    # Satisfação (Feedbacks)
+    feedbacks = db.session.query(Feedback)\
+        .join(Oficina, Feedback.oficina_id == Oficina.id)\
+        .filter(Oficina.evento_id == evento.id).all()
+        
+    media_avaliacao = 0
+    nps = 0
+    if feedbacks:
+        notas = [f.rating for f in feedbacks if f.rating]
+        if notas:
+            media_avaliacao = sum(notas) / len(notas)
+            
+            # Cálculo NPS simplificado
+            promotores = len([n for n in notas if n >= 4]) # Adapte conforme escala (1-5 ou 0-10)
+            detratores = len([n for n in notas if n <= 2])
+            nps = ((promotores - detratores) / len(notas)) * 100
+
+    # Ultimas inscrições para tabela
+    ultimas_inscricoes = Inscricao.query.filter_by(evento_id=evento.id)\
+        .order_by(Inscricao.created_at.desc())\
+        .limit(10).all()
+
+    return render_template(
+        'relatorio/evento_dashboard.html',
+        evento=evento,
+        kpis={
+            'inscritos': total_inscritos,
+            'presentes': total_presentes,
+            'receita': receita_total,
+            'satisfacao': media_avaliacao,
+            'nps': int(nps)
+        },
+        ultimas_inscricoes=ultimas_inscricoes,
+        now=datetime.now()
+    )

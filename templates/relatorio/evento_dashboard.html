@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard do Evento - {{ evento.titulo }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<style>
+    :root {
+        --glass-bg: rgba(255, 255, 255, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.5);
+        --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        --primary-color: #0F172A;
+        --secondary-color: #4E7597;
+        --accent-color: #1E88E5;
+    }
+
+    body {
+        background-color: #F8FAFC;
+    }
+
+    .dashboard-header {
+        background: linear-gradient(135deg, #0F172A 0%, #1E88E5 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        box-shadow: var(--glass-shadow);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .glass-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(31, 38, 135, 0.2);
+    }
+
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .kpi-label {
+        color: var(--secondary-color);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+
+    .kpi-icon {
+        font-size: 2rem;
+        opacity: 0.2;
+        position: absolute;
+        right: 1.5rem;
+        top: 1.5rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+
+    .table-custom th {
+        background-color: transparent;
+        color: var(--secondary-color);
+        font-weight: 600;
+        border-bottom: 2px solid #E2E8F0;
+    }
+
+    .table-custom td {
+        vertical-align: middle;
+        color: var(--primary-color);
+    }
+
+    .btn-export {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        color: white;
+        transition: all 0.3s;
+    }
+
+    .btn-export:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-2 fw-bold">{{ evento.titulo }}</h1>
+                <p class="mb-0 opacity-75">
+                    <i class="fas fa-calendar me-2"></i>{{ evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio
+                    else 'Data não definida' }}
+                    <span class="mx-2">|</span>
+                    <i class="fas fa-map-marker-alt me-2"></i>{{ evento.local or 'Local não definido' }}
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <button onclick="exportarRelatorio('pdf')" class="btn btn-export rounded-pill px-4">
+                    <i class="fas fa-file-pdf me-2"></i>Exportar PDF
+                </button>
+                <button onclick="exportarRelatorio('docx')" class="btn btn-export rounded-pill px-4">
+                    <i class="fas fa-file-word me-2"></i>Exportar Word
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <!-- KPIs -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="glass-card h-100 position-relative">
+                <i class="fas fa-users kpi-icon text-primary"></i>
+                <div class="kpi-value">{{ kpis.inscritos }}</div>
+                <div class="kpi-label">Total de Inscritos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card h-100 position-relative">
+                <i class="fas fa-check-circle kpi-icon text-success"></i>
+                <div class="kpi-value">{{ kpis.presentes }}</div>
+                <div class="kpi-label">Presentes Confirmados</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card h-100 position-relative">
+                <i class="fas fa-star kpi-icon text-warning"></i>
+                <div class="d-flex align-items-baseline gap-2">
+                    <div class="kpi-value">{{ "%.1f"|format(kpis.satisfacao) }}</div>
+                    <small class="text-muted">/ 5.0</small>
+                </div>
+                <div class="kpi-label">Satisfação Média</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card h-100 position-relative">
+                <i class="fas fa-chart-line kpi-icon text-info"></i>
+                <div class="kpi-value">{{ kpis.nps }}</div>
+                <div class="kpi-label">NPS Score</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts & Tables -->
+    <div class="row g-4">
+        <!-- Main Chart -->
+        <div class="col-lg-8">
+            <div class="glass-card h-100">
+                <h5 class="mb-4 text-primary fw-bold"><i class="fas fa-chart-area me-2"></i>Evolução das Inscrições</h5>
+                <div class="chart-container">
+                    <canvas id="inscricoesChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Chart/Info -->
+        <div class="col-lg-4">
+            <div class="glass-card h-100">
+                <h5 class="mb-4 text-primary fw-bold"><i class="fas fa-pie-chart me-2"></i>Distribuição por Tipo</h5>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="tipoChart"></canvas>
+                </div>
+                <div class="mt-4 text-center">
+                    <small class="text-muted d-block">Receita Total Estimada</small>
+                    <span class="fs-4 fw-bold text-success">R$ {{ "%.2f"|format(kpis.receita) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Participants Table -->
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="text-primary fw-bold mb-0"><i class="fas fa-list me-2"></i>Últimas Inscrições</h5>
+                    <a href="#" class="btn btn-sm btn-outline-primary rounded-pill">Ver Todos</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover">
+                        <thead>
+                            <tr>
+                                <th>Participante</th>
+                                <th>Data Inscrição</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inscricao in ultimas_inscricoes %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-light rounded-circle p-2 me-2 text-primary">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">{{ inscricao.usuario.nome if inscricao.usuario else
+                                                'Anônimo' }}</div>
+                                            <small class="text-muted">{{ inscricao.usuario.email if inscricao.usuario
+                                                else '-' }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ inscricao.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td><span class="badge bg-info bg-opacity-10 text-info">{{ inscricao.tipo_inscricao.nome
+                                        if inscricao.tipo_inscricao else 'Padrão' }}</span></td>
+                                <td>
+                                    {% if inscricao.status_pagamento == 'approved' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success">Aprovado</span>
+                                    {% elif inscricao.status_pagamento == 'pending' %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning">Pendente</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary">{{
+                                        inscricao.status_pagamento }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>R$ {{ "%.2f"|format(inscricao.tipo_inscricao.preco if inscricao.tipo_inscricao else
+                                    0) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">Nenhuma inscrição recente
+                                    encontrada.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    // Configuração dos Gráficos Mockados (Idealmente viriam do backend)
+    // Para implementação real, passar dados via JSON no render_template
+
+    // Gráfico de Inscrições (Linha)
+    const ctxInscricoes = document.getElementById('inscricoesChart').getContext('2d');
+    new Chart(ctxInscricoes, {
+        type: 'line',
+        data: {
+            labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Atual'],
+            datasets: [{
+                label: 'Novas Inscrições',
+                data: [12, 19, 3, 5, 2], // Dados de exemplo
+                borderColor: '#1E88E5',
+                backgroundColor: 'rgba(30, 136, 229, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Gráfico de Tipos (Doughnut)
+    const ctxTipo = document.getElementById('tipoChart').getContext('2d');
+    new Chart(ctxTipo, {
+        type: 'doughnut',
+        data: {
+            labels: ['VIP', 'Padrão', 'Estudante'],
+            datasets: [{
+                data: [30, 50, 20], // Dados de exemplo
+                backgroundColor: ['#0F172A', '#1E88E5', '#90CAF9'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // Função de Exportação
+    function exportarRelatorio(formato) {
+        const btn = event.currentTarget;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Gerando...';
+        btn.disabled = true;
+
+        const dados = {
+            dados: ['inscricoes', 'financeiro', 'presenca', 'satisfacao'], // Seleciona tudo por padrão
+            cabecalho: 'Relatório Completo do Evento',
+            rodape: 'Gerado automaticamente pelo sistema',
+            dados_extra: {},
+            formato: formato // Passar formato no query param ou body
+        };
+
+        fetch("{{ url_for('relatorio_pdf_routes.exportar_relatorio_evento', evento_id=evento.id) }}?formato=" + formato, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' // Adicionar token se necessário
+            },
+            body: JSON.stringify(dados)
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Erro na geração do relatório');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `relatorio_evento_{{ evento.id }}.${formato === 'excel' ? 'xlsx' : formato}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Não foi possível gerar o relatório. Tente novamente.');
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            });
+    }
+</script>
+{% endblock %}
