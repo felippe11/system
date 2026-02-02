@@ -114,10 +114,12 @@ def _criar_usuario_e_inscricao(
         return getattr(config_cli, attr) if config_cli else True
 
     total_insc = Inscricao.query.filter_by(cliente_id=cliente_id).count()
+    limite_inscritos = config_cli.limite_inscritos if config_cli else None
+    # limite <= 0 é tratado como "sem limite"
     if (
-        config_cli
-        and config_cli.limite_inscritos is not None
-        and total_insc >= config_cli.limite_inscritos
+        limite_inscritos is not None
+        and limite_inscritos > 0
+        and total_insc >= limite_inscritos
     ):
         raise ValueError("Limite de inscritos atingido.")
 
