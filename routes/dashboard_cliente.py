@@ -116,11 +116,11 @@ def dashboard_cliente():
         data['total_oficinas'] = len(oficinas)
 
         total_vagas = 0
+        total_vagas = 0
         for of in oficinas:
-            if of.tipo_inscricao == 'com_inscricao_com_limite':
+             # Fix: Use always the initial capacity defined, as requested by user.
+            if of.vagas:
                 total_vagas += of.vagas
-            elif of.tipo_inscricao == 'com_inscricao_sem_limite':
-                total_vagas += len(of.inscritos)
         data['total_vagas'] = total_vagas
 
         total_inscricoes = Inscricao.query.join(Oficina).filter(
