@@ -15,8 +15,33 @@ import os
 from services.pdf_service import gerar_certificado_personalizado
 from flask import current_app
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+def _parse_carga_horaria(valor):
+    """
+    Analisa o valor da carga horária e retorna um inteiro.
+    Suporta strings como '3h', '30 horas', etc.
+    Retorna 0 se não for possível converter.
+    """
+    if valor is None:
+        return 0
+    if isinstance(valor, int):
+        return valor
+    if isinstance(valor, float):
+        return int(valor)
+        
+    try:
+        # Tenta conversão direta primeiro
+        return int(valor)
+    except (ValueError, TypeError):
+        # Tenta extrair números
+        s_valor = str(valor)
+        match = re.search(r'\d+', s_valor)
+        if match:
+            return int(match.group())
+        return 0
 
 
 def verificar_criterios_certificado(usuario_id, evento_id):
@@ -173,7 +198,7 @@ def _calcular_carga_horaria_participante(usuario_id, evento_id):
         Oficina.evento_id == evento_id
     ).all()
 
-    carga_horaria_oficinas = sum(int(oficina.carga_horaria) for oficina in oficinas_participadas)
+    carga_horaria_oficinas = sum(_parse_carga_horaria(oficina.carga_horaria) for oficina in oficinas_participadas)
     
     # Carga horária de atividades com múltiplas datas
     atividades_multiplas = db.session.query(AtividadeMultiplaData).filter(
@@ -218,11 +243,11 @@ def calcular_atividades_participadas(usuario_id, evento_id, config=None):
             {
                 "id": oficina.id,
                 "titulo": oficina.titulo,
-                "carga_horaria": int(oficina.carga_horaria),
+                "carga_horaria": _parse_carga_horaria(oficina.carga_horaria),
                 "tipo": "oficina",
             }
         )
-        atividades["total_horas"] += int(oficina.carga_horaria)
+        atividades["total_horas"] += _parse_carga_horaria(oficina.carga_horaria)
 
     # Buscar atividades com múltiplas datas
     atividades_multiplas = db.session.query(AtividadeMultiplaData).filter(
