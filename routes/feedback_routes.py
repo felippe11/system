@@ -616,10 +616,16 @@ def criar_pergunta_template(template_id):
 def oficinas_por_evento(evento_id):
     """Retorna oficinas de um evento específico."""
     evento = Evento.query.get_or_404(evento_id)
-    
+
+    user_role = getattr(current_user, "tipo", None)
+    is_admin = user_role in ("admin", "superadmin")
+    cliente_id = getattr(current_user, "cliente_id", None)
+    if isinstance(current_user, Cliente) and not cliente_id:
+        cliente_id = current_user.id
+
     # Verificar permissão
-    if evento.cliente_id != current_user.cliente_id:
-        return jsonify({'error': 'Acesso negado'}), 403
+    if not is_admin and evento.cliente_id != cliente_id:
+        return jsonify({"error": "Acesso negado"}), 403
     
     # Buscar oficinas do evento
     oficinas = Oficina.query.filter_by(evento_id=evento_id).order_by(Oficina.titulo.asc()).all()
