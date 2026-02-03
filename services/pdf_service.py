@@ -3803,121 +3803,263 @@ from textwrap import wrap
 
 def gerar_placas_oficinas_pdf(evento_id):
     """
-    Gera um PDF com placas individuais, modernas e harmoniosas para cada oficina de um evento.
-    O design foi aprimorado para ter um visual mais profissional, com gradientes,
-    ícones vetoriais e uma hierarquia visual clara.
+    Gera PDF com placas das oficinas usando ReportLab Platypus para layout moderno e flexível.
+    Estilo baseado em AppFiber Clean Design (Navy Blue & Slate).
     """
-    from models import Evento, Oficina
+    from models import Evento, Oficina, Ministrante
     from extensions import db
-    from flask import current_app, send_file
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm, mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Frame, PageTemplate, Image as PlatImage
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.pdfgen import canvas
+    import io
+    from datetime import datetime
+    
+    # 1. Buscar Dados
+    evento = Evento.query.get_or_404(evento_id)
+    oficinas = Oficina.query.filter_by(evento_id=evento_id).order_by(Oficina.dia.asc(), Oficina.hora_inicio.asc()).all()
 
-    # --- Paleta de Cores Refinada ---
-    COLORS = {
-        'primary_dark': HexColor('#0D1B2A'),    # Azul quase preto para textos principais
-        'primary_medium': HexColor('#1B263B'),  # Azul escuro para fundos de destaque
-        'primary_light': HexColor('#415A77'),   # Azul acinzentado para subtextos
-        'accent': HexColor('#E0E1DD'),          # Bege claro para detalhes e fundos
-        'highlight': HexColor('#D90429'),       # Vermelho vibrante para destaques importantes
-        'white': HexColor('#FFFFFF'),
-        'light_gray': HexColor('#F8F9FA'),
-        'shadow': Color(0, 0, 0, alpha=0.15)
-    }
+    if not oficinas:
+        return None
 
-    # --- Funções de Desenho Auxiliares ---
+    # 2. Configuração Básica
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=1*cm,
+        leftMargin=1*cm,
+        topMargin=1*cm,
+        bottomMargin=1*cm
+    )
 
-    def draw_background(c, width, height):
-        """Desenha um fundo com um gradiente vertical sutil."""
-        # O gradiente vai do cinza claro (topo) para o branco (base)
-        c.setFillColor(COLORS['light_gray'])
-        c.rect(0, 0, width, height, fill=1, stroke=0)
-        # Adiciona um retângulo decorativo na base
-        c.setFillColor(COLORS['primary_medium'])
-        c.rect(0, 0, width, 2*cm, fill=1, stroke=0)
+    # Cores (Tailwind inspired)
+    color_primary = colors.HexColor('#1e40af') # Blue-800
+    color_bg_dark = colors.HexColor('#0f172a') # Slate-900
+    color_slate_50 = colors.HexColor('#f8fafc')
+    color_slate_100 = colors.HexColor('#f1f5f9')
+    color_slate_400 = colors.HexColor('#94a3b8')
+    color_slate_500 = colors.HexColor('#64748b')
+    color_slate_800 = colors.HexColor('#1e293b')
+    color_slate_900 = colors.HexColor('#0f172a')
+    color_blue_50 = colors.HexColor('#eff6ff')
+    color_blue_100 = colors.HexColor('#dbeafe')
+    
+    # Estilos de Texto
+    styles = getSampleStyleSheet()
+    
+    style_pill = ParagraphStyle(
+        'Pill',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        textColor=color_primary,
+        backColor=color_blue_50,
+        borderPadding=(10, 5, 10, 5), # (bottom, left, top, right) - ReportLab padding order is quirky
+        borderWidth=0,
+        alignment=TA_CENTER,
+        borderRadius=15
+    ) # Note: ReportLab native Paragraph doesn't fully support pill styling easily without Drawing, using colored back for simplicity
 
-    def draw_card(c, x, y, width, height):
-        """Desenha o cartão principal com sombra e bordas arredondadas."""
-        # Sombra sutil
-        c.setFillColor(COLORS['shadow'])
-        c.roundRect(x + 0.1*cm, y - 0.1*cm, width, height, radius=0.5*cm, fill=1, stroke=0)
+    style_title = ParagraphStyle(
+        'Title',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=40,
+        leading=48,
+        textColor=color_slate_900,
+        alignment=TA_CENTER,
+        spaceAfter=30
+    )
+
+    style_info_label = ParagraphStyle(
+        'InfoLabel',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        textColor=color_slate_400,
+        alignment=TA_LEFT,
+        textTransform='uppercase'
+    )
+
+    style_info_value = ParagraphStyle(
+        'InfoValue',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=18,
+        textColor=color_slate_800,
+        alignment=TA_LEFT
+    )
+
+    style_footer = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontName='Helvetica-Oblique',
+        fontSize=12,
+        textColor=color_slate_400,
+        alignment=TA_CENTER
+    )
+
+    # Função de Fundo (Background)
+    def background_template(canvas, doc):
+        canvas.saveState()
+        w, h = doc.pagesize
         
-        # Cartão branco
-        c.setFillColor(COLORS['white'])
-        c.roundRect(x, y, width, height, radius=0.5*cm, fill=1, stroke=0)
-
-    def draw_header(c, x, y, width, height):
-        """Desenha a faixa de destaque no topo do cartão."""
-        c.setFillColor(COLORS['highlight'])
-        c.roundRect(x, y + height - 1.5*cm, width, 1.5*cm, radius=0.5*cm, fill=1, stroke=0)
-
-    def draw_workshop_title(c, box, title):
-        """Desenha o título da oficina, centralizado e com quebra de linha automática."""
-        c.setFillColor(COLORS['primary_dark'])
+        # Fundo Geral
+        canvas.setFillColor(color_slate_50)
+        canvas.rect(0, 0, w, h, fill=1, stroke=0)
         
-        # Tenta diferentes tamanhos de fonte para caber o título
-        for size in [32, 28, 24, 20]:
-            c.setFont('Helvetica-Bold', size)
-            lines = wrap(title, width=int(box.width / (size * 0.02))) # Heurística para quebra
-            line_height = size * 1.2
-            total_height = len(lines) * line_height
-            if total_height < box.height:
-                break
+        # Bloco Central Branco (Card)
+        margin_x = 2*cm
+        margin_y = 2*cm
+        card_w = w - 2*margin_x
+        card_h = h - 2*margin_y
         
-        start_y = box.y + box.height - (box.height - total_height) / 2
+        # Sombra Simples (Rect cinza deslocado)
+        canvas.setFillColor(colors.Color(0,0,0,0.05))
+        canvas.roundRect(margin_x + 5, margin_y - 5, card_w, card_h, 30, fill=1, stroke=0)
         
-        for i, line in enumerate(lines):
-            text_width = c.stringWidth(line, 'Helvetica-Bold', size)
-            c.drawCentredString(box.x + box.width / 2, start_y - i * line_height, line)
-
-    def draw_info_block(c, box, icon_func, primary_text, secondary_text=""):
-        """
-        Desenha um bloco de informação genérico com ícone, texto primário e secundário.
-        Retorna a altura total do bloco desenhado.
-        """
-        icon_size = 0.8 * cm
-        padding = 0.5 * cm
-        text_x = box.x + icon_size + padding
-        text_width = box.width - icon_size - padding
-
-        # Desenha o ícone
-        icon_func(c, box.x, box.y + (box.height - icon_size) / 2, icon_size)
-
-        # Texto Primário (ex: Nome do ministrante)
-        c.setFont('Helvetica-Bold', 16)
-        c.setFillColor(COLORS['primary_dark'])
-        c.drawString(text_x, box.y + box.height * 0.55, primary_text)
+        # Card Branco
+        canvas.setFillColor(colors.white)
+        # Borda sutil
+        canvas.setStrokeColor(color_slate_100)
+        canvas.setLineWidth(2)
+        canvas.roundRect(margin_x, margin_y, card_w, card_h, 30, fill=1, stroke=1)
         
-        # Texto Secundário (ex: Formação)
-        if secondary_text:
-            c.setFont('Helvetica', 12)
-            c.setFillColor(COLORS['primary_light'])
-            c.drawString(text_x, box.y + box.height * 0.2, secondary_text)
+        # Elementos Decorativos (Blobs)
+        # Blob 1 (Top Left)
+        # canvas.setFillColor(colors.Color(0.12, 0.25, 0.68, 0.05)) # Primary transparent
+        # canvas.circle(margin_x, margin_y + card_h, 100, fill=1, stroke=0)
         
-        return box.height + 0.5*cm # Retorna altura do bloco mais um espaçamento
+        canvas.restoreState()
 
-    # --- Funções para Desenhar Ícones Vetoriais ---
+    # Frame Principal (Conteúdo dentro do card)
+    # Ajustar margens para ficar dentro do card branco desenhado no background
+    frame_w = landscape(A4)[0] - 6*cm # 3cm margin each side
+    frame_h = landscape(A4)[1] - 6*cm # 3cm margin each side
+    
+    main_frame = Frame(
+        3*cm, 3*cm, 
+        frame_w, frame_h, 
+        id='normal', 
+        showBoundary=0
+    )
+    
+    doc.addPageTemplates([PageTemplate(id='background', frames=main_frame, onPage=background_template)])
 
-    def draw_user_icon(c, x, y, size):
-        c.setFillColor(COLORS['primary_light'])
-        c.setStrokeColor(COLORS['primary_light'])
-        c.setLineWidth(2)
-        # Cabeça
-        c.circle(x + size/2, y + size*0.65, size*0.2, fill=0)
-        # Corpo
-        path = c.beginPath()
-        path.moveTo(x + size*0.2, y + size*0.4)
-        path.lineTo(x + size*0.8, y + size*0.4)
-        path.arcTo(x, y, x + size, y + size*0.8, startAng=200, endAng=340)
-        c.drawPath(path, fill=0)
+    elements = []
 
-    def draw_calendar_icon(c, x, y, size):
-        c.setFillColor(COLORS['primary_light'])
-        c.setStrokeColor(COLORS['primary_light'])
-        c.setLineWidth(2)
-        # Corpo do calendário
-        c.roundRect(x, y, size, size, radius=size*0.1, fill=0)
-        # Linha do topo
-        c.line(x, y + size*0.7, x + size, y + size*0.7)
-        # Pinos do fichário
+    for oficina in oficinas:
+        # --- CABEÇALHO ---
+        # Pill "Oficina de Formação"
+        # Usando Table para simular o Pill centralizado (Paragraph background ocupa toda largura)
+        pill_text = "OFICINA DE FORMAÇÃO"
+        pill_style = ParagraphStyle('PillText', fontName='Helvetica-Bold', fontSize=10, textColor=color_primary, alignment=TA_CENTER)
+        pill = Paragraph(pill_text, pill_style)
+        
+        t_pill = Table([[pill]], colWidths=[6*cm])
+        t_pill.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), color_blue_50),
+            ('BottomPadding', (0,0), (-1,-1), 6),
+            ('TopPadding', (0,0), (-1,-1), 6),
+            ('ROUNDEDCORNERS', [10, 10, 10, 10]), # Not fully supported in std ReportLab Tables without custom drawing, but we use back color
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        # Truque para bordas arredondadas em tabela requer flowable costumizado, vamos manter retangular com cor azul clara por enquanto, ou usar Image se crítico.
+        # ReportLab standard Tables support rounded corners in newer versions properly or via graphics.
+        # Vamos simplificar: Apenas texto azul com fundo.
+        
+        elements.append(Spacer(1, 1*cm))
+        elements.append(t_pill)
+        elements.append(Spacer(1, 1*cm))
+        
+        # Título
+        elements.append(Paragraph(oficina.titulo.upper(), style_title))
+        
+        # Divisor Azul (Linha grossa)
+        # Usar uma Table vazia com background color e width pequena
+        t_line = Table([['']], colWidths=[3*cm], rowHeights=[2*mm])
+        t_line.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), color_primary),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ]))
+        elements.append(t_line)
+        elements.append(Spacer(1, 2.5*cm))
+        
+        # --- INFO GRID (DATA/HORA & LOCAL) ---
+        # Card 1: Data
+        dt_str = oficina.dia.strftime('%d/%m') if oficina.dia else '--/--'
+        hr_str = f"{oficina.hora_inicio.strftime('%H:%M')} às {oficina.hora_fin.strftime('%H:%M')}" if (oficina.hora_inicio and oficina.hora_fin) else '--:--'
+        
+        # Ícone de Data (Simulado com Texto ou Desenho? Vamos usar Texto Grande ou Emoji se fonte suportar, se não, label simples)
+        # ReportLab 'ZapfDingbats' tem icones, mas limitados.
+        # Vamos usar estrutura de tabela para os cards cinzas.
+        
+        # Conteúdo Card Data
+        p_label_data = Paragraph("DATA E HORÁRIO", style_info_label)
+        p_val_data = Paragraph(f"{dt_str} das {hr_str}", style_info_value)
+        
+        # Conteúdo Card Local
+        p_label_local = Paragraph("LOCALIZAÇÃO", style_info_label)
+        local_txt = oficina.local if oficina.local else f"{evento.cidade}/{evento.estado}"
+        p_val_local = Paragraph(local_txt, style_info_value)
+
+        # Tabela Container dos 2 Cards
+        # Card = Célula com padding e background
+        
+        data = [[
+            [p_label_data, Spacer(1, 5), p_val_data], # Coluna 1
+            Spacer(1, 10), # Espaço
+            [p_label_local, Spacer(1, 5), p_val_local] # Coluna 2
+        ]]
+        
+        t_grid = Table(data, colWidths=[9*cm, 1*cm, 9*cm])
+        t_grid.setStyle(TableStyle([
+            # Card 1 Style
+            ('BACKGROUND', (0,0), (0,0), color_slate_50),
+            ('BOX', (0,0), (0,0), 1, color_slate_100),
+            ('LEFTPADDING', (0,0), (0,0), 20),
+            ('RIGHTPADDING', (0,0), (0,0), 20),
+            ('TOPPADDING', (0,0), (0,0), 20),
+            ('BOTTOMPADDING', (0,0), (0,0), 20),
+            
+            # Card 2 Style
+            ('BACKGROUND', (2,0), (2,0), color_slate_50),
+            ('BOX', (2,0), (2,0), 1, color_slate_100),
+            ('LEFTPADDING', (2,0), (2,0), 20),
+            ('RIGHTPADDING', (2,0), (2,0), 20),
+            ('TOPPADDING', (2,0), (2,0), 20),
+            ('BOTTOMPADDING', (2,0), (2,0), 20),
+            
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        
+        elements.append(t_grid)
+        
+        # --- FOOTER ---
+        elements.append(Spacer(1, 3*cm))
+        footer_txt = f"{evento.nome} — {evento.cidade}"
+        elements.append(Paragraph(footer_txt, style_footer))
+        
+        elements.append(PageBreak())
+
+    if elements:
+        elements.pop() # Remove last PageBreak
+
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"placas_oficinas_{evento_id}.pdf",
+        mimetype='application/pdf'
+    )
+   # Pinos do fichário
         c.rect(x + size*0.2, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
         c.rect(x + size*0.7, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
 
