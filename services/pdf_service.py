@@ -2320,13 +2320,22 @@ def exportar_checkins_pdf_opcoes():
     # Vamos estimar 15 itens por página
     total_paginas = 1 + (len(checkins) // 15)
     
-    # Agrupando check-ins por evento e oficina
+    # Agrupar check-ins por data de check-in
     agrupados = {}
     for c in checkins:
-        chave = f"EVENTO: {c.evento.nome}" if c.evento else f"OFICINA: {c.oficina.titulo if c.oficina else 'Sem título'}"
+        data_key = c.data_hora.date() if c.data_hora else None
+        chave = data_key.strftime('%d/%m/%Y') if data_key else 'Data indefinida'
         if chave not in agrupados:
             agrupados[chave] = []
         agrupados[chave].append(c)
+
+    # Ordenar datas cronologicamente (e manter "Data indefinida" ao final)
+    def sort_date_key(item):
+        if item[0] == 'Data indefinida':
+            return (1, '')
+        return (0, datetime.strptime(item[0], '%d/%m/%Y'))
+
+    agrupados = dict(sorted(agrupados.items(), key=sort_date_key))
     
     # Iniciar primeira página
     pagina_atual = 1
@@ -2334,6 +2343,10 @@ def exportar_checkins_pdf_opcoes():
     y = height - 3*cm  # Posição inicial após o cabeçalho
     
     for secao, lista in agrupados.items():
+        lista = sorted(
+            lista,
+            key=lambda c: (c.usuario.nome or "").strip().lower(),
+        )
         # Verificar se tem espaço na página
         if y < 8*cm:
             y = nova_pagina(pagina_atual, total_paginas)
@@ -2342,7 +2355,7 @@ def exportar_checkins_pdf_opcoes():
         # Desenhar cabeçalho da seção
         p.setFont("Helvetica-Bold", 12)
         p.setFillColor(azul_principal)
-        p.drawString(1*cm, y, secao)
+        p.drawString(1*cm, y, f"DATA: {secao}")
         y -= 0.8*cm
         
         # Desenhar cabeçalho da tabela
