@@ -161,7 +161,7 @@
                               <label class="form-label">Perguntas</label>
                               <div class="border rounded p-2" style="max-height: 180px; overflow: auto;">
                                 {% if perguntas %}
-                                  {% set selecionadas = dia_perguntas.get(dia.id, set()) %}
+                                  {% set selecionadas = dia_perguntas.get(dia.id, []) %}
                                   {% for pergunta in perguntas %}
                                     <div class="form-check">
                                       <input class="form-check-input" type="checkbox" name="perguntas" value="{{ pergunta.id }}" id="editar-pergunta-{{ dia.id }}-{{ pergunta.id }}"
