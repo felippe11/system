@@ -33,7 +33,7 @@ from services.ia_service import gerar_texto_relatorio
 
 
 def montar_relatorio_mensagem(incluir_financeiro=False):
-    from sqlalchemy import func
+    from sqlalchemy import func, or_
     
     # Se quiser só as oficinas do cliente, verifique se current_user é admin ou cliente:
     is_admin = (current_user.tipo == 'admin')
@@ -91,6 +91,23 @@ def montar_relatorio_mensagem(incluir_financeiro=False):
     
     # Cálculo de adesão
     percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
+    percentual_adesao = min(100, percentual_adesao)
+
+    checkins_base = Checkin.query
+    if not is_admin:
+        checkins_base = checkins_base.filter(Checkin.cliente_id == current_user.id)
+
+    total_checkins = checkins_base.count()
+    participantes_com_checkin = (
+        checkins_base.with_entities(func.count(func.distinct(Checkin.usuario_id)))
+        .scalar()
+        or 0
+    )
+    checkins_por_tipo = dict(
+        checkins_base.with_entities(
+            Checkin.palavra_chave, func.count(Checkin.id)
+        ).group_by(Checkin.palavra_chave).all()
+    )
 
     # Monta a mensagem com emojis e loop
     total_eventos = len(eventos)
@@ -100,9 +117,17 @@ def montar_relatorio_mensagem(incluir_financeiro=False):
         f"✅ *Total de Oficinas:* {total_oficinas}\n"
         f"✅ *Vagas Ofertadas:* {total_vagas}\n"
         f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
-        f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n\n"
+        f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n"
+        f"✅ *Total de Check-ins:* {total_checkins}\n"
+        f"✅ *Participantes com Check-in:* {participantes_com_checkin}\n\n"
         "----------------------------------------\n"
     )
+
+    if checkins_por_tipo:
+        mensagem += "📌 *Check-ins por Tipo:*\n"
+        for tipo, total in sorted(checkins_por_tipo.items()):
+            mensagem += f"🔸 {tipo}: {total}\n"
+        mensagem += "----------------------------------------\n"
     
     # Agrupar oficinas por evento
     for evento in eventos:
@@ -123,10 +148,40 @@ def montar_relatorio_mensagem(incluir_financeiro=False):
             receita = financeiro_por_evento.get(evento.id, 0.0)
             mensagem += f"💰 *Receita:* R$ {receita:.2f}\n"
         
+        oficina_ids = [o.id for o in oficinas_evento]
+        checkins_evento = checkins_base.filter(
+            or_(
+                Checkin.evento_id == evento.id,
+                Checkin.oficina_id.in_(oficina_ids) if oficina_ids else False,
+            )
+        ).count()
+        participantes_evento = (
+            checkins_base.filter(
+                or_(
+                    Checkin.evento_id == evento.id,
+                    Checkin.oficina_id.in_(oficina_ids) if oficina_ids else False,
+                )
+            )
+            .with_entities(func.count(func.distinct(Checkin.usuario_id)))
+            .scalar()
+            or 0
+        )
+        mensagem += f"🧾 *Check-ins no Evento:* {checkins_evento}\n"
+        mensagem += f"👤 *Participantes com Check-in:* {participantes_evento}\n"
+
         # Adicionar dados de cada oficina do evento
         for oficina in oficinas_evento:
             # Conta inscritos
             num_inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).count()
+            presencas = checkins_base.filter(
+                Checkin.oficina_id == oficina.id
+            ).count()
+            participantes_oficina = (
+                checkins_base.filter(Checkin.oficina_id == oficina.id)
+                .with_entities(func.count(func.distinct(Checkin.usuario_id)))
+                .scalar()
+                or 0
+            )
             
             # Calcula ocupação considerando o tipo de inscrição
             if oficina.tipo_inscricao == 'sem_inscricao':
@@ -136,8 +191,9 @@ def montar_relatorio_mensagem(incluir_financeiro=False):
                 ocupacao = 100  # Sempre 100% pois aceita qualquer número de inscritos
                 vagas_texto = "Ilimitadas"
             else:  # com_inscricao_com_limite
-                ocupacao = (num_inscritos / oficina.vagas)*100 if oficina.vagas else 0
+                ocupacao = (num_inscritos / oficina.vagas) * 100 if oficina.vagas else 0
                 vagas_texto = str(oficina.vagas)
+            ocupacao = min(100, ocupacao)
             
             # Determina o texto amigável para o tipo de inscrição
             tipo_inscricao_texto = "Sem inscrição"
@@ -152,6 +208,8 @@ def montar_relatorio_mensagem(incluir_financeiro=False):
                 f"🔹 *Vagas:* {vagas_texto}\n"
                 f"🔹 *Inscritos:* {num_inscritos}\n"
                 f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
+                f"🔹 *Check-ins:* {presencas}\n"
+                f"🔹 *Participantes com Check-in:* {participantes_oficina}\n"
             )
 
             mensagem += "----------------------------------------\n"

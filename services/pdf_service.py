@@ -7585,12 +7585,14 @@ def exportar_checkins_pdf_opcoes():
     import unicodedata
     from io import BytesIO
     from datetime import datetime
-    from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import cm
     from reportlab.lib import colors
-    from models import Checkin, Evento, Oficina
-
+    from reportlab.lib.units import cm, mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from models import Checkin, Usuario
+    
     def normalizar(texto):
         return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("utf-8").strip()
 
@@ -7601,8 +7603,8 @@ def exportar_checkins_pdf_opcoes():
         flash("Acesso negado.", "danger")
         return redirect(url_for(endpoints.DASHBOARD))
 
-    # Query base
-    base_query = Checkin.query.filter(Checkin.cliente_id == current_user.id)
+    # Query base com join para ordenação por nome
+    base_query = Checkin.query.join(Checkin.usuario).filter(Checkin.cliente_id == current_user.id)
 
     if evento_id and evento_id != 'todos':
         base_query = base_query.filter(Checkin.evento_id == int(evento_id))
@@ -7610,142 +7612,201 @@ def exportar_checkins_pdf_opcoes():
     if tipo and tipo != 'TODOS':
         base_query = base_query.filter(Checkin.palavra_chave == tipo)
 
-    checkins = base_query.order_by(Checkin.data_hora.desc()).all()
+    # Ordenação Alfabetica (Nome do Usuário)
+    # A ordem secundária é a data (mais recente primeiro) para pegar o último check-in corretamente na deduplicação
+    checkins = base_query.order_by(Usuario.nome.asc(), Checkin.data_hora.desc()).all()
 
     if not checkins:
         flash("Nenhum check-in encontrado para os filtros aplicados.", "info")
         return redirect(url_for(endpoints.DASHBOARD))
 
-    # Gerar PDF
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-    
-    # Cores modernas
-    azul_principal = colors.HexColor('#2196F3')
-    azul_claro = colors.HexColor('#BBDEFB')
-    cinza_escuro = colors.HexColor('#424242')
-    cinza_claro = colors.HexColor('#EEEEEE')
-    
-    def adicionar_cabecalho_rodape(pagina, num_pagina, total_paginas):
-        # Cabeçalho
-        pagina.setFillColor(azul_principal)
-        pagina.rect(0, height - 2*cm, width, 2*cm, fill=1)
-        
-        pagina.setFillColor(colors.white)
-        pagina.setFont("Helvetica-Bold", 16)
-        titulo_relatorio = "Relatório de Check-ins"
-        if tipo != 'TODOS':
-            titulo_relatorio += f" - {tipo}"
-        pagina.drawCentredString(width/2, height - 1.2*cm, titulo_relatorio)
-        
-        pagina.setFont("Helvetica", 10)
-        data_relatorio = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-        pagina.drawString(width - 5*cm, height - 1.7*cm, data_relatorio)
-        
-        # Rodapé
-        pagina.setFillColor(cinza_escuro)
-        pagina.rect(0, 0, width, 1*cm, fill=1)
-        pagina.setFillColor(colors.white)
-        pagina.setFont("Helvetica", 8)
-        pagina.drawString(1*cm, 0.4*cm, f"Página {num_pagina} de {total_paginas}")
-        pagina.drawRightString(width - 1*cm, 0.4*cm, "Sistema de Check-ins")
-    
-    # Função para criar nova página
-    def nova_pagina(num_pagina, total_paginas):
-        p.showPage()
-        adicionar_cabecalho_rodape(p, num_pagina, total_paginas)
-        return height - 3*cm  # Retornar posição Y após o cabeçalho
-    
-    # Calcular número total de páginas (estimativa)
-    # Vamos estimar 15 itens por página
-    total_paginas = 1 + (len(checkins) // 15)
-    
-    # Agrupando check-ins por evento e oficina
+    # Agrupamento e Deduplicação
+    # Estrutura: { 'Nome da Seção': { 'user_id': { 'usuario': UserObj, 'checkins': [List] } } }
     agrupados = {}
+    total_registros_geral = len(checkins)
+    usuarios_unicos_geral = set()
+
     for c in checkins:
-        chave = f"EVENTO: {c.evento.nome}" if c.evento else f"OFICINA: {c.oficina.titulo if c.oficina else 'Sem título'}"
-        if chave not in agrupados:
-            agrupados[chave] = []
-        agrupados[chave].append(c)
+        secao = f"EVENTO: {c.evento.nome}" if c.evento else f"OFICINA: {c.oficina.titulo if c.oficina else 'Sem título'}"
+        if secao not in agrupados:
+            agrupados[secao] = {}
+        
+        u_id = c.usuario_id
+        if u_id not in agrupados[secao]:
+            agrupados[secao][u_id] = {
+                'usuario': c.usuario,
+                'checkins': []
+            }
+        agrupados[secao][u_id]['checkins'].append(c)
+        usuarios_unicos_geral.add(u_id)
+
+    # Configuração do Documento
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2*cm,
+        leftMargin=2*cm,
+        topMargin=2*cm,
+        bottomMargin=2*cm
+    )
+
+    # Estilos (AppFiber Design System)
+    styles = getSampleStyleSheet()
     
-    # Iniciar primeira página
-    pagina_atual = 1
-    adicionar_cabecalho_rodape(p, pagina_atual, total_paginas)
-    y = height - 3*cm  # Posição inicial após o cabeçalho
+    # Cores
+    navy_primary = colors.HexColor('#0F172A')
+    blue_action = colors.HexColor('#1E88E5')
+    slate_light = colors.HexColor('#F8FAFC')
+    text_secondary = colors.HexColor('#4E7597')
     
-    for secao, lista in agrupados.items():
-        # Verificar se tem espaço na página
-        if y < 8*cm:
-            y = nova_pagina(pagina_atual, total_paginas)
-            pagina_atual += 1
-        
-        # Desenhar cabeçalho da seção
-        p.setFont("Helvetica-Bold", 12)
-        p.setFillColor(azul_principal)
-        p.drawString(1*cm, y, secao)
-        y -= 0.8*cm
-        
-        # Desenhar cabeçalho da tabela
-        p.setFillColor(azul_principal)
-        p.rect(1*cm, y - 0.7*cm, width - 2*cm, 0.7*cm, fill=1)
-        
-        p.setFillColor(colors.white)
-        p.setFont("Helvetica-Bold", 10)
-        p.drawString(1.2*cm, y - 0.4*cm, "Participante")
-        p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
-        p.drawString(12*cm, y - 0.4*cm, "Turno")
-        p.drawString(16*cm, y - 0.4*cm, "Data/Hora")
-        
-        y -= 0.7*cm
-        
-        # Listar check-ins desta seção
-        linha_alternada = True
-        for c in lista:
-            # Verificar se tem espaço na página
-            if y < 2*cm:
-                y = nova_pagina(pagina_atual, total_paginas)
-                pagina_atual += 1
-                
-                # Redesenhar cabeçalho da tabela
-                p.setFillColor(azul_principal)
-                p.rect(1*cm, y - 0.7*cm, width - 2*cm, 0.7*cm, fill=1)
-                
-                p.setFillColor(colors.white)
-                p.setFont("Helvetica-Bold", 10)
-                p.drawString(1.2*cm, y - 0.4*cm, "Participante")
-                p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
-                p.drawString(12*cm, y - 0.4*cm, "Turno")
-                p.drawString(16*cm, y - 0.4*cm, "Data/Hora")
-                
-                y -= 0.7*cm
-            
-            # Alternar cores de fundo para linhas
-            if linha_alternada:
-                p.setFillColor(cinza_claro)
-                p.rect(1*cm, y - 0.5*cm, width - 2*cm, 0.5*cm, fill=1)
-            linha_alternada = not linha_alternada
-            
-            # Desenhar dados
-            p.setFillColor(cinza_escuro)
-            p.setFont("Helvetica", 9)
-            p.drawString(1.2*cm, y - 0.3*cm, c.usuario.nome[:28])
-            p.drawString(7*cm, y - 0.3*cm, c.palavra_chave[:20])
-            p.drawString(12*cm, y - 0.3*cm, determinar_turno(c.data_hora))
-            p.drawString(16*cm, y - 0.3*cm, c.data_hora.strftime('%d/%m/%Y %H:%M'))
-            
-            # Descer para próxima linha
-            y -= 0.5*cm
-        
-        # Espaço entre seções
-        y -= 1*cm
+    # Estilos de Texto
+    title_style = ParagraphStyle(
+        'ReportTitle',
+        parent=styles['Title'],
+        fontName='Helvetica-Bold',
+        fontSize=24,
+        textColor=navy_primary,
+        spaceAfter=10,
+        alignment=TA_CENTER
+    )
     
-    # Finalizar PDF
-    p.save()
+    subtitle_style = ParagraphStyle(
+        'ReportSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=12,
+        textColor=text_secondary,
+        alignment=TA_CENTER,
+        spaceAfter=30
+    )
+    
+    section_style = ParagraphStyle(
+        'SectionHeader',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=16,
+        textColor=blue_action,
+        spaceBefore=20,
+        spaceAfter=10,
+        borderPadding=5,
+        borderColor=colors.lightgrey,
+        borderWidth=0,
+        backColor=None
+    )
+
+    normal_style = ParagraphStyle(
+        'NormalText',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        textColor=navy_primary
+    )
+    
+    small_style = ParagraphStyle(
+        'SmallText',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=text_secondary
+    )
+
+    elements = []
+
+    # 1. Cabeçalho Global
+    elements.append(Paragraph("Relatório de Check-ins Filtrados", title_style))
+    
+    data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+    filtro_texto = f"Tipo: {tipo if tipo else 'Todos'}"
+    summary_text = f"Gerado em: {data_geracao} | {filtro_texto}<br/>Total de Registros: <b>{total_registros_geral}</b> | Participantes Únicos: <b>{len(usuarios_unicos_geral)}</b>"
+    elements.append(Paragraph(summary_text, subtitle_style))
+    elements.append(Spacer(1, 10))
+
+    # 2. Iterar sobre Seções (Eventos/Oficinas)
+    for secao_nome in sorted(agrupados.keys()):
+        participantes_map = agrupados[secao_nome]
+        
+        # Título da Seção
+        elements.append(Paragraph(secao_nome, section_style))
+        
+        # Preparar dados da tabela
+        # Cabeçalho da Tabela
+        table_data = [["Participante", "Email / Identificação", "Último Check-in", "Qtd"]]
+        
+        # Linhas (Deduplicadas)
+        # Ordenar participantes por nome
+        participantes_lista = sorted(participantes_map.values(), key=lambda x: x['usuario'].nome)
+        
+        for item in participantes_lista:
+            user = item['usuario']
+            lista_checkins = item['checkins']
+            qtd = len(lista_checkins)
+            ultimo_checkin = lista_checkins[0] # Mais recente
+            
+            data_str = ultimo_checkin.data_hora.strftime('%d/%m/%Y %H:%M')
+            turn = determinar_turno(ultimo_checkin.data_hora)
+            data_display = f"{data_str}\n({turn})"
+            
+            # Usar Paragraph para quebra de linha se nome for longo
+            nome_display = Paragraph(user.nome, normal_style)
+            email_display = Paragraph(user.email, normal_style)
+            data_display_p = Paragraph(data_display, normal_style)
+            
+            table_data.append([nome_display, email_display, data_display_p, str(qtd)])
+
+        # Estilo da Tabela
+        t = Table(table_data, colWidths=[6*cm, 7*cm, 4*cm, 2*cm])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), navy_primary),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('TOPPADDING', (0, 0), (-1, 0), 10),
+            
+            # Linhas alternadas
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, slate_light]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (3, 1), (3, -1), 'CENTER'), # Qtd centralizada
+            
+            # Padding células
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 1), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ]))
+        
+        elements.append(t)
+        elements.append(Spacer(1, 20))
+        # Quebra de página estrita após cada grupo
+        elements.append(PageBreak())
+
+    # Remover o último PageBreak se existir
+    if elements and isinstance(elements[-1], PageBreak):
+        elements.pop()
+
+    # Rodapé customizado
+    def footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica', 9)
+        canvas.setFillColor(text_secondary)
+        page_num = canvas.getPageNumber()
+        text = f"Página {page_num} - AppFiber Report"
+        canvas.drawCentredString(A4[0]/2, 1*cm, text)
+        canvas.restoreState()
+
+    doc.build(elements, onFirstPage=footer, onLaterPages=footer)
+    
     buffer.seek(0)
+    nome_arquivo = f"checkins_filtrados_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
     
-    nome_arquivo = f"checkins_{evento_id or 'todos'}_{tipo or 'todos'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype='application/pdf')
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=nome_arquivo,
+        mimetype='application/pdf'
+    )
 
 
 
