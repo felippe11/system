@@ -13,6 +13,7 @@ from extensions import db, socketio
 from datetime import datetime, timedelta
 import logging
 from utils import endpoints
+from sqlalchemy import tuple_
 
 
 logger = logging.getLogger(__name__)
@@ -254,7 +255,7 @@ def checkins_lote():
     if acao == 'registrar' and not turnos:
         flash('Selecione um turno válido para registrar check-ins.', 'warning')
         return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
-    if acao == 'deletar' and turno not in turnos_validos and turno != 'todos':
+    if acao == 'deletar' and turno and turno not in turnos_validos and turno != 'todos':
         flash('Selecione um turno válido para deletar check-ins.', 'warning')
         return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
 
@@ -331,7 +332,8 @@ def checkins_lote():
             usuario_id=insc.usuario_id,
             oficina_id=insc.oficina_id,
         )
-        if turnos:
+        # Para deletar, se "todos", remove inclusive check-ins sem turno (QR/manual antigo)
+        if turno and turno != 'todos':
             query = query.filter(Checkin.turno.in_(turnos))
         if data_hora:
             inicio = data_hora.replace(second=0, microsecond=0)
@@ -340,8 +342,77 @@ def checkins_lote():
         total_removidos += query.delete(synchronize_session=False)
 
     db.session.commit()
-    flash(f"Check-ins removidos: {total_removidos}.", "success")
+    if total_removidos:
+        flash(f"Check-ins removidos: {total_removidos}.", "success")
+    else:
+        flash("Nenhum check-in encontrado para remoção.", "info")
     return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+
+
+@checkin_routes.route('/cliente/checkins_lote_preview', methods=['POST'])
+@login_required
+def checkins_lote_preview():
+    if current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado.'}), 403
+
+    escopo = (request.form.get('escopo_checkin') or '').strip().lower()
+    turno = (request.form.get('turno_checkin') or '').strip().lower()
+    data_hora_str = (request.form.get('data_hora_checkin') or '').strip()
+
+    turnos_validos = {'manha', 'tarde', 'noite'}
+    turnos = list(turnos_validos) if turno == 'todos' else ([turno] if turno in turnos_validos else [])
+
+    data_hora = None
+    if data_hora_str:
+        try:
+            data_hora = datetime.strptime(data_hora_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Data/Hora inválida.'}), 400
+
+    inscricoes = []
+    if escopo == 'selecionados':
+        inscricao_ids = request.form.getlist('inscricao_ids')
+        if not inscricao_ids:
+            return jsonify({'success': False, 'message': 'Selecione ao menos uma inscrição.'}), 400
+        inscricoes = (
+            Inscricao.query
+            .join(Oficina, Inscricao.oficina_id == Oficina.id)
+            .filter(
+                Inscricao.id.in_(inscricao_ids),
+                Oficina.cliente_id == current_user.id
+            )
+            .all()
+        )
+    elif escopo == 'oficinas':
+        oficina_ids = request.form.getlist('oficina_ids')
+        if not oficina_ids:
+            return jsonify({'success': False, 'message': 'Selecione ao menos uma oficina.'}), 400
+        inscricoes = (
+            Inscricao.query
+            .join(Oficina, Inscricao.oficina_id == Oficina.id)
+            .filter(
+                Inscricao.oficina_id.in_(oficina_ids),
+                Oficina.cliente_id == current_user.id
+            )
+            .all()
+        )
+    else:
+        return jsonify({'success': False, 'message': 'Selecione o escopo da ação.'}), 400
+
+    if not inscricoes:
+        return jsonify({'success': True, 'count': 0})
+
+    pares = {(i.usuario_id, i.oficina_id) for i in inscricoes}
+    query = Checkin.query.filter(tuple_(Checkin.usuario_id, Checkin.oficina_id).in_(list(pares)))
+
+    if turno and turno != 'todos':
+        query = query.filter(Checkin.turno.in_(turnos))
+    if data_hora:
+        inicio = data_hora.replace(second=0, microsecond=0)
+        fim = inicio + timedelta(minutes=1)
+        query = query.filter(Checkin.data_hora >= inicio, Checkin.data_hora < fim)
+
+    return jsonify({'success': True, 'count': query.count()})
 
 @checkin_routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required

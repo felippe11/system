@@ -93,7 +93,9 @@
     </div>
     <div id="checkinsLoteCollapse" class="collapse">
       <div class="card-body bg-light p-4">
-        <form id="formCheckinsLote" action="{{ url_for('checkin_routes.checkins_lote') }}" method="POST">
+      <form id="formCheckinsLote" action="{{ url_for('checkin_routes.checkins_lote') }}" method="POST"
+        data-preview-url="{{ url_for('checkin_routes.checkins_lote_preview') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row g-3">
           <div class="col-12 col-lg-4">
             <label class="form-label fw-bold">Ação</label>
@@ -545,6 +547,11 @@
         .addEventListener('submit', prepararFormulario);
       if (formCheckinsLote) {
         formCheckinsLote.addEventListener('submit', function (e) {
+          if (formCheckinsLote.dataset.confirmed === 'true') {
+            formCheckinsLote.dataset.confirmed = 'false';
+            return;
+          }
+
           prepararFormularioCheckin();
           const escopo = document.querySelector('input[name="escopo_checkin"]:checked')?.value;
           const selecionados = document.querySelectorAll('.selecao-inscricao:checked').length;
@@ -554,8 +561,39 @@
             return;
           }
           const acao = document.querySelector('input[name="acao_checkin"]:checked')?.value;
-          if (acao === 'deletar' && !confirm('Deseja realmente deletar os check-ins selecionados?')) {
+          if (acao === 'deletar') {
             e.preventDefault();
+            const previewUrl = formCheckinsLote.dataset.previewUrl;
+            if (!previewUrl) {
+              if (confirm('Deseja realmente deletar os check-ins selecionados?')) {
+                formCheckinsLote.dataset.confirmed = 'true';
+                formCheckinsLote.submit();
+              }
+              return;
+            }
+            const payload = new FormData(formCheckinsLote);
+            fetch(previewUrl, {
+              method: 'POST',
+              body: payload,
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+              .then(res => res.json())
+              .then(data => {
+                const count = data?.count ?? 0;
+                const msg = count
+                  ? `Serão removidos ${count} check-in(s). Deseja continuar?`
+                  : 'Nenhum check-in encontrado para remoção. Deseja continuar mesmo assim?';
+                if (data?.success && confirm(msg)) {
+                  formCheckinsLote.dataset.confirmed = 'true';
+                  formCheckinsLote.submit();
+                }
+              })
+              .catch(() => {
+                if (confirm('Deseja realmente deletar os check-ins selecionados?')) {
+                  formCheckinsLote.dataset.confirmed = 'true';
+                  formCheckinsLote.submit();
+                }
+              });
           }
         });
       }
