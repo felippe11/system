@@ -166,6 +166,58 @@ class OpenFeedbackService:
         return envio
 
     @staticmethod
+    def atualizar_dia(
+        dia_id: int,
+        *,
+        data: date | None,
+        titulo: str | None,
+        pergunta_ids: list[int] | None,
+        exigir_nome: bool,
+        exigir_email: bool,
+        exigir_telefone: bool,
+        exigir_identificador: bool,
+    ) -> FeedbackAbertoDia:
+        dia = FeedbackAbertoDia.query.get_or_404(dia_id)
+        if data and data != dia.data:
+            existente = FeedbackAbertoDia.query.filter_by(
+                cliente_id=dia.cliente_id, data=data
+            ).first()
+            if existente and existente.id != dia.id:
+                raise ValueError("Ja existe um feedback aberto para esta data.")
+            dia.data = data
+
+        dia.titulo = (titulo or "").strip() or None
+        dia.exigir_nome = bool(exigir_nome)
+        dia.exigir_email = bool(exigir_email)
+        dia.exigir_telefone = bool(exigir_telefone)
+        dia.exigir_identificador = bool(exigir_identificador)
+
+        perguntas = FeedbackAbertoPergunta.query.filter(
+            FeedbackAbertoPergunta.cliente_id == dia.cliente_id,
+            FeedbackAbertoPergunta.ativa.is_(True),
+        )
+        if pergunta_ids:
+            perguntas = perguntas.filter(FeedbackAbertoPergunta.id.in_(pergunta_ids))
+        perguntas = perguntas.order_by(
+            FeedbackAbertoPergunta.ordem.asc(), FeedbackAbertoPergunta.id.asc()
+        ).all()
+
+        dia.perguntas.clear()
+        db.session.flush()
+
+        for idx, pergunta in enumerate(perguntas):
+            db.session.add(
+                FeedbackAbertoDiaPergunta(
+                    dia_id=dia.id,
+                    pergunta_id=pergunta.id,
+                    ordem=idx,
+                )
+            )
+
+        db.session.commit()
+        return dia
+
+    @staticmethod
     def obter_resumo_dia(dia_id: int):
         total_envios = (
             db.session.query(func.count(FeedbackAbertoEnvio.id))

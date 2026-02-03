@@ -44,10 +44,15 @@ def feedback_aberto_home():
         .all()
     )
     perguntas = OpenFeedbackService.listar_perguntas(current_user.id)
+    dia_perguntas = {
+        dia.id: {vinculo.pergunta_id for vinculo in (dia.perguntas or [])}
+        for dia in dias
+    }
     return render_template(
         "feedback_aberto/gerenciar.html",
         dias=dias,
         perguntas=perguntas,
+        dia_perguntas=dia_perguntas,
     )
 
 
@@ -111,6 +116,67 @@ def atualizar_status_feedback_aberto(dia_id: int):
     dia.ativa = not dia.ativa
     db.session.commit()
     flash("Status atualizado.", "success")
+    return redirect(url_for("open_feedback_routes.feedback_aberto_home"))
+
+
+@open_feedback_routes.route("/feedback-aberto/dias/<int:dia_id>/editar", methods=["POST"])
+@cliente_required
+def editar_feedback_aberto_dia(dia_id: int):
+    dia = FeedbackAbertoDia.query.get_or_404(dia_id)
+    if dia.cliente_id != current_user.id:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for("open_feedback_routes.feedback_aberto_home"))
+
+    data_str = request.form.get("data")
+    titulo = request.form.get("titulo")
+    pergunta_ids = [
+        int(pid)
+        for pid in request.form.getlist("perguntas")
+        if pid.isdigit()
+    ]
+    exigir_nome = bool(request.form.get("exigir_nome"))
+    exigir_email = bool(request.form.get("exigir_email"))
+    exigir_telefone = bool(request.form.get("exigir_telefone"))
+    exigir_identificador = bool(request.form.get("exigir_identificador"))
+
+    data = None
+    if data_str:
+        try:
+            data = datetime.strptime(data_str, "%Y-%m-%d").date()
+        except ValueError as exc:
+            flash(str(exc), "warning")
+            return redirect(url_for("open_feedback_routes.feedback_aberto_home"))
+
+    try:
+        OpenFeedbackService.atualizar_dia(
+            dia_id,
+            data=data,
+            titulo=titulo,
+            pergunta_ids=pergunta_ids or None,
+            exigir_nome=exigir_nome,
+            exigir_email=exigir_email,
+            exigir_telefone=exigir_telefone,
+            exigir_identificador=exigir_identificador,
+        )
+        flash("Feedback atualizado com sucesso.", "success")
+    except ValueError as exc:
+        flash(str(exc), "warning")
+    except Exception:
+        flash("Nao foi possivel atualizar o feedback.", "danger")
+    return redirect(url_for("open_feedback_routes.feedback_aberto_home"))
+
+
+@open_feedback_routes.route("/feedback-aberto/dias/<int:dia_id>/excluir", methods=["POST"])
+@cliente_required
+def excluir_feedback_aberto_dia(dia_id: int):
+    dia = FeedbackAbertoDia.query.get_or_404(dia_id)
+    if dia.cliente_id != current_user.id:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for("open_feedback_routes.feedback_aberto_home"))
+
+    db.session.delete(dia)
+    db.session.commit()
+    flash("Feedback removido.", "success")
     return redirect(url_for("open_feedback_routes.feedback_aberto_home"))
 
 

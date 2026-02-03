@@ -1,67 +1,273 @@
 {% extends "base.html" %}
 
-{% block title %}Resultados do Dia{% endblock %}
+{% block title %}Dashboard de Resultados{% endblock %}
+
+{% block styles_extra %}
+<style>
+  .dashboard-card {
+    height: 100%;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md) !important;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 250px;
+    width: 100%;
+  }
+
+  .text-response-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .text-response-item {
+    border-left: 3px solid var(--primary-color);
+    background-color: var(--bs-body-bg);
+    margin-bottom: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+
+  .stat-card {
+    border-left: 4px solid var(--secondary-color);
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+  }
+
+  .stat-label {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div
+    class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3 bg-white dark:bg-slate-900 p-4 rounded-3 shadow-sm">
     <div>
-      <h2 class="mb-1">Resultados do Dia</h2>
-      <p class="text-muted mb-0">{{ dia.titulo or 'Feedback do dia' }} - {{ dia.data.strftime('%d/%m/%Y') }}</p>
-    </div>
-    <a href="{{ url_for('open_feedback_routes.feedback_aberto_resultados') }}" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left"></i> Voltar
-    </a>
-  </div>
-
-  <div class="alert alert-info">
-    Total de envios: <strong>{{ total_envios }}</strong>
-  </div>
-
-  <div class="mb-3">
-    <a href="{{ url_for('open_feedback_routes.exportar_feedback_aberto_csv', dia_id=dia.id) }}" class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-download"></i> Exportar CSV
-    </a>
-  </div>
-
-  {% for item in estatisticas %}
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <h5 class="mb-1">{{ item.pergunta.titulo }}</h5>
-        {% if item.pergunta.descricao %}
-          <p class="text-muted">{{ item.pergunta.descricao }}</p>
-        {% endif %}
-        <p class="small text-muted mb-2">Respostas: {{ item.total }}</p>
-
-        {% if item.tipo.value == 'escala_numerica' %}
-          {% if item.total %}
-            <p class="mb-0">Media: {{ '%.2f'|format(item.media) }} | Min: {{ item.min }} | Max: {{ item.max }}</p>
-          {% else %}
-            <p class="text-muted mb-0">Nenhuma resposta.</p>
-          {% endif %}
-        {% elif item.tipo.value in ['multipla_escolha', 'sim_nao'] %}
-          {% if item.total %}
-            <ul class="mb-0">
-              {% for opcao, total in item.contagem.items() %}
-                <li>{{ opcao }}: {{ total }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="text-muted mb-0">Nenhuma resposta.</p>
-          {% endif %}
-        {% else %}
-          {% if item.total %}
-            <ul class="mb-0">
-              {% for valor in item.valores %}
-                <li>{{ valor }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="text-muted mb-0">Nenhuma resposta.</p>
-          {% endif %}
-        {% endif %}
+      <h6 class="text-uppercase text-muted mb-1 ls-1">Relatório Interativo</h6>
+      <h2 class="mb-0 fw-bold text-primary">{{ dia.titulo or 'Feedback do dia' }}</h2>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <span class="badge bg-light text-dark border"><i class="bi bi-calendar-event me-1"></i> {{
+          dia.data.strftime('%d/%m/%Y') }}</span>
+        <span class="badge bg-light text-dark border"><i class="bi bi-person-check me-1"></i> {{ total_envios }}
+          Participantes</span>
       </div>
     </div>
-  {% endfor %}
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('open_feedback_routes.exportar_feedback_aberto_csv', dia_id=dia.id) }}"
+        class="btn btn-outline-success">
+        <i class="bi bi-file-earmark-excel me-1"></i> Exportar CSV
+      </a>
+      <a href="{{ url_for('open_feedback_routes.feedback_aberto_resultados') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm stat-card h-100 p-3">
+        <div class="card-body">
+          <div class="stat-value">{{ total_envios }}</div>
+          <div class="stat-label">Total de Respostas</div>
+        </div>
+      </div>
+    </div>
+    <!-- Future: Add more global KPIs here like NPS or Satisfaction Score -->
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="row g-4 p-2">
+    {% for item in estatisticas %}
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm dashboard-card">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="fw-bold mb-1">{{ item.pergunta.titulo }}</h5>
+          {% if item.pergunta.descricao %}
+          <p class="text-muted small mb-0">{{ item.pergunta.descricao }}</p>
+          {% endif %}
+        </div>
+        <div class="card-body px-4 pb-4">
+
+          {% if item.tipo.value in ['multipla_escolha', 'sim_nao', 'multipla_escolha_multipla'] %}
+          <!-- Chart for Choice Questions -->
+          {% if item.total > 0 %}
+          <div class="chart-container">
+            <canvas id="chart-{{ loop.index }}" data-type="doughnut"
+              data-labels='{{ item.contagem.keys()|list|tojson }}'
+              data-values='{{ item.contagem.values()|list|tojson }}'>
+            </canvas>
+          </div>
+          {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+            Sem dados para exibir
+          </div>
+          {% endif %}
+
+          {% elif item.tipo.value in ['escala_numerica', 'numero'] %}
+          <!-- Chart for Numeric Questions -->
+          {% if item.total > 0 %}
+          <div class="row align-items-center mb-3">
+            <div class="col-4 border-end text-center">
+              <div class="h3 fw-bold text-primary mb-0">{{ '%.1f'|format(item.media) }}</div>
+              <div class="small text-muted">Média</div>
+            </div>
+            <div class="col-4 border-end text-center">
+              <div class="h3 fw-bold text-dark mb-0">{{ item.min }}</div>
+              <div class="small text-muted">Mínimo</div>
+            </div>
+            <div class="col-4 text-center">
+              <div class="h3 fw-bold text-dark mb-0">{{ item.max }}</div>
+              <div class="small text-muted">Máximo</div>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="chart-{{ loop.index }}" data-type="bar" data-raw-values='{{ item.valores|tojson }}'>
+            </canvas>
+          </div>
+          {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-bar-chart fs-1 d-block mb-2 opacity-50"></i>
+            Sem dados numéricos
+          </div>
+          {% endif %}
+
+          {% else %}
+          <!-- Text Responses -->
+          {% if item.total > 0 %}
+          <div class="text-response-list custom-scrollbar">
+            {% for valor in item.valores %}
+            {% if valor %}
+            <div class="text-response-item">
+              {{ valor }}
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+          <div class="mt-2 text-end">
+            <small class="text-muted">{{ item.total }} respostas de texto</small>
+          </div>
+          {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-chat-square-text fs-1 d-block mb-2 opacity-50"></i>
+            Nenhum comentário
+          </div>
+          {% endif %}
+
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+
+    // Common Chart Options
+    Chart.defaults.font.family = "'Poppins', sans-serif";
+    Chart.defaults.color = '#64748b';
+
+    const colors = [
+      '#2A2D72', '#4ECDC4', '#FF6B6B', '#FFC107', '#A5A9FF',
+      '#7B80E8', '#20c997', '#fd7e14', '#6f42c1', '#e83e8c'
+    ];
+
+    // Initialize Charts
+    document.querySelectorAll('canvas[id^="chart-"]').forEach(canvas => {
+      const ctx = canvas.getContext('2d');
+      const type = canvas.dataset.type;
+
+      if (type === 'doughnut') {
+        const labels = JSON.parse(canvas.dataset.labels);
+        const data = JSON.parse(canvas.dataset.values);
+
+        new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: data,
+              backgroundColor: colors,
+              borderWidth: 0,
+              hoverOffset: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: { usePointStyle: true, boxWidth: 10 }
+              }
+            },
+            cutout: '70%'
+          }
+        });
+
+      } else if (type === 'bar') {
+        const rawValues = JSON.parse(canvas.dataset.rawValues);
+
+        // Calculate frequency distribution
+        const stats = {};
+        rawValues.forEach(val => { stats[val] = (stats[val] || 0) + 1; });
+
+        // Sort keys numerically
+        const sortedKeys = Object.keys(stats).sort((a, b) => Number(a) - Number(b));
+        const data = sortedKeys.map(k => stats[k]);
+
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: sortedKeys,
+            datasets: [{
+              label: 'Respostas',
+              data: data,
+              backgroundColor: '#2A2D72',
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 }
+              },
+              x: {
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+    });
+  });
+</script>
 {% endblock %}

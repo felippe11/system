@@ -95,7 +95,7 @@
                 <th>Status</th>
                 <th>Envios</th>
                 <th>Link</th>
-                <th></th>
+                <th class="text-end">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -121,14 +121,95 @@
                     <a href="{{ url_for('open_feedback_routes.feedback_aberto_resultados_dia', dia_id=dia.id) }}" class="btn btn-sm btn-outline-success">
                       Ver resultados
                     </a>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#editarDiaModal-{{ dia.id }}">
+                      Editar
+                    </button>
                     <form method="POST" action="{{ url_for('open_feedback_routes.atualizar_status_feedback_aberto', dia_id=dia.id) }}" class="d-inline">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button class="btn btn-sm btn-outline-primary" type="submit">
                         {% if dia.ativa %}Encerrar{% else %}Reabrir{% endif %}
                       </button>
                     </form>
+                    <form method="POST" action="{{ url_for('open_feedback_routes.excluir_feedback_aberto_dia', dia_id=dia.id) }}" class="d-inline" onsubmit="return confirm('Remover este feedback? Esta ação exclui envios e respostas.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn btn-sm btn-outline-danger" type="submit">
+                        Excluir
+                      </button>
+                    </form>
                   </td>
                 </tr>
+                <div class="modal fade" id="editarDiaModal-{{ dia.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Editar Feedback do Dia</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <form method="POST" action="{{ url_for('open_feedback_routes.editar_feedback_aberto_dia', dia_id=dia.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="modal-body">
+                          <div class="row g-3">
+                            <div class="col-md-4">
+                              <label class="form-label">Data</label>
+                              <input type="date" class="form-control" name="data" value="{{ dia.data.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                            <div class="col-md-8">
+                              <label class="form-label">Titulo</label>
+                              <input type="text" class="form-control" name="titulo" value="{{ dia.titulo or '' }}">
+                            </div>
+                            <div class="col-12">
+                              <label class="form-label">Perguntas</label>
+                              <div class="border rounded p-2" style="max-height: 180px; overflow: auto;">
+                                {% if perguntas %}
+                                  {% set selecionadas = dia_perguntas.get(dia.id, set()) %}
+                                  {% for pergunta in perguntas %}
+                                    <div class="form-check">
+                                      <input class="form-check-input" type="checkbox" name="perguntas" value="{{ pergunta.id }}" id="editar-pergunta-{{ dia.id }}-{{ pergunta.id }}"
+                                        {% if pergunta.id in selecionadas %}checked{% endif %}>
+                                      <label class="form-check-label" for="editar-pergunta-{{ dia.id }}-{{ pergunta.id }}">{{ pergunta.titulo }}</label>
+                                    </div>
+                                  {% endfor %}
+                                {% else %}
+                                  <p class="text-muted mb-0">Cadastre perguntas antes de editar o dia.</p>
+                                {% endif %}
+                              </div>
+                              <small class="text-muted">Se nao selecionar nada, todas as perguntas ativas serao usadas.</small>
+                            </div>
+                            <div class="col-12">
+                              <label class="form-label">Campos obrigatorios de identificacao</label>
+                              <div class="d-flex flex-wrap gap-3">
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="exigir_nome" id="editar-exigir-nome-{{ dia.id }}"
+                                    {% if dia.exigir_nome %}checked{% endif %}>
+                                  <label class="form-check-label" for="editar-exigir-nome-{{ dia.id }}">Nome</label>
+                                </div>
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="exigir_email" id="editar-exigir-email-{{ dia.id }}"
+                                    {% if dia.exigir_email %}checked{% endif %}>
+                                  <label class="form-check-label" for="editar-exigir-email-{{ dia.id }}">Email</label>
+                                </div>
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="exigir_telefone" id="editar-exigir-telefone-{{ dia.id }}"
+                                    {% if dia.exigir_telefone %}checked{% endif %}>
+                                  <label class="form-check-label" for="editar-exigir-telefone-{{ dia.id }}">Telefone</label>
+                                </div>
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="exigir_identificador" id="editar-exigir-identificador-{{ dia.id }}"
+                                    {% if dia.exigir_identificador %}checked{% endif %}>
+                                  <label class="form-check-label" for="editar-exigir-identificador-{{ dia.id }}">Matricula / ID</label>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                          <button type="submit" class="btn btn-primary">Salvar</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
               {% endfor %}
             </tbody>
           </table>
