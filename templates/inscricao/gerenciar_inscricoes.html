@@ -54,6 +54,14 @@
           </div>
         </div>
         <div class="col-md-2">
+          <div class="form-floating">
+            <input type="date" class="form-control shadow-sm" id="filtroDataOficina">
+            <label for="filtroDataOficina">
+              <i class="bi bi-calendar-event me-2"></i>Data da Oficina
+            </label>
+          </div>
+        </div>
+        <div class="col-md-2">
           <button type="button"
             class="btn btn-primary w-100 h-100 d-flex align-items-center justify-content-center shadow-sm"
             data-bs-toggle="modal" data-bs-target="#moverInscricoesModal" id="btnMoverInscricoes" disabled>
@@ -61,6 +69,84 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- =================================================== -->
+  <!-- CHECK-INS EM LOTE --------------------------------- -->
+  <!-- =================================================== -->
+  <div class="card shadow border-0 mb-5">
+    <div class="card-header bg-white p-3 border-bottom">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-check2-square me-2 text-primary"></i>Check-ins em Lote
+      </h5>
+    </div>
+    <div class="card-body bg-light p-4">
+      <form id="formCheckinsLote" action="{{ url_for('checkin_routes.checkins_lote') }}" method="POST">
+        <div class="row g-3">
+          <div class="col-12 col-lg-4">
+            <label class="form-label fw-bold">Ação</label>
+            <div class="d-flex gap-3 flex-wrap">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="acao_checkin" id="acaoCheckinRegistrar" value="registrar" checked>
+                <label class="form-check-label" for="acaoCheckinRegistrar">Registrar</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="acao_checkin" id="acaoCheckinDeletar" value="deletar">
+                <label class="form-check-label" for="acaoCheckinDeletar">Deletar</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-4">
+            <label class="form-label fw-bold">Aplicar em</label>
+            <div class="d-flex gap-3 flex-wrap">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="escopo_checkin" id="escopoSelecionados" value="selecionados" checked>
+                <label class="form-check-label" for="escopoSelecionados">Inscrições selecionadas</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="escopo_checkin" id="escopoOficinas" value="oficinas">
+                <label class="form-check-label" for="escopoOficinas">Todas da(s) oficina(s)</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-4">
+            <label class="form-label fw-bold" for="turnoCheckin">Turno</label>
+            <select id="turnoCheckin" name="turno_checkin" class="form-select shadow-sm">
+              <option value="todos">Todos os turnos</option>
+              <option value="manha">Manhã</option>
+              <option value="tarde">Tarde</option>
+              <option value="noite">Noite</option>
+            </select>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <label class="form-label fw-bold" for="oficinasCheckin">Oficinas</label>
+            <select id="oficinasCheckin" name="oficina_ids" class="form-select shadow-sm" multiple disabled>
+              {% for oficina in oficinas %}
+              <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
+              {% endfor %}
+            </select>
+            <small class="text-muted">Use esta opção para aplicar em toda a oficina.</small>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <label class="form-label fw-bold" for="dataHoraCheckin">Data e horário</label>
+            <input id="dataHoraCheckin" name="data_hora_checkin" type="datetime-local" class="form-control shadow-sm">
+            <small class="text-muted">Obrigatório para registrar. Para deletar, é opcional.</small>
+          </div>
+        </div>
+
+        <div id="inscricoes_checkin_container" class="d-none"></div>
+
+        <div class="d-flex justify-content-end mt-4">
+          <button type="submit" class="btn btn-danger px-4 shadow-sm" id="btnCheckinsLote">
+            <i class="bi bi-play-circle me-2"></i>Aplicar ação
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -95,7 +181,9 @@
             <tbody id="tabelaInscricoes">
               {% for insc in inscritos %}
               <tr data-oficina-id="{{ insc.oficina.id }}" data-event-id="{{ insc.oficina.evento_id }}"
-                data-participante-nome="{{ insc.usuario.nome | lower }}" class="align-middle">
+                data-participante-nome="{{ insc.usuario.nome | lower }}"
+                data-oficina-datas="{% for dia in insc.oficina.dias %}{{ dia.data.strftime('%Y-%m-%d') }}{% if not loop.last %},{% endif %}{% endfor %}"
+                class="align-middle">
                 <td class="text-center">
                   <div class="form-check d-flex justify-content-center">
                     <input class="form-check-input selecao-inscricao" type="checkbox" name="inscricao_ids"
@@ -377,10 +465,13 @@
     function filtrarInscricoes() {
       const nome = document.getElementById('filtroParticipante').value.toLowerCase();
       const ofid = document.getElementById('filtroOficina').value;
+      const dataSel = document.getElementById('filtroDataOficina').value;
       document.querySelectorAll('#tabelaInscricoes tr').forEach(r => {
         const okNome = r.dataset.participanteNome.includes(nome);
         const okOf = ofid === '' || ofid === r.dataset.oficinaId;
-        r.style.display = okNome && okOf ? '' : 'none';
+        const datas = (r.dataset.oficinaDatas || '').split(',').filter(Boolean);
+        const okData = !dataSel || datas.includes(dataSel);
+        r.style.display = okNome && okOf && okData ? '' : 'none';
       });
       atualizarContadorInscricoes();
       document.getElementById('selecionarTodos').checked = false;
@@ -390,6 +481,35 @@
     /* DOM READY                                         */
     /* ------------------------------------------------- */
     document.addEventListener('DOMContentLoaded', () => {
+      const formCheckinsLote = document.getElementById('formCheckinsLote');
+      const oficinasCheckin = document.getElementById('oficinasCheckin');
+      const dataHoraCheckin = document.getElementById('dataHoraCheckin');
+
+      function prepararFormularioCheckin() {
+        const cont = document.getElementById('inscricoes_checkin_container');
+        cont.innerHTML = '';
+        document.querySelectorAll('.selecao-inscricao:checked').forEach(cb => {
+          const inp = document.createElement('input');
+          inp.type = 'hidden';
+          inp.name = 'inscricao_ids';
+          inp.value = cb.value;
+          cont.appendChild(inp);
+        });
+      }
+
+      function atualizarCamposCheckinLote() {
+        const escopo = document.querySelector('input[name="escopo_checkin"]:checked')?.value;
+        const acao = document.querySelector('input[name="acao_checkin"]:checked')?.value;
+        const usarOficinas = escopo === 'oficinas';
+
+        if (oficinasCheckin) {
+          oficinasCheckin.disabled = !usarOficinas;
+        }
+        if (dataHoraCheckin) {
+          dataHoraCheckin.required = acao === 'registrar';
+        }
+      }
+
       /* checkboxes */
       document.getElementById('selecionarTodos')
         .addEventListener('change', function () {
@@ -406,15 +526,40 @@
       /* filtros */
       document.getElementById('filtroParticipante').addEventListener('input', filtrarInscricoes);
       document.getElementById('filtroOficina').addEventListener('change', filtrarInscricoes);
+      document.getElementById('filtroDataOficina').addEventListener('change', filtrarInscricoes);
 
       /* prepara form antes submit */
       document.getElementById('formMoverInscricoes')
         .addEventListener('submit', prepararFormulario);
+      if (formCheckinsLote) {
+        formCheckinsLote.addEventListener('submit', function (e) {
+          prepararFormularioCheckin();
+          const escopo = document.querySelector('input[name="escopo_checkin"]:checked')?.value;
+          const selecionados = document.querySelectorAll('.selecao-inscricao:checked').length;
+          if (escopo === 'selecionados' && selecionados === 0) {
+            e.preventDefault();
+            alert('Selecione pelo menos uma inscrição.');
+            return;
+          }
+          const acao = document.querySelector('input[name="acao_checkin"]:checked')?.value;
+          if (acao === 'deletar' && !confirm('Deseja realmente deletar os check-ins selecionados?')) {
+            e.preventDefault();
+          }
+        });
+      }
 
       /* modal logic */
       const modal = document.getElementById('moverInscricoesModal');
       const selEvento = document.getElementById('evento_destino');
       const selOf = document.getElementById('oficina_destino');
+
+      document.querySelectorAll('input[name="escopo_checkin"]').forEach(r => {
+        r.addEventListener('change', atualizarCamposCheckinLote);
+      });
+      document.querySelectorAll('input[name="acao_checkin"]').forEach(r => {
+        r.addEventListener('change', atualizarCamposCheckinLote);
+      });
+      atualizarCamposCheckinLote();
 
       /* ---------- abrir modal --------- */
       modal.addEventListener('show.bs.modal', () => {

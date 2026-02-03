@@ -10,7 +10,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from extensions import db, socketio
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from utils import endpoints
 
@@ -215,6 +215,133 @@ def checkin_manual(usuario_id, oficina_id):
     return redirect(
         request.referrer or url_for('inscricao_routes.gerenciar_inscricoes')
     )
+
+
+@checkin_routes.route('/cliente/checkins_lote', methods=['POST'])
+@login_required
+def checkins_lote():
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado!', 'danger')
+        return redirect(request.referrer or url_for(endpoints.DASHBOARD))
+
+    acao = (request.form.get('acao_checkin') or '').strip().lower()
+    escopo = (request.form.get('escopo_checkin') or '').strip().lower()
+    turno = (request.form.get('turno_checkin') or '').strip().lower()
+    data_hora_str = (request.form.get('data_hora_checkin') or '').strip()
+
+    turnos_validos = {'manha', 'tarde', 'noite'}
+    turnos = list(turnos_validos) if turno == 'todos' else ([turno] if turno in turnos_validos else [])
+
+    if acao not in {'registrar', 'deletar'}:
+        flash('Ação inválida para check-ins.', 'danger')
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+
+    if escopo not in {'selecionados', 'oficinas'}:
+        flash('Selecione o escopo da ação.', 'danger')
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+
+    data_hora = None
+    if data_hora_str:
+        try:
+            data_hora = datetime.strptime(data_hora_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            flash('Data/Hora inválida.', 'danger')
+            return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+
+    if acao == 'registrar' and not data_hora:
+        flash('Informe a data e horário para registrar check-ins.', 'warning')
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+    if acao == 'registrar' and not turnos:
+        flash('Selecione um turno válido para registrar check-ins.', 'warning')
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+    if acao == 'deletar' and turno not in turnos_validos and turno != 'todos':
+        flash('Selecione um turno válido para deletar check-ins.', 'warning')
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+
+    inscricoes = []
+    if escopo == 'selecionados':
+        inscricao_ids = request.form.getlist('inscricao_ids')
+        if not inscricao_ids:
+            flash('Selecione ao menos uma inscrição.', 'warning')
+            return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+        inscricoes = (
+            Inscricao.query
+            .join(Oficina, Inscricao.oficina_id == Oficina.id)
+            .filter(
+                Inscricao.id.in_(inscricao_ids),
+                Oficina.cliente_id == current_user.id
+            )
+            .all()
+        )
+    else:
+        oficina_ids = request.form.getlist('oficina_ids')
+        if not oficina_ids:
+            flash('Selecione ao menos uma oficina.', 'warning')
+            return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+        inscricoes = (
+            Inscricao.query
+            .join(Oficina, Inscricao.oficina_id == Oficina.id)
+            .filter(
+                Inscricao.oficina_id.in_(oficina_ids),
+                Oficina.cliente_id == current_user.id
+            )
+            .all()
+        )
+
+    if not inscricoes:
+        flash('Nenhuma inscrição encontrada para os filtros escolhidos.', 'info')
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+
+    if acao == 'registrar':
+        total_criados = 0
+        total_ignorados = 0
+        for insc in inscricoes:
+            oficina = insc.oficina
+            for t in turnos:
+                existente = Checkin.query.filter_by(
+                    usuario_id=insc.usuario_id,
+                    oficina_id=insc.oficina_id,
+                    turno=t,
+                ).first()
+                if existente:
+                    total_ignorados += 1
+                    continue
+                novo = Checkin(
+                    usuario_id=insc.usuario_id,
+                    oficina_id=insc.oficina_id,
+                    palavra_chave=f"manual-{t}",
+                    cliente_id=oficina.cliente_id if oficina else current_user.id,
+                    evento_id=oficina.evento_id if oficina else None,
+                    turno=t,
+                    data_hora=data_hora,
+                )
+                db.session.add(novo)
+                total_criados += 1
+
+        db.session.commit()
+        flash(
+            f"Check-ins registrados: {total_criados}. Ignorados: {total_ignorados}.",
+            "success",
+        )
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+
+    total_removidos = 0
+    for insc in inscricoes:
+        query = Checkin.query.filter_by(
+            usuario_id=insc.usuario_id,
+            oficina_id=insc.oficina_id,
+        )
+        if turnos:
+            query = query.filter(Checkin.turno.in_(turnos))
+        if data_hora:
+            inicio = data_hora.replace(second=0, microsecond=0)
+            fim = inicio + timedelta(minutes=1)
+            query = query.filter(Checkin.data_hora >= inicio, Checkin.data_hora < fim)
+        total_removidos += query.delete(synchronize_session=False)
+
+    db.session.commit()
+    flash(f"Check-ins removidos: {total_removidos}.", "success")
+    return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
 
 @checkin_routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required

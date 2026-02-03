@@ -143,18 +143,18 @@
         <section>
           <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Texto</h3>
           <div class="space-y-2">
-            <button
-              class="w-full text-left px-3 py-3 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all">
+            <button draggable="true" ondragstart="handleDragStart(event)" data-type="text" data-subtype="title"
+              class="w-full text-left px-3 py-3 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all cursor-move">
               <div class="font-bold text-lg dark:text-white">Título</div>
               <div class="text-xs text-slate-400 group-hover:text-primary transition-colors">Adicionar cabeçalho</div>
             </button>
-            <button
-              class="w-full text-left px-3 py-3 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all">
+            <button draggable="true" ondragstart="handleDragStart(event)" data-type="text" data-subtype="subtitle"
+              class="w-full text-left px-3 py-3 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all cursor-move">
               <div class="font-semibold text-base dark:text-white">Subtítulo</div>
               <div class="text-xs text-slate-400 group-hover:text-primary transition-colors">Adicionar subtítulo</div>
             </button>
-            <button
-              class="w-full text-left px-3 py-2 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all">
+            <button draggable="true" ondragstart="handleDragStart(event)" data-type="text" data-subtype="paragraph"
+              class="w-full text-left px-3 py-2 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all cursor-move">
               <div class="text-sm dark:text-white">Parágrafo</div>
               <div class="text-xs text-slate-400 group-hover:text-primary transition-colors">Corpo do texto</div>
             </button>
@@ -176,18 +176,18 @@
             <span class="material-icons-round text-primary mb-1">cloud_upload</span>
             <span class="text-xs font-medium">Uploads</span>
           </button>
-          <button
-            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          <button draggable="true" ondragstart="handleDragStart(event)" data-type="qrcode"
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-move">
             <span class="material-icons-round text-primary mb-1">qr_code_2</span>
             <span class="text-xs font-medium">QR Code</span>
           </button>
-          <button
-            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          <button draggable="true" ondragstart="handleDragStart(event)" data-type="image"
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-move">
             <span class="material-icons-round text-primary mb-1">image</span>
             <span class="text-xs font-medium">Mídia</span>
           </button>
-          <button
-            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          <button draggable="true" ondragstart="handleDragStart(event)" data-type="signature"
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-move">
             <span class="material-icons-round text-primary mb-1">gesture</span>
             <span class="text-xs font-medium">Assinatura</span>
           </button>
@@ -285,7 +285,7 @@
         <div class="space-y-4">
           <div>
             <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Fonte</label>
-            <select
+            <select id="prop-font-family" onchange="updateSelectedElementStyle('fontFamily', this.value)"
               class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-primary py-2.5">
               <option>Inter</option>
               <option>Playfair Display</option>
@@ -296,30 +296,33 @@
           <div class="flex gap-2">
             <div class="flex-1">
               <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Tamanho</label>
-              <input
+              <input id="prop-font-size" oninput="updateSelectedElementStyle('fontSize', this.value + 'px')"
                 class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-primary py-2.5"
                 type="number" value="48" />
             </div>
             <div class="flex-1">
               <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Cor</label>
               <div
-                class="flex items-center gap-2 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-1 px-2.5">
-                <div class="w-6 h-6 rounded-full bg-slate-900 border-2 border-white dark:border-slate-700 shadow-sm">
+                class="flex items-center gap-2 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-1 px-2.5 relative">
+                <input type="color" id="prop-text-color" oninput="updateSelectedElementStyle('color', this.value)"
+                  class="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                <div id="prop-text-color-preview"
+                  class="w-6 h-6 rounded-full bg-slate-900 border-2 border-white dark:border-slate-700 shadow-sm pointer-events-none">
                 </div>
                 <span class="text-xs font-mono">#0F172A</span>
               </div>
             </div>
           </div>
           <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-            <button
+            <button onclick="toggleStyle('fontWeight', 'bold')" id="btn-bold"
               class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200">
               <span class="material-icons-round text-lg">format_bold</span>
             </button>
-            <button
+            <button onclick="toggleStyle('fontStyle', 'italic')" id="btn-italic"
               class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200">
               <span class="material-icons-round text-lg">format_italic</span>
             </button>
-            <button
+            <button onclick="toggleStyle('textDecoration', 'underline')" id="btn-underline"
               class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200">
               <span class="material-icons-round text-lg">format_underlined</span>
             </button>
@@ -327,13 +330,16 @@
           <div>
             <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Alinhamento</label>
             <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-              <button class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-400">
+              <button onclick="updateSelectedElementStyle('textAlign', 'left')" id="btn-align-left"
+                class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-400">
                 <span class="material-icons-round text-lg">format_align_left</span>
               </button>
-              <button class="flex-1 p-2 bg-white dark:bg-slate-700 rounded shadow-sm text-primary">
+              <button onclick="updateSelectedElementStyle('textAlign', 'center')" id="btn-align-center"
+                class="flex-1 p-2 bg-white dark:bg-slate-700 rounded shadow-sm text-primary">
                 <span class="material-icons-round text-lg">format_align_center</span>
               </button>
-              <button class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-400">
+              <button onclick="updateSelectedElementStyle('textAlign', 'right')" id="btn-align-right"
+                class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-400">
                 <span class="material-icons-round text-lg">format_align_right</span>
               </button>
             </div>
@@ -344,16 +350,20 @@
               <div>
                 <div class="flex justify-between text-[10px] mb-1">
                   <span class="text-slate-400">ENTRE LETRAS</span>
-                  <span>2.5px</span>
+                  <span id="prop-letter-spacing-val">0px</span>
                 </div>
-                <input class="w-full accent-primary" type="range" />
+                <input id="prop-letter-spacing" step="0.5" min="-2" max="10"
+                  oninput="updateSelectedElementStyle('letterSpacing', this.value + 'px')" class="w-full accent-primary"
+                  type="range" />
               </div>
               <div>
                 <div class="flex justify-between text-[10px] mb-1">
                   <span class="text-slate-400">ENTRE LINHAS</span>
-                  <span>1.2</span>
+                  <span id="prop-line-height-val">1.2</span>
                 </div>
-                <input class="w-full accent-primary" type="range" />
+                <input id="prop-line-height" step="0.1" min="0.8" max="3"
+                  oninput="updateSelectedElementStyle('lineHeight', this.value)" class="w-full accent-primary"
+                  type="range" />
               </div>
             </div>
           </div>
@@ -373,14 +383,313 @@
   </button>
 
   <script>
+    // --- Global State ---
+    let selectedElement = null;
+    let isDraggingCanvasElement = false;
+    let dragOffset = { x: 0, y: 0 };
+    const canvas = document.getElementById('editor-canvas');
+
+    // --- Sidebar Drag & Drop (HTML5 API) ---
+    function handleDragStart(e) {
+      e.dataTransfer.setData('type', e.target.dataset.type);
+      e.dataTransfer.setData('subtype', e.target.dataset.subtype);
+      e.dataTransfer.effectAllowed = 'copy';
+    }
+
+    // Configure Canvas Drop Zone
+    canvas.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      canvas.classList.add('border-primary'); // Visual feedback
+    });
+
+    canvas.addEventListener('dragleave', (e) => {
+      canvas.classList.remove('border-primary');
+    });
+
+    canvas.addEventListener('drop', (e) => {
+      e.preventDefault();
+      canvas.classList.remove('border-primary');
+      const type = e.dataTransfer.getData('type');
+      const subtype = e.dataTransfer.getData('subtype');
+
+      // Calculate drop position relative to canvas
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      addElement(type, subtype, x, y);
+    });
+
+    // --- Canvas Element Creation ---
+    function addElement(type, subtype, x, y) {
+      const el = document.createElement('div');
+      el.style.position = 'absolute';
+      el.style.left = (x) + 'px';
+      el.style.top = (y) + 'px';
+      el.className = 'group cursor-move hover:outline hover:outline-1 hover:outline-primary/50 select-none';
+
+      // Basic Content based on type
+      if (type === 'text') {
+        if (subtype === 'title') {
+          el.innerHTML = '<h1 class="text-4xl font-bold text-slate-900 leading-tight">Novo Título</h1>';
+        } else if (subtype === 'subtitle') {
+          el.innerHTML = '<h2 class="text-2xl font-serif text-slate-800 uppercase tracking-widest">Novo Subtítulo</h2>';
+        } else {
+          el.innerHTML = '<p class="text-base text-slate-600">Novo parágrafo de texto.</p>';
+        }
+      } else if (type === 'image') {
+        el.innerHTML = '<div class="w-32 h-32 bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center rounded-lg"><span class="material-icons-round text-3xl text-slate-400 mb-2">add_photo_alternate</span><span class="text-[10px] text-slate-500 font-medium">Upload Imagem</span></div>';
+      } else if (type === 'qrcode') {
+        el.innerHTML = '<div class="w-24 h-24 bg-white p-2 shadow-sm rounded-lg"><img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=AppFiber" class="w-full h-full object-contain" alt="QR Code"></div>';
+      } else if (type === 'signature') {
+        el.innerHTML = '<div class="min-w-[160px] flex flex-col items-center"><div class="h-12 w-full flex items-end justify-center mb-2"><img src="https://upload.wikimedia.org/wikipedia/commons/e/ec/Signature_sample.svg" class="h-full object-contain opacity-70"></div><div class="w-full border-b border-sites-900 dark:border-slate-400 mb-1"></div><p class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Assinatura</p></div>';
+      }
+
+      // Add interactivity
+      el.addEventListener('mousedown', (e) => startDragElement(e, el));
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectElement(el);
+      });
+      el.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        if (type === 'text') enableTextEditing(el);
+      });
+
+      canvas.appendChild(el);
+      selectElement(el);
+    }
+
+    // --- Element Moving (Mouse Events) ---
+    function startDragElement(e, el) {
+      if (el.isContentEditable) return; // Don't drag while editing text
+
+      isDraggingCanvasElement = true;
+      const rect = el.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+
+      // Select if not already selected
+      if (selectedElement !== el) {
+        selectElement(el);
+      }
+
+      // Global move/up listeners
+      document.addEventListener('mousemove', moveElement);
+      document.addEventListener('mouseup', stopDragElement);
+    }
+
+    function moveElement(e) {
+      if (!isDraggingCanvasElement || !selectedElement) return;
+      e.preventDefault();
+
+      const canvasRect = canvas.getBoundingClientRect();
+      let x = e.clientX - canvasRect.left - dragOffset.x;
+      let y = e.clientY - canvasRect.top - dragOffset.y;
+
+      // Optional: Snap or constrain (omitted for freedom)
+      // Save percentage positions for responsiveness? keeping pixels for now as per MVP request.
+
+      selectedElement.style.left = x + 'px';
+      selectedElement.style.top = y + 'px';
+    }
+
+    function stopDragElement() {
+      isDraggingCanvasElement = false;
+      document.removeEventListener('mousemove', moveElement);
+      document.removeEventListener('mouseup', stopDragElement);
+    }
+
+    // --- Selection Logic ---
+    function selectElement(el) {
+      // Deselect previous
+      if (selectedElement) {
+        selectedElement.classList.remove('outline', 'outline-2', 'outline-primary');
+        // Remove previous highlight border div if it exists (the one with the dots)
+        const oldFrame = selectedElement.querySelector('.selection-frame');
+        if (oldFrame) oldFrame.remove();
+      }
+
+      selectedElement = el;
+
+      // Visual selection on the element
+      // We can use a simpler outline for now, or append the fancy frame div
+      el.classList.add('outline', 'outline-2', 'outline-primary');
+
+      // Update Sidebar Properties
+      syncSidebarWithElement(el);
+    }
+
+    // Click outside to deselect
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.target === canvas) {
+        if (selectedElement) {
+          selectedElement.classList.remove('outline', 'outline-2', 'outline-primary');
+          const oldFrame = selectedElement.querySelector('.selection-frame');
+          if (oldFrame) oldFrame.remove();
+          selectedElement = null;
+        }
+      }
+    });
+
+    // --- Property Binding ---
+    function syncSidebarWithElement(el) {
+      const computed = window.getComputedStyle(el.firstElementChild || el);
+
+      // Helper to safe set value
+      const setVal = (id, val) => {
+        const input = document.getElementById(id);
+        if (input) input.value = val;
+      };
+
+      // We assume the inner element holds the style (h1, h2, p)
+      const target = el.firstElementChild || el;
+
+      // Font Family (simplified matching)
+      const font = computed.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+      setVal('prop-font-family', font);
+
+      // Size
+      setVal('prop-font-size', parseInt(computed.fontSize));
+
+      // Color (rgb to hex)
+      const rgb = computed.color.match(/\d+/g);
+      if (rgb) {
+        const hex = "#" + ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1).toUpperCase();
+        setVal('prop-text-color', hex);
+      }
+
+      // Letter Spacing
+      let ls = computed.letterSpacing;
+      if (ls === 'normal') ls = 0;
+      else ls = parseFloat(ls);
+      setVal('prop-letter-spacing', ls);
+      document.getElementById('prop-letter-spacing-val').innerText = ls + 'px';
+
+      // Line Height
+      let lh = computed.lineHeight;
+      if (lh === 'normal') lh = 1.2;
+      else {
+        // Computed comes often as px, we want unitless ratio roughly
+        lh = (parseFloat(lh) / parseFloat(computed.fontSize)).toFixed(1);
+      }
+      setVal('prop-line-height', lh);
+      document.getElementById('prop-line-height-val').innerText = lh;
+
+      // Button States (Bold, Italic, etc)
+      updateToggleButton('btn-bold', computed.fontWeight === '700' || computed.fontWeight === 'bold');
+      updateToggleButton('btn-italic', computed.fontStyle === 'italic');
+      updateToggleButton('btn-underline', computed.textDecorationLine.includes('underline'));
+
+      // Alignment
+      updateAlignButtons(computed.textAlign);
+    }
+
+    function updateToggleButton(id, isActive) {
+      const btn = document.getElementById(id);
+      if (isActive) {
+        btn.classList.add('bg-slate-200', 'dark:bg-slate-700', 'text-primary');
+        btn.classList.remove('hover:bg-white', 'text-slate-700');
+      } else {
+        btn.classList.remove('bg-slate-200', 'dark:bg-slate-700', 'text-primary');
+        btn.classList.add('hover:bg-white');
+      }
+    }
+
+    function updateAlignButtons(align) {
+      ['left', 'center', 'right'].forEach(a => {
+        const btn = document.getElementById('btn-align-' + a);
+        if (a === align || (align === 'start' && a === 'left')) {
+          btn.classList.add('bg-white', 'dark:bg-slate-700', 'text-primary', 'shadow-sm');
+          btn.classList.remove('text-slate-400', 'hover:bg-white');
+        } else {
+          btn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-primary', 'shadow-sm');
+          btn.classList.add('text-slate-400', 'hover:bg-white');
+        }
+      });
+    }
+
+
+    function updateSelectedElementStyle(prop, value) {
+      if (!selectedElement) return;
+      const target = selectedElement.firstElementChild || selectedElement;
+
+      target.style[prop] = value;
+
+      // Special updates for labels
+      if (prop === 'letterSpacing') document.getElementById('prop-letter-spacing-val').innerText = value;
+      if (prop === 'lineHeight') document.getElementById('prop-line-height-val').innerText = value;
+
+      // Visual feedback on buttons
+      if (prop === 'textAlign') updateAlignButtons(value);
+    }
+
+    function toggleStyle(prop, value) {
+      if (!selectedElement) return;
+      const target = selectedElement.firstElementChild || selectedElement;
+
+      // Check current
+      const current = target.style[prop];
+      // This is a simple toggle. Real world needs to read computed if style not set inline.
+      // For MVP we just toggle based on what we set or assume default 'normal'
+
+      if (prop === 'fontWeight') {
+        target.style.fontWeight = (target.style.fontWeight === 'bold') ? 'normal' : 'bold';
+        updateToggleButton('btn-bold', target.style.fontWeight === 'bold');
+      }
+      else if (prop === 'fontStyle') {
+        target.style.fontStyle = (target.style.fontStyle === 'italic') ? 'normal' : 'italic';
+        updateToggleButton('btn-italic', target.style.fontStyle === 'italic');
+      }
+      else if (prop === 'textDecoration') {
+        target.style.textDecoration = (target.style.textDecoration === 'underline') ? 'none' : 'underline';
+        updateToggleButton('btn-underline', target.style.textDecoration === 'underline');
+      }
+    }
+
+    // --- Text Editing ---
+    function enableTextEditing(el) {
+      const target = el.firstElementChild || el;
+      target.contentEditable = true;
+      target.focus();
+      el.classList.add('cursor-text');
+      el.classList.remove('cursor-move');
+
+      // Select all text
+      document.execCommand('selectAll', false, null);
+
+      const disableEdit = () => {
+        target.contentEditable = false;
+        el.classList.remove('cursor-text');
+        el.classList.add('cursor-move');
+        target.removeEventListener('blur', disableEdit);
+        window.getSelection().removeAllRanges();
+      };
+
+      target.addEventListener('blur', disableEdit);
+
+      // Enter key to finish (prevent newline if desired, or allow)
+      target.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          target.blur();
+        }
+      });
+    }
+
+
+    // --- Saving & Keybinds ---
     async function salvarTemplate() {
-      // Exemplo de payload para salvar
+      // Remove selection frame before saving
+      if (selectedElement) {
+        selectedElement.classList.remove('outline', 'outline-2', 'outline-primary');
+        selectedElement = null; // deselect
+      }
+
       const titulo = "Novo Template " + new Date().toLocaleTimeString();
       const html = document.getElementById('editor-canvas').innerHTML;
-      // Elementos estruturados precisariam de lógica de parsing mais complexa para um "arrasta e solta" real.
-      // Aqui enviamos o HTML bruto como placeholder.
 
-      // Obter template_id se estiver editando um existente
       const urlParams = new URLSearchParams(window.location.search);
       const templateId = urlParams.get('template_id');
 
@@ -388,7 +697,7 @@
         titulo: titulo,
         orientacao: 'landscape',
         html: html,
-        elements: [], // Implementar lógica de extração de elementos
+        elements: [],
         template_id: templateId
       };
 
@@ -406,8 +715,7 @@
 
         if (result.success) {
           alert('Template salvo com sucesso!');
-          if (!templateId) {
-            // Atualizar URL para incluir o ID criado para futuras edições
+          if (!templateId && result.template_id) {
             const newUrl = new URL(window.location);
             newUrl.searchParams.set('template_id', result.template_id);
             window.history.pushState({}, '', newUrl);
@@ -420,6 +728,22 @@
         alert('Erro ao salvar template.');
       }
     }
+
+    // Initialize existing static elements to be interactive
+    // This finds the "NOME DO PARTICIPANTE" example and others
+    document.addEventListener('DOMContentLoaded', () => {
+      const existing = canvas.querySelectorAll('.cursor-move');
+      existing.forEach(el => {
+        el.addEventListener('mousedown', (e) => startDragElement(e, el));
+        el.addEventListener('click', (e) => { e.stopPropagation(); selectElement(el); });
+        // Ensure it has absolute positioning to be movable if not already
+        // The example one has relative+absolute children, might need adjustment or replaced by true absolute
+
+        // For the demo static element "NOME DO PARTICIPANTE", it's absolute inside relative.
+        // We'll leave it be or user can delete it. 
+      });
+    });
+
   </script>
 
 </body>
