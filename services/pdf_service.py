@@ -9464,13 +9464,62 @@ def gerar_placas_oficinas_pdf(evento_id):
         # Título
         title = oficina.titulo.upper()
         c.setFillColor(COLORS['slate_900'])
-        c.setFont("Helvetica-Bold", 36)
-        
-        # Quebra de linha básica do título
-        lines = wrap(title, width=40) # Aprox chars
+
+        def wrap_text_by_width(text, font_name, font_size, max_width):
+            words = text.split()
+            lines = []
+            current = ""
+            for word in words:
+                test_line = f"{current} {word}".strip()
+                if c.stringWidth(test_line, font_name, font_size) <= max_width:
+                    current = test_line
+                else:
+                    if current:
+                        lines.append(current)
+                    current = word
+            if current:
+                lines.append(current)
+            return lines or [text]
+
+        def add_ellipsis_to_fit(text, font_name, font_size, max_width):
+            ellipsis = "..."
+            if c.stringWidth(text + ellipsis, font_name, font_size) <= max_width:
+                return text + ellipsis
+            trimmed = text
+            while trimmed and c.stringWidth(trimmed + ellipsis, font_name, font_size) > max_width:
+                trimmed = trimmed[:-1].rstrip()
+            return (trimmed + ellipsis) if trimmed else ellipsis
+
+        font_name = "Helvetica-Bold"
+        font_size = 36
+        title_max_width = card_w - 120
+
+        lines = wrap_text_by_width(title, font_name, font_size, title_max_width)
+        if len(lines) > 2:
+            font_size = 30
+            lines = wrap_text_by_width(title, font_name, font_size, title_max_width)
+        if len(lines) > 3:
+            font_size = 26
+            lines = wrap_text_by_width(title, font_name, font_size, title_max_width)
+
+        if len(lines) > 3:
+            lines = lines[:3]
+            lines[-1] = add_ellipsis_to_fit(lines[-1], font_name, font_size, title_max_width)
+
+        line_height = font_size * 1.2
+        c.setFont(font_name, font_size)
+
+        # Centraliza o bloco do título dentro da área reservada
+        title_area_top = card_y + card_h - 50
+        title_area_height = card_h * 0.28
+        title_area_bottom = title_area_top - title_area_height
+        block_height = line_height * len(lines)
+        start_y = title_area_top - (title_area_height - block_height) / 2
+
         for line in lines:
-            c.drawCentredString(center_x, active_y, line)
-            active_y -= 45
+            c.drawCentredString(center_x, start_y, line)
+            start_y -= line_height
+        active_y = title_area_bottom - 10
             
         active_y -= 20
         

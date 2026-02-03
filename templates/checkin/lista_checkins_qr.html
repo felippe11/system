@@ -47,6 +47,7 @@
             <tr>
               <th>Nome</th>
               <th>Atividade</th>
+              <th>Tipo</th>
               <th>Data/Hora</th>
             </tr>
           </thead>
@@ -58,12 +59,19 @@
                 <td>
                   {{ checkin.oficina.titulo if checkin.oficina else checkin.evento.nome }}
                 </td>
+                <td>
+                  {% if checkin.palavra_chave and checkin.palavra_chave.startswith('manual') %}
+                    <span class="badge bg-secondary">Manual</span>
+                  {% else %}
+                    <span class="badge bg-primary">QR</span>
+                  {% endif %}
+                </td>
                 <td class="datetime-local" data-utc="{{ checkin.data_hora|utc_iso }}">{{ checkin.data_hora|brasilia }}</td>
               </tr>
               {% endfor %}
             {% else %}
               <tr id="noDataRow">
-                <td colspan="3" class="text-center text-muted py-5">
+                <td colspan="4" class="text-center text-muted py-5">
                   <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
                   <p>Nenhum check-in registrado via QR Code ainda.</p>
                 </td>

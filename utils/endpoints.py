@@ -30,3 +30,8 @@ DASHBOARD_CLIENTE_PERMISSOES_ATIVIDADES = (
     "dashboard_routes.configurar_permissoes_atividades"
 )
 """Endpoint for managing activity permissions by subscription type."""
+
+DASHBOARD_CLIENTE_GERENCIAR_VAGAS = (
+    "dashboard_routes.gerenciar_vagas_atividades"
+)
+"""Endpoint for managing workshop vacancies in the client dashboard."""

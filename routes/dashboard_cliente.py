@@ -893,6 +893,123 @@ def ordenar_atividades_cliente():
 
 
 @dashboard_routes.route(
+    "/dashboard_cliente/gerenciar_vagas_atividades", methods=["GET", "POST"]
+)
+@login_required
+def gerenciar_vagas_atividades():
+    """Permite ao cliente ajustar rapidamente as vagas de cada oficina."""
+    if current_user.tipo != "cliente":
+        abort(403)
+
+    evento_id = request.args.get("evento_id", type=int) or request.form.get(
+        "evento_id", type=int
+    )
+
+    eventos = (
+        Evento.query.filter_by(cliente_id=current_user.id)
+        .order_by(Evento.data_inicio.desc().nullslast(), Evento.nome.asc())
+        .all()
+    )
+
+    evento = None
+    grouped_dias = {}
+    inscritos_por_oficina = {}
+
+    if evento_id:
+        evento = Evento.query.filter_by(
+            id=evento_id, cliente_id=current_user.id
+        ).first()
+        if not evento:
+            flash("Evento não encontrado ou acesso não autorizado.", "danger")
+            return redirect(
+                url_for("dashboard_routes.gerenciar_vagas_atividades")
+            )
+
+        oficina_dias = (
+            OficinaDia.query.join(Oficina, Oficina.id == OficinaDia.oficina_id)
+            .options(joinedload(OficinaDia.oficina))
+            .filter(
+                Oficina.evento_id == evento.id,
+                Oficina.cliente_id == current_user.id,
+            )
+            .order_by(
+                OficinaDia.data.asc(),
+                OficinaDia.horario_inicio.asc(),
+                Oficina.titulo.asc(),
+            )
+            .all()
+        )
+
+        oficina_ids = sorted({dia.oficina_id for dia in oficina_dias})
+
+        if request.method == "POST":
+            atualizados = 0
+            oficinas = (
+                Oficina.query.filter(Oficina.id.in_(oficina_ids)).all()
+                if oficina_ids
+                else []
+            )
+            for oficina in oficinas:
+                campo = f"vagas_{oficina.id}"
+                if campo not in request.form:
+                    continue
+                valor = request.form.get(campo, "").strip()
+                if valor == "":
+                    continue
+                try:
+                    novas_vagas = int(valor)
+                except ValueError:
+                    continue
+                if novas_vagas < 0:
+                    continue
+                if oficina.vagas != novas_vagas:
+                    oficina.vagas = novas_vagas
+                    atualizados += 1
+
+            if atualizados:
+                db.session.commit()
+                flash(
+                    f"Vagas atualizadas para {atualizados} atividades.",
+                    "success",
+                )
+            else:
+                flash(
+                    "Nenhuma alteração de vagas foi detectada.",
+                    "info",
+                )
+            return redirect(
+                url_for(
+                    "dashboard_routes.gerenciar_vagas_atividades",
+                    evento_id=evento.id,
+                )
+            )
+
+        if oficina_ids:
+            inscritos_por_oficina = dict(
+                db.session.query(
+                    Inscricao.oficina_id, func.count(Inscricao.id)
+                )
+                .filter(Inscricao.oficina_id.in_(oficina_ids))
+                .group_by(Inscricao.oficina_id)
+                .all()
+            )
+
+        agrupado = defaultdict(list)
+        for dia in oficina_dias:
+            data_str = dia.data.strftime("%d/%m/%Y")
+            agrupado[data_str].append(dia)
+        grouped_dias = dict(agrupado)
+
+    return render_template(
+        "dashboard/gerenciar_vagas_atividades.html",
+        eventos=eventos,
+        evento=evento,
+        grouped_dias=grouped_dias,
+        inscritos_por_oficina=inscritos_por_oficina,
+    )
+
+
+@dashboard_routes.route(
     "/dashboard_cliente/permissoes_atividades", methods=["GET", "POST"]
 )
 @login_required
