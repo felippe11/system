@@ -18,22 +18,28 @@
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
 
-        <!-- Botão modal de revisores -->
-        <li class="nav-item ms-lg-3">
-          <a class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#revisorModal">
-            Revisores
-          </a>
-        </li>
+        {% set is_inscricao_page = current_path.startswith('/inscricao') %}
+
+        {% if not is_inscricao_page %}
+          <!-- Botão modal de revisores -->
+          <li class="nav-item ms-lg-3">
+            <a class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#revisorModal">
+              Revisores
+            </a>
+          </li>
+        {% endif %}
 
 
 
         {% if not current_user.is_authenticated %}
           <!-- Ações para visitantes -->
-          <li class="nav-item ms-lg-3">
-            <a class="btn btn-register" data-bs-toggle="modal" data-bs-target="#criarContaModal">
-              Criar Conta
-            </a>
-          </li>
+          {% if not is_inscricao_page %}
+            <li class="nav-item ms-lg-3">
+              <a class="btn btn-register" data-bs-toggle="modal" data-bs-target="#criarContaModal">
+                Criar Conta
+              </a>
+            </li>
+          {% endif %}
           <li class="nav-item ms-lg-3">
             <a class="btn btn-login" href="{{ url_for('auth_routes.login') }}">Entrar</a>
           </li>

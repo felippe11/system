@@ -393,10 +393,7 @@ document.querySelectorAll('.gerar-link-btn').forEach(btn => {
     if (linksExistentesContainer) linksExistentesContainer.style.display = "none";
 
     const eventoSelectModal = document.getElementById("eventoSelectModal"); // Assumindo ID específico para o select no modal
-
     if (!eventoSelectModal) {
-      console.error("Select de eventos 'eventoSelectModal' não encontrado no modal.");
-      alert("Erro de configuração interna do modal de links.");
       return;
     }
 
@@ -466,8 +463,6 @@ if (window.eventoSelectModalGlobal) {
       if (linksContainer) linksContainer.style.display = "none";
     }
   });
-} else {
-  console.warn("Elemento select com ID 'eventoSelectModal' para modal de links não encontrado globalmente.");
 }
 
 // Botão para confirmar geração de link DENTRO DO MODAL
@@ -561,8 +556,6 @@ if (btnConfirmarGeracaoLink) {
         alert("Erro ao comunicar com o servidor para gerar o link. Tente novamente.");
       });
   });
-} else {
-  console.warn("Botão com ID 'gerarLinkConfirm' não encontrado.");
 }
 
 // Função genérica para atualizar uma tabela de links

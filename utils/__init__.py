@@ -19,6 +19,7 @@ except Exception:  # pragma: no cover
     A4 = None
 import os
 import base64
+import mimetypes
 import json
 
 try:
@@ -33,6 +34,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from email.utils import formataddr
 from datetime import datetime
 try:
     import qrcode
@@ -435,6 +437,70 @@ def obter_credenciais(token_file: str | None = None):
         return None
 
     return creds
+
+
+def enviar_email_google(
+    *,
+    destinatario: str,
+    assunto: str,
+    corpo_texto: str,
+    corpo_html: str | None = None,
+    anexo_path: str | None = None,
+):
+    """Envia e-mail via Gmail API usando OAuth configurado."""
+    if build is None or Credentials is None:
+        logger.error("Dependências do Google OAuth não estão disponíveis.")
+        return False
+
+    creds = obter_credenciais()
+    if not creds:
+        logger.error("Credenciais OAuth inválidas para envio via Gmail.")
+        return False
+
+    try:
+        service = build("gmail", "v1", credentials=creds)
+        mensagem = MIMEMultipart("alternative") if corpo_html else MIMEMultipart()
+        sender = None
+        try:
+            sender = current_app.config.get("MAIL_DEFAULT_SENDER")
+        except Exception:
+            sender = None
+        if sender:
+            if isinstance(sender, (list, tuple)) and len(sender) == 2:
+                mensagem["From"] = formataddr((sender[0], sender[1]))
+            else:
+                mensagem["From"] = str(sender)
+        mensagem["To"] = destinatario
+        mensagem["Subject"] = assunto
+
+        mensagem.attach(MIMEText(corpo_texto, "plain", "utf-8"))
+        if corpo_html:
+            mensagem.attach(MIMEText(corpo_html, "html", "utf-8"))
+
+        if anexo_path and os.path.exists(anexo_path):
+            content_type, encoding = mimetypes.guess_type(anexo_path)
+            if content_type is None or encoding is not None:
+                content_type = "application/octet-stream"
+            main_type, sub_type = content_type.split("/", 1)
+            with open(anexo_path, "rb") as file_handle:
+                part = MIMEBase(main_type, sub_type)
+                part.set_payload(file_handle.read())
+            encoders.encode_base64(part)
+            part.add_header(
+                "Content-Disposition",
+                f'attachment; filename="{os.path.basename(anexo_path)}"',
+            )
+            mensagem.attach(part)
+
+        raw_message = base64.urlsafe_b64encode(mensagem.as_bytes()).decode("utf-8")
+        service.users().messages().send(
+            userId="me", body={"raw": raw_message}
+        ).execute()
+        logger.info("Email enviado via Gmail para %s", destinatario)
+        return True
+    except Exception as exc:
+        logger.error("Erro ao enviar email via Gmail: %s", exc, exc_info=True)
+        return False
 
 
 def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto,

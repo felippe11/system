@@ -1,1043 +1,427 @@
-{% extends "base.html" %}
-
-{% block title %}Editor de Certificados - Estilo Canva{% endblock %}
-
-{% block extra_css %}
-<style>
-  :root {
-    --canva-purple: #8b5cf6;
-    --canva-blue: #3b82f6;
-    --canva-green: #10b981;
-    --canva-red: #ef4444;
-    --canva-orange: #f59e0b;
-    --canva-gray-50: #f9fafb;
-    --canva-gray-100: #f3f4f6;
-    --canva-gray-200: #e5e7eb;
-    --canva-gray-300: #d1d5db;
-    --canva-gray-400: #9ca3af;
-    --canva-gray-500: #6b7280;
-    --canva-gray-600: #4b5563;
-    --canva-gray-700: #374151;
-    --canva-gray-800: #1f2937;
-    --canva-gray-900: #111827;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--canva-gray-50);
-  }
-
-  .editor-container {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  
-  /* Top Toolbar */
-  .top-toolbar {
-    background: white;
-    border-bottom: 1px solid var(--canva-gray-200);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    z-index: 1000;
-  }
-
-  .toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .toolbar-center {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .canva-btn {
-    background: white;
-    border: 1px solid var(--canva-gray-300);
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    color: var(--canva-gray-700);
-  }
-
-  .canva-btn:hover {
-    background: var(--canva-gray-50);
-    border-color: var(--canva-gray-400);
-    color: var(--canva-gray-800);
-  }
-
-  .canva-btn.primary {
-    background: var(--canva-purple);
-    border-color: var(--canva-purple);
-    color: white;
-  }
-
-  .canva-btn.primary:hover {
-    background: #7c3aed;
-    border-color: #7c3aed;
-    color: white;
-  }
-
-  .canva-btn.active {
-    background: var(--canva-blue);
-    border-color: var(--canva-blue);
-    color: white;
-  }
-
-  .canva-btn.danger {
-    background: var(--canva-red);
-    border-color: var(--canva-red);
-    color: white;
-  }
-
-  .canva-btn.danger:hover {
-    background: #dc2626;
-    border-color: #dc2626;
-  }
-  
-  /* Workspace */
-  .editor-workspace {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-  }
-
-  /* Left Sidebar */
-  .left-sidebar {
-    width: 280px;
-    background: white;
-    border-right: 1px solid var(--canva-gray-200);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .sidebar-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--canva-gray-200);
-  }
-
-  .sidebar-tab {
-    flex: 1;
-    padding: 12px 16px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--canva-gray-600);
-    transition: all 0.2s ease;
-  }
-
-  .sidebar-tab.active {
-    color: var(--canva-purple);
-    border-bottom: 2px solid var(--canva-purple);
-  }
-
-  .sidebar-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-  }
-
-  /* Element Library */
-  .element-category {
-    margin-bottom: 24px;
-  }
-
-  .category-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--canva-gray-500);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .elements-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .element-item {
-    background: var(--canva-gray-50);
-    border: 1px solid var(--canva-gray-200);
-    border-radius: 8px;
-    padding: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-  }
-
-  .element-item:hover {
-    background: var(--canva-gray-100);
-    border-color: var(--canva-gray-300);
-    transform: translateY(-1px);
-  }
-
-  .element-icon {
-    font-size: 24px;
-    color: var(--canva-purple);
-    margin-bottom: 8px;
-  }
-
-  .element-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--canva-gray-800);
-    margin-bottom: 4px;
-  }
-
-  .element-description {
-    font-size: 10px;
-    color: var(--canva-gray-500);
-  }
-
-  /* Canvas Area */
-  .canvas-area {
-    flex: 1;
-    background: var(--canva-gray-100);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .canvas-container {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    position: relative;
-    overflow: hidden;
-  }
-
-  #canvas {
-    width: 800px;
-    height: 600px;
-    position: relative;
-    background: white;
-    border: 1px solid var(--canva-gray-200);
-  }
-
-  .canvas.landscape {
-    width: 800px;
-    height: 600px;
-  }
-
-  .canvas.portrait {
-    width: 600px;
-    height: 800px;
-  }
-
-  /* Draggable Elements */
-  .draggable-element {
-    position: absolute;
-    cursor: move;
-    border: 2px solid transparent;
-    border-radius: 4px;
-    min-width: 50px;
-    min-height: 30px;
-    padding: 8px;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
-  }
-
-  .draggable-element:hover {
-    border-color: var(--canva-blue);
-  }
-
-  .draggable-element.selected {
-    border-color: var(--canva-purple);
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
-  }
-
-  .element-controls {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    display: none;
-  }
-
-  .draggable-element.selected .element-controls {
-    display: block;
-  }
-
-  .control-btn {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: none;
-    background: var(--canva-red);
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-  }
-
-  .resize-handle {
-    position: absolute;
-    background: var(--canva-purple);
-    border-radius: 50%;
-    width: 8px;
-    height: 8px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  .draggable-element.selected .resize-handle {
-    opacity: 1;
-  }
-
-  .resize-nw { top: -4px; left: -4px; cursor: nw-resize; }
-  .resize-ne { top: -4px; right: -4px; cursor: ne-resize; }
-  .resize-sw { bottom: -4px; left: -4px; cursor: sw-resize; }
-  .resize-se { bottom: -4px; right: -4px; cursor: se-resize; }
-  .resize-n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
-  .resize-s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
-  .resize-e { right: -4px; top: 50%; transform: translateY(-50%); cursor: e-resize; }
-  .resize-w { left: -4px; top: 50%; transform: translateY(-50%); cursor: w-resize; }
-
-  /* Right Sidebar - Properties */
-  .right-sidebar {
-    width: 320px;
-    background: white;
-    border-left: 1px solid var(--canva-gray-200);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .properties-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--canva-gray-200);
-    font-weight: 600;
-    color: var(--canva-gray-800);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .properties-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-  }
-
-  .property-group {
-    margin-bottom: 24px;
-  }
-
-  .property-group h6 {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--canva-gray-500);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-  }
-
-  .form-group {
-    margin-bottom: 16px;
-  }
-
-  .form-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--canva-gray-700);
-    margin-bottom: 6px;
-    display: block;
-  }
-
-  .form-control {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--canva-gray-300);
-    border-radius: 6px;
-    font-size: 14px;
-    transition: all 0.2s ease;
-  }
-
-  .form-control:focus {
-    outline: none;
-    border-color: var(--canva-purple);
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-  }
-
-  .form-select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--canva-gray-300);
-    border-radius: 6px;
-    font-size: 14px;
-    background: white;
-    cursor: pointer;
-  }
-
-  .form-range {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--canva-gray-200);
-    outline: none;
-    -webkit-appearance: none;
-  }
-
-  .form-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--canva-purple);
-    cursor: pointer;
-  }
-
-  .form-range::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--canva-purple);
-    cursor: pointer;
-    border: none;
-  }
-
-  .range-value {
-    font-size: 12px;
-    color: var(--canva-gray-600);
-    margin-left: 8px;
-  }
-
-  .color-picker {
-    width: 100%;
-    height: 40px;
-    border: 1px solid var(--canva-gray-300);
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  /* Grid Overlay */
-  .grid-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-      linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
-    background-size: 20px 20px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  .grid-overlay.active {
-    opacity: 1;
-  }
-
-  /* Guidelines */
-  .guideline {
-    position: absolute;
-    background: var(--canva-purple);
-    z-index: 1000;
-    pointer-events: none;
-  }
-
-  .guideline-horizontal {
-    width: 100%;
-    height: 1px;
-  }
-
-  .guideline-vertical {
-    height: 100%;
-    width: 1px;
-  }
-
-  /* Zoom Controls */
-  .zoom-controls {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    padding: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .zoom-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: var(--canva-gray-100);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: var(--canva-gray-600);
-  }
-
-  .zoom-btn:hover {
-    background: var(--canva-gray-200);
-  }
-
-  .zoom-level {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--canva-gray-700);
-    min-width: 40px;
-    text-align: center;
-  }
-
-  /* Responsive */
-  @media (max-width: 1200px) {
-    .left-sidebar {
-      width: 240px;
+<!DOCTYPE html>
+<html class="light" lang="pt-br">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>AppFiber - Editor de Certificados Profissional</title>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#2563eb",
+            "background-light": "#f8fafc",
+            "background-dark": "#0f172a",
+          },
+          fontFamily: {
+            display: ["Inter", "sans-serif"],
+          },
+          borderRadius: {
+            DEFAULT: "0.5rem",
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
     }
-    .right-sidebar {
-      width: 280px;
-    }
-  }
 
-  @media (max-width: 768px) {
-    .editor-workspace {
-      flex-direction: column;
+    .canvas-bg {
+      background-image:
+        linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+      background-size: 20px 20px;
     }
-    .left-sidebar, .right-sidebar {
-      width: 100%;
-      height: 200px;
-    }
-    #canvas {
-      width: 100%;
-      max-width: 600px;
-      height: 400px;
-    }
-  }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-{% endblock %}
 
-{% block content %}
-<div class="editor-container">
-  <!-- Top Toolbar -->
-  <div class="top-toolbar">
-    <div class="toolbar-left">
-      <h5 class="mb-0 fw-bold" style="color: var(--canva-purple);">🎨 Editor de Certificados</h5>
-      <span class="text-muted" id="templateNameDisplay">Novo Template</span>
+    .dark .canvas-bg {
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+
+    .certificate-shadow {
+      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+
+<body
+  class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col overflow-hidden">
+  <header
+    class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-6 z-20">
+    <div class="flex items-center gap-8">
+      <div class="flex items-center gap-1 font-bold text-2xl tracking-tight">
+        <span class="text-slate-900 dark:text-white">App</span><span class="text-primary">Fiber</span>
+      </div>
+      <nav class="hidden md:flex items-center gap-1">
+        <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}"
+          class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors">
+          <span class="material-icons-round text-lg">dashboard</span>
+          Dashboard
+        </a>
+        <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}"
+          class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors">
+          <span class="material-icons-round text-lg">calendar_today</span>
+          Meus Eventos
+        </a>
+      </nav>
     </div>
-    
-    <div class="toolbar-center">
-      <button class="canva-btn" id="undoAction" title="Desfazer">
-        <i class="fas fa-undo"></i>
+    <div class="flex items-center gap-3">
+      <button
+        class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+        Revisores
       </button>
-      <button class="canva-btn" id="redoAction" title="Refazer">
-        <i class="fas fa-redo"></i>
-      </button>
-      <div style="width: 1px; height: 24px; background: var(--canva-gray-300); margin: 0 8px;"></div>
-      <button class="canva-btn" id="toggleGrid" title="Mostrar/Ocultar Grid">
-        <i class="fas fa-th"></i>
-      </button>
-      <button class="canva-btn active" id="toggleSnap" title="Ativar/Desativar Snap">
-        <i class="fas fa-magnet"></i>
-      </button>
+      <div class="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2"></div>
+      <a href="{{ url_for('auth_routes.logout') }}"
+        class="text-slate-500 hover:text-red-500 flex items-center gap-2 text-sm font-medium transition-colors">
+        <span class="material-icons-round text-lg">logout</span>
+        Sair
+      </a>
     </div>
-    
-    <div class="toolbar-right">
-      <button class="canva-btn" id="previewTemplate">
-        <i class="fas fa-eye"></i> Pré-visualizar
-      </button>
-      <button class="canva-btn" id="livePreviewToggle">
-        <i class="fas fa-play"></i> Preview ao Vivo
-      </button>
-      <button class="canva-btn" id="exportTemplate">
-        <i class="fas fa-download"></i> Exportar
-      </button>
-      <button class="canva-btn primary" id="saveTemplate">
-        <i class="fas fa-save"></i> Salvar
-      </button>
+  </header>
+  <section
+    class="h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 flex items-center justify-between z-10">
+    <div class="flex items-center gap-2">
+      <span class="text-lg">🎨</span>
+      <h1 class="font-semibold text-slate-800 dark:text-slate-200">Editor de Certificados</h1>
+      <span class="text-slate-400 mx-2">/</span>
+      <span class="text-sm text-slate-500">{% if template %}{{ template.titulo }}{% else %}Novo Template{% endif
+        %}</span>
     </div>
-  </div>
-
-  <!-- Workspace -->
-  <div class="editor-workspace">
-    <!-- Left Sidebar -->
-    <div class="left-sidebar">
-      <div class="sidebar-tabs">
-        <button class="sidebar-tab active" data-tab="elements">
-          <i class="fas fa-shapes"></i> Elementos
+    <div class="flex items-center gap-2">
+      <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mr-4">
+        <button
+          class="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-600 dark:text-slate-400 transition-all">
+          <span class="material-icons-round">undo</span>
         </button>
-        <button class="sidebar-tab" data-tab="templates">
-          <i class="fas fa-file-alt"></i> Templates
-        </button>
-        <button class="sidebar-tab" data-tab="uploads">
-          <i class="fas fa-upload"></i> Uploads
+        <button
+          class="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-600 dark:text-slate-400 transition-all">
+          <span class="material-icons-round">redo</span>
         </button>
       </div>
-
-      <div class="sidebar-content">
-        <!-- Elements Tab -->
-        <div class="tab-content" id="elementsTab">
-          <!-- Text Elements -->
-          <div class="element-category">
-            <div class="category-title">
-              <i class="fas fa-font"></i>
-              Texto
-            </div>
-            <div class="elements-grid">
-              <div class="element-item" data-type="text">
-                <div class="element-icon"><i class="fas fa-font"></i></div>
-                <div class="element-title">Título</div>
-                <div class="element-description">Texto grande</div>
-              </div>
-              <div class="element-item" data-type="text">
-                <div class="element-icon"><i class="fas fa-align-left"></i></div>
-                <div class="element-title">Parágrafo</div>
-                <div class="element-description">Texto normal</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Media Elements -->
-          <div class="element-category">
-            <div class="category-title">
-              <i class="fas fa-image"></i>
-              Mídia
-            </div>
-            <div class="elements-grid">
-              <div class="element-item" data-type="logo">
-                <div class="element-icon"><i class="fas fa-image"></i></div>
-                <div class="element-title">Logo</div>
-                <div class="element-description">Imagem</div>
-              </div>
-              <div class="element-item" data-type="qrcode">
-                <div class="element-icon"><i class="fas fa-qrcode"></i></div>
-                <div class="element-title">QR Code</div>
-                <div class="element-description">Código QR</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Interactive Elements -->
-          <div class="element-category">
-            <div class="category-title">
-              <i class="fas fa-magic"></i>
-              Interativo
-            </div>
-            <div class="elements-grid">
-              <div class="element-item" data-type="signature">
-                <div class="element-icon"><i class="fas fa-signature"></i></div>
-                <div class="element-title">Assinatura</div>
-                <div class="element-description">Campo assinatura</div>
-              </div>
-              <div class="element-item" data-type="variable">
-                <div class="element-icon"><i class="fas fa-tag"></i></div>
-                <div class="element-title">Variável</div>
-                <div class="element-description">Dinâmica</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dynamic Variables -->
-          <div class="element-category">
-            <div class="category-title">
-              <i class="fas fa-code"></i>
-              Variáveis Dinâmicas
-            </div>
-            <div id="dynamicVariables">
-              <!-- Variables will be loaded here -->
-            </div>
-            <button class="canva-btn w-100 mt-2" data-bs-toggle="modal" data-bs-target="#newVariableModal">
-              <i class="fas fa-plus"></i> Nova Variável
+      <button
+        class="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+        <span class="material-icons-round text-lg">visibility</span>
+        Pré-visualizar
+      </button>
+      <button
+        class="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+        <span class="material-icons-round text-lg">play_circle</span>
+        Preview ao Vivo
+      </button>
+      <button
+        class="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+        <span class="material-icons-round text-lg">download</span>
+        Exportar
+      </button>
+      <button onclick="salvarTemplate()"
+        class="flex items-center gap-2 px-4 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+        <span class="material-icons-round text-lg">save</span>
+        Salvar
+      </button>
+    </div>
+  </section>
+  <main class="flex-1 flex overflow-hidden">
+    <aside class="w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+      <div class="flex-1 overflow-y-auto p-4 space-y-6">
+        <div class="relative">
+          <span class="material-icons-round absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
+          <input
+            class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary"
+            placeholder="Buscar elementos..." type="text" />
+        </div>
+        <section>
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Texto</h3>
+          <div class="space-y-2">
+            <button
+              class="w-full text-left px-3 py-3 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all">
+              <div class="font-bold text-lg dark:text-white">Título</div>
+              <div class="text-xs text-slate-400 group-hover:text-primary transition-colors">Adicionar cabeçalho</div>
+            </button>
+            <button
+              class="w-full text-left px-3 py-3 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all">
+              <div class="font-semibold text-base dark:text-white">Subtítulo</div>
+              <div class="text-xs text-slate-400 group-hover:text-primary transition-colors">Adicionar subtítulo</div>
+            </button>
+            <button
+              class="w-full text-left px-3 py-2 border border-slate-100 dark:border-slate-800 hover:border-primary dark:hover:border-primary rounded-lg group transition-all">
+              <div class="text-sm dark:text-white">Parágrafo</div>
+              <div class="text-xs text-slate-400 group-hover:text-primary transition-colors">Corpo do texto</div>
             </button>
           </div>
+        </section>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-icons-round text-primary mb-1">category</span>
+            <span class="text-xs font-medium">Elementos</span>
+          </button>
+          <button
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-icons-round text-primary mb-1">dashboard_customize</span>
+            <span class="text-xs font-medium">Templates</span>
+          </button>
+          <button
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-icons-round text-primary mb-1">cloud_upload</span>
+            <span class="text-xs font-medium">Uploads</span>
+          </button>
+          <button
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-icons-round text-primary mb-1">qr_code_2</span>
+            <span class="text-xs font-medium">QR Code</span>
+          </button>
+          <button
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-icons-round text-primary mb-1">image</span>
+            <span class="text-xs font-medium">Mídia</span>
+          </button>
+          <button
+            class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-icons-round text-primary mb-1">gesture</span>
+            <span class="text-xs font-medium">Assinatura</span>
+          </button>
         </div>
-
-        <!-- Templates Tab -->
-        <div class="tab-content" id="templatesTab" style="display: none;">
-          <div class="element-category">
-            <div class="category-title">
-              <i class="fas fa-file-alt"></i>
-              Templates Predefinidos
+        <section class="mt-8 border-t border-slate-100 dark:border-slate-800 pt-4">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Camadas</h3>
+          <div class="space-y-1">
+            <div
+              class="flex items-center gap-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs cursor-pointer">
+              <span class="material-icons-round text-sm text-slate-400">title</span>
+              <span>Nome do Participante</span>
             </div>
-            <div class="elements-grid">
-              <div class="element-item" data-template="certificate">
-                <div class="element-icon"><i class="fas fa-certificate"></i></div>
-                <div class="element-title">Certificado</div>
-                <div class="element-description">Template padrão</div>
-              </div>
-              <div class="element-item" data-template="diploma">
-                <div class="element-icon"><i class="fas fa-scroll"></i></div>
-                <div class="element-title">Diploma</div>
-                <div class="element-description">Formato diploma</div>
-              </div>
+            <div
+              class="flex items-center gap-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs cursor-pointer">
+              <span class="material-icons-round text-sm text-slate-400">text_snippet</span>
+              <span>Texto de Conclusão</span>
+            </div>
+            <div
+              class="flex items-center gap-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs cursor-pointer">
+              <span class="material-icons-round text-sm text-slate-400">image</span>
+              <span>Logotipo Empresa</span>
             </div>
           </div>
-        </div>
-
-        <!-- Uploads Tab -->
-        <div class="tab-content" id="uploadsTab" style="display: none;">
-          <div class="element-category">
-            <div class="category-title">
-              <i class="fas fa-upload"></i>
-              Suas Imagens
-            </div>
-            <div class="upload-area">
-              <div class="upload-placeholder">
-                <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--canva-gray-300); margin-bottom: 16px;"></i>
-                <p style="color: var(--canva-gray-500); margin: 0;">Arraste imagens aqui ou clique para fazer upload</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
-    </div>
-
-    <!-- Canvas Area -->
-    <div class="canvas-area">
-      <div class="canvas-container">
-        <div id="canvas" class="landscape">
-          <!-- Elements will be added here -->
-        </div>
-        <div class="grid-overlay" id="gridOverlay"></div>
-      </div>
-      
-      <!-- Zoom Controls -->
-      <div class="zoom-controls">
-        <button class="zoom-btn" id="zoomOut">
-          <i class="fas fa-minus"></i>
+    </aside>
+    <section
+      class="flex-1 canvas-bg relative flex flex-col items-center justify-center overflow-auto p-12 bg-slate-50 dark:bg-slate-950">
+      <div
+        class="absolute bottom-6 right-6 flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-lg p-1 z-10">
+        <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+          <span class="material-icons-round text-lg">remove</span>
         </button>
-        <span class="zoom-level" id="zoomLevel">100%</span>
-        <button class="zoom-btn" id="zoomIn">
-          <i class="fas fa-plus"></i>
+        <span class="px-3 text-sm font-medium">85%</span>
+        <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+          <span class="material-icons-round text-lg">add</span>
         </button>
-      </div>
-    </div>
-
-    <!-- Right Sidebar - Properties -->
-    <div class="right-sidebar">
-      <div class="properties-header">
-        <i class="fas fa-cog"></i>
-        Propriedades
-      </div>
-      
-      <div class="properties-content" id="propertiesPanel" style="display: none;">
-        <!-- Text Properties -->
-        <div class="property-section" id="textProperties" style="display: none;">
-          <div class="property-group">
-            <h6>Conteúdo</h6>
-            <div class="form-group">
-              <label class="form-label">Texto</label>
-              <textarea class="form-control" id="elementText" rows="3" placeholder="Digite o texto..."></textarea>
-            </div>
-          </div>
-          
-          <div class="property-group">
-            <h6>Tipografia</h6>
-            <div class="form-group">
-              <label class="form-label">Fonte</label>
-              <select class="form-select" id="fontFamily">
-                <option value="Arial">Arial</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Helvetica">Helvetica</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Verdana">Verdana</option>
-                <option value="Roboto">Roboto</option>
-                <option value="Open Sans">Open Sans</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Tamanho</label>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="range" class="form-range" id="fontSize" min="8" max="72" value="16">
-                <span class="range-value" id="fontSizeValue">16px</span>
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Peso</label>
-              <select class="form-select" id="fontWeight">
-                <option value="normal">Normal</option>
-                <option value="bold">Negrito</option>
-                <option value="lighter">Mais Leve</option>
-                <option value="bolder">Mais Pesado</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Alinhamento</label>
-              <div style="display: flex; gap: 8px;">
-                <button class="canva-btn" data-align="left" title="Esquerda">
-                  <i class="fas fa-align-left"></i>
-                </button>
-                <button class="canva-btn" data-align="center" title="Centro">
-                  <i class="fas fa-align-center"></i>
-                </button>
-                <button class="canva-btn" data-align="right" title="Direita">
-                  <i class="fas fa-align-right"></i>
-                </button>
-                <button class="canva-btn" data-align="justify" title="Justificado">
-                  <i class="fas fa-align-justify"></i>
-                </button>
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Cor</label>
-              <input type="color" class="color-picker" id="textColor" value="#000000">
-            </div>
-          </div>
-        </div>
-
-        <!-- Logo Properties -->
-        <div class="property-section" id="logoProperties" style="display: none;">
-          <div class="property-group">
-            <h6>Imagem</h6>
-            <div class="form-group">
-              <label class="form-label">URL da Imagem</label>
-              <input type="url" class="form-control" id="logoUrl" placeholder="https://exemplo.com/logo.png">
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Tamanho</label>
-              <select class="form-select" id="logoSize">
-                <option value="small">Pequeno (100px)</option>
-                <option value="medium">Médio (150px)</option>
-                <option value="large">Grande (200px)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Variable Properties -->
-        <div class="property-section" id="variableProperties" style="display: none;">
-          <div class="property-group">
-            <h6>Variável</h6>
-            <div class="form-group">
-              <label class="form-label">Variável</label>
-              <select class="form-select" id="customVariableSelect">
-                <option value="">Selecione uma variável</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Formato</label>
-              <select class="form-select" id="customVariableFormat">
-                <option value="text">Texto</option>
-                <option value="date">Data</option>
-                <option value="number">Número</option>
-                <option value="currency">Moeda</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Valor Padrão</label>
-              <input type="text" class="form-control" id="customVariableDefault" placeholder="Valor padrão (opcional)">
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Template Info Modal -->
-<div class="modal fade" id="templateInfoModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Configurações do Template</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="templateName" class="form-label">Nome do Template</label>
-          <input type="text" class="form-control" id="templateName" placeholder="Digite o nome do template" value="Novo Template">
-        </div>
-        
-        <div class="form-group">
-          <label for="templateOrientation" class="form-label">Orientação</label>
-          <select class="form-select" id="templateOrientation">
-            <option value="landscape">Paisagem (800x600)</option>
-            <option value="portrait">Retrato (600x800)</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="saveTemplateInfo">Salvar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- New Variable Modal -->
-<div class="modal fade" id="newVariableModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Nova Variável</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="newVariableName" class="form-label">Nome da Variável</label>
-          <input type="text" class="form-control" id="newVariableName" placeholder="Ex: NOME_PARTICIPANTE">
-          <small class="form-text text-muted">Use apenas letras maiúsculas, números e underscore</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="newVariableDescription" class="form-label">Descrição</label>
-          <input type="text" class="form-control" id="newVariableDescription" placeholder="Ex: Nome do participante">
-        </div>
-        
-        <div class="form-group">
-          <label for="newVariableType" class="form-label">Tipo</label>
-          <select class="form-select" id="newVariableType">
-            <option value="text">Texto</option>
-            <option value="date">Data</option>
-            <option value="number">Número</option>
-            <option value="list">Lista</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="newVariableDefault" class="form-label">Valor Padrão (opcional)</label>
-          <input type="text" class="form-control" id="newVariableDefault" placeholder="Valor padrão">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="saveNewVariable">Salvar Variável</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Preview Modal -->
-<div class="modal fade" id="previewModal" tabindex="-1">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Preview do Certificado</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div id="previewContent" style="display: flex; justify-content: center; background: #f5f5f5; padding: 20px;">
-          <!-- Preview content will be inserted here -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-        <button type="button" class="btn btn-primary" id="exportToPDF">
-          <i class="fas fa-file-pdf"></i> Exportar PDF
+        <div class="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+        <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+          <span class="material-icons-round text-lg">fullscreen</span>
         </button>
       </div>
-    </div>
-  </div>
-</div>
-{% endblock %}
+      <div id="editor-canvas"
+        class="relative aspect-[1.414/1] w-full max-w-4xl bg-white certificate-shadow rounded-sm overflow-hidden border-4 border-slate-200 dark:border-slate-700">
+        <div class="absolute inset-0 border-[0.5px] border-dashed border-blue-400/20 pointer-events-none"></div>
+        <div class="absolute left-1/2 inset-y-0 border-l-[0.5px] border-dashed border-blue-400/20 pointer-events-none">
+        </div>
+        <div class="absolute top-1/2 inset-x-0 border-t-[0.5px] border-dashed border-blue-400/20 pointer-events-none">
+        </div>
+        <div
+          class="absolute inset-12 border-2 border-slate-100 flex flex-col items-center text-center p-8 bg-slate-50/10">
+          <div class="mb-12">
+            <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span class="material-icons-round text-3xl text-primary">verified</span>
+            </div>
+            <h2 class="text-4xl font-serif text-slate-800 uppercase tracking-[0.2em] mb-2">Certificado</h2>
+            <div class="w-24 h-1 bg-primary mx-auto"></div>
+          </div>
+          <p class="text-slate-500 font-medium italic mb-8">Este certificado é concedido a</p>
+          <div class="relative group cursor-move">
+            <div class="absolute -inset-2 border-2 border-primary rounded-sm opacity-100">
+              <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary"></div>
+              <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary"></div>
+              <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary"></div>
+              <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary"></div>
+              <div
+                class="absolute -top-10 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-2 py-1 rounded whitespace-nowrap shadow-md">
+                Inter • Bold • 48px</div>
+            </div>
+            <h1 class="text-5xl font-bold text-slate-900 leading-tight">NOME DO PARTICIPANTE</h1>
+          </div>
+          <p class="mt-12 text-slate-600 max-w-lg">
+            Por completar com sucesso o programa de formação em Design de Interface e Experiência do Usuário com carga
+            horária de 40 horas.
+          </p>
+          <div class="mt-auto flex justify-between w-full pt-12">
+            <div class="text-center">
+              <div class="w-40 border-b border-slate-400 mb-2"></div>
+              <p class="text-[10px] font-bold text-slate-400 uppercase">Coordenador do Evento</p>
+            </div>
+            <div class="text-center">
+              <div class="w-40 border-b border-slate-400 mb-2"></div>
+              <p class="text-[10px] font-bold text-slate-400 uppercase">Representante AppFiber</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <aside class="w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-4 space-y-6">
+      <div>
+        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <span class="material-icons-round text-primary text-lg">format_size</span>
+          Estilo de Texto
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Fonte</label>
+            <select
+              class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-primary py-2.5">
+              <option>Inter</option>
+              <option>Playfair Display</option>
+              <option>Montserrat</option>
+              <option>Lora</option>
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Tamanho</label>
+              <input
+                class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-primary py-2.5"
+                type="number" value="48" />
+            </div>
+            <div class="flex-1">
+              <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Cor</label>
+              <div
+                class="flex items-center gap-2 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-1 px-2.5">
+                <div class="w-6 h-6 rounded-full bg-slate-900 border-2 border-white dark:border-slate-700 shadow-sm">
+                </div>
+                <span class="text-xs font-mono">#0F172A</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+            <button
+              class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200">
+              <span class="material-icons-round text-lg">format_bold</span>
+            </button>
+            <button
+              class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200">
+              <span class="material-icons-round text-lg">format_italic</span>
+            </button>
+            <button
+              class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200">
+              <span class="material-icons-round text-lg">format_underlined</span>
+            </button>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Alinhamento</label>
+            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+              <button class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-400">
+                <span class="material-icons-round text-lg">format_align_left</span>
+              </button>
+              <button class="flex-1 p-2 bg-white dark:bg-slate-700 rounded shadow-sm text-primary">
+                <span class="material-icons-round text-lg">format_align_center</span>
+              </button>
+              <button class="flex-1 p-2 hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-400">
+                <span class="material-icons-round text-lg">format_align_right</span>
+              </button>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <label class="text-xs font-semibold text-slate-500 uppercase mb-3 block">Espaçamento</label>
+            <div class="space-y-4">
+              <div>
+                <div class="flex justify-between text-[10px] mb-1">
+                  <span class="text-slate-400">ENTRE LETRAS</span>
+                  <span>2.5px</span>
+                </div>
+                <input class="w-full accent-primary" type="range" />
+              </div>
+              <div>
+                <div class="flex justify-between text-[10px] mb-1">
+                  <span class="text-slate-400">ENTRE LINHAS</span>
+                  <span>1.2</span>
+                </div>
+                <input class="w-full accent-primary" type="range" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-auto pt-6">
+        <button
+          class="w-full py-2.5 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 text-xs font-semibold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          Configurações Avançadas
+        </button>
+      </div>
+    </aside>
+  </main>
+  <button
+    class="fixed bottom-6 right-80 w-12 h-12 bg-primary text-white rounded-xl shadow-xl hover:scale-105 transition-transform flex items-center justify-center z-50">
+    <span class="material-icons-round">pan_tool_alt</span>
+  </button>
 
-{% block scripts_extra %}
-<script src="{{ url_for('static', filename='js/certificate-editor.js') }}"></script>
-<script>
-// Sidebar tab switching
-document.addEventListener('DOMContentLoaded', function() {
-  const tabs = document.querySelectorAll('.sidebar-tab');
-  const tabContents = document.querySelectorAll('.tab-content');
-  
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      // Remove active class from all tabs and contents
-      tabs.forEach(t => t.classList.remove('active'));
-      tabContents.forEach(tc => tc.style.display = 'none');
-      
-      // Add active class to clicked tab
-      tab.classList.add('active');
-      
-      // Show corresponding content
-      const tabId = tab.dataset.tab + 'Tab';
-      const content = document.getElementById(tabId);
-      if (content) {
-        content.style.display = 'block';
-      }
-    });
-  });
+  <script>
+    async function salvarTemplate() {
+      // Exemplo de payload para salvar
+      const titulo = "Novo Template " + new Date().toLocaleTimeString();
+      const html = document.getElementById('editor-canvas').innerHTML;
+      // Elementos estruturados precisariam de lógica de parsing mais complexa para um "arrasta e solta" real.
+      // Aqui enviamos o HTML bruto como placeholder.
 
-  // Template name display update
-  const templateNameInput = document.getElementById('templateName');
-  const templateNameDisplay = document.getElementById('templateNameDisplay');
-  
-  if (templateNameInput && templateNameDisplay) {
-    templateNameInput.addEventListener('input', function() {
-      templateNameDisplay.textContent = this.value || 'Novo Template';
-    });
-  }
+      // Obter template_id se estiver editando um existente
+      const urlParams = new URLSearchParams(window.location.search);
+      const templateId = urlParams.get('template_id');
 
-  // Zoom controls
-  const zoomIn = document.getElementById('zoomIn');
-  const zoomOut = document.getElementById('zoomOut');
-  const zoomLevel = document.getElementById('zoomLevel');
-  
-  if (zoomIn && zoomOut && zoomLevel) {
-    let currentZoom = 1;
-    
-    zoomIn.addEventListener('click', () => {
-      currentZoom = Math.min(currentZoom + 0.25, 3);
-      updateZoom();
-    });
-    
-    zoomOut.addEventListener('click', () => {
-      currentZoom = Math.max(currentZoom - 0.25, 0.25);
-      updateZoom();
-    });
-    
-    function updateZoom() {
-      const canvas = document.getElementById('canvas');
-      if (canvas) {
-        canvas.style.transform = `scale(${currentZoom})`;
-        zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+      const payload = {
+        titulo: titulo,
+        orientacao: 'landscape',
+        html: html,
+        elements: [], // Implementar lógica de extração de elementos
+        template_id: templateId
+      };
+
+      try {
+        const response = await fetch("{{ url_for('certificado_routes.salvar_template_avancado') }}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': "{{ csrf_token() if csrf_token else '' }}"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('Template salvo com sucesso!');
+          if (!templateId) {
+            // Atualizar URL para incluir o ID criado para futuras edições
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('template_id', result.template_id);
+            window.history.pushState({}, '', newUrl);
+          }
+        } else {
+          alert('Erro ao salvar: ' + result.message);
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao salvar template.');
       }
     }
-  }
-});
-</script>
-{% endblock %}
+  </script>
+
+</body>
+
+</html>

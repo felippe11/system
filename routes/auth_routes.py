@@ -12,7 +12,7 @@ import logging
 from models import Inscricao
 from models.user import Usuario, Ministrante, Cliente, PasswordResetToken
 from extensions import login_manager, db
-from utils import enviar_email
+from utils import enviar_email, enviar_email_google
 from forms import PublicClienteForm
 from utils.security import password_is_strong
 
@@ -264,15 +264,15 @@ def esqueci_senha_cpf():
             """
             try:
                 logger.info("Tentando enviar email de redefinição de senha via OAuth")
-                enviar_email(
+                enviado_google = enviar_email_google(
                     destinatario=usuario.email,
-                    nome_participante=usuario.nome,
-                    nome_oficina='',
                     assunto=assunto,
                     corpo_texto=corpo_texto,
                     corpo_html=corpo_html,
                 )
-                logger.info("Email enviado com sucesso")
+                if not enviado_google:
+                    raise RuntimeError("Falha ao enviar email via Gmail OAuth")
+                logger.info("Email enviado com sucesso via Gmail OAuth")
             except Exception as e:
                 logger.exception("Erro ao enviar email: %s", e)
         else:

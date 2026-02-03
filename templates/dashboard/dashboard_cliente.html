@@ -237,6 +237,7 @@
                       <th>Título</th>
                       <th>Vagas</th>
                       <th>Inscritos</th>
+                      <th>Check-ins</th>
                       <th>Ocupação</th>
                     </tr>
                   </thead>
@@ -244,21 +245,43 @@
                     {% for ofst in oficinas %}
                     <tr>
                       <td>{{ ofst.titulo }}</td>
-                      <td>{% if ofst.vagas == 9999 %} ∞ {% else %}{{ ofst.vagas }}{% endif %}</td>
-                      <td>{{ ofst.inscritos|length }}</td>
+                      <td>
+                        {% if ofst.tipo_inscricao == 'sem_inscricao' %}
+                          N/A
+                        {% elif ofst.tipo_inscricao == 'com_inscricao_sem_limite' %}
+                          Ilimitadas
+                        {% else %}
+                          {{ ofst.vagas }}
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if ofst.tipo_inscricao == 'sem_inscricao' %}
+                          N/A
+                        {% else %}
+                          {{ ofst.inscritos|length }}
+                        {% endif %}
+                      </td>
+                      <td>{{ checkins_por_oficina.get(ofst.id, 0) }}</td>
                       <td>
                         <div class="progress" style="height: 20px;">
-                          {% if ofst.vagas == 9999 %}
+                          {% if ofst.tipo_inscricao == 'sem_inscricao' %}
+                          <div class="progress-bar bg-secondary" role="progressbar" style="width: 100%;" aria-valuenow="0"
+                            aria-valuemin="0" aria-valuemax="100">
+                            N/A
+                          </div>
+                          {% elif ofst.tipo_inscricao == 'com_inscricao_sem_limite' %}
                           <div class="progress-bar bg-info" role="progressbar" style="width: 100%;" aria-valuenow="100"
                             aria-valuemin="0" aria-valuemax="100">
                             Ilimitado
                           </div>
                           {% else %}
+                          {% set ocupacao = ((ofst.inscritos|length / ofst.vagas) * 100) if ofst.vagas else 0 %}
+                          {% set ocupacao = 100 if ocupacao > 100 else ocupacao %}
                           <div class="progress-bar" role="progressbar"
-                            style="width: {{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}%;"
-                            aria-valuenow="{{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}"
+                            style="width: {{ ocupacao }}%;"
+                            aria-valuenow="{{ ocupacao }}"
                             aria-valuemin="0" aria-valuemax="100">
-                            {{ "%.2f"|format((ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0) }}%
+                            {{ "%.2f"|format(ocupacao) }}%
                           </div>
                           {% endif %}
                         </div>
@@ -2642,6 +2665,9 @@
         if (typeof URL_EVENTO_CONFIG_BASE === 'undefined') {
           window.URL_EVENTO_CONFIG_BASE = "{{ url_for('config_cliente_routes.configuracao_evento', evento_id=0)[:-2] }}";
         }
+        if (typeof URL_CERTIFICADO_CONFIG_BASE === 'undefined') {
+          window.URL_CERTIFICADO_CONFIG_BASE = "{{ url_for('certificado_routes.configuracoes_evento', evento_id=0)[:-2] }}";
+        }
 
         // Declarar a variável somente se ainda não existir
         if (typeof URL_EXPORTAR_CHECKINS_PDF === 'undefined') {
@@ -2684,8 +2710,18 @@
           }
 
           // Carregar configurações de liberação
-          fetch(`/certificado/configuracoes_evento/${eventoId}`)
-            .then(response => response.json())
+          const urlConfig = `${URL_CERTIFICADO_CONFIG_BASE}/${eventoId}`;
+          fetch(urlConfig)
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`Falha ao carregar configurações (${response.status})`);
+              }
+              const contentType = response.headers.get('content-type') || '';
+              if (!contentType.includes('application/json')) {
+                throw new Error('Resposta inválida ao carregar configurações.');
+              }
+              return response.json();
+            })
             .then(data => {
               if (data.success) {
                 document.getElementById('configLiberacao').innerHTML = data.liberacao_html;

@@ -114,22 +114,36 @@ def dashboard_cliente():
         oficinas = Oficina.query.options(joinedload(Oficina.inscritos)).filter_by(cliente_id=current_user.id).all()
         data['oficinas'] = oficinas
         data['total_oficinas'] = len(oficinas)
+        oficina_ids = [of.id for of in oficinas]
+
+        checkins_por_oficina = {}
+        if oficina_ids:
+            rows = (
+                db.session.query(Checkin.oficina_id, func.count(Checkin.id))
+                .filter(Checkin.oficina_id.in_(oficina_ids))
+                .group_by(Checkin.oficina_id)
+                .all()
+            )
+            checkins_por_oficina = {oficina_id: total for oficina_id, total in rows}
+        data['checkins_por_oficina'] = checkins_por_oficina
 
         total_vagas = 0
-        total_vagas = 0
         for of in oficinas:
-             # Fix: Use always the initial capacity defined, as requested by user.
-            if of.vagas:
-                total_vagas += of.vagas
+            if of.tipo_inscricao == "com_inscricao_com_limite":
+                total_vagas += of.vagas or 0
+            elif of.tipo_inscricao == "com_inscricao_sem_limite":
+                total_vagas += len(of.inscritos)
+            # sem_inscricao não soma vagas
         data['total_vagas'] = total_vagas
 
         total_inscricoes = Inscricao.query.join(Oficina).filter(
             (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
         ).count()
         data['total_inscricoes'] = total_inscricoes
-        data['percentual_adesao'] = (
+        percentual_adesao = (
             (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
         )
+        data['percentual_adesao'] = min(100, percentual_adesao)
 
         checkins_via_qr = (
             Checkin.query
