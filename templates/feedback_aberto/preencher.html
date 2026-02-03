@@ -1,252 +1,291 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html class="light" lang="pt-BR">
 
-{% block title %}Feedback Aberto{% endblock %}
-
-{% block styles %}
-{{ super() }}
-<style>
-    :root {
-        /* Paleta de Cores AppFiber (Tokens) */
-        --text-primary: #0F172A;
-        --text-secondary: #4E7597;
-        --text-muted: #94A3B8;
-        --text-on-brand: #FFFFFF;
-        
-        --surface-page: #F8FAFC;
-        --surface-card: rgba(255, 255, 255, 0.7);
-        --surface-section: #FFFFFF;
-        
-        --action-primary: #1E88E5;
-        --action-primary-hover: #1565C0;
-        
-        --border-default: #E2E8F0;
-        --border-focus: #1E88E5;
-        
-        --radius-lg: 0.5rem;   /* bootstrap default-ish */
-        --radius-xl: 1rem;
-        --radius-full: 9999px; /* Pill */
-        
-        --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        --shadow-button: 0 4px 6px -1px rgba(30, 136, 229, 0.2), 0 2px 4px -1px rgba(30, 136, 229, 0.1);
-    }
-
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Feedback Aberto - AppFiber</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#3b82f6",
+            "background-light": "#f8fafc",
+            "background-dark": "#0f172a",
+          },
+          fontFamily: {
+            display: ["Inter", "sans-serif"],
+          },
+          borderRadius: {
+            DEFAULT: "0.5rem",
+          },
+        },
+      },
+    };
+  </script>
+  <style>
     body {
-        background-color: var(--surface-page);
-        color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
     }
 
-    .appfiber-card {
-        background: var(--surface-card);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-card);
+    .tile-radio:checked+label {
+      border-color: #3b82f6;
+      background-color: rgba(59, 130, 246, 0.05);
+      color: #1d4ed8;
     }
 
-    .appfiber-title {
-        color: var(--text-primary);
-        font-weight: 700;
-        letter-spacing: -0.025em;
+    .tile-radio:checked+label .icon-check {
+      display: block;
     }
 
-    .appfiber-subtitle {
-        color: var(--text-secondary);
+    .progress-fill {
+      transition: width 0.3s ease-in-out;
     }
+  </style>
+</head>
 
-    .form-control, .form-select {
-        background-color: var(--surface-section);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        color: var(--text-primary);
-        padding: 0.75rem 1rem;
-    }
+<body
+  class="bg-background-light dark:bg-background-dark min-h-screen text-slate-800 dark:text-slate-200 transition-colors duration-200">
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="text-2xl font-bold flex items-center">
+          <span class="text-blue-600">App</span><span class="text-slate-900 dark:text-white">Fiber</span>
+        </div>
+      </div>
+      {% if current_user.is_authenticated %}
+      <nav class="hidden md:flex items-center gap-6">
+        <a class="px-4 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+          href="#">Revisores</a>
+        <a class="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary transition"
+          href="{{ url_for('dashboard_routes.dashboard') }}">
+          <span class="material-icons-outlined text-lg">dashboard</span> Dashboard
+        </a>
+        <a class="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary transition"
+          href="#">
+          <span class="material-icons-outlined text-lg">event</span> Meus Eventos
+        </a>
+        <a class="flex items-center gap-1 text-sm font-medium text-red-500 hover:text-red-600 transition"
+          href="{{ url_for('auth_routes.logout') }}">
+          <span class="material-icons-outlined text-lg">logout</span> Sair
+        </a>
+      </nav>
+      {% endif %}
+      <button class="md:hidden text-slate-600 dark:text-slate-400">
+        <span class="material-icons-outlined">menu</span>
+      </button>
+    </div>
+  </header>
+  <main class="max-w-3xl mx-auto px-4 py-12">
+    <!-- Progress Bar (Visual Only) -->
+    <div class="mb-8">
+      <div
+        class="flex justify-between text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+        <span>Progresso do Formulário</span>
+        <span>0% Completo</span>
+      </div>
+      <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+        <div class="bg-primary h-2 rounded-full progress-fill" style="width: 0%"></div>
+      </div>
+    </div>
 
-    .form-control:focus, .form-select:focus {
-        border-color: var(--border-focus);
-        box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.2); /* Ring externo */
-    }
-    
-    .form-control::placeholder {
-        color: var(--text-muted);
-    }
+    <div class="text-center mb-10">
+      <h1 class="text-4xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">Feedback Aberto</h1>
+      <p class="text-xl text-primary font-medium mb-1">{{ dia.titulo or 'Sua opinião é importante' }}</p>
+      <div class="flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
+        <span class="material-icons-outlined text-sm">calendar_today</span>
+        <span class="text-sm font-medium">{{ dia.data.strftime('%d/%m/%Y') }}</span>
+      </div>
+    </div>
 
-    .form-label {
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 0.95rem;
-    }
+    <form method="POST" class="space-y-8">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    .form-check-input:checked {
-        background-color: var(--action-primary);
-        border-color: var(--action-primary);
-    }
-
-    .btn-appfiber-primary {
-        background-color: var(--action-primary);
-        color: var(--text-on-brand);
-        border-radius: var(--radius-full);
-        box-shadow: var(--shadow-button);
-        font-weight: 600;
-        padding: 0.75rem 2rem;
-        border: none;
-        transition: all 0.2s ease;
-    }
-
-    .btn-appfiber-primary:hover {
-        background-color: var(--action-primary-hover);
-        color: var(--text-on-brand);
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(30, 136, 229, 0.3);
-    }
-    
-    .text-muted-appfiber {
-        color: var(--text-muted) !important;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="container py-5">
-  <div class="row justify-content-center">
-    <div class="col-lg-8">
-      <div class="card appfiber-card border-0">
-        <div class="card-body p-4 p-md-5">
-            
-          <div class="text-center mb-5">
-            <h2 class="appfiber-title mb-2">Feedback Aberto</h2>
-            <p class="appfiber-subtitle h5 fw-normal">{{ dia.titulo or 'Sua opinião é importante para nós' }}</p>
-            <div class="text-muted-appfiber mt-2 small">
-                <i class="bi bi-calendar-event me-1"></i>{{ dia.data.strftime('%d/%m/%Y') }}
-            </div>
+      <!-- Identificação -->
+      {% if dia.exigir_nome or dia.exigir_email or dia.exigir_telefone or dia.exigir_identificador %}
+      <section
+        class="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-start gap-2">
+          <span class="material-icons-outlined text-primary">badge</span>
+          Identificação
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {% if dia.exigir_nome %}
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome Completo <span
+                class="text-red-500">*</span></label>
+            <input type="text" name="nome" required
+              class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 focus:ring-primary focus:border-primary">
           </div>
+          {% endif %}
 
-          <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            
-            {% if dia.exigir_nome or dia.exigir_email or dia.exigir_telefone or dia.exigir_identificador %}
-            <div class="mb-5">
-              <h6 class="text-uppercase text-secondary fw-bold small mb-3 letter-spacing-1">Identificação</h6>
-              <div class="row g-3">
-                {% if dia.exigir_nome %}
-                <div class="col-md-12">
-                  <label class="form-label">Nome Completo</label>
-                  <input type="text" class="form-control" name="nome" placeholder="Seu nome completo" required>
-                </div>
-                {% endif %}
-                
-                {% if dia.exigir_email %}
-                <div class="col-md-6">
-                  <label class="form-label">Email</label>
-                  <input type="email" class="form-control" name="email" placeholder="nome@exemplo.com" required>
-                </div>
-                {% endif %}
-                
-                {% if dia.exigir_telefone %}
-                <div class="col-md-6">
-                  <label class="form-label">Telefone</label>
-                  <input type="text" class="form-control phone-mask" name="telefone" placeholder="(00) 00000-0000" required>
-                </div>
-                {% endif %}
-                
-                {% if dia.exigir_identificador %}
-                <div class="col-md-12">
-                  <label class="form-label">Matrícula / ID</label>
-                  <input type="text" class="form-control" name="identificador" placeholder="Identificação interna" required>
-                </div>
-                {% endif %}
-              </div>
-            </div>
-            <hr class="border-secondary opacity-10 my-4">
-            {% endif %}
+          {% if dia.exigir_email %}
+          <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email <span
+                class="text-red-500">*</span></label>
+            <input type="email" name="email" required
+              class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 focus:ring-primary focus:border-primary">
+          </div>
+          {% endif %}
 
-            <div class="questions-container">
-            {% for item in perguntas %}
-              {% set pergunta = item.obj %}
-              <div class="mb-4">
-                <label class="form-label d-block mb-2">{{ pergunta.titulo }} {% if pergunta.obrigatoria %}<span class="text-danger">*</span>{% endif %}</label>
-                
-                {% if pergunta.descricao %}
-                  <p class="text-muted-appfiber small mb-3">{{ pergunta.descricao }}</p>
-                {% endif %}
+          {% if dia.exigir_telefone %}
+          <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Telefone <span
+                class="text-red-500">*</span></label>
+            <input type="text" name="telefone" required
+              class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 focus:ring-primary focus:border-primary">
+          </div>
+          {% endif %}
 
-                {% if pergunta.tipo.value == 'texto_livre' %}
-                  <textarea class="form-control" name="q_{{ pergunta.id }}" rows="4" placeholder="Digite sua resposta aqui..." {% if pergunta.obrigatoria %}required{% endif %}></textarea>
-                
-                {% elif pergunta.tipo.value == 'escala_numerica' %}
-                  <div class="d-flex align-items-center gap-2">
-                    <input type="number" class="form-control" name="q_{{ pergunta.id }}" min="1" max="10" placeholder="1-10" style="max-width: 100px;" {% if pergunta.obrigatoria %}required{% endif %}>
-                    <small class="text-muted-appfiber">de 10</small>
-                  </div>
-                
-                {% elif pergunta.tipo.value == 'multipla_escolha' %}
-                  <div class="bg-white bg-opacity-50 p-3 rounded-3 border border-light">
-                    {% if item.opcoes %}
-                        {% for opcao in item.opcoes %}
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_{{ loop.index }}" value="{{ opcao }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                            <label class="form-check-label" for="q_{{ pergunta.id }}_{{ loop.index }}">{{ opcao }}</label>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <input type="text" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                    {% endif %}
-                  </div>
+          {% if dia.exigir_identificador %}
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Matrícula / ID <span
+                class="text-red-500">*</span></label>
+            <input type="text" name="identificador" required
+              class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 focus:ring-primary focus:border-primary">
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
 
-                {% elif pergunta.tipo.value == 'multipla_escolha_multipla' %}
-                  <div class="bg-white bg-opacity-50 p-3 rounded-3 border border-light">
-                    {% if item.opcoes %}
-                        {% for opcao in item.opcoes %}
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_{{ loop.index }}" value="{{ opcao }}">
-                            <label class="form-check-label" for="q_{{ pergunta.id }}_{{ loop.index }}">{{ opcao }}</label>
-                        </div>
-                        {% endfor %}
-                        {% if pergunta.obrigatoria %}
-                        <div class="form-text text-muted-appfiber mt-2"><i class="bi bi-info-circle me-1"></i>Selecione pelo menos uma opção</div>
-                        {% endif %}
-                    {% else %}
-                        <input type="text" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                    {% endif %}
-                  </div>
+      <!-- Perguntas -->
+      {% for item in perguntas %}
+      {% set pergunta = item.obj %}
+      <section
+        class="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-start gap-2">
+          <span
+            class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 mt-0.5">{{
+            loop.index }}</span>
+          {{ pergunta.titulo }} {% if pergunta.obrigatoria %}<span class="text-red-500 ml-1">*</span>{% endif %}
+        </h2>
 
-                {% elif pergunta.tipo.value == 'sim_nao' %}
-                  <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_sim" value="Sim" {% if pergunta.obrigatoria %}required{% endif %}>
-                    <label class="btn btn-outline-primary" for="q_{{ pergunta.id }}_sim">Sim</label>
+        {% if pergunta.descricao %}
+        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">{{ pergunta.descricao }}</p>
+        {% endif %}
 
-                    <input type="radio" class="btn-check" name="q_{{ pergunta.id }}" id="q_{{ pergunta.id }}_nao" value="Nao" {% if pergunta.obrigatoria %}required{% endif %}>
-                    <label class="btn btn-outline-primary" for="q_{{ pergunta.id }}_nao">Não</label>
-                  </div>
+        <!-- TIPO: Múltipla Escolha (Radio) -->
+        {% if pergunta.tipo.value == 'multipla_escolha' and item.opcoes %}
+        <div class="grid grid-cols-1 gap-3">
+          {% for opcao in item.opcoes %}
+          <div class="relative">
+            <input class="hidden tile-radio" id="q_{{ pergunta.id }}_{{ loop.index }}" name="q_{{ pergunta.id }}"
+              type="radio" value="{{ opcao }}" {% if pergunta.obrigatoria %}required{% endif %}>
+            <label
+              class="flex items-center p-4 border-2 border-slate-100 dark:border-slate-800 rounded-xl cursor-pointer hover:border-blue-200 dark:hover:border-blue-800 transition-all text-sm font-medium text-slate-700 dark:text-slate-300"
+              for="q_{{ pergunta.id }}_{{ loop.index }}">
+              <span class="flex-1">{{ opcao }}</span>
+              <span class="material-icons-outlined text-primary text-xl hidden icon-check">check_circle</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
 
-                {% elif pergunta.tipo.value == 'email' %}
-                  <input type="email" class="form-control" name="q_{{ pergunta.id }}" placeholder="ex: nome@email.com" {% if pergunta.obrigatoria %}required{% endif %}>
-                
-                {% elif pergunta.tipo.value == 'telefone' %}
-                  <input type="text" class="form-control" name="q_{{ pergunta.id }}" placeholder="(00) 00000-0000" {% if pergunta.obrigatoria %}required{% endif %}>
-                
-                {% elif pergunta.tipo.value == 'data' %}
-                  <input type="date" class="form-control" name="q_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                
-                {% elif pergunta.tipo.value == 'numero' %}
-                  <input type="number" class="form-control" name="q_{{ pergunta.id }}" placeholder="0" {% if pergunta.obrigatoria %}required{% endif %}>
-                
-                {% endif %}
-              </div>
-            {% endfor %}
-            </div>
+        <!-- TIPO: Múltipla Escolha Multipla (Checkbox) -->
+        {% elif pergunta.tipo.value == 'multipla_escolha_multipla' and item.opcoes %}
+        <div class="space-y-3">
+          {% for opcao in item.opcoes %}
+          <div class="flex items-center">
+            <input
+              class="w-5 h-5 text-primary border-slate-300 rounded focus:ring-primary dark:bg-slate-800 dark:border-slate-700"
+              id="q_{{ pergunta.id }}_{{ loop.index }}" name="q_{{ pergunta.id }}" value="{{ opcao }}" type="checkbox">
+            <label class="ml-3 text-slate-700 dark:text-slate-300 font-medium cursor-pointer"
+              for="q_{{ pergunta.id }}_{{ loop.index }}">{{ opcao }}</label>
+          </div>
+          {% endfor %}
+        </div>
 
-            <div class="d-grid gap-2 mt-5">
-              <button class="btn btn-appfiber-primary py-3" type="submit">
-                Enviar Feedback
-                <i class="bi bi-send-fill ms-2"></i>
-              </button>
-            </div>
-            
-          </form>
+        <!-- TIPO: Sim/Não -->
+        {% elif pergunta.tipo.value == 'sim_nao' %}
+        <div class="grid grid-cols-2 gap-4">
+          <div class="relative">
+            <input class="hidden tile-radio" id="q_{{ pergunta.id }}_sim" name="q_{{ pergunta.id }}" type="radio"
+              value="Sim" {% if pergunta.obrigatoria %}required{% endif %}>
+            <label
+              class="flex justify-center p-4 border-2 border-slate-100 dark:border-slate-800 rounded-xl cursor-pointer hover:border-blue-200 dark:hover:border-blue-800 transition-all font-medium text-slate-700 dark:text-slate-300"
+              for="q_{{ pergunta.id }}_sim">
+              Sim
+            </label>
+          </div>
+          <div class="relative">
+            <input class="hidden tile-radio" id="q_{{ pergunta.id }}_nao" name="q_{{ pergunta.id }}" type="radio"
+              value="Nao" {% if pergunta.obrigatoria %}required{% endif %}>
+            <label
+              class="flex justify-center p-4 border-2 border-slate-100 dark:border-slate-800 rounded-xl cursor-pointer hover:border-blue-200 dark:hover:border-blue-800 transition-all font-medium text-slate-700 dark:text-slate-300"
+              for="q_{{ pergunta.id }}_nao">
+              Não
+            </label>
+          </div>
+        </div>
+
+        <!-- TIPO: Texto Livre -->
+        {% elif pergunta.tipo.value == 'texto_livre' %}
+        <textarea name="q_{{ pergunta.id }}" rows="4"
+          class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 focus:ring-primary focus:border-primary p-3"
+          placeholder="Digite sua resposta..." {% if pergunta.obrigatoria %}required{% endif %}></textarea>
+
+        <!-- TIPO: Numérico / Escala -->
+        {% elif pergunta.tipo.value == 'escala_numerica' or pergunta.tipo.value == 'numero' %}
+        <input type="number" name="q_{{ pergunta.id }}"
+          class="rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 focus:ring-primary focus:border-primary p-3 w-32"
+          placeholder="0" {% if pergunta.obrigatoria %}required{% endif %}>
+
+        <!-- Outros tipos -->
+        {% else %}
+        <input type="text" name="q_{{ pergunta.id }}"
+          class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 focus:ring-primary focus:border-primary p-3"
+          {% if pergunta.obrigatoria %}required{% endif %}>
+        {% endif %}
+
+      </section>
+      {% endfor %}
+
+      <button
+        class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-2xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 transform active:scale-[0.98]"
+        type="submit">
+        Enviar Feedback <span class="material-icons-outlined">send</span>
+      </button>
+    </form>
+  </main>
+
+  <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-20 py-12">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
+        <div class="lg:col-span-2">
+          <div class="text-2xl font-bold flex items-center mb-4">
+            <span class="material-icons-outlined text-primary mr-1">settings</span>
+            <span class="text-blue-600">App</span><span class="text-slate-900 dark:text-white">Fiber</span>
+          </div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6 max-w-sm">
+            Transformando a gestão educacional com tecnologia inovadora.
+          </p>
+        </div>
+      </div>
+      <div
+        class="pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
+        <p>© 2023–2026 AppFiber.</p>
+        <div class="flex gap-4">
+          <button class="flex items-center gap-2" onclick="document.documentElement.classList.toggle('dark')">
+            <span class="material-icons-outlined">dark_mode</span> Alterar Tema
+          </button>
         </div>
       </div>
     </div>
-  </div>
-</div>
-{% endblock %}
+  </footer>
+
+  <button
+    class="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-xl flex items-center justify-center text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 z-50"
+    onclick="document.documentElement.classList.toggle('dark')">
+    <span class="material-icons-outlined">dark_mode</span>
+  </button>
+
+</body>
+
+</html>
