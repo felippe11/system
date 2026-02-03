@@ -4072,10 +4072,6 @@ def gerar_placas_oficinas_pdf(evento_id):
         download_name=f"placas_oficinas_{evento_id}.pdf",
         mimetype='application/pdf'
     )
-   # Pinos do fichário
-        c.rect(x + size*0.2, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
-        c.rect(x + size*0.7, y + size*0.7, size*0.1, size*0.2, fill=1, stroke=0)
-
     def draw_pin_icon(c, x, y, size):
         c.setFillColor(COLORS['primary_light'])
         c.setStrokeColor(COLORS['primary_light'])
