@@ -3,12 +3,23 @@
 from datetime import datetime
 import json
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+)
 from flask_login import current_user
+from werkzeug.security import check_password_hash
+from urllib.parse import urlparse
 
 from extensions import db
 from utils.auth import cliente_required
 from models import (
+    Configuracao,
     FeedbackAbertoPergunta,
     FeedbackAbertoDia,
     FeedbackAbertoEnvio,
@@ -32,6 +43,41 @@ def _parse_opcoes(pergunta: FeedbackAbertoPergunta):
 
 def _normalizar_selecao_multipla(valores: list[str]):
     return [valor.strip() for valor in valores if valor.strip()]
+
+
+def _obter_configuracao():
+    return Configuracao.query.first()
+
+
+def _resultados_autorizados():
+    configuracao = _obter_configuracao()
+    senha_hash = getattr(configuracao, "senha_feedback_aberto_hash", None)
+    if not senha_hash:
+        return False
+    return session.get("feedback_aberto_resultados_autorizado") == senha_hash
+
+
+def _normalizar_next(next_url):
+    if not next_url:
+        return None
+    parsed = urlparse(next_url)
+    if parsed.scheme or parsed.netloc:
+        return None
+    return next_url
+
+
+def _exigir_senha_resultados():
+    if _resultados_autorizados():
+        return None
+    next_url = request.full_path or request.path
+    if next_url.endswith("?"):
+        next_url = request.path
+    return redirect(
+        url_for(
+            "open_feedback_routes.feedback_aberto_resultados_senha",
+            next=next_url,
+        )
+    )
 
 
 @open_feedback_routes.route("/feedback-aberto")
@@ -417,6 +463,10 @@ def preencher_feedback_aberto(token: str):
 @open_feedback_routes.route("/feedback-aberto/resultados")
 @cliente_required
 def feedback_aberto_resultados():
+    resposta_senha = _exigir_senha_resultados()
+    if resposta_senha:
+        return resposta_senha
+
     data_inicio = request.args.get("inicio")
     data_fim = request.args.get("fim")
     dias = (
@@ -442,6 +492,10 @@ def feedback_aberto_resultados():
 @open_feedback_routes.route("/feedback-aberto/resultados/<int:dia_id>")
 @cliente_required
 def feedback_aberto_resultados_dia(dia_id: int):
+    resposta_senha = _exigir_senha_resultados()
+    if resposta_senha:
+        return resposta_senha
+
     dia = FeedbackAbertoDia.query.get_or_404(dia_id)
     if dia.cliente_id != current_user.id:
         flash("Acesso negado.", "danger")
@@ -520,6 +574,10 @@ def feedback_aberto_resultados_dia(dia_id: int):
 )
 @cliente_required
 def exportar_feedback_aberto_csv(dia_id: int):
+    resposta_senha = _exigir_senha_resultados()
+    if resposta_senha:
+        return resposta_senha
+
     dia = FeedbackAbertoDia.query.get_or_404(dia_id)
     if dia.cliente_id != current_user.id:
         flash("Acesso negado.", "danger")
@@ -608,4 +666,38 @@ def exportar_feedback_aberto_csv(dia_id: int):
             "Content-Type": "text/csv; charset=utf-8",
             "Content-Disposition": f"attachment; filename={nome_arquivo}",
         },
+    )
+
+
+@open_feedback_routes.route(
+    "/feedback-aberto/resultados/senha",
+    methods=["GET", "POST"],
+)
+@cliente_required
+def feedback_aberto_resultados_senha():
+    configuracao = _obter_configuracao()
+    senha_hash = getattr(configuracao, "senha_feedback_aberto_hash", None)
+    if not senha_hash:
+        return render_template("feedback_aberto/senha_resultados.html", senha_configurada=False)
+
+    next_url = (
+        request.args.get("next")
+        or request.form.get("next")
+        or url_for("open_feedback_routes.feedback_aberto_resultados")
+    )
+    next_url = _normalizar_next(next_url) or url_for(
+        "open_feedback_routes.feedback_aberto_resultados"
+    )
+
+    if request.method == "POST":
+        senha = (request.form.get("senha") or "").strip()
+        if senha and check_password_hash(senha_hash, senha):
+            session["feedback_aberto_resultados_autorizado"] = senha_hash
+            return redirect(next_url)
+        flash("Senha incorreta.", "danger")
+
+    return render_template(
+        "feedback_aberto/senha_resultados.html",
+        senha_configurada=True,
+        next_url=next_url,
     )

@@ -11,6 +11,7 @@ from flask import (
     jsonify
 )
 from flask_login import login_required, current_user, login_user
+from werkzeug.security import generate_password_hash
 from utils.taxa_service import calcular_taxas_clientes
 from sqlalchemy import func
 from services.template_service import TemplateService
@@ -366,13 +367,50 @@ def dashboard_superadmin():
     if not current_app.config.get("LOGIN_DISABLED") and getattr(current_user, "tipo", None) != "superadmin":
         abort(403)
 
-    from models import Cliente
+    from models import Cliente, Configuracao
     clientes = Cliente.query.all()
+    configuracao = Configuracao.query.first()
 
     return render_template(
         "dashboard/dashboard_superadmin.html",
         clientes=clientes,
+        configuracao=configuracao,
     )
+
+
+@dashboard_routes.route("/dashboard_superadmin/feedback_aberto_senha", methods=["POST"])
+@login_required
+def atualizar_senha_feedback_aberto():
+    """Define a senha global para acesso aos resultados do feedback aberto."""
+    if not current_app.config.get("LOGIN_DISABLED") and getattr(current_user, "tipo", None) != "superadmin":
+        abort(403)
+
+    from models import Configuracao
+    from extensions import db
+
+    senha = (request.form.get("senha_feedback_aberto") or "").strip()
+    confirmar = (request.form.get("confirmar_senha_feedback_aberto") or "").strip()
+
+    if not senha:
+        flash("Informe uma senha para o feedback aberto.", "warning")
+        return redirect(url_for("dashboard_routes.dashboard_superadmin"))
+
+    if senha != confirmar:
+        flash("As senhas não coincidem.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard_superadmin"))
+
+    configuracao = Configuracao.query.first()
+    if not configuracao:
+        configuracao = Configuracao()
+        db.session.add(configuracao)
+
+    configuracao.senha_feedback_aberto_hash = generate_password_hash(
+        senha, method="pbkdf2:sha256"
+    )
+    db.session.commit()
+
+    flash("Senha do feedback aberto atualizada com sucesso.", "success")
+    return redirect(url_for("dashboard_routes.dashboard_superadmin"))
 
 
 @dashboard_routes.route('/inicializar_templates/<int:cliente_id>', methods=['POST'])

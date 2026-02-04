@@ -12,6 +12,7 @@ class Configuracao(db.Model):
     permitir_checkin_global = db.Column(db.Boolean, default=False)
     habilitar_feedback = db.Column(db.Boolean, default=False)
     habilitar_certificado_individual = db.Column(db.Boolean, default=False)
+    senha_feedback_aberto_hash = db.Column(db.String(255), nullable=True)
 
     taxa_percentual_inscricao = db.Column(db.Numeric(5, 2), default=0)
 
