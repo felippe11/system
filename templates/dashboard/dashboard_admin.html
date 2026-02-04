@@ -7,27 +7,34 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4">
-  <!-- Header Section -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h2 fw-bold text-primary">
-      <i class="bi bi-speedometer2 me-2"></i>Painel Administrativo
-    </h1>
-    <div class="d-flex gap-2">
-      <a href="{{ url_for('dashboard_routes.ordenar_atividades_admin') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-sort-numeric-down me-2"></i>Ordenar Atividades
-      </a>
-      <a href="{{ url_for('cliente_routes.cadastrar_cliente') }}" class="btn btn-success">
-        <i class="bi bi-plus-circle me-2"></i>Novo Cliente
-      </a>
+<div class="container-fluid px-4 py-4 admin-page">
+  <section class="admin-hero mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-4">
+      <div>
+        <span class="hero-kicker">
+          <i class="bi bi-shield-check"></i> Painel Master
+        </span>
+        <h1 class="display-6 fw-bold mt-3 mb-2">Painel Administrativo</h1>
+        <p class="mb-0 text-white-50">
+          Visão macro do sistema, operações e atalhos estratégicos para gestão rápida.
+        </p>
+      </div>
+      <div class="quick-actions">
+        <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#modalTaxa">
+          <i class="bi bi-cash-coin me-2"></i>Taxa do Sistema
+        </button>
+        <a href="{{ url_for('dashboard_routes.ordenar_atividades_admin') }}" class="btn btn-outline-light">
+          <i class="bi bi-sort-numeric-down me-2"></i>Ordenar Atividades
+        </a>
+        <a href="{{ url_for('cliente_routes.cadastrar_cliente') }}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-2"></i>Novo Cliente
+        </a>
+      </div>
     </div>
-  </div>
-  <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTaxa">
-    <i class="bi bi-cash-coin"></i> Taxa do sistema
-  </button>
+  </section>
 
   <!-- Filtros por estado e cidade -->
-  <form method="GET" class="mt-4 mb-4">
+  <form method="GET" class="filters-card mb-4">
     <div class="row g-3 align-items-end">
       <div class="col-lg-4 col-md-6">
         <label for="estadoSelect" class="form-label">Filtrar por Estado</label>
@@ -49,8 +56,8 @@
         </select>
       </div>
       <div class="col-lg-4 col-md-12 d-flex gap-2">
-        <button type="submit" class="btn btn-primary w-100">
-          <i class="bi bi-funnel-fill me-1"></i> Aplicar filtros
+        <button type="submit" class="btn btn-action-primary w-100">
+          <i class="bi bi-funnel-fill me-1"></i>Aplicar filtros
         </button>
         {% if estado_filter or cidade_filter %}
         <a href="{{ url_for('dashboard_routes.dashboard_admin') }}" class="btn btn-outline-secondary">
@@ -61,76 +68,51 @@
     </div>
   </form>
 
-
-
   <!-- Statistics Cards -->
-  <div class="row g-4 mb-4">
-    <div class="col">
-      <div class="card stat-card bg-success-gradient text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-subtitle mb-2">Eventos</h5>
-              <h2 class="card-title mb-0">{{ total_eventos }}</h2>
-            </div>
-            <i class="bi bi-calendar-event fs-1 opacity-25"></i>
-          </div>
+  <div class="stat-grid mb-4">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-title">Eventos</div>
+          <div class="stat-value">{{ total_eventos }}</div>
         </div>
+        <span class="stat-pill pill-green"><i class="bi bi-calendar-event"></i></span>
       </div>
     </div>
-    <div class="col">
-      <div class="card stat-card bg-primary-gradient text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-subtitle mb-2">Oficinas</h5>
-              <h2 class="card-title mb-0">{{ total_oficinas }}</h2>
-            </div>
-            <i class="bi bi-journal-bookmark fs-1 opacity-25"></i>
-          </div>
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-title">Oficinas</div>
+          <div class="stat-value">{{ total_oficinas }}</div>
         </div>
+        <span class="stat-pill pill-cyan"><i class="bi bi-journal-bookmark"></i></span>
       </div>
     </div>
-
-    <div class="col">
-      <div class="card stat-card bg-info-gradient text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-subtitle mb-2">Vagas</h5>
-              <h2 class="card-title mb-0">{{ total_inscricoes }}</h2>
-            </div>
-            <i class="bi bi-people fs-1 opacity-25"></i>
-          </div>
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-title">Vagas</div>
+          <div class="stat-value">{{ total_inscricoes }}</div>
         </div>
+        <span class="stat-pill pill-amber"><i class="bi bi-people"></i></span>
       </div>
     </div>
-
-    <div class="col">
-      <div class="card stat-card bg-warning-gradient text-dark">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-subtitle mb-2">Adesão</h5>
-              <h2 class="card-title mb-0">{{ "%.2f"|format(percentual_adesao) }}%</h2>
-            </div>
-            <i class="bi bi-graph-up fs-1 opacity-25"></i>
-          </div>
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-title">Adesão</div>
+          <div class="stat-value">{{ "%.2f"|format(percentual_adesao) }}%</div>
         </div>
+        <span class="stat-pill pill-rose"><i class="bi bi-graph-up"></i></span>
       </div>
     </div>
-
-    <div class="col">
-      <div class="card stat-card bg-danger-gradient text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-subtitle mb-2">Clientes Ativos</h5>
-              <h2 class="card-title mb-0">{{ clientes|length }}</h2>
-            </div>
-            <i class="bi bi-building fs-1 opacity-25"></i>
-          </div>
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-title">Clientes Ativos</div>
+          <div class="stat-value">{{ clientes|length }}</div>
         </div>
+        <span class="stat-pill pill-green"><i class="bi bi-building"></i></span>
       </div>
     </div>
   </div>
@@ -138,8 +120,8 @@
   <!-- Main Content Tabs -->
   <div class="row">
     <div class="col-12">
-      <div class="card shadow">
-        <div class="card-body p-0">
+      <div class="data-card">
+        <div class="p-4 pb-0">
           <ul class="nav nav-tabs nav-justified" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="clientes-tab" data-bs-toggle="tab" data-bs-target="#clientes" type="button">
@@ -166,7 +148,7 @@
             </li>
           </ul>
 
-          <div class="tab-content p-4 show active">
+          <div class="tab-content p-4 pt-3 show active">
             <!-- Clientes Tab -->
             <div class="tab-pane fade show active" id="clientes">
               <div class="row">
