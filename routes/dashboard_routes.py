@@ -382,7 +382,9 @@ def dashboard_superadmin():
 @login_required
 def atualizar_senha_feedback_aberto():
     """Define a senha global para acesso aos resultados do feedback aberto."""
-    if not current_app.config.get("LOGIN_DISABLED") and getattr(current_user, "tipo", None) != "superadmin":
+    # Permite admin ou superadmin
+    user_type = getattr(current_user, "tipo", None)
+    if not current_app.config.get("LOGIN_DISABLED") and user_type not in ["superadmin", "admin"]:
         abort(403)
 
     from models import Configuracao
@@ -391,13 +393,18 @@ def atualizar_senha_feedback_aberto():
     senha = (request.form.get("senha_feedback_aberto") or "").strip()
     confirmar = (request.form.get("confirmar_senha_feedback_aberto") or "").strip()
 
+    # Define para onde redirecionar baseado no tipo de usuário
+    redirect_endpoint = endpoints.DASHBOARD_SUPERADMIN
+    if user_type == "admin":
+        redirect_endpoint = endpoints.DASHBOARD_ADMIN
+
     if not senha:
         flash("Informe uma senha para o feedback aberto.", "warning")
-        return redirect(url_for("dashboard_routes.dashboard_superadmin"))
+        return redirect(url_for(redirect_endpoint))
 
     if senha != confirmar:
         flash("As senhas não coincidem.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard_superadmin"))
+        return redirect(url_for(redirect_endpoint))
 
     configuracao = Configuracao.query.first()
     if not configuracao:
@@ -410,7 +417,7 @@ def atualizar_senha_feedback_aberto():
     db.session.commit()
 
     flash("Senha do feedback aberto atualizada com sucesso.", "success")
-    return redirect(url_for("dashboard_routes.dashboard_superadmin"))
+    return redirect(url_for(redirect_endpoint))
 
 
 @dashboard_routes.route('/inicializar_templates/<int:cliente_id>', methods=['POST'])

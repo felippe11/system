@@ -34,7 +34,7 @@
         <select id="estadoSelect" name="estado" class="form-select">
           <option value="">Todos os Estados</option>
           {% for uf in estados_opcoes %}
-            <option value="{{ uf }}" {% if uf == estado_filter %}selected{% endif %}>{{ uf }}</option>
+          <option value="{{ uf }}" {% if uf==estado_filter %}selected{% endif %}>{{ uf }}</option>
           {% endfor %}
         </select>
       </div>
@@ -43,7 +43,8 @@
         <select id="cidadeSelect" name="cidade" class="form-select">
           <option value="">Todas as Cidades</option>
           {% for cidade in cidades_opcoes %}
-            <option value="{{ cidade }}" {% if cidade.upper() == cidade_filter.upper() %}selected{% endif %}>{{ cidade }}</option>
+          <option value="{{ cidade }}" {% if cidade.upper()==cidade_filter.upper() %}selected{% endif %}>{{ cidade }}
+          </option>
           {% endfor %}
         </select>
       </div>
@@ -59,24 +60,24 @@
       </div>
     </div>
   </form>
-  
-  
+
+
 
   <!-- Statistics Cards -->
   <div class="row g-4 mb-4">
-      <div class="col">
-        <div class="card stat-card bg-success-gradient text-white">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h5 class="card-subtitle mb-2">Eventos</h5>
-                <h2 class="card-title mb-0">{{ total_eventos }}</h2>
-              </div>
-              <i class="bi bi-calendar-event fs-1 opacity-25"></i>
+    <div class="col">
+      <div class="card stat-card bg-success-gradient text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-subtitle mb-2">Eventos</h5>
+              <h2 class="card-title mb-0">{{ total_eventos }}</h2>
             </div>
+            <i class="bi bi-calendar-event fs-1 opacity-25"></i>
           </div>
         </div>
       </div>
+    </div>
     <div class="col">
       <div class="card stat-card bg-primary-gradient text-white">
         <div class="card-body">
@@ -90,7 +91,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="col">
       <div class="card stat-card bg-info-gradient text-white">
         <div class="card-body">
@@ -141,26 +142,25 @@
         <div class="card-body p-0">
           <ul class="nav nav-tabs nav-justified" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="clientes-tab" data-bs-toggle="tab"
-                      data-bs-target="#clientes" type="button">
+              <button class="nav-link" id="clientes-tab" data-bs-toggle="tab" data-bs-target="#clientes" type="button">
                 <i class="bi bi-people me-1"></i>Clientes
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="propostas-tab" data-bs-toggle="tab"
-                      data-bs-target="#propostas" type="button">
+              <button class="nav-link" id="propostas-tab" data-bs-toggle="tab" data-bs-target="#propostas"
+                type="button">
                 <i class="bi bi-envelope me-1"></i>Propostas
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="financeiro-tab" data-bs-toggle="tab"
-                      data-bs-target="#financeiro" type="button">
+              <button class="nav-link" id="financeiro-tab" data-bs-toggle="tab" data-bs-target="#financeiro"
+                type="button">
                 <i class="bi bi-graph-up me-1"></i>Financeiro
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="gerenciar-tab" data-bs-toggle="tab"
-                      data-bs-target="#gerenciar" type="button">
+              <button class="nav-link" id="gerenciar-tab" data-bs-toggle="tab" data-bs-target="#gerenciar"
+                type="button">
                 <i class="bi bi-gear me-1"></i>Gerenciar
               </button>
             </li>
@@ -175,25 +175,26 @@
                   <div class="table-responsive">
                     <form id="clientesForm" method="POST">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <table class="table table-hover align-middle">
-                      <thead class="table-light">
-                        <tr>
-                          <th class="text-center">
-                            <input class="form-check-input" type="checkbox" id="selecionarTodosClientes">
-                          </th>
-                          <th>Nome</th>
-                          <th>E-mail</th>
-                          <th class="text-center">Status</th>
-                          <th class="text-center">Taxa</th>
-                          <th>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {% if clientes %}
+                      <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                          <tr>
+                            <th class="text-center">
+                              <input class="form-check-input" type="checkbox" id="selecionarTodosClientes">
+                            </th>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Taxa</th>
+                            <th>Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% if clientes %}
                           {% for cliente in clientes %}
                           <tr>
                             <td class="text-center">
-                              <input class="form-check-input cliente-checkbox" type="checkbox" name="cliente_ids" value="{{ cliente.id }}">
+                              <input class="form-check-input cliente-checkbox" type="checkbox" name="cliente_ids"
+                                value="{{ cliente.id }}">
                             </td>
                             <td>{{ cliente.nome }}</td>
                             <td>{{ cliente.email }}</td>
@@ -204,66 +205,72 @@
                             </td>
                             <td class="text-center">
                               {% if cliente.configuracao and cliente.configuracao.taxa_diferenciada is not none %}
-                                <span class="badge bg-info" title="Taxa específica para este cliente">
-                                  {{ cliente.configuracao.taxa_diferenciada }}%
-                                </span>
+                              <span class="badge bg-info" title="Taxa específica para este cliente">
+                                {{ cliente.configuracao.taxa_diferenciada }}%
+                              </span>
                               {% else %}
-                                <span class="badge bg-secondary">Padrão</span>
+                              <span class="badge bg-secondary">Padrão</span>
                               {% endif %}
                             </td>
                             <td>
                               <div class="d-flex gap-2">
-                                <a href="{{ url_for('dashboard_routes.login_as_cliente', cliente_id=cliente.id) }}" class="btn btn-sm btn-outline-primary" title="Acessar como cliente">
+                                <a href="{{ url_for('dashboard_routes.login_as_cliente', cliente_id=cliente.id) }}"
+                                  class="btn btn-sm btn-outline-primary" title="Acessar como cliente">
                                   <i class="bi bi-box-arrow-in-right"></i>
                                 </a>
-                                <a href="{{ url_for('cliente_routes.listar_usuarios', cliente_id=cliente.id) }}" class="btn btn-sm btn-outline-secondary" title="Listar usuários">
+                                <a href="{{ url_for('cliente_routes.listar_usuarios', cliente_id=cliente.id) }}"
+                                  class="btn btn-sm btn-outline-secondary" title="Listar usuários">
                                   <i class="bi bi-people"></i>
                                 </a>
                                 <!-- Botão Inicializar Templates -->
-                                <button class="btn btn-sm btn-outline-info" 
-                                        onclick="inicializarTemplates({{ cliente.id }}, '{{ cliente.nome }}')"
-                                        title="Inicializar templates pré-definidos">
+                                <button class="btn btn-sm btn-outline-info"
+                                  onclick="inicializarTemplates({{ cliente.id }}, '{{ cliente.nome }}')"
+                                  title="Inicializar templates pré-definidos">
                                   <i class="bi bi-file-earmark-plus"></i>
                                 </button>
                                 <!-- Botão de Editar -->
-                                <button class="btn btn-sm btn-outline-warning"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalEditarCliente"
-                                        data-id="{{ cliente.id }}"
-                                        data-nome="{{ cliente.nome }}"
-                                        data-email="{{ cliente.email }}"
-                                        data-limite-eventos="{{ cliente.configuracao.limite_eventos if cliente.configuracao else '' }}"
-                                        data-limite-inscritos="{{ cliente.configuracao.limite_inscritos if cliente.configuracao else '' }}"
-                                        data-limite-formularios="{{ cliente.configuracao.limite_formularios if cliente.configuracao else '' }}"
-                                        data-limite-revisores="{{ cliente.configuracao.limite_revisores if cliente.configuracao else '' }}">
+                                <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal"
+                                  data-bs-target="#modalEditarCliente" data-id="{{ cliente.id }}"
+                                  data-nome="{{ cliente.nome }}" data-email="{{ cliente.email }}"
+                                  data-limite-eventos="{{ cliente.configuracao.limite_eventos if cliente.configuracao else '' }}"
+                                  data-limite-inscritos="{{ cliente.configuracao.limite_inscritos if cliente.configuracao else '' }}"
+                                  data-limite-formularios="{{ cliente.configuracao.limite_formularios if cliente.configuracao else '' }}"
+                                  data-limite-revisores="{{ cliente.configuracao.limite_revisores if cliente.configuracao else '' }}">
                                   <i class="bi bi-pencil"></i>
                                 </button>
-                              
+
                                 <!-- Botão Ativar/Inativar -->
-                                <a href="{{ url_for('config_cliente_routes.toggle_cliente', cliente_id=cliente.id) }}" 
-                                   class="btn btn-sm btn-outline-{{ 'secondary' if cliente.ativo else 'success' }}">
+                                <a href="{{ url_for('config_cliente_routes.toggle_cliente', cliente_id=cliente.id) }}"
+                                  class="btn btn-sm btn-outline-{{ 'secondary' if cliente.ativo else 'success' }}">
                                   {{ "Restringir" if cliente.ativo else "Ativar" }}
                                 </a>
-                              
+
                                 <!-- Botão Excluir -->
-                                <button type="submit" formaction="{{ url_for('cliente_routes.excluir_cliente', cliente_id=cliente.id) }}" formmethod="POST" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este cliente e TODAS as informações vinculadas a ele?');">
+                                <button type="submit"
+                                  formaction="{{ url_for('cliente_routes.excluir_cliente', cliente_id=cliente.id) }}"
+                                  formmethod="POST" class="btn btn-sm btn-outline-danger"
+                                  onclick="return confirm('Tem certeza que deseja excluir este cliente e TODAS as informações vinculadas a ele?');">
                                   <i class="bi bi-trash"></i>
                                 </button>
                               </div>
                             </td>
                           </tr>
                           {% endfor %}
-                        {% else %}
+                          {% else %}
                           <tr>
                             <td colspan="5" class="text-center">Nenhum cliente encontrado.</td>
                           </tr>
-                        {% endif %}
-                      </tbody>
-                    </table>
-                    <div class="mt-2">
-                      <button type="submit" formaction="{{ url_for('cliente_routes.restringir_clientes') }}" class="btn btn-sm btn-outline-secondary me-2">Restringir Selecionados</button>
-                      <button type="submit" formaction="{{ url_for('cliente_routes.excluir_clientes') }}" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir os clientes selecionados e TODAS as informações vinculadas a eles?');">Excluir Selecionados</button>
-                    </div>
+                          {% endif %}
+                        </tbody>
+                      </table>
+                      <div class="mt-2">
+                        <button type="submit" formaction="{{ url_for('cliente_routes.restringir_clientes') }}"
+                          class="btn btn-sm btn-outline-secondary me-2">Restringir Selecionados</button>
+                        <button type="submit" formaction="{{ url_for('cliente_routes.excluir_clientes') }}"
+                          class="btn btn-sm btn-danger"
+                          onclick="return confirm('Tem certeza que deseja excluir os clientes selecionados e TODAS as informações vinculadas a eles?');">Excluir
+                          Selecionados</button>
+                      </div>
                     </form>
                   </div>
                 </div>
@@ -296,7 +303,8 @@
                           <td>{{ proposta.email }}</td>
                           <td>{{ proposta.tipo_evento }}</td>
                           <td>{{ proposta.descricao }}</td>
-                          <td>{{ proposta.data_submissao.strftime('%d/%m/%Y %H:%M') if proposta.data_submissao else 'N/A' }}</td>
+                          <td>{{ proposta.data_submissao.strftime('%d/%m/%Y %H:%M') if proposta.data_submissao else
+                            'N/A' }}</td>
                           <td>
                             <span class="badge bg-{{ 'warning' if proposta.status == 'Pendente' else 'success' }}">
                               {{ proposta.status }}
@@ -318,22 +326,64 @@
 
             <div class="tab-pane fade" id="gerenciar">
               <div class="row g-4">
-                <div class="col-lg-6 col-xl-4">
-                  <div class="card h-100 shadow-sm border-0">
-                    <div class="card-body">
-                      <div class="text-primary mb-3">
-                        <i class="bi bi-list-ol fs-1"></i>
+                <!-- Feedback Password Card -->
+                <div class="col-12 col-lg-8">
+                  <div class="surface-card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="text-primary-navy fw-bold mb-0">
+                        <i class="bi bi-shield-lock me-2 text-primary"></i>
+                        Acesso ao Feedback Aberto
+                      </h5>
+                      {% if configuracao and configuracao.senha_feedback_aberto_hash %}
+                      <span class="badge bg-success badge-pill shadow-sm">
+                        <i class="bi bi-check-circle me-1"></i> Senha Definida
+                      </span>
+                      {% else %}
+                      <span class="badge bg-warning text-dark badge-pill shadow-sm">
+                        <i class="bi bi-exclamation-triangle me-1"></i> Não Definida
+                      </span>
+                      {% endif %}
+                    </div>
+                    <p class="text-secondary-blue mb-3">
+                      Defina uma senha mestre para proteger o acesso aos resultados do feedback aberto.
+                    </p>
+                    <form method="POST" action="{{ url_for('dashboard_routes.atualizar_senha_feedback_aberto') }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                          <label for="senha_feedback_aberto" class="form-label text-secondary fw-semibold small">Nova
+                            Senha</label>
+                          <input type="password" class="form-control" id="senha_feedback_aberto"
+                            name="senha_feedback_aberto" required placeholder="******">
+                        </div>
+                        <div class="col-md-5">
+                          <label for="confirmar_senha_feedback_aberto"
+                            class="form-label text-secondary fw-semibold small">Confirmar</label>
+                          <input type="password" class="form-control" id="confirmar_senha_feedback_aberto"
+                            name="confirmar_senha_feedback_aberto" required placeholder="******">
+                        </div>
+                        <div class="col-md-2">
+                          <button class="btn btn-action-primary w-100" type="submit">Salvar</button>
+                        </div>
                       </div>
-                      <h5 class="card-title fw-bold">Ordenar atividades</h5>
-                      <p class="card-text text-muted">
-                        Defina a ordem das atividades exibidas no link de cadastro por data.
-                      </p>
+                    </form>
+                  </div>
+                </div>
+
+                <!-- Ordenar Atividades Card -->
+                <div class="col-lg-4 col-xl-4">
+                  <div class="surface-card h-100 p-4">
+                    <div class="text-primary mb-3">
+                      <i class="bi bi-list-ol fs-1"></i>
                     </div>
-                    <div class="card-footer bg-white border-0 pt-0">
-                      <a href="{{ url_for('dashboard_routes.ordenar_atividades_admin') }}" class="btn btn-primary w-100">
-                        <i class="bi bi-sliders me-1"></i> Configurar ordem
-                      </a>
-                    </div>
+                    <h5 class="card-title fw-bold text-primary-navy">Ordenar atividades</h5>
+                    <p class="card-text text-secondary-blue">
+                      Defina a ordem das atividades exibidas no link de cadastro por data.
+                    </p>
+                    <a href="{{ url_for('dashboard_routes.ordenar_atividades_admin') }}"
+                      class="btn btn-action-primary w-100 mt-2">
+                      <i class="bi bi-sliders me-1"></i> Configurar ordem
+                    </a>
                   </div>
                 </div>
               </div>
@@ -348,93 +398,94 @@
 
 <!-- Modal -->
 <div class="modal fade" id="modalTaxa" tabindex="-1">
-  <div class="modal-dialog modal-lg"><div class="modal-content">
-   <form method="POST" action="{{ url_for('mercadopago_routes.atualizar_taxa') }}" id="taxaForm">
-     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-     <div class="modal-header bg-primary text-white">
-       <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Configuração de Taxa</h5>
-       <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-     </div>
-     <div class="modal-body">
-       <!-- Taxa Geral do Sistema -->
-       <div class="card mb-3">
-         <div class="card-header bg-light">
-           <h6 class="fw-bold mb-0">Taxa Geral do Sistema</h6>
-         </div>
-         <div class="card-body">
-           <label class="form-label">Percentual Geral (%)</label>
-           <div class="input-group mb-2">
-             <input type="number" step="0.01" min="0" max="100"
-                    class="form-control" name="taxa_percentual" id="taxaGeral"
-                    value="{{ configuracao.taxa_percentual_inscricao or 0 }}">
-             <span class="input-group-text">%</span>
-           </div>
-           <small class="text-muted">Esta taxa será aplicada sobre cada inscrição paga de todos os clientes.</small>
-         </div>
-       </div>
-       
-       <!-- Taxa Diferenciada por Cliente -->
-       <div class="card">
-         <div class="card-header bg-light">
-           <h6 class="fw-bold mb-0">Taxa Diferenciada por Cliente</h6>
-         </div>
-         <div class="card-body">           <div class="row g-3">
-             <div class="col-12 col-md-6">
-               <label class="form-label">Selecione o Cliente</label>
-               <select class="form-select" name="cliente_id" id="clienteSelect">
-                 <option value="">-- Selecione um cliente --</option>
-                 {% for cliente in clientes %}
-                   <option value="{{ cliente.id }}" 
-                           data-taxa="{{ cliente.configuracao.taxa_diferenciada or '' }}"
-                           {% if cliente.configuracao and cliente.configuracao.taxa_diferenciada %}
-                           data-has-taxa="true"
-                           {% endif %}>
-                     {{ cliente.nome }} ({{ cliente.email }})
-                   </option>
-                 {% endfor %}
-               </select>
-             </div>
-               <div class="col-12 col-md-6">
-               <label class="form-label">Taxa Diferenciada (%)</label>
-               <div class="input-group">
-                 <input type="number" step="0.01" min="0" max="100"
-                        class="form-control" name="taxa_diferenciada" id="taxaDiferenciada">
-                 <span class="input-group-text">%</span>
-               </div>               <small id="taxaHelp" class="form-text text-muted">Deve ser menor que a taxa geral do sistema.</small>
-             </div>
-           </div>
-             <div class="row mt-3">
-             <div class="col-12">
-               <div class="form-check border-top pt-3">
-                 <input class="form-check-input" type="checkbox" id="removerTaxa" name="remover_taxa" value="1">
-                 <label class="form-check-label text-danger fw-bold" for="removerTaxa">
-                   <i class="bi bi-trash me-1"></i> Remover taxa diferenciada
-                 </label>
-                 <div class="text-muted small mt-1 ms-4">
-                   Esta ação removerá a taxa diferenciada e o cliente passará a usar a taxa geral do sistema.
-                 </div>
-               </div>
-             </div>
-           </div>
-           
-           <div id="clienteTaxaInfo" class="alert alert-info mt-3 d-none">
-             <i class="bi bi-info-circle me-2"></i>
-             <span id="taxaInfoText"></span>
-           </div>
-         </div>
-       </div>
-     </div>
-     <div class="modal-footer">
-       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-       <button type="submit" class="btn btn-success">
-         <i class="bi bi-save me-2"></i>Salvar Alterações
-       </button>
-     </div>
-   </form>
-  </div></div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('mercadopago_routes.atualizar_taxa') }}" id="taxaForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Configuração de Taxa</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Taxa Geral do Sistema -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <h6 class="fw-bold mb-0">Taxa Geral do Sistema</h6>
+            </div>
+            <div class="card-body">
+              <label class="form-label">Percentual Geral (%)</label>
+              <div class="input-group mb-2">
+                <input type="number" step="0.01" min="0" max="100" class="form-control" name="taxa_percentual"
+                  id="taxaGeral" value="{{ configuracao.taxa_percentual_inscricao or 0 }}">
+                <span class="input-group-text">%</span>
+              </div>
+              <small class="text-muted">Esta taxa será aplicada sobre cada inscrição paga de todos os clientes.</small>
+            </div>
+          </div>
+
+          <!-- Taxa Diferenciada por Cliente -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="fw-bold mb-0">Taxa Diferenciada por Cliente</h6>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Selecione o Cliente</label>
+                  <select class="form-select" name="cliente_id" id="clienteSelect">
+                    <option value="">-- Selecione um cliente --</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" data-taxa="{{ cliente.configuracao.taxa_diferenciada or '' }}" {%
+                      if cliente.configuracao and cliente.configuracao.taxa_diferenciada %} data-has-taxa="true" {%
+                      endif %}>
+                      {{ cliente.nome }} ({{ cliente.email }})
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Taxa Diferenciada (%)</label>
+                  <div class="input-group">
+                    <input type="number" step="0.01" min="0" max="100" class="form-control" name="taxa_diferenciada"
+                      id="taxaDiferenciada">
+                    <span class="input-group-text">%</span>
+                  </div> <small id="taxaHelp" class="form-text text-muted">Deve ser menor que a taxa geral do
+                    sistema.</small>
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12">
+                  <div class="form-check border-top pt-3">
+                    <input class="form-check-input" type="checkbox" id="removerTaxa" name="remover_taxa" value="1">
+                    <label class="form-check-label text-danger fw-bold" for="removerTaxa">
+                      <i class="bi bi-trash me-1"></i> Remover taxa diferenciada
+                    </label>
+                    <div class="text-muted small mt-1 ms-4">
+                      Esta ação removerá a taxa diferenciada e o cliente passará a usar a taxa geral do sistema.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="clienteTaxaInfo" class="alert alert-info mt-3 d-none">
+                <i class="bi bi-info-circle me-2"></i>
+                <span id="taxaInfoText"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-save me-2"></i>Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
-<script>  document.addEventListener('DOMContentLoaded', function() {
+<script>  document.addEventListener('DOMContentLoaded', function () {
     const taxaGeral = document.getElementById('taxaGeral');
     const taxaDiferenciada = document.getElementById('taxaDiferenciada');
     const clienteSelect = document.getElementById('clienteSelect');
@@ -442,17 +493,17 @@
     const taxaInfoText = document.getElementById('taxaInfoText');
     const taxaHelp = document.getElementById('taxaHelp');
     const removerTaxaCheckbox = document.getElementById('removerTaxa');
-      // Atualiza o campo de taxa diferenciada quando um cliente é selecionado
-    clienteSelect.addEventListener('change', function() {
+    // Atualiza o campo de taxa diferenciada quando um cliente é selecionado
+    clienteSelect.addEventListener('change', function () {
       const selectedOption = this.options[this.selectedIndex];
       const hasTaxa = selectedOption.getAttribute('data-has-taxa');
       const taxa = selectedOption.getAttribute('data-taxa');
       const clienteId = selectedOption.value;
-      
+
       // Reset form state
       taxaDiferenciada.disabled = false;
       removerTaxaCheckbox.checked = false;
-      
+
       if (hasTaxa && taxa && clienteId) {
         // Cliente com taxa diferenciada
         taxaDiferenciada.value = taxa;
@@ -470,11 +521,11 @@
         clienteTaxaInfo.classList.add('d-none');
         removerTaxaCheckbox.parentElement.classList.add('d-none');
       }
-      
+
       validateTaxa();
     });
-      // Lidar com o checkbox de remover taxa
-    removerTaxaCheckbox.addEventListener('change', function() {
+    // Lidar com o checkbox de remover taxa
+    removerTaxaCheckbox.addEventListener('change', function () {
       if (this.checked) {
         // Se marcado para remover, desabilita o campo de taxa
         taxaDiferenciada.disabled = true;
@@ -486,7 +537,7 @@
       } else {
         // Se desmarcado, reabilita o campo
         taxaDiferenciada.disabled = false;
-        
+
         // Restaura o valor original se disponível
         const selectedOption = clienteSelect.options[clienteSelect.selectedIndex];
         const taxa = selectedOption.getAttribute('data-taxa');
@@ -495,24 +546,24 @@
           clienteTaxaInfo.classList.remove('d-none');
           taxaInfoText.textContent = `Este cliente já possui uma taxa diferenciada de ${taxa}%`;
         }
-        
+
         taxaHelp.classList.remove('text-danger');
         taxaHelp.classList.add('text-muted');
         taxaHelp.textContent = 'Deve ser menor que a taxa geral do sistema.';
         validateTaxa();
       }
     });
-    
+
     // Oculta a opção de remover no carregamento inicial se não houver cliente selecionado
     if (!clienteSelect.value || !clienteSelect.options[clienteSelect.selectedIndex].getAttribute('data-has-taxa')) {
       removerTaxaCheckbox.parentElement.classList.add('d-none');
     }
-    
+
     // Validação para garantir que a taxa diferenciada seja menor que a geral
     function validateTaxa() {
       const taxaGeralValue = parseFloat(taxaGeral.value) || 0;
       const taxaDiferenciadaValue = parseFloat(taxaDiferenciada.value) || 0;
-      
+
       if (taxaDiferenciadaValue > 0 && taxaDiferenciadaValue >= taxaGeralValue) {
         taxaHelp.classList.remove('text-muted');
         taxaHelp.classList.add('text-danger');
@@ -525,10 +576,10 @@
         taxaDiferenciada.setCustomValidity('');
       }
     }
-    
+
     taxaDiferenciada.addEventListener('input', validateTaxa);
     taxaGeral.addEventListener('input', validateTaxa);
-    
+
     // Validação inicial
     validateTaxa();
   });
@@ -537,7 +588,8 @@
 
 <!-- Modal de edição de cliente -->
 <!-- Modal de edição de cliente -->
-<div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="modalEditarClienteLabel" aria-hidden="true">
+<div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="modalEditarClienteLabel"
+  aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <!-- Use um placeholder (cliente_id=0) para que o action seja atualizado via JS -->
@@ -559,7 +611,8 @@
           </div>
           <div class="mb-3">
             <label for="clienteSenha" class="form-label">Nova Senha (opcional)</label>
-            <input type="password" class="form-control" name="senha" id="clienteSenha" placeholder="Deixe em branco para manter a senha atual">
+            <input type="password" class="form-control" name="senha" id="clienteSenha"
+              placeholder="Deixe em branco para manter a senha atual">
             <small class="form-text text-muted">A senha só será alterada se você preencher este campo.</small>
           </div>
           <div class="mb-3">
@@ -594,79 +647,80 @@
 
   var modalEditarCliente = document.getElementById('modalEditarCliente');
   modalEditarCliente.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var clienteId = button.getAttribute('data-id');
-      var nome = button.getAttribute('data-nome');
-      var email = button.getAttribute('data-email');
-      var limiteEventos = button.getAttribute('data-limite-eventos');
-      var limiteInscritos = button.getAttribute('data-limite-inscritos');
-      var limiteFormularios = button.getAttribute('data-limite-formularios');
-      var limiteRevisores = button.getAttribute('data-limite-revisores');
-      var form = modalEditarCliente.querySelector('#formEditarCliente');
-      form.querySelector('#clienteNome').value = nome;
-      form.querySelector('#clienteEmail').value = email;
-      form.querySelector('#clienteSenha').value = ''; // Mantém em branco
-      form.querySelector('#clienteLimiteEventos').value = limiteEventos;
-      form.querySelector('#clienteLimiteInscritos').value = limiteInscritos;
-      form.querySelector('#clienteLimiteFormularios').value = limiteFormularios;
-      form.querySelector('#clienteLimiteRevisores').value = limiteRevisores;
+    var button = event.relatedTarget;
+    var clienteId = button.getAttribute('data-id');
+    var nome = button.getAttribute('data-nome');
+    var email = button.getAttribute('data-email');
+    var limiteEventos = button.getAttribute('data-limite-eventos');
+    var limiteInscritos = button.getAttribute('data-limite-inscritos');
+    var limiteFormularios = button.getAttribute('data-limite-formularios');
+    var limiteRevisores = button.getAttribute('data-limite-revisores');
+    var form = modalEditarCliente.querySelector('#formEditarCliente');
+    form.querySelector('#clienteNome').value = nome;
+    form.querySelector('#clienteEmail').value = email;
+    form.querySelector('#clienteSenha').value = ''; // Mantém em branco
+    form.querySelector('#clienteLimiteEventos').value = limiteEventos;
+    form.querySelector('#clienteLimiteInscritos').value = limiteInscritos;
+    form.querySelector('#clienteLimiteFormularios').value = limiteFormularios;
+    form.querySelector('#clienteLimiteRevisores').value = limiteRevisores;
 
-      form.action = editarClienteBaseUrl + '/' + clienteId;
+    form.action = editarClienteBaseUrl + '/' + clienteId;
   });
 </script>
 
 <!-- Script para sincronizar cidades disponíveis conforme o estado selecionado -->
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     const estadoSelect = document.getElementById('estadoSelect');
     const cidadeSelect = document.getElementById('cidadeSelect');
     if (!estadoSelect || !cidadeSelect) {
       return;
     }
 
-    const cidadesPorEstado = {{ cidades_por_estado | tojson }};
-    const cidadesTodas = {{ cidades_opcoes | tojson }};
-    let selectedCidade = {{ cidade_filter | tojson }};
+    const cidadesPorEstado = {{ cidades_por_estado | tojson
+  }};
+  const cidadesTodas = {{ cidades_opcoes | tojson }};
+  let selectedCidade = {{ cidade_filter | tojson }};
 
-    function popularCidades(uf, cidadeSelecionada) {
-      cidadeSelect.innerHTML = '';
-      const defaultOption = document.createElement('option');
-      defaultOption.value = '';
-      defaultOption.textContent = 'Todas as Cidades';
-      cidadeSelect.appendChild(defaultOption);
+  function popularCidades(uf, cidadeSelecionada) {
+    cidadeSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Todas as Cidades';
+    cidadeSelect.appendChild(defaultOption);
 
-      const cidadesBase = uf ? (cidadesPorEstado[uf] || []) : cidadesTodas;
-      const cidades = cidadesBase.slice().sort((a, b) => a.localeCompare(b));
-      cidades.forEach(cidade => {
-        const option = document.createElement('option');
-        option.value = cidade;
-        option.textContent = cidade;
-        if (cidadeSelecionada && cidade.toUpperCase() === cidadeSelecionada.toUpperCase()) {
-          option.selected = true;
-        }
-        cidadeSelect.appendChild(option);
-      });
-    }
-
-    popularCidades(estadoSelect.value || '', selectedCidade);
-
-    estadoSelect.addEventListener('change', function() {
-      selectedCidade = '';
-      popularCidades(this.value || '', selectedCidade);
+    const cidadesBase = uf ? (cidadesPorEstado[uf] || []) : cidadesTodas;
+    const cidades = cidadesBase.slice().sort((a, b) => a.localeCompare(b));
+    cidades.forEach(cidade => {
+      const option = document.createElement('option');
+      option.value = cidade;
+      option.textContent = cidade;
+      if (cidadeSelecionada && cidade.toUpperCase() === cidadeSelecionada.toUpperCase()) {
+        option.selected = true;
+      }
+      cidadeSelect.appendChild(option);
     });
+  }
 
-    cidadeSelect.addEventListener('change', function() {
-      selectedCidade = this.value;
-    });
+  popularCidades(estadoSelect.value || '', selectedCidade);
+
+  estadoSelect.addEventListener('change', function () {
+    selectedCidade = '';
+    popularCidades(this.value || '', selectedCidade);
+  });
+
+  cidadeSelect.addEventListener('change', function () {
+    selectedCidade = this.value;
+  });
   });
 </script>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     const selecionarTodos = document.getElementById('selecionarTodosClientes');
     const checkboxes = document.querySelectorAll('.cliente-checkbox');
     if (selecionarTodos) {
-      selecionarTodos.addEventListener('change', function() {
+      selecionarTodos.addEventListener('change', function () {
         checkboxes.forEach(cb => cb.checked = this.checked);
       });
     }
@@ -683,7 +737,7 @@
       const originalContent = button.innerHTML;
       button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
       button.disabled = true;
-      
+
       fetch(`{{ url_for('dashboard_routes.inicializar_templates', cliente_id=0) }}`.replace('0', clienteId), {
         method: 'POST',
         headers: {
@@ -691,23 +745,23 @@
           'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
         }
       })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          alert(`Templates inicializados com sucesso!\n\n${data.certificados} templates de certificados\n${data.declaracoes} templates de declarações`);
-        } else {
-          alert(`Erro: ${data.message}`);
-        }
-      })
-      .catch(error => {
-        console.error('Erro:', error);
-        alert('Erro ao inicializar templates. Verifique o console para mais detalhes.');
-      })
-      .finally(() => {
-        // Restaurar botão
-        button.innerHTML = originalContent;
-        button.disabled = false;
-      });
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert(`Templates inicializados com sucesso!\n\n${data.certificados} templates de certificados\n${data.declaracoes} templates de declarações`);
+          } else {
+            alert(`Erro: ${data.message}`);
+          }
+        })
+        .catch(error => {
+          console.error('Erro:', error);
+          alert('Erro ao inicializar templates. Verifique o console para mais detalhes.');
+        })
+        .finally(() => {
+          // Restaurar botão
+          button.innerHTML = originalContent;
+          button.disabled = false;
+        });
     }
   }
 </script>
