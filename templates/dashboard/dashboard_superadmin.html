@@ -2,71 +2,125 @@
 
 {% block title %}Dashboard do Superadmin{% endblock %}
 
-{% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">Painel do Superadmin</h2>
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_admin.css') }}">
+{% endblock %}
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <strong>Senha dos resultados do Feedback Aberto</strong>
-            {% if configuracao and configuracao.senha_feedback_aberto_hash %}
-                <span class="badge bg-success">Senha definida</span>
-            {% else %}
-                <span class="badge bg-warning text-dark">Senha não definida</span>
-            {% endif %}
-        </div>
-        <div class="card-body">
-            <form method="POST" action="{{ url_for('dashboard_routes.atualizar_senha_feedback_aberto') }}">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="senha_feedback_aberto" class="form-label">Nova senha</label>
-                        <input type="password" class="form-control" id="senha_feedback_aberto" name="senha_feedback_aberto" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="confirmar_senha_feedback_aberto" class="form-label">Confirmar senha</label>
-                        <input type="password" class="form-control" id="confirmar_senha_feedback_aberto" name="confirmar_senha_feedback_aberto" required>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <button class="btn btn-primary" type="submit">Salvar senha</button>
-                    <small class="text-muted ms-2">Essa senha será exigida para visualizar resultados do feedback aberto.</small>
-                </div>
-            </form>
+{% block content %}
+<div class="container-fluid px-4 py-4" style="background-color: var(--surface-page); min-height: 100vh;">
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-5">
+        <div>
+            <h1 class="h2 fw-bold text-primary-navy mb-1">Painel do Superadmin</h1>
+            <p class="text-secondary-blue mb-0">Gerencie configurações globais e clientes do sistema</p>
         </div>
     </div>
 
-    <h3>Gerenciar Clientes</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nome</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cliente in clientes %}
-            <tr>
-                <td>{{ cliente.id }}</td>
-                <td>{{ cliente.nome }}</td>
-                <td>{{ cliente.email }}</td>
-                <td>
-                    {% if cliente.ativo %}
-                        <span class="badge bg-success">Ativo</span>
+    <!-- Feedback Password Section -->
+    <div class="row mb-5">
+        <div class="col-12 col-lg-8">
+            <div class="surface-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="text-primary-navy fw-bold mb-0">
+                        <i class="bi bi-shield-lock me-2 text-primary"></i>
+                        Acesso ao Feedback Aberto
+                    </h4>
+                    {% if configuracao and configuracao.senha_feedback_aberto_hash %}
+                    <span class="badge bg-success badge-pill shadow-sm">
+                        <i class="bi bi-check-circle me-1"></i> Senha Definida
+                    </span>
                     {% else %}
-                        <span class="badge bg-danger">Desativado</span>
+                    <span class="badge bg-warning text-dark badge-pill shadow-sm">
+                        <i class="bi bi-exclamation-triangle me-1"></i> Senha Não Definida
+                    </span>
                     {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('config_cliente_routes.toggle_cliente', cliente_id=cliente.id) }}" class="btn btn-sm {% if cliente.ativo %}btn-danger{% else %}btn-success{% endif %}">
-                        {% if cliente.ativo %}Desativar{% else %}Ativar{% endif %}
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </div>
+
+                <p class="text-secondary-blue mb-4">
+                    Defina uma senha mestre para proteger o acesso aos resultados do feedback aberto.
+                    Esta senha será solicitada a qualquer usuário que tente acessar os relatórios.
+                </p>
+
+                <form method="POST" action="{{ url_for('dashboard_routes.atualizar_senha_feedback_aberto') }}">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <div class="form-floating-custom">
+                                <label for="senha_feedback_aberto"
+                                    class="form-label text-secondary fw-semibold small">Nova Senha</label>
+                                <input type="password" class="form-control" id="senha_feedback_aberto"
+                                    name="senha_feedback_aberto" required placeholder="******">
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-floating-custom">
+                                <label for="confirmar_senha_feedback_aberto"
+                                    class="form-label text-secondary fw-semibold small">Confirmar Nova Senha</label>
+                                <input type="password" class="form-control" id="confirmar_senha_feedback_aberto"
+                                    name="confirmar_senha_feedback_aberto" required placeholder="******">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-action-primary w-100" type="submit">
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clients Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="surface-card p-4">
+                <h4 class="text-primary-navy fw-bold mb-4">
+                    <i class="bi bi-people me-2 text-primary"></i>
+                    Gerenciar Clientes
+                </h4>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="text-secondary-blue" style="border-bottom: 2px solid var(--border-default);">
+                            <tr>
+                                <th class="py-3">ID</th>
+                                <th class="py-3">Nome</th>
+                                <th class="py-3">Email</th>
+                                <th class="py-3 text-center">Status</th>
+                                <th class="py-3 text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cliente in clientes %}
+                            <tr>
+                                <td class="text-muted fw-bold">#{{ cliente.id }}</td>
+                                <td class="fw-semibold text-primary-navy">{{ cliente.nome }}</td>
+                                <td class="text-secondary-blue">{{ cliente.email }}</td>
+                                <td class="text-center">
+                                    {% if cliente.ativo %}
+                                    <span class="badge bg-success badge-pill bg-opacity-10 text-success">Ativo</span>
+                                    {% else %}
+                                    <span class="badge bg-danger badge-pill bg-opacity-10 text-danger">Desativado</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('config_cliente_routes.toggle_cliente', cliente_id=cliente.id) }}"
+                                        class="btn btn-sm {% if cliente.ativo %}btn-outline-danger{% else %}btn-outline-success{% endif %} rounded-pill px-3">
+                                        {% if cliente.ativo %}
+                                        <i class="bi bi-slash-circle me-1"></i> Desativar
+                                        {% else %}
+                                        <i class="bi bi-check-circle me-1"></i> Ativar
+                                        {% endif %}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
