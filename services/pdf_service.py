@@ -1757,16 +1757,6 @@ def gerar_pdf_checkins_qr():
         .outerjoin(Checkin.usuario)
         .filter(
             or_(
-                Checkin.palavra_chave.in_([
-                    'QR-AUTO',
-                    'QR-EVENTO',
-                    'QR-OFICINA',
-                    'QR-AGENDAMENTO',
-                ]),
-                Checkin.palavra_chave.ilike('manual-%'),
-                Checkin.palavra_chave.ilike('manual'),
-            ),
-            or_(
                 Usuario.cliente_id == current_user.id,
                 Oficina.cliente_id == current_user.id,
                 Checkin.cliente_id == current_user.id
@@ -1775,6 +1765,7 @@ def gerar_pdf_checkins_qr():
         .order_by(Checkin.data_hora.desc())
         .all()
     )
+
 
 
     logger.info("📊 DEBUG: Total de check-ins encontrados: %s", len(checkins_qr))
