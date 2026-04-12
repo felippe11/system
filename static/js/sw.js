@@ -3,16 +3,13 @@ const CACHE_NAME = 'appfiber-v2';
 const urlsToCache = [
   '/',
   '/static/css/estilos.css',
-  '/static/favicon/favicon.svg',
   '/static/favicon/favicon.ico',
   '/static/favicon/apple-touch-icon.png',
-  '/static/favicon/favicon-96x96.png',
-  '/static/favicon/web-app-manifest-192x192.png',
-  '/static/favicon/web-app-manifest-512x512.png',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
-  'https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css',
-  'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+  '/static/favicon/favicon-16x16.png',
+  '/static/favicon/favicon-32x32.png',
+  '/static/favicon/android-chrome-192x192.png',
+  '/static/favicon/android-chrome-512x512.png',
+  '/static/favicon/site.webmanifest',
   '/static/offline.html'
 ];
 

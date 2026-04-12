@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
-from utils.security import sanitize_input
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, session
+from utils.security import sanitize_input, password_is_strong
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, csrf
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from models import (
@@ -28,6 +28,7 @@ from models import (
 from utils import endpoints
 
 import os
+from urllib.parse import quote
 from mp_fix_patch import fix_mp_notification_url, create_mp_preference
 import logging
 from dateutil import parser
@@ -37,6 +38,11 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import func, or_, and_
 from services.lote_service import lote_disponivel
 from utils import external_url, preco_com_taxa, gerar_comprovante_pdf, enviar_email
+from utils.openclaw_validators import (
+    OpenClawValidationError,
+    normalize_cpf,
+    normalize_email,
+)
 from forms import RegraInscricaoEventoForm
 
 
@@ -81,6 +87,275 @@ def _resolver_link_evento(identifier: str):
         return None, None, None
 
     raise ValueError("Link de inscrição inválido.")
+
+
+def _normalize_phone_number(phone: str | None) -> str:
+    if not phone:
+        return ""
+    return "".join(char for char in str(phone) if char.isdigit())
+
+
+def _obter_contexto_publico_inscricao(evento: Evento):
+    lote_vigente = None
+    lotes_ativos = []
+    if evento.habilitar_lotes:
+        lotes_ativos = LoteInscricao.query.filter_by(
+            evento_id=evento.id,
+            ativo=True,
+        ).all()
+        now = datetime.utcnow()
+        for lote in lotes_ativos:
+            valido = True
+            if lote.data_inicio and lote.data_fim:
+                valido = lote.data_inicio <= now <= lote.data_fim
+            if valido and lote.tipos_inscricao:
+                lote_vigente = lote
+                break
+
+    tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
+    return lote_vigente, lotes_ativos, tipos_inscricao
+
+
+def _openclaw_chat_bucket() -> dict:
+    bucket = session.setdefault("openclaw_public_chat", {})
+    if not isinstance(bucket, dict):
+        bucket = {}
+        session["openclaw_public_chat"] = bucket
+    return bucket
+
+
+def _set_openclaw_chat_state(identifier: str, state: dict) -> None:
+    bucket = _openclaw_chat_bucket()
+    bucket[identifier] = state
+    session.modified = True
+
+
+def _get_openclaw_chat_state(identifier: str) -> dict | None:
+    bucket = _openclaw_chat_bucket()
+    state = bucket.get(identifier)
+    return state if isinstance(state, dict) else None
+
+
+def _clear_openclaw_chat_state(identifier: str) -> None:
+    bucket = _openclaw_chat_bucket()
+    if identifier in bucket:
+        bucket.pop(identifier, None)
+        session.modified = True
+
+
+def _format_brl(value: float | int) -> str:
+    return f"R$ {float(value):.2f}".replace(".", ",")
+
+
+def _build_openclaw_chat_ticket_options(
+    *,
+    evento: Evento,
+    lote_vigente: LoteInscricao | None,
+    tipos_inscricao: list[EventoInscricaoTipo],
+    cliente_id: int,
+) -> tuple[list[dict], int]:
+    options: list[dict] = []
+    skipped_submission_only = 0
+
+    if evento.habilitar_lotes and lote_vigente:
+        for lote_tipo in lote_vigente.tipos_inscricao:
+            tipo = lote_tipo.tipo_inscricao
+            if getattr(tipo, "submission_only", False):
+                skipped_submission_only += 1
+                continue
+            price = float(preco_com_taxa(lote_tipo.preco, cliente_id))
+            options.append(
+                {
+                    "choice": str(len(options) + 1),
+                    "kind": "lote_tipo_inscricao_id",
+                    "value": lote_tipo.id,
+                    "tipo_id": tipo.id,
+                    "label": tipo.nome,
+                    "price": price,
+                    "price_label": _format_brl(price),
+                }
+            )
+    else:
+        for tipo in tipos_inscricao:
+            if getattr(tipo, "submission_only", False):
+                skipped_submission_only += 1
+                continue
+            price = float(preco_com_taxa(tipo.preco, cliente_id))
+            options.append(
+                {
+                    "choice": str(len(options) + 1),
+                    "kind": "tipo_inscricao_id",
+                    "value": tipo.id,
+                    "label": tipo.nome,
+                    "price": price,
+                    "price_label": _format_brl(price),
+                }
+            )
+
+    return options, skipped_submission_only
+
+
+def _make_openclaw_chat_response(
+    reply: str,
+    *,
+    quick_replies: list[dict] | None = None,
+    actions: list[dict] | None = None,
+    completed: bool = False,
+    meta: dict | None = None,
+):
+    return jsonify(
+        {
+            "success": True,
+            "reply": reply,
+            "quick_replies": quick_replies or [],
+            "actions": actions or [],
+            "completed": completed,
+            "meta": meta or {},
+        }
+    )
+
+
+def _prompt_openclaw_custom_field(field: dict) -> str:
+    field_name = field["name"]
+    field_type = (field.get("type") or "").lower()
+    if field_type == "email":
+        hint = "Digite um e-mail válido."
+    elif field_type == "date":
+        hint = "Use o formato DD/MM/AAAA."
+    elif field_type == "number":
+        hint = "Digite apenas números, se aplicável."
+    else:
+        hint = "Envie a resposta em uma única mensagem."
+    required_text = "obrigatório" if field.get("required") else "opcional"
+    return f"Agora informe {field_name} ({required_text}). {hint}"
+
+
+def _prompt_openclaw_ticket_selection(state: dict) -> tuple[str, list[dict]]:
+    options = state.get("ticket_options") or []
+    lines = ["Escolha o tipo de inscrição enviando o número da opção:"]
+    quick_replies = []
+    for option in options:
+        if option["price"] > 0:
+            lines.append(f'{option["choice"]}. {option["label"]} - {option["price_label"]}')
+        else:
+            lines.append(f'{option["choice"]}. {option["label"]} - inscrição gratuita')
+        quick_replies.append(
+            {
+                "label": option["choice"],
+                "value": option["choice"],
+            }
+        )
+    return "\n".join(lines), quick_replies
+
+
+def _build_openclaw_chat_state(
+    *,
+    evento: Evento,
+    cliente_id: int,
+    lote_vigente: LoteInscricao | None,
+    tipos_inscricao: list[EventoInscricaoTipo],
+    campos_personalizados: list[CampoPersonalizadoCadastro],
+) -> tuple[dict, str, list[dict], dict]:
+    ticket_options, skipped_submission_only = _build_openclaw_chat_ticket_options(
+        evento=evento,
+        lote_vigente=lote_vigente,
+        tipos_inscricao=tipos_inscricao,
+        cliente_id=cliente_id,
+    )
+    custom_fields = [
+        {
+            "id": campo.id,
+            "name": campo.nome,
+            "type": campo.tipo,
+            "required": bool(campo.obrigatorio),
+        }
+        for campo in campos_personalizados
+    ]
+    state = {
+        "step": "nome",
+        "data": {
+            "evento_id": evento.id,
+        },
+        "custom_fields": custom_fields,
+        "custom_field_index": 0,
+        "ticket_options": ticket_options,
+        "lote_vigente_id": lote_vigente.id if lote_vigente else None,
+    }
+
+    intro_parts = [
+        f"Sou o OpenClaw e posso concluir sua inscrição em {evento.nome} aqui mesmo.",
+        "Vou pedir seus dados em sequência. Se quiser começar de novo a qualquer momento, digite reiniciar.",
+    ]
+
+    if evento.habilitar_lotes and not lote_vigente:
+        state["step"] = "unavailable"
+        intro_parts.append(
+            "No momento não existe lote vigente disponível para concluir a inscrição por este chat."
+        )
+    elif not evento.inscricao_gratuita and not ticket_options:
+        state["step"] = "unavailable"
+        if skipped_submission_only:
+            intro_parts.append(
+                "Os tipos de inscrição disponíveis exigem submissão e não podem ser concluídos neste chat."
+            )
+        else:
+            intro_parts.append(
+                "Não encontrei um tipo de inscrição válido para finalizar por este chat."
+            )
+    elif skipped_submission_only:
+        intro_parts.append(
+            "Tipos marcados como 'Somente Submissão' ficaram de fora do atendimento conversacional."
+        )
+
+    if state["step"] == "nome":
+        intro_parts.append("Para começar, me diga seu nome completo.")
+
+    meta = {
+        "step": state["step"],
+        "event_id": evento.id,
+    }
+    return state, "\n\n".join(intro_parts), [], meta
+
+
+def _advance_openclaw_chat_flow(state: dict) -> tuple[str, list[dict]]:
+    custom_fields = state.get("custom_fields") or []
+    custom_index = int(state.get("custom_field_index") or 0)
+    if custom_index < len(custom_fields):
+        state["step"] = "custom_field"
+        return _prompt_openclaw_custom_field(custom_fields[custom_index]), []
+
+    ticket_options = state.get("ticket_options") or []
+    if len(ticket_options) > 1:
+        state["step"] = "ticket"
+        return _prompt_openclaw_ticket_selection(state)
+
+    if len(ticket_options) == 1:
+        selected = ticket_options[0]
+        state["data"][selected["kind"]] = selected["value"]
+        if selected.get("tipo_id"):
+            state["data"]["tipo_inscricao_id"] = selected["tipo_id"]
+        if state.get("lote_vigente_id"):
+            state["data"]["lote_id"] = state["lote_vigente_id"]
+        state["step"] = "terms"
+        if selected["price"] > 0:
+            selection_text = (
+                f'Tipo selecionado automaticamente: {selected["label"]} ({selected["price_label"]}).'
+            )
+        else:
+            selection_text = (
+                f'Tipo selecionado automaticamente: {selected["label"]} (inscrição gratuita).'
+            )
+        return (
+            selection_text
+            + "\n\nPara continuar, confirme que aceita os Termos de Uso e a Política de Privacidade enviando: aceito",
+            [{"label": "Aceito", "value": "aceito"}],
+        )
+
+    state["step"] = "terms"
+    return (
+        "Para continuar, confirme que aceita os Termos de Uso e a Política de Privacidade enviando: aceito",
+        [{"label": "Aceito", "value": "aceito"}],
+    )
 
 
 def _criar_usuario_e_inscricao(
@@ -218,20 +493,9 @@ def cadastro_participante(identifier: str | None = None):
     # ------------------------------------------------------------------
     # 2) Determina lote vigente e tipos de inscrição
     # ------------------------------------------------------------------
-    lote_vigente = None
-    lotes_ativos = []
-    if evento.habilitar_lotes:
-        lotes_ativos = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).all()
-        now = datetime.utcnow()
-        for lote in lotes_ativos:
-            valido = True
-            if lote.data_inicio and lote.data_fim:
-                valido = lote.data_inicio <= now <= lote.data_fim
-            if valido and lote.tipos_inscricao:
-                lote_vigente = lote
-                break
-
-    tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
+    lote_vigente, lotes_ativos, tipos_inscricao = _obter_contexto_publico_inscricao(
+        evento
+    )
 
     # ------------------------------------------------------------------
     # 3) Processamento do POST
@@ -319,6 +583,415 @@ def cadastro_participante(identifier: str | None = None):
     # ------------------------------------------------------------------
     return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
                         lotes_ativos=lotes_ativos, cliente_id=cliente_id)
+
+
+@inscricao_routes.route("/inscricao/<identifier>/openclaw-chat", methods=["POST"])
+@csrf.exempt
+def openclaw_public_chat(identifier: str):
+    try:
+        link, evento, cliente_id = _resolver_link_evento(identifier)
+    except ValueError:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Link de inscrição inválido.",
+                }
+            ),
+            404,
+        )
+
+    del link
+    if not evento:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Evento não encontrado.",
+                }
+            ),
+            404,
+        )
+
+    lote_vigente, _, tipos_inscricao = _obter_contexto_publico_inscricao(evento)
+    campos_personalizados = CampoPersonalizadoCadastro.query.filter_by(
+        cliente_id=cliente_id
+    ).all()
+
+    payload = request.get_json(silent=True) or {}
+    action = (payload.get("action") or "").strip().lower()
+    raw_message = str(payload.get("message") or "").strip()
+    normalized_message = sanitize_input(raw_message).strip()
+
+    if action == "start":
+        state, reply, quick_replies, meta = _build_openclaw_chat_state(
+            evento=evento,
+            cliente_id=cliente_id,
+            lote_vigente=lote_vigente,
+            tipos_inscricao=tipos_inscricao,
+            campos_personalizados=campos_personalizados,
+        )
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            reply,
+            quick_replies=quick_replies,
+            completed=state["step"] == "unavailable",
+            meta=meta,
+        )
+
+    state = _get_openclaw_chat_state(identifier)
+    if not state:
+        state, reply, quick_replies, meta = _build_openclaw_chat_state(
+            evento=evento,
+            cliente_id=cliente_id,
+            lote_vigente=lote_vigente,
+            tipos_inscricao=tipos_inscricao,
+            campos_personalizados=campos_personalizados,
+        )
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            reply,
+            quick_replies=quick_replies,
+            completed=state["step"] == "unavailable",
+            meta=meta,
+        )
+
+    if normalized_message.lower() == "reiniciar":
+        state, reply, quick_replies, meta = _build_openclaw_chat_state(
+            evento=evento,
+            cliente_id=cliente_id,
+            lote_vigente=lote_vigente,
+            tipos_inscricao=tipos_inscricao,
+            campos_personalizados=campos_personalizados,
+        )
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            reply,
+            quick_replies=quick_replies,
+            completed=state["step"] == "unavailable",
+            meta=meta,
+        )
+
+    if state.get("step") == "unavailable":
+        return _make_openclaw_chat_response(
+            "Este atendimento não pode concluir a inscrição agora. Use o formulário do site ou tente novamente mais tarde.",
+            quick_replies=[{"label": "Reiniciar", "value": "reiniciar"}],
+            completed=True,
+            meta={"step": "unavailable", "event_id": evento.id},
+        )
+
+    if not raw_message:
+        return _make_openclaw_chat_response(
+            "Envie uma mensagem para eu continuar sua inscrição.",
+            meta={"step": state.get("step"), "event_id": evento.id},
+        )
+
+    step = state.get("step")
+    quick_replies: list[dict] = []
+
+    if step == "nome":
+        if not normalized_message:
+            return _make_openclaw_chat_response(
+                "Preciso do seu nome completo para seguir.",
+                meta={"step": step, "event_id": evento.id},
+            )
+        state["data"]["nome"] = normalized_message
+        state["step"] = "cpf"
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            "Perfeito. Agora informe seu CPF.",
+            meta={"step": "cpf", "event_id": evento.id},
+        )
+
+    if step == "cpf":
+        try:
+            state["data"]["cpf"] = normalize_cpf(raw_message)
+        except OpenClawValidationError as exc:
+            return _make_openclaw_chat_response(
+                str(exc),
+                meta={"step": step, "event_id": evento.id},
+            )
+        state["step"] = "email"
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            "CPF recebido. Agora me passe seu e-mail.",
+            meta={"step": "email", "event_id": evento.id},
+        )
+
+    if step == "email":
+        try:
+            state["data"]["email"] = normalize_email(raw_message)
+        except OpenClawValidationError as exc:
+            return _make_openclaw_chat_response(
+                str(exc),
+                meta={"step": step, "event_id": evento.id},
+            )
+        state["step"] = "formacao"
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            "Certo. Informe sua formação acadêmica.",
+            meta={"step": "formacao", "event_id": evento.id},
+        )
+
+    if step == "formacao":
+        if not normalized_message:
+            return _make_openclaw_chat_response(
+                "Informe sua formação acadêmica para continuar.",
+                meta={"step": step, "event_id": evento.id},
+            )
+        state["data"]["formacao"] = normalized_message
+        state["step"] = "senha"
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            "Agora crie uma senha com pelo menos 8 caracteres e incluindo letras e números.",
+            meta={"step": "senha", "event_id": evento.id},
+        )
+
+    if step == "senha":
+        password = raw_message.strip()
+        if not password_is_strong(password, min_length=8):
+            return _make_openclaw_chat_response(
+                "A senha precisa ter pelo menos 8 caracteres e combinar letras e números.",
+                meta={"step": step, "event_id": evento.id},
+            )
+        state["data"]["senha"] = password
+        reply, quick_replies = _advance_openclaw_chat_flow(state)
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            reply,
+            quick_replies=quick_replies,
+            meta={"step": state.get("step"), "event_id": evento.id},
+        )
+
+    if step == "custom_field":
+        custom_fields = state.get("custom_fields") or []
+        custom_index = int(state.get("custom_field_index") or 0)
+        if custom_index >= len(custom_fields):
+            reply, quick_replies = _advance_openclaw_chat_flow(state)
+            _set_openclaw_chat_state(identifier, state)
+            return _make_openclaw_chat_response(
+                reply,
+                quick_replies=quick_replies,
+                meta={"step": state.get("step"), "event_id": evento.id},
+            )
+
+        current_field = custom_fields[custom_index]
+        if current_field.get("required") and not normalized_message:
+            return _make_openclaw_chat_response(
+                f'O campo "{current_field["name"]}" é obrigatório.',
+                meta={"step": step, "event_id": evento.id},
+            )
+
+        field_type = (current_field.get("type") or "").lower()
+        if normalized_message and field_type == "email":
+            try:
+                normalized_message = normalize_email(raw_message)
+            except OpenClawValidationError as exc:
+                return _make_openclaw_chat_response(
+                    str(exc),
+                    meta={"step": step, "event_id": evento.id},
+                )
+
+        state["data"][f'campo_{current_field["id"]}'] = normalized_message
+        state["custom_field_index"] = custom_index + 1
+        reply, quick_replies = _advance_openclaw_chat_flow(state)
+        _set_openclaw_chat_state(identifier, state)
+        return _make_openclaw_chat_response(
+            reply,
+            quick_replies=quick_replies,
+            meta={"step": state.get("step"), "event_id": evento.id},
+        )
+
+    if step == "ticket":
+        selected_option = None
+        candidate = normalized_message.lower()
+        for option in state.get("ticket_options") or []:
+            if candidate in {
+                option["choice"].lower(),
+                str(option["value"]).lower(),
+                option["label"].lower(),
+            }:
+                selected_option = option
+                break
+
+        if not selected_option:
+            reply, quick_replies = _prompt_openclaw_ticket_selection(state)
+            return _make_openclaw_chat_response(
+                "Não entendi a opção escolhida.\n\n" + reply,
+                quick_replies=quick_replies,
+                meta={"step": step, "event_id": evento.id},
+            )
+
+        state["data"][selected_option["kind"]] = selected_option["value"]
+        if selected_option.get("tipo_id"):
+            state["data"]["tipo_inscricao_id"] = selected_option["tipo_id"]
+        if state.get("lote_vigente_id"):
+            state["data"]["lote_id"] = state["lote_vigente_id"]
+        state["step"] = "terms"
+        _set_openclaw_chat_state(identifier, state)
+
+        if selected_option["price"] > 0:
+            selection_reply = (
+                f'Você escolheu "{selected_option["label"]}" por {selected_option["price_label"]}.'
+            )
+        else:
+            selection_reply = (
+                f'Você escolheu "{selected_option["label"]}" com inscrição gratuita.'
+            )
+        return _make_openclaw_chat_response(
+            selection_reply
+            + "\n\nPara continuar, confirme que aceita os Termos de Uso e a Política de Privacidade enviando: aceito",
+            quick_replies=[{"label": "Aceito", "value": "aceito"}],
+            meta={"step": "terms", "event_id": evento.id},
+        )
+
+    if step == "terms":
+        if normalized_message.lower() not in {"aceito", "sim", "concordo"}:
+            return _make_openclaw_chat_response(
+                "Preciso dessa confirmação para concluir a inscrição. Envie: aceito",
+                quick_replies=[{"label": "Aceito", "value": "aceito"}],
+                meta={"step": step, "event_id": evento.id},
+            )
+
+        custom_form = {
+            f'campo_{field["id"]}': state["data"].get(f'campo_{field["id"]}', "")
+            for field in state.get("custom_fields") or []
+        }
+
+        try:
+            from services.mp_service import get_sdk
+
+            usuario, inscricao, duplicado = _criar_usuario_e_inscricao(
+                nome=state["data"].get("nome", ""),
+                cpf=state["data"].get("cpf", ""),
+                email=state["data"].get("email", ""),
+                senha=state["data"].get("senha", ""),
+                formacao=state["data"].get("formacao", ""),
+                estados=[],
+                cidades=[],
+                lote_id=state["data"].get("lote_id"),
+                lote_tipo_id=state["data"].get("lote_tipo_inscricao_id"),
+                tipo_insc_id=state["data"].get("tipo_inscricao_id"),
+                cliente_id=cliente_id,
+                evento=evento,
+                form=custom_form,
+            )
+
+            preco, titulo = _calcular_preco(
+                evento,
+                state["data"].get("lote_tipo_inscricao_id"),
+                state["data"].get("tipo_inscricao_id"),
+                lote_vigente,
+            )
+            sdk = get_sdk()
+
+            actions = []
+            if preco > 0 and sdk:
+                payment_url = _criar_preferencia_mp(
+                    sdk,
+                    preco,
+                    titulo,
+                    inscricao,
+                    usuario,
+                )
+                db.session.commit()
+                reply = (
+                    f"Inscrição criada com sucesso. Protocolo: {inscricao.qr_code_token}.\n\n"
+                    "Agora finalize o pagamento no botão abaixo."
+                )
+                actions.append(
+                    {
+                        "label": "Ir para pagamento",
+                        "url": payment_url,
+                        "target": "_blank",
+                    }
+                )
+            else:
+                inscricao.status_pagamento = "approved"
+                db.session.commit()
+                reply = (
+                    f"Inscrição concluída com sucesso. Protocolo: {inscricao.qr_code_token}."
+                )
+                actions.append(
+                    {
+                        "label": "Fazer login",
+                        "url": url_for("auth_routes.login"),
+                        "target": "_self",
+                    }
+                )
+
+            if duplicado:
+                reply += "\n\nA conta já existia. Use a mesma senha para acessar sua área."
+            else:
+                reply += "\n\nSeu cadastro já está pronto para acesso."
+
+            _clear_openclaw_chat_state(identifier)
+            return _make_openclaw_chat_response(
+                reply,
+                quick_replies=[{"label": "Reiniciar", "value": "reiniciar"}],
+                actions=actions,
+                completed=True,
+                meta={"step": "completed", "event_id": evento.id},
+            )
+
+        except LoteEsgotadoError:
+            db.session.rollback()
+            _clear_openclaw_chat_state(identifier)
+            return _make_openclaw_chat_response(
+                "O lote escolhido acabou de esgotar. Reinicie a conversa para tentar novamente com as opções atualizadas.",
+                quick_replies=[{"label": "Reiniciar", "value": "reiniciar"}],
+                completed=True,
+                meta={"step": "lot_unavailable", "event_id": evento.id},
+            )
+        except SenhaIncorretaError:
+            db.session.rollback()
+            _clear_openclaw_chat_state(identifier)
+            return _make_openclaw_chat_response(
+                "Já existe uma conta com esse CPF ou e-mail, mas a senha informada não confere.",
+                actions=[
+                    {
+                        "label": "Ir para login",
+                        "url": url_for("auth_routes.login"),
+                        "target": "_self",
+                    }
+                ],
+                quick_replies=[{"label": "Reiniciar", "value": "reiniciar"}],
+                completed=True,
+                meta={"step": "login_required", "event_id": evento.id},
+            )
+        except InscricaoExistenteError:
+            db.session.rollback()
+            _clear_openclaw_chat_state(identifier)
+            return _make_openclaw_chat_response(
+                "Você já possui inscrição neste evento.",
+                actions=[
+                    {
+                        "label": "Ir para login",
+                        "url": url_for("auth_routes.login"),
+                        "target": "_self",
+                    }
+                ],
+                quick_replies=[{"label": "Reiniciar", "value": "reiniciar"}],
+                completed=True,
+                meta={"step": "already_registered", "event_id": evento.id},
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logging.exception("Erro ao concluir inscrição pelo chat OpenClaw")
+            db.session.rollback()
+            _clear_openclaw_chat_state(identifier)
+            return _make_openclaw_chat_response(
+                f"Não consegui concluir sua inscrição agora: {exc}",
+                quick_replies=[{"label": "Reiniciar", "value": "reiniciar"}],
+                completed=True,
+                meta={"step": "error", "event_id": evento.id},
+            )
+
+    return _make_openclaw_chat_response(
+        "Perdi o contexto da conversa. Reinicie para começar novamente.",
+        quick_replies=[{"label": "Reiniciar", "value": "reiniciar"}],
+        completed=True,
+        meta={"step": "unknown", "event_id": evento.id},
+    )
 
 
 
@@ -669,6 +1342,29 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
         }
 
     token = link.token if link else str(evento.id)
+    openclaw_whatsapp_number = _normalize_phone_number(
+        current_app.config.get("OPENCLAW_WHATSAPP_NUMBER")
+    )
+    openclaw_whatsapp_url = None
+    if (
+        evento
+        and current_app.config.get("OPENCLAW_WHATSAPP_ENABLED", True)
+        and openclaw_whatsapp_number
+    ):
+        event_link = external_url(
+            "inscricao_routes.cadastro_participante",
+            identifier=token,
+        )
+        whatsapp_message = (
+            "Olá! Quero me inscrever via WhatsApp no fluxo OpenClaw.\n"
+            f"Evento: {evento.nome}\n"
+            f"Evento ID: {evento.id}\n"
+            f"Link do evento: {event_link}"
+        )
+        openclaw_whatsapp_url = (
+            "https://api.whatsapp.com/send"
+            f"?phone={openclaw_whatsapp_number}&text={quote(whatsapp_message)}"
+        )
     
     return render_template("auth/cadastro_participante.html",
         token=token,
@@ -685,6 +1381,7 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
         mostrar_taxa=mostrar_taxa,
         preco_com_taxa=preco_com_taxa,
         cliente_id=cliente_id,
+        openclaw_whatsapp_url=openclaw_whatsapp_url,
         obrigatorio_nome=obrigatorio_nome,
         obrigatorio_cpf=obrigatorio_cpf,
         obrigatorio_email=obrigatorio_email,

@@ -13,13 +13,14 @@
     <section class="event-hero">
         {% if evento.banner_url %}
         <div class="event-banner">
-            <img src="{{ evento.banner_url | media_url }}" alt="Banner do evento {{ evento.nome }}" loading="lazy">
+            <img src="{{ evento.banner_url | media_url }}" alt="Banner do evento {{ evento.nome }}" loading="lazy"
+                onerror="this.onerror=null;this.parentElement.style.display='none';">
         </div>
         {% endif %}
 
         <div class="event-header">
             <h1 class="event-title">{{ evento.nome }}</h1>
-            <button class="cta-button" onclick="abrirModal()">
+            <button class="cta-button" onclick="openEnrollmentOptions()">
                 <i class="fas fa-user-plus"></i> Inscreva-se agora
             </button>
         </div>
@@ -107,7 +108,7 @@
                                 <div class="speakers-container">
                                     {% if item.ministrante %}
                                     <div class="speaker-card"
-                                        onclick="openSpeakerModal('{{ item.ministrante.nome }}', '{{ item.ministrante.formacao }}', '{{ (item.ministrante.foto or 'default-profile.png') | media_url }}')">
+                                        onclick='openSpeakerModal({{ item.ministrante.nome|tojson }}, {{ item.ministrante.formacao|default("", true)|tojson }}, {{ ((item.ministrante.foto or "default-profile.png") | media_url)|tojson }})'>
                                         <img src="{{ (item.ministrante.foto or 'default-profile.png') | media_url }}"
                                             alt="{{ item.ministrante.nome }}" class="speaker-photo"
                                             onerror="this.onerror=null;this.src='{{ 'default-profile.png' | media_url }}';">
@@ -118,7 +119,7 @@
                                     {% if item.oficina and item.oficina.ministrantes_associados %}
                                     {% for m in item.oficina.ministrantes_associados %}
                                     <div class="speaker-card"
-                                        onclick="openSpeakerModal('{{ m.nome }}', '{{ m.formacao }}', '{{ (m.foto or 'default-profile.png') | media_url }}')">
+                                        onclick='openSpeakerModal({{ m.nome|tojson }}, {{ m.formacao|default("", true)|tojson }}, {{ ((m.foto or "default-profile.png") | media_url)|tojson }})'>
                                         <img src="{{ (m.foto or 'default-profile.png') | media_url }}"
                                             alt="{{ m.nome }}" class="speaker-photo"
                                             onerror="this.onerror=null;this.src='{{ 'default-profile.png' | media_url }}';">
@@ -148,7 +149,7 @@
             <div class="speakers-grid">
                 {% for ministrante in ministrantes %}
                 <div class="speaker-card"
-                    onclick="openSpeakerModal('{{ ministrante.nome }}', '{{ ministrante.formacao }}', '{{ (ministrante.foto or 'default-profile.png') | media_url }}')">
+                    onclick='openSpeakerModal({{ ministrante.nome|tojson }}, {{ ministrante.formacao|default("", true)|tojson }}, {{ ((ministrante.foto or "default-profile.png") | media_url)|tojson }})'>
                     <img src="{{ (ministrante.foto or 'default-profile.png') | media_url }}"
                         alt="{{ ministrante.nome }}" class="speaker-photo"
                         onerror="this.onerror=null;this.src='{{ 'default-profile.png' | media_url }}';">
@@ -198,7 +199,8 @@
                     {% for pat in patrocinadores_categoria %}
                     <div class="sponsor-logo">
                         <img src="{{ pat.logo_path | media_url }}"
-                            alt="Logo {{ categoria }} {{ pat.nome if pat.nome else '' }}">
+                            alt="Logo {{ categoria }} {{ pat.nome if pat.nome else '' }}"
+                            onerror="this.onerror=null;this.closest('.sponsor-logo').style.display='none';">
                     </div>
                     {% endfor %}
                 </div>
@@ -215,6 +217,69 @@
         <p>Verifique se o link está correto ou entre em contato com os organizadores.</p>
     </div>
     {% endif %}
+
+    <!-- Modal de Opções de Inscrição -->
+    <div id="enrollmentOptionsModal" class="modal">
+        <div class="modal-content enrollment-options-modal">
+            <div class="modal-header">
+                <h2>
+                    <i class="fas fa-paper-plane"></i> Escolha como deseja se inscrever
+                </h2>
+                <button class="close-modal" onclick="closeEnrollmentOptions()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="enrollment-options-grid">
+                    <button type="button" class="enrollment-option-card" onclick="proceedToWebsiteRegistration()">
+                        <span class="enrollment-option-icon enrollment-option-site">
+                            <i class="fas fa-globe"></i>
+                        </span>
+                        <span class="enrollment-option-title">Formulário no site</span>
+                        <span class="enrollment-option-copy">Preencha os dados e finalize a inscrição aqui mesmo.</span>
+                    </button>
+
+                    <button type="button" class="enrollment-option-card" onclick="openEnrollmentChat()">
+                        <span class="enrollment-option-icon enrollment-option-chat">
+                            <i class="fas fa-comments"></i>
+                        </span>
+                        <span class="enrollment-option-title">Chat com OpenClaw</span>
+                        <span class="enrollment-option-copy">Converse com o assistente na própria página para concluir sua inscrição.</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Chat com OpenClaw -->
+    <div id="openclawChatModal" class="modal">
+        <div class="modal-content openclaw-chat-modal">
+            <div class="modal-header">
+                <h2>
+                    <i class="fas fa-robot"></i> OpenClaw no cadastro
+                </h2>
+                <button class="close-modal" onclick="closeEnrollmentChat()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body openclaw-chat-body">
+                <div class="openclaw-chat-note">
+                    <p>O atendimento coleta seus dados e tenta concluir a inscrição por aqui. Se quiser recomeçar, digite <strong>reiniciar</strong>. Consulte os <a href="{{ url_for('static_page_routes.show_page', slug='termos-de-uso') }}" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="{{ url_for('static_page_routes.show_page', slug='privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
+                </div>
+
+                <div id="openclawChatMessages" class="openclaw-chat-messages" aria-live="polite"></div>
+
+                <form id="openclawChatForm" class="openclaw-chat-composer">
+                    <input type="text" id="openclawChatInput" placeholder="Digite sua resposta..." autocomplete="off">
+                    <button type="submit" id="openclawChatSendButton">
+                        <i class="fas fa-paper-plane"></i> Enviar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de Cadastro -->
     <div id="cadastroModal" class="modal">
@@ -454,12 +519,220 @@
     let loteCheckInterval = null;
     let estadosBrasil = [];
     let statesFailed = false;
+    const eventName = {{ (evento.nome if evento else '')|tojson }};
+    const eventLocation = {{ (evento.localizacao if evento else '')|tojson }};
+    const mapLink = {{ (evento.link_mapa if evento else '')|tojson }};
+    const openclawChatEndpoint = {{ url_for('inscricao_routes.openclaw_public_chat', identifier=token)|tojson }};
+    let openclawChatLoading = false;
+
+    function updateModalBodyState() {
+        const modalIds = ['enrollmentOptionsModal', 'openclawChatModal', 'cadastroModal', 'speakerModal'];
+        const hasOpenModal = modalIds.some((id) => {
+            const modal = document.getElementById(id);
+            return modal && window.getComputedStyle(modal).display !== 'none';
+        });
+
+        document.body.style.overflow = hasOpenModal ? 'hidden' : 'auto';
+        document.body.classList.toggle('modal-open', hasOpenModal);
+    }
+
+    function openModalById(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.style.display = 'flex';
+        updateModalBodyState();
+    }
+
+    function closeModalById(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.style.display = 'none';
+        updateModalBodyState();
+    }
+
     // Controle de Modais
+    function openEnrollmentOptions() {
+        const modal = document.getElementById('enrollmentOptionsModal');
+        if (!modal) {
+            abrirModal();
+            return;
+        }
+        openModalById('enrollmentOptionsModal');
+    }
+
+    function closeEnrollmentOptions() {
+        closeModalById('enrollmentOptionsModal');
+    }
+
+    function proceedToWebsiteRegistration() {
+        closeEnrollmentOptions();
+        abrirModal();
+    }
+
+    function resetOpenClawChatUI() {
+        const messages = document.getElementById('openclawChatMessages');
+        const input = document.getElementById('openclawChatInput');
+        if (messages) {
+            messages.innerHTML = '';
+        }
+        if (input) {
+            input.value = '';
+        }
+    }
+
+    function appendOpenClawMessage(role, text, options = {}) {
+        const messages = document.getElementById('openclawChatMessages');
+        if (!messages) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = `openclaw-message openclaw-message-${role}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'openclaw-message-bubble';
+        bubble.textContent = text;
+        wrapper.appendChild(bubble);
+
+        if (role === 'assistant' && options.quickReplies && options.quickReplies.length) {
+            const quickReplies = document.createElement('div');
+            quickReplies.className = 'openclaw-quick-replies';
+
+            options.quickReplies.forEach((reply) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'openclaw-quick-reply';
+                button.textContent = reply.label;
+                button.addEventListener('click', () => {
+                    submitOpenClawChatMessage(reply.value);
+                });
+                quickReplies.appendChild(button);
+            });
+
+            wrapper.appendChild(quickReplies);
+        }
+
+        if (role === 'assistant' && options.actions && options.actions.length) {
+            const actions = document.createElement('div');
+            actions.className = 'openclaw-actions';
+
+            options.actions.forEach((action) => {
+                const link = document.createElement('a');
+                link.className = 'openclaw-action';
+                link.href = action.url;
+                link.target = action.target || '_self';
+                if (link.target === '_blank') {
+                    link.rel = 'noopener';
+                }
+                link.textContent = action.label;
+                actions.appendChild(link);
+            });
+
+            wrapper.appendChild(actions);
+        }
+
+        messages.appendChild(wrapper);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function setOpenClawChatBusy(isBusy) {
+        openclawChatLoading = isBusy;
+        const input = document.getElementById('openclawChatInput');
+        const button = document.getElementById('openclawChatSendButton');
+        if (input) {
+            input.disabled = isBusy;
+        }
+        if (button) {
+            button.disabled = isBusy;
+        }
+    }
+
+    async function callOpenClawChat(payload) {
+        const response = await fetch(openclawChatEndpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            throw new Error('Falha ao conversar com o OpenClaw.');
+        }
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Falha ao conversar com o OpenClaw.');
+        }
+        return data;
+    }
+
+    async function startOpenClawChat() {
+        resetOpenClawChatUI();
+        appendOpenClawMessage('assistant', 'Estou iniciando seu atendimento.');
+        setOpenClawChatBusy(true);
+
+        try {
+            const data = await callOpenClawChat({ action: 'start' });
+            appendOpenClawMessage('assistant', data.reply, {
+                quickReplies: data.quick_replies,
+                actions: data.actions
+            });
+        } catch (error) {
+            appendOpenClawMessage('assistant', error.message || 'Não consegui iniciar o atendimento agora.');
+        } finally {
+            setOpenClawChatBusy(false);
+            const input = document.getElementById('openclawChatInput');
+            if (input) {
+                input.focus();
+            }
+        }
+    }
+
+    async function submitOpenClawChatMessage(message, options = {}) {
+        const { echoUser = true } = options;
+        const trimmed = (message || '').trim();
+        if (!trimmed || openclawChatLoading) return;
+
+        if (echoUser) {
+            appendOpenClawMessage('user', trimmed);
+        }
+
+        const input = document.getElementById('openclawChatInput');
+        if (input) {
+            input.value = '';
+        }
+
+        setOpenClawChatBusy(true);
+        try {
+            const data = await callOpenClawChat({ message: trimmed });
+            appendOpenClawMessage('assistant', data.reply, {
+                quickReplies: data.quick_replies,
+                actions: data.actions
+            });
+        } catch (error) {
+            appendOpenClawMessage('assistant', error.message || 'Não consegui processar sua mensagem.');
+        } finally {
+            setOpenClawChatBusy(false);
+            if (input) {
+                input.focus();
+            }
+        }
+    }
+
+    function openEnrollmentChat() {
+        closeEnrollmentOptions();
+        openModalById('openclawChatModal');
+        startOpenClawChat();
+    }
+
+    function closeEnrollmentChat() {
+        closeModalById('openclawChatModal');
+    }
+
     function abrirModal() {
         const modal = document.getElementById('cadastroModal');
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        document.body.classList.add('modal-open');
+        openModalById('cadastroModal');
 
         // Garante que o modal esteja acima da navbar
         setTimeout(() => {
@@ -477,9 +750,7 @@
         // }
     }
     function fecharModal() {
-        document.getElementById('cadastroModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-        document.body.classList.remove('modal-open');
+        closeModalById('cadastroModal');
 
         if (loteCheckInterval) {
             clearInterval(loteCheckInterval);
@@ -498,15 +769,11 @@
             photoEl.src = defaultSpeakerPhoto;
         };
         photoEl.src = photo || defaultSpeakerPhoto;
-        document.getElementById('speakerModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        document.body.classList.add('modal-open');
+        openModalById('speakerModal');
     }
 
     function closeSpeakerModal() {
-        document.getElementById('speakerModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-        document.body.classList.remove('modal-open');
+        closeModalById('speakerModal');
     }
 
     // Gerenciamento de Lotes
@@ -678,20 +945,19 @@
         setupMap(latitude, longitude);
     {% elif evento and evento.link_mapa %}
     try {
-        const mapLink = "{{ evento.link_mapa }}";
         let coords = extractCoordsFromUrl(mapLink);
 
         if (coords) {
             setupMap(coords.latitude, coords.longitude);
         } else {
-            geocodeAddress("{{ evento.localizacao|e if evento.localizacao else '' }}");
+            geocodeAddress(eventLocation);
         }
     } catch (error) {
         console.error("Erro ao processar link do mapa:", error);
-        geocodeAddress("{{ evento.localizacao|e if evento.localizacao else '' }}");
+        geocodeAddress(eventLocation);
     }
     {% else %}
-    geocodeAddress("{{ evento.localizacao|e if evento.localizacao else '' }}");
+    geocodeAddress(eventLocation);
     {% endif %}
     }
 
@@ -724,8 +990,17 @@
         });
 
         // Adiciona marcador no mapa
-        const marker = L.marker([latitude, longitude]).addTo(map)
-            .bindPopup(`<b>{{ evento.nome|e if evento else '' }}</b><br>{{ evento.localizacao|e if evento and evento.localizacao else '' }}`)
+        const popupContent = document.createElement('div');
+        const popupTitle = document.createElement('strong');
+        popupTitle.textContent = eventName;
+        popupContent.appendChild(popupTitle);
+        if (eventLocation) {
+            popupContent.appendChild(document.createElement('br'));
+            popupContent.appendChild(document.createTextNode(eventLocation));
+        }
+
+        L.marker([latitude, longitude]).addTo(map)
+            .bindPopup(popupContent)
             .openPopup();
     }
 
@@ -914,6 +1189,15 @@
     } else {
         console.warn('Leaflet not loaded, skipping map initialization');
     }
+
+    const openclawChatForm = document.getElementById('openclawChatForm');
+    if (openclawChatForm) {
+        openclawChatForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const input = document.getElementById('openclawChatInput');
+            submitOpenClawChatMessage(input ? input.value : '');
+        });
+    }
     });
 
     function updateHiddenFields(selectedOption) {
@@ -949,11 +1233,17 @@
 
     // Fechar o modal quando clicar fora do conteúdo
     window.addEventListener('load', function () {
+        var enrollmentOptionsModal = document.getElementById('enrollmentOptionsModal');
+        var openclawChatModal = document.getElementById('openclawChatModal');
         var modal = document.getElementById('cadastroModal');
         var speakerModal = document.getElementById('speakerModal');
 
         window.addEventListener('click', function (event) {
-            if (event.target === modal) {
+            if (event.target === enrollmentOptionsModal) {
+                closeEnrollmentOptions();
+            } else if (event.target === openclawChatModal) {
+                closeEnrollmentChat();
+            } else if (event.target === modal) {
                 fecharModal();
             } else if (event.target === speakerModal) {
                 closeSpeakerModal();

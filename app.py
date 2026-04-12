@@ -147,6 +147,14 @@ def create_app():
             os.path.join(app.static_folder, "banners"),
             app.config["BANNERS_ROOT"],
         )
+        _ensure_static_symlink(
+            os.path.join(app.static_folder, "fotos"),
+            os.path.join(app.config["UPLOADS_ROOT"], "ministrantes"),
+        )
+        _ensure_static_symlink(
+            os.path.join(app.static_folder, "logos"),
+            os.path.join(app.config["UPLOADS_ROOT"], "patrocinadores"),
+        )
 
     def _check_render_disk_health() -> None:
         if not (os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_HOSTNAME")):
@@ -187,6 +195,18 @@ def create_app():
         if not isinstance(value, str):
             value = str(value)
         raw = value.strip().replace("\\", "/")
+        legacy_prefixes = {
+            "/static/fotos/": "uploads/ministrantes/",
+            "static/fotos/": "uploads/ministrantes/",
+            "fotos/": "uploads/ministrantes/",
+            "/static/logos/": "uploads/patrocinadores/",
+            "static/logos/": "uploads/patrocinadores/",
+            "logos/": "uploads/patrocinadores/",
+        }
+        for legacy_prefix, normalized_prefix in legacy_prefixes.items():
+            if raw.startswith(legacy_prefix):
+                raw = normalized_prefix + raw[len(legacy_prefix) :]
+                break
         if raw.startswith(("http://", "https://", "//")):
             if raw.startswith("http://"):
                 try:
@@ -208,6 +228,20 @@ def create_app():
         return flask_url_for("static", filename=raw)
 
     app.jinja_env.filters["media_url"] = _media_url
+
+    @app.route("/static/fotos/<path:filename>")
+    def legacy_ministrante_photo(filename: str):
+        return send_from_directory(
+            os.path.join(app.config["UPLOADS_ROOT"], "ministrantes"),
+            filename,
+        )
+
+    @app.route("/static/logos/<path:filename>")
+    def legacy_patrocinador_logo(filename: str):
+        return send_from_directory(
+            os.path.join(app.config["UPLOADS_ROOT"], "patrocinadores"),
+            filename,
+        )
 
     def _ensure_oficina_schema() -> None:
         """Ensure expected columns exist when migrations were skipped."""

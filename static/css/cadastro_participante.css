@@ -552,6 +552,242 @@ body.modal-open {
 
 .modal-body { padding: 32px; }
 
+.enrollment-options-modal {
+    max-width: 860px;
+}
+
+.enrollment-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.enrollment-option-card {
+    width: 100%;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    background: var(--surface-section);
+    box-shadow: var(--shadow-card);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.enrollment-option-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--action-primary);
+}
+
+.enrollment-option-card:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.15);
+    border-color: var(--action-primary);
+}
+
+.enrollment-option-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.enrollment-option-site {
+    background: rgba(30, 136, 229, 0.12);
+    color: var(--action-primary);
+}
+
+.enrollment-option-whatsapp {
+    background: rgba(37, 211, 102, 0.12);
+    color: #25D366;
+}
+
+.enrollment-option-chat {
+    background: rgba(15, 23, 42, 0.08);
+    color: var(--action-strong);
+}
+
+.enrollment-option-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.enrollment-option-copy {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.openclaw-chat-modal {
+    max-width: 760px;
+}
+
+.openclaw-chat-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: min(80vh, 760px);
+}
+
+.openclaw-chat-note {
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.openclaw-chat-note a {
+    color: var(--action-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.openclaw-chat-note a:hover {
+    text-decoration: underline;
+}
+
+.openclaw-chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 320px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.openclaw-message {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.openclaw-message-user {
+    align-items: flex-end;
+}
+
+.openclaw-message-assistant {
+    align-items: flex-start;
+}
+
+.openclaw-message-bubble {
+    max-width: min(88%, 560px);
+    padding: 16px 18px;
+    border-radius: 18px;
+    white-space: pre-line;
+    line-height: 1.6;
+    box-shadow: var(--shadow-sm);
+}
+
+.openclaw-message-user .openclaw-message-bubble {
+    background: var(--action-primary);
+    color: var(--text-on-brand);
+    border-bottom-right-radius: 6px;
+}
+
+.openclaw-message-assistant .openclaw-message-bubble {
+    background: var(--surface-subtle);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-bottom-left-radius: 6px;
+}
+
+.openclaw-quick-replies,
+.openclaw-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.openclaw-quick-reply,
+.openclaw-action {
+    border-radius: var(--radius-full);
+    padding: 10px 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.openclaw-quick-reply {
+    border: 1px solid var(--border-default);
+    background: var(--surface-section);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.openclaw-quick-reply:hover {
+    border-color: var(--action-primary);
+    color: var(--action-primary);
+}
+
+.openclaw-action {
+    background: var(--action-strong);
+    color: var(--text-on-brand);
+}
+
+.openclaw-action:hover {
+    background: var(--action-strong-hover);
+}
+
+.openclaw-chat-composer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.openclaw-chat-composer input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    background: var(--surface-subtle);
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.openclaw-chat-composer input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    background: var(--surface-section);
+    box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.1);
+}
+
+.openclaw-chat-composer button {
+    border: none;
+    border-radius: var(--radius-full);
+    padding: 14px 20px;
+    background: var(--action-primary);
+    color: var(--text-on-brand);
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+}
+
+.openclaw-chat-composer button:hover {
+    background: var(--action-primary-hover);
+}
+
+.openclaw-chat-composer button:disabled,
+.openclaw-chat-composer input:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
 /* Formulários */
 .form-grid {
     display: grid;
@@ -561,6 +797,10 @@ body.modal-open {
 
 @media (max-width: 640px) {
     .form-grid { grid-template-columns: 1fr; }
+    .enrollment-options-grid { grid-template-columns: 1fr; }
+    .openclaw-chat-composer { grid-template-columns: 1fr; }
+    .openclaw-chat-composer button { justify-content: center; }
+    .openclaw-message-bubble { max-width: 100%; }
 }
 
 .form-group {

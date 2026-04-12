@@ -176,3 +176,10 @@ class Config:
     OPENCLAW_DEFAULT_PASSWORD_LENGTH = int(
         os.getenv("OPENCLAW_DEFAULT_PASSWORD_LENGTH", "16")
     )
+    OPENCLAW_WHATSAPP_NUMBER = os.getenv(
+        "OPENCLAW_WHATSAPP_NUMBER",
+        "5582988768310",
+    )
+    OPENCLAW_WHATSAPP_ENABLED = (
+        os.getenv("OPENCLAW_WHATSAPP_ENABLED", "1") not in {"0", "false", "False"}
+    )

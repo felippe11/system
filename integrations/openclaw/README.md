@@ -12,6 +12,22 @@ das inscricoes, com o backend Flask deste repositorio como autoridade oficial.
 - prompts internos e skill em pt-BR
 - testes e checagem de tipo
 
+## Limitacao atual
+
+Este pacote, no estado atual, registra apenas tools no gateway OpenClaw.
+Ele nao implementa um plugin de canal do WhatsApp por conta propria.
+
+Na pratica, isso significa:
+
+- ele nao "escuta" mensagens recebidas no WhatsApp sozinho
+- ele nao responde automaticamente so por estar carregado como plugin
+- ele precisa ser conectado a um agente/canal do OpenClaw que use essas tools
+
+Se o numero recebe a mensagem mas nao responde, o problema mais provavel e:
+
+- nao existe um canal/agente OpenClaw ligado a esse numero, ou
+- o plugin foi carregado apenas como plugin comum de tools, sem wiring de canal
+
 ## Tools registradas
 
 - `listar_eventos`
@@ -51,6 +67,10 @@ integrations/openclaw
 ```
 
 ## Configuracao do plugin
+
+Arquivo pronto para copiar:
+
+- `integrations/openclaw/openclaw.gateway.example.json`
 
 ### 1. Instalar dependencias
 
@@ -94,6 +114,18 @@ Exemplo de configuracao:
   }
 }
 ```
+
+Campos que voce precisa ajustar no exemplo:
+
+- `apiBaseUrl`: URL publica do Flask, por exemplo o dominio/ngrok que responde as rotas `/api/...`
+  No arquivo de exemplo atual, ele ja vem preenchido com `https://a9d8-2804-29b8-513c-2e78-7002-24b0-5b1c-ac9b.ngrok-free.app`.
+- `apiToken`: mesmo valor definido em `OPENCLAW_API_TOKEN` no backend Flask
+- `defaultClienteId`: cliente padrao para listar eventos, se fizer sentido no seu fluxo
+
+Observacao:
+
+- esse arquivo configura o plugin e a comunicacao com a API oficial
+- a conexao do numero/canal do WhatsApp com o gateway OpenClaw ainda depende da configuracao do proprio gateway/provedor
 
 Depois reinicie o gateway:
 
