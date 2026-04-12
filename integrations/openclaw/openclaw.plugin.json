@@ -1,0 +1,7 @@
+{
+  "id": "whatsapp-inscricoes",
+  "name": "WhatsApp Inscricoes",
+  "description": "Integra o OpenClaw ao backend oficial de inscricoes via WhatsApp.",
+  "author": "Felipe Cabral",
+  "license": "MIT"
+}

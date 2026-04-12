@@ -163,3 +163,16 @@ class Config:
     SOCKETIO_ASYNC_MODE = os.getenv('SOCKETIO_ASYNC_MODE', 'threading')
     SOCKETIO_PING_TIMEOUT = 60
     SOCKETIO_PING_INTERVAL = 25
+
+    # ------------------------------------------------------------------ #
+    #  OpenClaw WhatsApp integration                                     #
+    # ------------------------------------------------------------------ #
+    OPENCLAW_API_ENABLED = os.getenv("OPENCLAW_API_ENABLED", "1") not in {
+        "0",
+        "false",
+        "False",
+    }
+    OPENCLAW_API_TOKEN = os.getenv("OPENCLAW_API_TOKEN", "")
+    OPENCLAW_DEFAULT_PASSWORD_LENGTH = int(
+        os.getenv("OPENCLAW_DEFAULT_PASSWORD_LENGTH", "16")
+    )

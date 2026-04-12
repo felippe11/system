@@ -24,3 +24,8 @@ app.db
 uploads/
 token.json
 
+# OpenClaw integration artifacts
+integrations/openclaw/node_modules/
+integrations/openclaw/dist/
+static/comprovantes/openclaw/
+

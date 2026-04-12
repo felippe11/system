@@ -13,6 +13,40 @@ Atualize este módulo ao adicionar ou renomear rotas relacionadas ao dashboard
 para garantir que os redirecionamentos em todo o projeto permaneçam
 consistentes.
 
+## Integracao OpenClaw / WhatsApp
+
+Esta base agora expõe uma API REST autenticada para uso pelo OpenClaw no fluxo
+de inscricoes via WhatsApp. Os arquivos principais dessa entrega estao em:
+
+- `routes/openclaw_api_routes.py`
+- `services/openclaw_api_service.py`
+- `services/openclaw_receipt_service.py`
+- `utils/openclaw_validators.py`
+- `integrations/openclaw/`
+- `docs/openclaw-whatsapp-deploy.md`
+- `examples/openclaw_api_payloads.md`
+
+Fluxo suportado:
+
+1. listar eventos
+2. detalhar evento
+3. buscar participante por CPF
+4. criar inscricao
+5. consultar inscricao/status/comprovante
+6. gerar link de pagamento oficial
+
+Variaveis novas de ambiente:
+
+```bash
+export OPENCLAW_API_ENABLED="1"
+export OPENCLAW_API_TOKEN="<token_forte>"
+export OPENCLAW_DEFAULT_PASSWORD_LENGTH="16"
+```
+
+Consulte [integrations/openclaw/README.md](integrations/openclaw/README.md)
+para instalar o plugin e [docs/openclaw-whatsapp-deploy.md](docs/openclaw-whatsapp-deploy.md)
+para o plano de deploy.
+
 
 ## Configuracao
 

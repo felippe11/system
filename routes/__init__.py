@@ -94,6 +94,7 @@ def register_routes(app):
     from .submission_distribution_routes import submission_distribution_routes
     from .favicon_routes import favicon_routes
     from .voting_routes import voting_routes
+    from .openclaw_api_routes import openclaw_api_routes
 
     # Importa servicos que registram rotas diretamente no blueprint
     from services import lote_service  # noqa: F401
@@ -162,10 +163,10 @@ def register_routes(app):
     app.register_blueprint(submission_distribution_routes)
     app.register_blueprint(favicon_routes)
     app.register_blueprint(voting_routes)
+    app.register_blueprint(openclaw_api_routes)
     
     # Registro das novas rotas do sistema de formador
     app.register_blueprint(formador_routes)
     app.register_blueprint(monitor_formador_routes)
     app.register_blueprint(cliente_formador_routes)
     app.register_blueprint(formador_relatorio_routes)
-
