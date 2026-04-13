@@ -283,7 +283,7 @@ def _build_openclaw_chat_state(
     }
 
     intro_parts = [
-        f"Sou o OpenClaw e posso concluir sua inscrição em {evento.nome} aqui mesmo.",
+        f"Sou a Laika e vou te ajudar com a sua inscrição no evento \"{evento.nome}\" aqui mesmo.",
         "Vou pedir seus dados em sequência. Se quiser começar de novo a qualquer momento, digite reiniciar.",
     ]
 
