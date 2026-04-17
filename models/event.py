@@ -1648,6 +1648,25 @@ class ConfiguracaoCertificadoAvancada(db.Model):
     template_individual = db.relationship("CertificadoTemplateAvancado", foreign_keys=[template_individual_id])
     template_geral = db.relationship("CertificadoTemplateAvancado", foreign_keys=[template_geral_id])
 
+    @property
+    def permitir_solicitacao_manual(self):
+        return bool(self.requer_aprovacao_manual and self.acesso_participante)
+
+    @permitir_solicitacao_manual.setter
+    def permitir_solicitacao_manual(self, value):
+        enabled = bool(value)
+        self.requer_aprovacao_manual = enabled
+        if enabled:
+            self.acesso_participante = True
+
+    @property
+    def notificar_liberacao(self):
+        return self.notificar_participante
+
+    @notificar_liberacao.setter
+    def notificar_liberacao(self, value):
+        self.notificar_participante = bool(value)
+
     def __repr__(self):
         return f"<ConfiguracaoCertificadoAvancada Evento {self.evento_id}>"
 

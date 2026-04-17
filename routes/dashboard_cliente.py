@@ -6,7 +6,6 @@ from flask import (
     url_for,
     flash,
     jsonify,
-    session,
     send_file,
     abort,
 )
@@ -64,6 +63,296 @@ except Exception:  # pragma: no cover
 # Importa o blueprint central para registrar as rotas deste módulo
 from .dashboard_routes import dashboard_routes
 
+INSCRICAO_STATUS_CONFIRMADA = ("approved", "paid")
+AGENDAMENTO_STATUS_ATIVOS = ("pendente", "confirmado")
+AGENDAMENTO_STATUS_VISITANTES = ("confirmado", "realizado")
+AGENDAMENTO_STATUS_ENCERRADOS = {"encerrado", "finalizado", "cancelado"}
+
+
+def _coletar_estatisticas_oficinas_cliente(cliente_id):
+    """Consolida métricas de atividades do cliente com filtros consistentes."""
+    oficinas = (
+        Oficina.query.options(joinedload(Oficina.inscritos))
+        .filter_by(cliente_id=cliente_id)
+        .all()
+    )
+    oficina_ids = [oficina.id for oficina in oficinas]
+
+    checkins_por_oficina = {}
+    inscritos_por_oficina = {}
+    inscritos = []
+
+    if oficina_ids:
+        checkin_rows = (
+            db.session.query(Checkin.oficina_id, func.count(Checkin.id))
+            .filter(Checkin.oficina_id.in_(oficina_ids))
+            .group_by(Checkin.oficina_id)
+            .all()
+        )
+        checkins_por_oficina = {
+            oficina_id: total for oficina_id, total in checkin_rows if oficina_id
+        }
+
+        inscricao_rows = (
+            db.session.query(Inscricao.oficina_id, func.count(Inscricao.id))
+            .filter(
+                Inscricao.oficina_id.in_(oficina_ids),
+                Inscricao.cliente_id == cliente_id,
+                Inscricao.status_pagamento.in_(INSCRICAO_STATUS_CONFIRMADA),
+            )
+            .group_by(Inscricao.oficina_id)
+            .all()
+        )
+        inscritos_por_oficina = {
+            oficina_id: total for oficina_id, total in inscricao_rows if oficina_id
+        }
+
+        inscritos = (
+            Inscricao.query.filter(
+                Inscricao.oficina_id.in_(oficina_ids),
+                Inscricao.cliente_id == cliente_id,
+                Inscricao.status_pagamento.in_(INSCRICAO_STATUS_CONFIRMADA),
+            )
+            .all()
+        )
+
+    total_vagas = 0
+    for oficina in oficinas:
+        if oficina.tipo_inscricao == "com_inscricao_com_limite":
+            total_vagas += oficina.vagas or 0
+        elif oficina.tipo_inscricao == "com_inscricao_sem_limite":
+            total_vagas += inscritos_por_oficina.get(oficina.id, 0)
+
+    total_inscricoes = sum(inscritos_por_oficina.values())
+    percentual_adesao = (
+        (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
+    )
+
+    return {
+        "oficinas": oficinas,
+        "total_oficinas": len(oficinas),
+        "total_vagas": total_vagas,
+        "total_inscricoes": total_inscricoes,
+        "percentual_adesao": min(100, percentual_adesao),
+        "checkins_por_oficina": checkins_por_oficina,
+        "inscricoes_por_oficina": inscritos_por_oficina,
+        "inscritos_por_oficina": inscritos_por_oficina,
+        "inscritos": inscritos,
+    }
+
+
+def _coletar_resumo_financeiro(cliente_id):
+    """Retorna o resumo financeiro filtrado por cliente e inscrições confirmadas."""
+    finance_data = (
+        db.session.query(
+            EventoInscricaoTipo.nome.label("nome"),
+            func.count(Inscricao.id).label("quantidade"),
+            EventoInscricaoTipo.preco.label("preco"),
+        )
+        .join(Evento, Evento.id == EventoInscricaoTipo.evento_id)
+        .join(Inscricao, Inscricao.tipo_inscricao_id == EventoInscricaoTipo.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            Inscricao.cliente_id == cliente_id,
+            Inscricao.status_pagamento.in_(INSCRICAO_STATUS_CONFIRMADA),
+        )
+        .group_by(
+            EventoInscricaoTipo.id,
+            EventoInscricaoTipo.nome,
+            EventoInscricaoTipo.preco,
+        )
+        .order_by(func.count(Inscricao.id).desc())
+        .all()
+    )
+
+    valor_caixa = sum(
+        float(registro.preco or 0) * registro.quantidade
+        for registro in finance_data
+    )
+    return finance_data, valor_caixa
+
+
+def _classificar_evento_agendamento(evento, referencia):
+    """Classifica o evento em ativo, futuro ou encerrado."""
+    status = (evento.status or "").strip().lower()
+    if status in AGENDAMENTO_STATUS_ENCERRADOS:
+        return "encerrado"
+    if evento.data_fim and evento.data_fim < referencia:
+        return "encerrado"
+    if evento.data_inicio and evento.data_inicio > referencia:
+        return "futuro"
+    return "ativo"
+
+
+def _coletar_dados_dashboard_agendamentos(cliente_id):
+    """Centraliza as métricas do dashboard de agendamentos do cliente."""
+    agora = datetime.utcnow()
+    hoje = agora.date()
+    data_limite = hoje + timedelta(days=7)
+
+    eventos_cliente = (
+        Evento.query.filter_by(cliente_id=cliente_id)
+        .order_by(Evento.data_inicio.asc().nullslast(), Evento.nome.asc())
+        .all()
+    )
+
+    eventos_ativos = []
+    eventos_futuros = []
+    eventos_encerrados = []
+    for evento in eventos_cliente:
+        classificacao = _classificar_evento_agendamento(evento, agora)
+        if classificacao == "futuro":
+            eventos_futuros.append(evento)
+        elif classificacao == "encerrado":
+            eventos_encerrados.append(evento)
+        else:
+            eventos_ativos.append(evento)
+
+    agendamentos_totais = (
+        db.session.query(func.count(AgendamentoVisita.id))
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(Evento.cliente_id == cliente_id)
+        .scalar()
+        or 0
+    )
+
+    agendamentos_confirmados = (
+        db.session.query(func.count(AgendamentoVisita.id))
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            AgendamentoVisita.status == "confirmado",
+        )
+        .scalar()
+        or 0
+    )
+
+    agendamentos_realizados = (
+        db.session.query(func.count(AgendamentoVisita.id))
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            AgendamentoVisita.status == "realizado",
+        )
+        .scalar()
+        or 0
+    )
+
+    agendamentos_cancelados = (
+        db.session.query(func.count(AgendamentoVisita.id))
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            AgendamentoVisita.status == "cancelado",
+        )
+        .scalar()
+        or 0
+    )
+
+    total_visitantes = (
+        db.session.query(func.sum(AgendamentoVisita.quantidade_alunos))
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            AgendamentoVisita.status.in_(AGENDAMENTO_STATUS_VISITANTES),
+        )
+        .scalar()
+        or 0
+    )
+
+    agendamento_options = [
+        joinedload(AgendamentoVisita.horario).joinedload(HorarioVisitacao.evento),
+        joinedload(AgendamentoVisita.professor),
+    ]
+
+    agendamentos_hoje = (
+        AgendamentoVisita.query.options(*agendamento_options)
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            HorarioVisitacao.data == hoje,
+            AgendamentoVisita.status.in_(AGENDAMENTO_STATUS_ATIVOS),
+        )
+        .order_by(HorarioVisitacao.horario_inicio)
+        .all()
+    )
+
+    proximos_agendamentos = (
+        AgendamentoVisita.query.options(*agendamento_options)
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            HorarioVisitacao.data > hoje,
+            HorarioVisitacao.data <= data_limite,
+            AgendamentoVisita.status.in_(AGENDAMENTO_STATUS_ATIVOS),
+        )
+        .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+        .limit(5)
+        .all()
+    )
+
+    ocupacao_query = (
+        db.session.query(
+            func.sum(
+                HorarioVisitacao.capacidade_total - HorarioVisitacao.vagas_disponiveis
+            ).label("ocupadas"),
+            func.sum(HorarioVisitacao.capacidade_total).label("total"),
+        )
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            HorarioVisitacao.data >= hoje,
+        )
+        .first()
+    )
+
+    ocupacao_media = 0
+    if ocupacao_query and ocupacao_query.total and ocupacao_query.total > 0:
+        ocupacao_media = (ocupacao_query.ocupadas / ocupacao_query.total) * 100
+
+    periodos_agendamento = []
+    if PeriodoAgendamento:
+        periodos_agendamento = (
+            PeriodoAgendamento.query.join(
+                Evento, PeriodoAgendamento.evento_id == Evento.id
+            )
+            .filter(Evento.cliente_id == cliente_id)
+            .all()
+        )
+
+    config_agendamento = None
+    if ConfigAgendamento:
+        config_agendamento = ConfigAgendamento.query.filter_by(
+            cliente_id=cliente_id
+        ).first()
+
+    return {
+        "eventos_cliente": eventos_cliente,
+        "eventos_ativos": eventos_ativos,
+        "eventos_futuros": eventos_futuros,
+        "eventos_encerrados": eventos_encerrados,
+        "total_eventos_com_agendamentos": len(eventos_cliente),
+        "agendamentos_totais": agendamentos_totais,
+        "agendamentos_confirmados": agendamentos_confirmados,
+        "agendamentos_realizados": agendamentos_realizados,
+        "agendamentos_cancelados": agendamentos_cancelados,
+        "total_visitantes": total_visitantes,
+        "agendamentos_hoje": agendamentos_hoje,
+        "todos_agendamentos_hoje": agendamentos_hoje,
+        "proximos_agendamentos": proximos_agendamentos,
+        "agendamentos_futuros": proximos_agendamentos,
+        "ocupacao_media": ocupacao_media,
+        "periodos_agendamento": periodos_agendamento,
+        "config_agendamento": config_agendamento,
+    }
+
 @dashboard_routes.route('/dashboard_cliente')
 @login_required
 def dashboard_cliente():
@@ -84,7 +373,9 @@ def dashboard_cliente():
         'total_inscricoes': 0,
         'percentual_adesao': 0,
         'checkins_via_qr': [],
+        'checkins_por_oficina': {},
         'inscritos': [],
+        'inscricoes_por_oficina': {},
         'config_cliente': None,
         'eventos_ativos': [],
         'agendamentos_totais': 0,
@@ -98,8 +389,8 @@ def dashboard_cliente():
         'total_eventos': 0,
         'eventos': [],
         'finance_data': [],
+        'tipos': [],
         'valor_caixa': 0,
-        'reviewer_apps': [],
         'revisor_candidaturas': [],
         'revisor_candidaturas_aprovadas': [],
         'revisor_filter_options': [],
@@ -111,39 +402,7 @@ def dashboard_cliente():
         # Also pass explicitly for sections that iterated on usuario.eventos
         data['eventos_usuario'] = eventos
 
-        oficinas = Oficina.query.options(joinedload(Oficina.inscritos)).filter_by(cliente_id=current_user.id).all()
-        data['oficinas'] = oficinas
-        data['total_oficinas'] = len(oficinas)
-        oficina_ids = [of.id for of in oficinas]
-
-        checkins_por_oficina = {}
-        if oficina_ids:
-            rows = (
-                db.session.query(Checkin.oficina_id, func.count(Checkin.id))
-                .filter(Checkin.oficina_id.in_(oficina_ids))
-                .group_by(Checkin.oficina_id)
-                .all()
-            )
-            checkins_por_oficina = {oficina_id: total for oficina_id, total in rows}
-        data['checkins_por_oficina'] = checkins_por_oficina
-
-        total_vagas = 0
-        for of in oficinas:
-            if of.tipo_inscricao == "com_inscricao_com_limite":
-                total_vagas += of.vagas or 0
-            elif of.tipo_inscricao == "com_inscricao_sem_limite":
-                total_vagas += len(of.inscritos)
-            # sem_inscricao não soma vagas
-        data['total_vagas'] = total_vagas
-
-        total_inscricoes = Inscricao.query.join(Oficina).filter(
-            (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
-        ).count()
-        data['total_inscricoes'] = total_inscricoes
-        percentual_adesao = (
-            (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
-        )
-        data['percentual_adesao'] = min(100, percentual_adesao)
+        data.update(_coletar_estatisticas_oficinas_cliente(current_user.id))
 
         checkins_via_qr = (
             Checkin.query
@@ -162,122 +421,11 @@ def dashboard_cliente():
         )
         data['checkins_via_qr'] = checkins_via_qr
 
-        inscritos = Inscricao.query.filter(
-            (Inscricao.cliente_id == current_user.id)
-            | (Inscricao.cliente_id.is_(None))
-        ).all()
-        data['inscritos'] = inscritos
-
         eventos_ativos = Evento.query.filter_by(cliente_id=current_user.id).all()
         data['eventos_ativos'] = eventos_ativos
         data['total_eventos'] = len(eventos_ativos)
 
-        agendamentos_totais = db.session.query(
-            func.count(AgendamentoVisita.id)
-        ).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id
-        ).scalar() or 0
-        data['agendamentos_totais'] = agendamentos_totais
-
-        agendamentos_confirmados = db.session.query(
-            func.count(AgendamentoVisita.id)
-        ).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            AgendamentoVisita.status == 'confirmado',
-        ).scalar() or 0
-        data['agendamentos_confirmados'] = agendamentos_confirmados
-
-        agendamentos_realizados = db.session.query(
-            func.count(AgendamentoVisita.id)
-        ).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            AgendamentoVisita.status == 'realizado',
-        ).scalar() or 0
-        data['agendamentos_realizados'] = agendamentos_realizados
-
-        agendamentos_cancelados = db.session.query(
-            func.count(AgendamentoVisita.id)
-        ).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            AgendamentoVisita.status == 'cancelado',
-        ).scalar() or 0
-        data['agendamentos_cancelados'] = agendamentos_cancelados
-
-        total_visitantes = db.session.query(
-            func.sum(AgendamentoVisita.quantidade_alunos)
-        ).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            AgendamentoVisita.status.in_(['confirmado', 'realizado']),
-        ).scalar() or 0
-        data['total_visitantes'] = total_visitantes
-
-        hoje = datetime.utcnow().date()
-        agendamentos_hoje = AgendamentoVisita.query.join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            HorarioVisitacao.data == hoje,
-            AgendamentoVisita.status.in_(['pendente', 'confirmado']),
-        ).order_by(
-            HorarioVisitacao.horario_inicio
-        ).all()
-        data['agendamentos_hoje'] = agendamentos_hoje
-
-        data_limite = hoje + timedelta(days=7)
-        proximos_agendamentos = AgendamentoVisita.query.join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            HorarioVisitacao.data > hoje,
-            HorarioVisitacao.data <= data_limite,
-            AgendamentoVisita.status.in_(['pendente', 'confirmado']),
-        ).order_by(
-            HorarioVisitacao.data,
-            HorarioVisitacao.horario_inicio,
-        ).limit(5).all()
-        data['proximos_agendamentos'] = proximos_agendamentos
-
-        ocupacao_query = db.session.query(
-            func.sum(
-                HorarioVisitacao.capacidade_total - HorarioVisitacao.vagas_disponiveis
-            ).label('ocupadas'),
-            func.sum(HorarioVisitacao.capacidade_total).label('total'),
-        ).join(
-            Evento, HorarioVisitacao.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            HorarioVisitacao.data >= hoje,
-        ).first()
-        if (
-            ocupacao_query and ocupacao_query.total and ocupacao_query.total > 0
-        ):
-            data['ocupacao_media'] = (
-                ocupacao_query.ocupadas / ocupacao_query.total
-            ) * 100
+        data.update(_coletar_dados_dashboard_agendamentos(current_user.id))
 
         config_cliente = ConfiguracaoCliente.query.filter_by(
             cliente_id=current_user.id
@@ -299,28 +447,10 @@ def dashboard_cliente():
                 ).first()
         data['config_cliente'] = config_cliente
 
-        finance_data = db.session.query(
-            EventoInscricaoTipo.nome.label('nome'),
-            func.count(Inscricao.id).label('quantidade'),
-            EventoInscricaoTipo.preco.label('preco'),
-        ).join(
-            Evento, Evento.id == EventoInscricaoTipo.evento_id
-        ).join(
-            Inscricao, Inscricao.tipo_inscricao_id == EventoInscricaoTipo.id
-        ).filter(
-            Evento.cliente_id == current_user.id,
-            Inscricao.status_pagamento == 'approved',
-        ).group_by(
-            EventoInscricaoTipo.id
-        ).order_by(
-            func.count(Inscricao.id).desc()
-        ).all()
+        finance_data, valor_caixa = _coletar_resumo_financeiro(current_user.id)
         data['finance_data'] = finance_data
-        data['valor_caixa'] = sum(
-            float(r.preco) * r.quantidade for r in finance_data
-        )
-
-        data['reviewer_apps'] = ReviewerApplication.query.all()
+        data['tipos'] = finance_data
+        data['valor_caixa'] = valor_caixa
 
         revisor_candidaturas = (
             RevisorCandidatura.query
@@ -444,141 +574,34 @@ def dashboard_aba_agendamentos():
     Rota para carregar os dados da aba de agendamentos no dashboard do cliente.
     Esta rota é projetada para ser chamada via AJAX para popular a aba de agendamentos.
     """
-    # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         return jsonify(error='Acesso negado'), 403
-    
-    # Buscar eventos ativos
-    eventos_ativos = Evento.query.filter_by(
-        cliente_id=current_user.id
-    ).filter(
-        and_(
-            Evento.data_inicio <= datetime.utcnow(),
-            Evento.data_fim >= datetime.utcnow(),
-            Evento.status == 'ativo'
-        )
-    ).all()
-    
-    # Dados para cards
-    agendamentos_totais = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id
-    ).scalar() or 0
-    
-    agendamentos_confirmados = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status == 'confirmado'
-    ).scalar() or 0
-    
-    agendamentos_realizados = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status == 'realizado'
-    ).scalar() or 0
-    
-    agendamentos_cancelados = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status == 'cancelado'
-    ).scalar() or 0
-    
-    # Total de visitantes
-    total_visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status.in_(['confirmado', 'realizado'])
-    ).scalar() or 0
-    
-    # Agendamentos para hoje
-    hoje = datetime.utcnow().date()
-    agendamentos_hoje = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data == hoje,
-        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
-    ).order_by(
-        HorarioVisitacao.horario_inicio
-    ).all()
-    
-    # Próximos agendamentos (próximos 7 dias, excluindo hoje)
-    data_limite = hoje + timedelta(days=7)
-    proximos_agendamentos = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data > hoje,
-        HorarioVisitacao.data <= data_limite,
-        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
-    ).order_by(
-        HorarioVisitacao.data,
-        HorarioVisitacao.horario_inicio
-    ).limit(5).all()
-    
-    # Calcular ocupação média (vagas preenchidas / capacidade total) 
-    ocupacao_query = db.session.query(
-        func.sum(HorarioVisitacao.capacidade_total - HorarioVisitacao.vagas_disponiveis).label('ocupadas'),
-        func.sum(HorarioVisitacao.capacidade_total).label('total')
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data >= hoje
-    ).first()
-    
-    ocupacao_media = 0
-    if ocupacao_query and ocupacao_query.total and ocupacao_query.total > 0:
-        ocupacao_media = (ocupacao_query.ocupadas / ocupacao_query.total) * 100
-    
-    # Se for uma requisição AJAX, retornar JSON com os dados
+    data = _coletar_dados_dashboard_agendamentos(current_user.id)
+
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({
-            'eventos_ativos_count': len(eventos_ativos),
-            'agendamentos_totais': agendamentos_totais,
-            'agendamentos_confirmados': agendamentos_confirmados,
-            'agendamentos_realizados': agendamentos_realizados,
-            'agendamentos_cancelados': agendamentos_cancelados,
-            'total_visitantes': total_visitantes,
-            'ocupacao_media': round(ocupacao_media, 1) if ocupacao_media else 0,
-            # Não é possível enviar objetos complexos via JSON, então apenas enviamos
-            # um sinal de que há ou não agendamentos
-            'tem_agendamentos_hoje': len(agendamentos_hoje) > 0,
-            'tem_proximos_agendamentos': len(proximos_agendamentos) > 0
+            'eventos_ativos_count': len(data['eventos_ativos']),
+            'agendamentos_totais': data['agendamentos_totais'],
+            'agendamentos_confirmados': data['agendamentos_confirmados'],
+            'agendamentos_realizados': data['agendamentos_realizados'],
+            'agendamentos_cancelados': data['agendamentos_cancelados'],
+            'total_visitantes': data['total_visitantes'],
+            'ocupacao_media': round(data['ocupacao_media'], 1) if data['ocupacao_media'] else 0,
+            'tem_agendamentos_hoje': len(data['agendamentos_hoje']) > 0,
+            'tem_proximos_agendamentos': len(data['proximos_agendamentos']) > 0,
         })
-    
-    # Renderizar o template HTML da aba ou redirecionar para o dashboard
-    # Dependendo de como sua aplicação lida com as abas
+
     return render_template(
         'partials/dashboard_agendamentos_aba.html',
-        eventos_ativos=eventos_ativos,
-        agendamentos_totais=agendamentos_totais,
-        agendamentos_confirmados=agendamentos_confirmados,
-        agendamentos_realizados=agendamentos_realizados,
-        agendamentos_cancelados=agendamentos_cancelados,
-        total_visitantes=total_visitantes,
-        agendamentos_hoje=agendamentos_hoje,
-        proximos_agendamentos=proximos_agendamentos,
-        ocupacao_media=ocupacao_media
+        eventos_ativos=data['eventos_ativos'],
+        agendamentos_totais=data['agendamentos_totais'],
+        agendamentos_confirmados=data['agendamentos_confirmados'],
+        agendamentos_realizados=data['agendamentos_realizados'],
+        agendamentos_cancelados=data['agendamentos_cancelados'],
+        total_visitantes=data['total_visitantes'],
+        agendamentos_hoje=data['agendamentos_hoje'],
+        proximos_agendamentos=data['proximos_agendamentos'],
+        ocupacao_media=data['ocupacao_media'],
     )
 
 @dashboard_routes.route('/dashboard_aba_agendamentos_hoje')
@@ -589,23 +612,11 @@ def dashboard_aba_agendamentos_hoje():
     """
     if current_user.tipo != 'cliente':
         return jsonify(error='Acesso negado'), 403
-    
-    hoje = datetime.utcnow().date()
-    agendamentos_hoje = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data == hoje,
-        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
-    ).order_by(
-        HorarioVisitacao.horario_inicio
-    ).all()
-    
+
+    data = _coletar_dados_dashboard_agendamentos(current_user.id)
     return render_template(
         'partials/agendamentos_hoje_lista.html',
-        agendamentos_hoje=agendamentos_hoje
+        agendamentos_hoje=data['agendamentos_hoje'],
     )
 
 @dashboard_routes.route('/dashboard_aba_proximos_agendamentos')
@@ -616,26 +627,11 @@ def dashboard_aba_proximos_agendamentos():
     """
     if current_user.tipo != 'cliente':
         return jsonify(error='Acesso negado'), 403
-    
-    hoje = datetime.utcnow().date()
-    data_limite = hoje + timedelta(days=7)
-    proximos_agendamentos = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data > hoje,
-        HorarioVisitacao.data <= data_limite,
-        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
-    ).order_by(
-        HorarioVisitacao.data,
-        HorarioVisitacao.horario_inicio
-    ).limit(5).all()
-    
+
+    data = _coletar_dados_dashboard_agendamentos(current_user.id)
     return render_template(
         'partials/proximos_agendamentos_lista.html',
-        proximos_agendamentos=proximos_agendamentos
+        proximos_agendamentos=data['proximos_agendamentos'],
     )
 
 @dashboard_routes.route('/dashboard_aba_financeiro')
@@ -645,24 +641,7 @@ def dashboard_aba_financeiro():
     if current_user.tipo != 'cliente':
         return jsonify(error='Acesso negado'), 403
 
-    finance_data = (
-        db.session.query(
-            EventoInscricaoTipo.nome.label('nome'),
-            func.count(Inscricao.id).label('quantidade'),
-            EventoInscricaoTipo.preco.label('preco')
-        )
-        .join(Evento, Evento.id == EventoInscricaoTipo.evento_id)
-        .join(Inscricao, Inscricao.tipo_inscricao_id == EventoInscricaoTipo.id)
-        .filter(
-            Evento.cliente_id == current_user.id,
-            Inscricao.status_pagamento == 'approved'
-        )
-        .group_by(EventoInscricaoTipo.id)
-        .order_by(func.count(Inscricao.id).desc())
-        .all()
-    )
-
-    valor_caixa = sum(float(r.preco) * r.quantidade for r in finance_data)
+    finance_data, valor_caixa = _coletar_resumo_financeiro(current_user.id)
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({
@@ -679,147 +658,19 @@ def dashboard_aba_financeiro():
     return render_template(
         'partials/dashboard_financeiro_aba.html',
         tipos=finance_data,
-        valor_caixa=valor_caixa
+        finance_data=finance_data,
+        valor_caixa=valor_caixa,
     )
 
 # Função auxiliar para definir os valores na sessão
 def set_dashboard_agendamentos_data():
     """
-    Função auxiliar para calcular e armazenar em sessão os dados para a aba de agendamentos.
-    Chamada antes de renderizar o dashboard principal para garantir que os dados estejam disponíveis.
+    Função auxiliar para calcular os dados da aba de agendamentos.
     """
     if current_user.tipo != 'cliente':
-        return
-    
-    # Buscar eventos ativos
-    eventos_ativos = Evento.query.filter_by(
-        cliente_id=current_user.id
-    ).filter(
-        and_(
-            Evento.data_inicio <= datetime.utcnow(),
-            Evento.data_fim >= datetime.utcnow(),
-            Evento.status == 'ativo'
-        )
-    ).all()
-    
-    # Dados para cards
-    agendamentos_totais = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id
-    ).scalar() or 0
-    
-    agendamentos_confirmados = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status == 'confirmado'
-    ).scalar() or 0
-    
-    agendamentos_realizados = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status == 'realizado'
-    ).scalar() or 0
-    
-    agendamentos_cancelados = db.session.query(func.count(AgendamentoVisita.id)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status == 'cancelado'
-    ).scalar() or 0
-    
-    # Total de visitantes
-    total_visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        AgendamentoVisita.status.in_(['confirmado', 'realizado'])
-    ).scalar() or 0
-    
-    # Agendamentos para hoje
-    hoje = datetime.utcnow().date()
-    agendamentos_hoje = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data == hoje,
-        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
-    ).order_by(
-        HorarioVisitacao.horario_inicio
-    ).all()
-    
-    # Próximos agendamentos (próximos 7 dias, excluindo hoje)
-    data_limite = hoje + timedelta(days=7)
-    proximos_agendamentos = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data > hoje,
-        HorarioVisitacao.data <= data_limite,
-        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
-    ).order_by(
-        HorarioVisitacao.data,
-        HorarioVisitacao.horario_inicio
-    ).limit(5).all()
-    
-    # Calcular ocupação média (vagas preenchidas / capacidade total) 
-    ocupacao_query = db.session.query(
-        func.sum(HorarioVisitacao.capacidade_total - HorarioVisitacao.vagas_disponiveis).label('ocupadas'),
-        func.sum(HorarioVisitacao.capacidade_total).label('total')
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id,
-        HorarioVisitacao.data >= hoje
-    ).first()
-    
-    ocupacao_media = 0
-    if ocupacao_query and ocupacao_query.total and ocupacao_query.total > 0:
-        ocupacao_media = (ocupacao_query.ocupadas / ocupacao_query.total) * 100
+        return {}
 
-    # Períodos de agendamento e configuração opcional
-    periodos_agendamento = []
-    if PeriodoAgendamento:  # pragma: no branch - depende da existência do modelo
-        periodos_agendamento = PeriodoAgendamento.query.join(
-            Evento, PeriodoAgendamento.evento_id == Evento.id
-        ).filter(
-            Evento.cliente_id == current_user.id
-        ).all()
-
-    config_agendamento = None
-    if ConfigAgendamento:  # pragma: no branch
-        config_agendamento = ConfigAgendamento.query.filter_by(
-            cliente_id=current_user.id
-        ).first()
-
-    # Armazenar valores na sessão para uso no template principal
-    session['dashboard_agendamentos'] = {
-        'eventos_ativos': len(eventos_ativos),
-        'agendamentos_totais': agendamentos_totais,
-        'agendamentos_confirmados': agendamentos_confirmados,
-        'agendamentos_realizados': agendamentos_realizados,
-        'agendamentos_cancelados': agendamentos_cancelados,
-        'total_visitantes': total_visitantes,
-        'ocupacao_media': ocupacao_media,
-        'periodos_agendamento': periodos_agendamento,
-        'config_agendamento': config_agendamento
-    }
+    return _coletar_dados_dashboard_agendamentos(current_user.id)
 
 @dashboard_routes.route("/dashboard_cliente/ordenar_atividades", methods=["GET", "POST"])
 @login_required
@@ -1099,17 +950,25 @@ def configurar_permissoes_atividades():
 @login_required
 def dashboard_agendamentos():
     """Dashboard específico do módulo de agendamentos."""
-    # Valores padrão para evitar erros de renderização
+    if current_user.tipo != 'cliente':
+        abort(403)
+
     context = {
+        'eventos_cliente': [],
         'eventos_ativos': [],
+        'eventos_futuros': [],
+        'eventos_encerrados': [],
+        'total_eventos_com_agendamentos': 0,
         'agendamentos_totais': 0,
-        'total_visitantes': 0,
-        'ocupacao_media': 0,
         'agendamentos_confirmados': 0,
         'agendamentos_realizados': 0,
         'agendamentos_cancelados': 0,
+        'total_visitantes': 0,
+        'ocupacao_media': 0,
         'agendamentos_hoje': [],
+        'todos_agendamentos_hoje': [],
         'proximos_agendamentos': [],
+        'agendamentos_futuros': [],
         'periodos_agendamento': [],
         'config_agendamento': None,
     }

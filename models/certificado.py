@@ -1,6 +1,27 @@
-from extensions import db
+import json
 from datetime import datetime
+
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.orm import synonym
+
+from extensions import db
+
+
+def _load_json_payload(value):
+    """Normaliza payloads legados armazenados como lista, dict ou string JSON."""
+    if value in (None, "", []):
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, list):
+        return {"variaveis_ids": list(value)}
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError):
+            return {}
+        return _load_json_payload(parsed)
+    return {}
 
 
 class CertificadoConfig(db.Model):
@@ -62,6 +83,7 @@ class CertificadoParticipante(db.Model):
     # Arquivo e validação
     arquivo_path = db.Column(db.String(500), nullable=True)
     hash_verificacao = db.Column(db.String(64), nullable=True)
+    codigo_verificacao = synonym("hash_verificacao")
     
     # Relacionamentos
     usuario = db.relationship("Usuario", backref="certificados")
@@ -93,6 +115,10 @@ class NotificacaoCertificado(db.Model):
     # Relacionamentos
     usuario = db.relationship("Usuario", backref="notificacoes_certificado")
     evento = db.relationship("Evento", backref="notificacoes_certificado")
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("solicitacao_id", None)
+        super().__init__(*args, **kwargs)
     
     def __repr__(self):
         return f'<NotificacaoCertificado {self.tipo}-{self.usuario_id}>'
@@ -126,6 +152,38 @@ class SolicitacaoCertificado(db.Model):
     evento = db.relationship("Evento", backref="solicitacoes_certificado")
     oficina = db.relationship("Oficina", backref="solicitacoes_certificado")
     aprovador = db.relationship("Usuario", foreign_keys=[aprovado_por])
+
+    @property
+    def data_aprovacao(self):
+        return self.data_resposta
+
+    @data_aprovacao.setter
+    def data_aprovacao(self, value):
+        self.data_resposta = value
+
+    @property
+    def data_processamento(self):
+        return self.data_resposta
+
+    @data_processamento.setter
+    def data_processamento(self, value):
+        self.data_resposta = value
+
+    @property
+    def motivo_rejeicao(self):
+        return self.observacoes_aprovacao if self.status == "rejeitada" else None
+
+    @motivo_rejeicao.setter
+    def motivo_rejeicao(self, value):
+        self.observacoes_aprovacao = value
+
+    @property
+    def observacoes(self):
+        return self.observacoes_aprovacao
+
+    @observacoes.setter
+    def observacoes(self, value):
+        self.observacoes_aprovacao = value
     
     def __repr__(self):
         return f'<SolicitacaoCertificado {self.usuario_id}-{self.evento_id}-{self.status}>'
@@ -189,6 +247,158 @@ class CertificadoTemplateAvancado(db.Model):
     
     # Relacionamentos
     cliente = db.relationship("Cliente", backref="templates_certificado_avancado")
+
+    titulo = synonym("nome")
+    conteudo = synonym("conteudo_html")
+
+    def __init__(self, *args, **kwargs):
+        metadata_keys = (
+            "orientacao",
+            "tamanho_pagina",
+            "tamanho_papel",
+            "layout_config",
+            "elementos_visuais",
+            "variaveis_dinamicas",
+            "margem_config",
+            "configuracoes",
+            "versao",
+            "categoria",
+            "conteudo_css",
+        )
+        metadata_values = {
+            key: kwargs.pop(key)
+            for key in metadata_keys
+            if key in kwargs
+        }
+        super().__init__(*args, **kwargs)
+        for key, value in metadata_values.items():
+            setattr(self, key, value)
+
+    def _metadata(self):
+        payload = _load_json_payload(self.variaveis_disponiveis)
+        if "variaveis_ids" not in payload:
+            payload["variaveis_ids"] = payload.get(
+                "variaveis_dinamicas",
+                payload.get("variaveis_selecionadas", []),
+            )
+        return payload
+
+    def _save_metadata(self, payload):
+        self.variaveis_disponiveis = payload
+
+    @property
+    def categoria(self):
+        return self.tipo
+
+    @categoria.setter
+    def categoria(self, value):
+        if value:
+            self.tipo = value
+
+    @property
+    def orientacao(self):
+        return self._metadata().get("orientacao", "landscape")
+
+    @orientacao.setter
+    def orientacao(self, value):
+        payload = self._metadata()
+        payload["orientacao"] = value or "landscape"
+        self._save_metadata(payload)
+
+    @property
+    def tamanho_pagina(self):
+        return self._metadata().get("tamanho_pagina", "A4")
+
+    @tamanho_pagina.setter
+    def tamanho_pagina(self, value):
+        payload = self._metadata()
+        payload["tamanho_pagina"] = value or "A4"
+        self._save_metadata(payload)
+
+    @property
+    def tamanho_papel(self):
+        return self.tamanho_pagina
+
+    @tamanho_papel.setter
+    def tamanho_papel(self, value):
+        self.tamanho_pagina = value
+
+    @property
+    def layout_config(self):
+        return self._metadata().get("layout_config", {})
+
+    @layout_config.setter
+    def layout_config(self, value):
+        payload = self._metadata()
+        payload["layout_config"] = value or {}
+        self._save_metadata(payload)
+
+    @property
+    def elementos_visuais(self):
+        return self._metadata().get("elementos_visuais", {})
+
+    @elementos_visuais.setter
+    def elementos_visuais(self, value):
+        payload = self._metadata()
+        payload["elementos_visuais"] = value or {}
+        self._save_metadata(payload)
+
+    @property
+    def margem_config(self):
+        return self._metadata().get("margem_config", {})
+
+    @margem_config.setter
+    def margem_config(self, value):
+        payload = self._metadata()
+        payload["margem_config"] = value or {}
+        self._save_metadata(payload)
+
+    @property
+    def configuracoes(self):
+        return self._metadata().get("configuracoes", {})
+
+    @configuracoes.setter
+    def configuracoes(self, value):
+        payload = self._metadata()
+        payload["configuracoes"] = value or {}
+        self._save_metadata(payload)
+
+    @property
+    def versao(self):
+        return self.configuracoes.get("versao", "1.0")
+
+    @versao.setter
+    def versao(self, value):
+        config = self.configuracoes
+        config["versao"] = value
+        self.configuracoes = config
+
+    @property
+    def variaveis_dinamicas(self):
+        values = self._metadata().get("variaveis_ids", [])
+        return [int(value) for value in values if value not in (None, "")]
+
+    @variaveis_dinamicas.setter
+    def variaveis_dinamicas(self, value):
+        payload = self._metadata()
+        payload["variaveis_ids"] = [
+            int(item) for item in (value or []) if item not in (None, "")
+        ]
+        self._save_metadata(payload)
+
+    @property
+    def conteudo_css(self):
+        return self._metadata().get("conteudo_css", "")
+
+    @conteudo_css.setter
+    def conteudo_css(self, value):
+        payload = self._metadata()
+        payload["conteudo_css"] = value or ""
+        self._save_metadata(payload)
+
+    @property
+    def design_json(self):
+        return json.dumps(self.layout_config, ensure_ascii=False)
     
     def __repr__(self):
         return f'<CertificadoTemplateAvancado {self.nome}>'
@@ -332,6 +542,28 @@ class VariavelDinamica(db.Model):
     
     # Relacionamentos
     cliente = db.relationship("Cliente", backref="variaveis_dinamicas")
+
+    ativo = synonym("ativa")
+
+    def __init__(self, *args, **kwargs):
+        opcoes = kwargs.pop("opcoes", None)
+        super().__init__(*args, **kwargs)
+        if opcoes is not None:
+            self.opcoes = opcoes
+
+    @property
+    def opcoes(self):
+        payload = _load_json_payload(self.formato)
+        return payload.get("opcoes", [])
+
+    @opcoes.setter
+    def opcoes(self, value):
+        if value in (None, "", []):
+            payload = _load_json_payload(self.formato)
+            payload.pop("opcoes", None)
+            self.formato = json.dumps(payload, ensure_ascii=False) if payload else None
+            return
+        self.formato = json.dumps({"opcoes": list(value)}, ensure_ascii=False)
     
     def __repr__(self):
         return f'<VariavelDinamica {self.nome}>'

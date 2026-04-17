@@ -37,7 +37,7 @@ from models.certificado import (
     CertificadoParticipante,
     VariavelDinamica,
 )
-from models.event import ConfiguracaoCertificadoAvancada
+from models.event import ConfiguracaoCertificadoAvancada, HistoricoCertificado
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 
 def _resolve_static_path(value: str | None) -> str | None:
@@ -88,6 +88,134 @@ ALLOWED_MIME_TYPES = {
     '.jpeg': 'image/jpeg',
     '.pdf': 'application/pdf',
 }
+
+
+def _parse_json_value(value, default):
+    if value in (None, ""):
+        return default
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (TypeError, ValueError):
+            return default
+    return value
+
+
+def _parse_int_list(values):
+    return [int(item) for item in (values or []) if item not in (None, "")]
+
+
+def _parse_opcoes(value):
+    if value in (None, "", []):
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        raw = value.replace("\r", "\n")
+        if "," in raw and "\n" not in raw:
+            parts = raw.split(",")
+        else:
+            parts = raw.split("\n")
+        return [item.strip() for item in parts if item.strip()]
+    return []
+
+
+def _serialize_variavel(variavel):
+    return {
+        'id': variavel.id,
+        'nome': variavel.nome,
+        'descricao': variavel.descricao,
+        'valor_padrao': variavel.valor_padrao,
+        'tipo': variavel.tipo,
+        'opcoes': variavel.opcoes,
+        'ativo': variavel.ativo,
+        'obrigatoria': variavel.obrigatoria,
+    }
+
+
+def _serialize_template_avancado(template):
+    return {
+        'id': template.id,
+        'nome': template.nome,
+        'titulo': template.titulo,
+        'descricao': template.descricao,
+        'tipo': template.tipo,
+        'categoria': template.categoria,
+        'conteudo': template.conteudo,
+        'conteudo_html': template.conteudo_html,
+        'ativo': template.ativo,
+        'padrao': template.padrao,
+        'orientacao': template.orientacao,
+        'tamanho_pagina': template.tamanho_pagina,
+        'layout_config': template.layout_config,
+        'elementos_visuais': template.elementos_visuais,
+        'margem_config': template.margem_config,
+        'variaveis_dinamicas': template.variaveis_dinamicas,
+        'variaveis_selecionadas': template.variaveis_dinamicas,
+        'versao': template.versao,
+        'data_criacao': template.data_criacao.isoformat() if template.data_criacao else None,
+    }
+
+
+def _parse_datetime_local(value):
+    if not value:
+        return None
+    return datetime.strptime(value, '%Y-%m-%dT%H:%M')
+
+
+def _parse_int(value, default=0, allow_none=False):
+    if value in (None, ""):
+        return None if allow_none else default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None if allow_none else default
+
+
+def _buscar_template_para_emissao(evento, tipo_certificado='geral'):
+    config = ConfiguracaoCertificadoAvancada.query.filter_by(
+        evento_id=evento.id,
+        cliente_id=evento.cliente_id,
+    ).first()
+
+    template = None
+    if config:
+        if tipo_certificado == 'individual' and config.template_individual_id:
+            template = CertificadoTemplateAvancado.query.filter_by(
+                id=config.template_individual_id,
+                cliente_id=evento.cliente_id,
+            ).first()
+        elif tipo_certificado == 'geral' and config.template_geral_id:
+            template = CertificadoTemplateAvancado.query.filter_by(
+                id=config.template_geral_id,
+                cliente_id=evento.cliente_id,
+            ).first()
+
+    if template:
+        return template
+
+    template = CertificadoTemplateAvancado.query.filter_by(
+        cliente_id=evento.cliente_id,
+        ativo=True,
+    ).order_by(CertificadoTemplateAvancado.padrao.desc(), CertificadoTemplateAvancado.id.desc()).first()
+    if template:
+        return template
+
+    return CertificadoTemplate.query.filter_by(
+        cliente_id=evento.cliente_id,
+        ativo=True,
+    ).order_by(CertificadoTemplate.id.desc()).first()
+
+
+def _buscar_variaveis_por_ids(ids):
+    ids = [int(item) for item in ids if item not in (None, "")]
+    if not ids:
+        return []
+    variaveis = VariavelDinamica.query.filter(
+        VariavelDinamica.cliente_id == current_user.id,
+        VariavelDinamica.id.in_(ids),
+    ).all()
+    return sorted(variaveis, key=lambda variavel: ids.index(variavel.id))
 
 
 @certificado_routes.route(
@@ -416,12 +544,251 @@ def editor_avancado():
 def salvar_template_avancado():
     """Salvar template avançado criado no editor."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
+        titulo = data.get('titulo')
+        if not titulo:
+            return {'success': False, 'message': 'Título é obrigatório'}
+
+        template_id = data.get('template_id')
+        if template_id:
+            template = CertificadoTemplateAvancado.query.filter_by(
+                id=template_id,
+                cliente_id=current_user.id,
+            ).first()
+            if not template:
+                return {'success': False, 'message': 'Template não encontrado'}
+        else:
+            template = CertificadoTemplateAvancado(cliente_id=current_user.id)
+
+        template.titulo = titulo
+        template.descricao = data.get('descricao', '')
+        template.categoria = data.get('categoria') or template.tipo or 'certificado'
+        template.orientacao = data.get('orientacao', 'landscape')
+        template.tamanho_pagina = data.get('tamanho_pagina', 'A4')
+        template.conteudo = data.get('html', '')
+        template.layout_config = {
+            'elements': data.get('elements', []),
+            'canvas_html': data.get('html', ''),
+        }
+        template.margem_config = data.get('margem_config', {})
+        template.variaveis_dinamicas = _parse_int_list(
+            data.get('variaveis_selecionadas')
+        )
+        template.configuracoes = {
+            **(template.configuracoes or {}),
+            'elementos_suportados': data.get('elementos_suportados', []),
+            'versao': data.get('versao', template.versao),
+        }
+        template.versao = data.get('versao', template.versao)
+        template.ativo = data.get('ativo', True)
+
+        if not template_id:
+            db.session.add(template)
+
+        db.session.commit()
+        return {'success': True, 'template_id': template.id}
+
+        from models.event import HistoricoCertificado
+
+        atividades = certificado_service.calcular_atividades_participadas(
+            solicitacao.usuario_id, solicitacao.evento_id
+        )
+        config = ConfiguracaoCertificadoAvancada.query.filter_by(
+            evento_id=solicitacao.evento_id
+        ).first()
+
+        template = None
+        if solicitacao.tipo_certificado == 'geral' and config and config.template_geral_id:
+            template = CertificadoTemplateAvancado.query.get(config.template_geral_id)
+        elif solicitacao.tipo_certificado == 'individual' and config and config.template_individual_id:
+            template = CertificadoTemplateAvancado.query.get(config.template_individual_id)
+
+        if not template:
+            template = CertificadoTemplate.query.filter_by(
+                cliente_id=solicitacao.evento.cliente_id,
+                ativo=True,
+            ).first()
+
+        if not template:
+            raise ValueError('Nenhum template ativo encontrado para emissão')
+
+        from models.event import HistoricoCertificado
+
+        atividades = certificado_service.calcular_atividades_participadas(
+            solicitacao.usuario_id, solicitacao.evento_id
+        )
+        config = ConfiguracaoCertificadoAvancada.query.filter_by(
+            evento_id=solicitacao.evento_id
+        ).first()
+
+        template = None
+        if solicitacao.tipo_certificado == 'geral' and config and config.template_geral_id:
+            template = CertificadoTemplateAvancado.query.get(config.template_geral_id)
+        elif solicitacao.tipo_certificado == 'individual' and config and config.template_individual_id:
+            template = CertificadoTemplateAvancado.query.get(config.template_individual_id)
+
+        if not template:
+            template = CertificadoTemplate.query.filter_by(
+                cliente_id=solicitacao.evento.cliente_id,
+                ativo=True,
+            ).first()
+
+        if not template:
+            raise ValueError('Nenhum template ativo encontrado para emissão')
+
+        if solicitacao.tipo_certificado == 'geral':
+            pdf_path = gerar_certificado_geral_personalizado(
+                solicitacao.usuario,
+                solicitacao.evento,
+                atividades,
+                template,
+                solicitacao.evento.cliente,
+            )
+            carga_horaria_total = atividades['total_horas']
+            titulo = f"Certificado de Participação - {solicitacao.evento.nome}"
+            oficina_id = None
+        else:
+            oficinas = [solicitacao.oficina] if solicitacao.oficina else []
+            carga_horaria_total = sum(
+                certificado_service._parse_carga_horaria(oficina.carga_horaria)
+                for oficina in oficinas
+            ) or atividades['total_horas']
+            pdf_path = gerar_certificado_personalizado(
+                solicitacao.usuario,
+                oficinas,
+                carga_horaria_total,
+                '',
+                template.conteudo,
+            )
+            titulo = (
+                f"Certificado - {solicitacao.oficina.titulo}"
+                if solicitacao.oficina
+                else f"Certificado de Participação - {solicitacao.evento.nome}"
+            )
+            oficina_id = solicitacao.oficina_id
+
+        certificado = CertificadoParticipante.query.filter_by(
+            usuario_id=solicitacao.usuario_id,
+            evento_id=solicitacao.evento_id,
+            oficina_id=oficina_id,
+            tipo=solicitacao.tipo_certificado,
+        ).first()
+        if not certificado:
+            certificado = CertificadoParticipante(
+                usuario_id=solicitacao.usuario_id,
+                evento_id=solicitacao.evento_id,
+                oficina_id=oficina_id,
+                tipo=solicitacao.tipo_certificado,
+                titulo=titulo,
+                carga_horaria=carga_horaria_total,
+            )
+            db.session.add(certificado)
+
+        certificado.titulo = titulo
+        certificado.carga_horaria = carga_horaria_total
+        certificado.liberado = True
+        certificado.data_liberacao = datetime.utcnow()
+        certificado.arquivo_path = pdf_path
+        certificado.hash_verificacao = certificado_service._gerar_hash_certificado(pdf_path)
+
+        historico = HistoricoCertificado(
+            usuario_id=solicitacao.usuario_id,
+            evento_id=solicitacao.evento_id,
+            oficina_id=oficina_id,
+            tipo_certificado=solicitacao.tipo_certificado,
+            template_usado_id=template.id if getattr(template, 'id', None) else None,
+            titulo=titulo,
+            carga_horaria_total=carga_horaria_total,
+            atividades_participadas=atividades,
+            data_emissao=datetime.utcnow(),
+            emitido_por=solicitacao.aprovado_por,
+            arquivo_path=pdf_path,
+            hash_verificacao=certificado.hash_verificacao,
+        )
+        db.session.add(historico)
+        db.session.commit()
+        return certificado
+
+        if solicitacao.tipo_certificado == 'geral':
+            pdf_path = gerar_certificado_geral_personalizado(
+                solicitacao.usuario,
+                solicitacao.evento,
+                atividades,
+                template,
+                solicitacao.evento.cliente,
+            )
+            carga_horaria_total = atividades['total_horas']
+            titulo = f"Certificado de Participação - {solicitacao.evento.nome}"
+            oficina_id = None
+        else:
+            oficinas = [solicitacao.oficina] if solicitacao.oficina else []
+            carga_horaria_total = sum(
+                certificado_service._parse_carga_horaria(oficina.carga_horaria)
+                for oficina in oficinas
+            ) or atividades['total_horas']
+            pdf_path = gerar_certificado_personalizado(
+                solicitacao.usuario,
+                oficinas,
+                carga_horaria_total,
+                '',
+                template.conteudo,
+            )
+            titulo = (
+                f"Certificado - {solicitacao.oficina.titulo}"
+                if solicitacao.oficina
+                else f"Certificado de Participação - {solicitacao.evento.nome}"
+            )
+            oficina_id = solicitacao.oficina_id
+
+        certificado = CertificadoParticipante.query.filter_by(
+            usuario_id=solicitacao.usuario_id,
+            evento_id=solicitacao.evento_id,
+            oficina_id=oficina_id,
+            tipo=solicitacao.tipo_certificado,
+        ).first()
+        if not certificado:
+            certificado = CertificadoParticipante(
+                usuario_id=solicitacao.usuario_id,
+                evento_id=solicitacao.evento_id,
+                oficina_id=oficina_id,
+                tipo=solicitacao.tipo_certificado,
+                titulo=titulo,
+                carga_horaria=carga_horaria_total,
+            )
+            db.session.add(certificado)
+
+        certificado.titulo = titulo
+        certificado.carga_horaria = carga_horaria_total
+        certificado.liberado = True
+        certificado.data_liberacao = datetime.utcnow()
+        certificado.arquivo_path = pdf_path
+        certificado.hash_verificacao = certificado_service._gerar_hash_certificado(pdf_path)
+
+        historico = HistoricoCertificado(
+            usuario_id=solicitacao.usuario_id,
+            evento_id=solicitacao.evento_id,
+            oficina_id=oficina_id,
+            tipo_certificado=solicitacao.tipo_certificado,
+            template_usado_id=template.id if getattr(template, 'id', None) else None,
+            titulo=titulo,
+            carga_horaria_total=carga_horaria_total,
+            atividades_participadas=atividades,
+            data_emissao=datetime.utcnow(),
+            emitido_por=solicitacao.aprovado_por,
+            arquivo_path=pdf_path,
+            hash_verificacao=certificado.hash_verificacao,
+        )
+        db.session.add(historico)
+        db.session.commit()
+        return certificado
+        data = request.get_json(silent=True) or {}
         
         titulo = data.get('titulo')
         orientacao = data.get('orientacao', 'landscape')
         elements = data.get('elements', [])
         html = data.get('html', '')
+        descricao = data.get('descricao', '')
+        tamanho_pagina = data.get('tamanho_pagina', 'A4')
         
         if not titulo:
             return {'success': False, 'message': 'Título é obrigatório'}
@@ -438,12 +805,22 @@ def salvar_template_avancado():
             template = CertificadoTemplateAvancado(cliente_id=current_user.id)
         
         template.titulo = titulo
+        template.descricao = descricao
+        template.categoria = data.get('categoria') or template.tipo or 'geral'
         template.orientacao = orientacao
+        template.tamanho_pagina = tamanho_pagina
         template.conteudo = html
         template.layout_config = {
             'elements': elements,
             'canvas_html': html
         }
+        if data.get('margem_config'):
+            template.margem_config = data.get('margem_config')
+        if data.get('variaveis_selecionadas') is not None:
+            template.variaveis_dinamicas = _parse_int_list(
+                data.get('variaveis_selecionadas')
+            )
+        template.versao = data.get('versao', template.versao)
         
         if not template_id:
             db.session.add(template)
@@ -463,12 +840,13 @@ def salvar_template_avancado():
 def salvar_variavel():
     """Salvar nova variável dinâmica."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         
         nome = data.get('nome', '').upper().strip()
         descricao = data.get('descricao', '')
         valor_padrao = data.get('valor_padrao', '')
         tipo = data.get('tipo', 'texto')
+        opcoes = _parse_opcoes(data.get('opcoes'))
         
         if not nome:
             return {'success': False, 'message': 'Nome da variável é obrigatório'}
@@ -488,6 +866,8 @@ def salvar_variavel():
             valor_padrao=valor_padrao,
             tipo=tipo
         )
+        if tipo == 'lista':
+            variavel.opcoes = opcoes
         
         db.session.add(variavel)
         db.session.commit()
@@ -513,7 +893,7 @@ def variaveis_dinamicas():
             descricao = data.get('descricao', '')
             valor_padrao = data.get('valor_padrao', '')
             tipo = data.get('tipo', 'texto')
-            opcoes = data.get('opcoes', [])
+            opcoes = _parse_opcoes(data.get('opcoes'))
             
             if not nome:
                 return {'success': False, 'message': 'Nome da variável é obrigatório'}
@@ -532,8 +912,9 @@ def variaveis_dinamicas():
                 descricao=descricao,
                 valor_padrao=valor_padrao,
                 tipo=tipo,
-                opcoes=opcoes if tipo == 'lista' else None
             )
+            if tipo == 'lista':
+                variavel.opcoes = opcoes
             
             db.session.add(variavel)
             db.session.commit()
@@ -554,22 +935,17 @@ def variaveis_dinamicas():
     
     # GET - Listar variáveis
     variaveis = VariavelDinamica.query.filter_by(
-        cliente_id=current_user.id, ativo=True
+        cliente_id=current_user.id, ativa=True
     ).order_by(VariavelDinamica.data_criacao.desc()).all()
     
     if request.headers.get('Accept') == 'application/json':
-        return {
-            'variaveis': [{
-                'id': v.id,
-                'nome': v.nome,
-                'descricao': v.descricao,
-                'valor_padrao': v.valor_padrao,
-                'tipo': v.tipo,
-                'opcoes': v.opcoes
-            } for v in variaveis]
-        }
-    
-    return render_template('certificado/variaveis_dinamicas.html', variaveis=variaveis)
+        return {'variaveis': [_serialize_variavel(v) for v in variaveis]}
+
+    return render_template(
+        'certificado/variaveis_dinamicas.html',
+        variaveis=variaveis,
+        variaveis_json=[_serialize_variavel(v) for v in variaveis],
+    )
 
 
 @certificado_routes.route('/importar_variaveis_dinamicas', methods=['POST'])
@@ -578,7 +954,7 @@ def variaveis_dinamicas():
 def importar_variaveis_dinamicas():
     """Importar variáveis dinâmicas de um arquivo JSON."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         
         if not data or 'variaveis' not in data:
             return jsonify({'success': False, 'message': 'Dados inválidos'}), 400
@@ -610,9 +986,12 @@ def importar_variaveis_dinamicas():
                     descricao=variavel_data.get('descricao', ''),
                     valor_padrao=variavel_data.get('valor_padrao', ''),
                     tipo=variavel_data.get('tipo', 'texto'),
-                    opcoes=variavel_data.get('opcoes') if variavel_data.get('tipo') == 'lista' else None,
                     cliente_id=current_user.id
                 )
+                if nova_variavel.tipo == 'lista':
+                    nova_variavel.opcoes = _parse_opcoes(
+                        variavel_data.get('opcoes')
+                    )
                 
                 db.session.add(nova_variavel)
                 variaveis_importadas += 1
@@ -654,13 +1033,17 @@ def gerenciar_variavel_dinamica(variavel_id):
     
     if request.method == 'PUT':
         try:
-            data = request.get_json()
+            data = request.get_json(silent=True) or {}
             
             variavel.nome = data.get('nome', variavel.nome).upper().strip()
             variavel.descricao = data.get('descricao', variavel.descricao)
             variavel.valor_padrao = data.get('valor_padrao', variavel.valor_padrao)
             variavel.tipo = data.get('tipo', variavel.tipo)
-            variavel.opcoes = data.get('opcoes') if data.get('tipo') == 'lista' else None
+            variavel.opcoes = (
+                _parse_opcoes(data.get('opcoes'))
+                if data.get('tipo') == 'lista'
+                else None
+            )
             
             db.session.commit()
             
@@ -672,7 +1055,7 @@ def gerenciar_variavel_dinamica(variavel_id):
     
     elif request.method == 'DELETE':
         try:
-            variavel.ativo = False
+            variavel.ativa = False
             db.session.commit()
             
             return {'success': True, 'message': 'Variável excluída com sucesso'}
@@ -689,7 +1072,7 @@ def templates_simples():
     """Listar templates simples de certificados."""
     templates = CertificadoTemplate.query.filter_by(
         cliente_id=current_user.id
-    ).order_by(CertificadoTemplate.data_criacao.desc()).all()
+    ).order_by(CertificadoTemplate.id.desc()).all()
     
     return render_template('certificado/templates_certificado.html', templates=templates)
 
@@ -703,6 +1086,19 @@ def templates_avancados():
     ).order_by(CertificadoTemplateAvancado.data_criacao.desc()).all()
     
     return render_template('certificado/templates_avancados.html', templates=templates)
+
+
+@certificado_routes.route('/templates_avancados/listar')
+@login_required
+@cliente_required
+def listar_templates_avancados():
+    templates = CertificadoTemplateAvancado.query.filter_by(
+        cliente_id=current_user.id
+    ).order_by(CertificadoTemplateAvancado.data_criacao.desc()).all()
+    return {
+        'success': True,
+        'templates': [_serialize_template_avancado(template) for template in templates],
+    }
 
 @certificado_routes.route('/config_criterios')
 @login_required
@@ -719,9 +1115,9 @@ def config_criterios():
 def config_geral():
     """Configuração geral de certificados."""
     try:
-        templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.cliente_id).all()
-        templates_avancados = CertificadoTemplateAvancado.query.filter_by(cliente_id=current_user.cliente_id).all()
-        eventos = Evento.query.filter_by(cliente_id=current_user.cliente_id).all()
+        templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.id).all()
+        templates_avancados = CertificadoTemplateAvancado.query.filter_by(cliente_id=current_user.id).all()
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
         
         return render_template('certificado/config_geral.html', 
                              templates=templates, 
@@ -743,11 +1139,16 @@ def templates_personalizaveis():
     
     variaveis = VariavelDinamica.query.filter_by(
         cliente_id=current_user.id,
-        ativo=True
+        ativa=True
     ).all()
-    
-    return render_template('certificado/templates_personalizaveis.html', 
-                         templates=templates, variaveis=variaveis)
+
+    return render_template(
+        'certificado/templates_personalizaveis.html',
+        templates=templates,
+        variaveis=variaveis,
+        templates_json=[_serialize_template_avancado(t) for t in templates],
+        variaveis_json=[_serialize_variavel(v) for v in variaveis],
+    )
 
 @certificado_routes.route('/criar_template_personalizado', methods=['GET', 'POST'])
 @login_required
@@ -769,9 +1170,14 @@ def criar_template_personalizado():
                 descricao=data.get('descricao', ''),
                 tipo=data.get('categoria', 'certificado'),
                 conteudo_html=data['conteudo'],
-                variaveis_disponiveis=json.dumps(data.get('variaveis_selecionadas', [])),
                 ativo=True
             )
+            template.variaveis_dinamicas = _parse_int_list(
+                data.get('variaveis_selecionadas')
+            )
+            template.orientacao = data.get('orientacao', 'landscape')
+            template.tamanho_pagina = data.get('tamanho_pagina', 'A4')
+            template.margem_config = data.get('margem_config', {})
             
             db.session.add(template)
             db.session.commit()
@@ -794,10 +1200,14 @@ def criar_template_personalizado():
     # GET - Mostrar formulário
     variaveis = VariavelDinamica.query.filter_by(
         cliente_id=current_user.id,
-        ativo=True
+        ativa=True
     ).all()
-    
-    return render_template('certificado/criar_template_personalizado.html', variaveis=variaveis)
+
+    return render_template(
+        'certificado/criar_template_personalizado.html',
+        variaveis=variaveis,
+        variaveis_json=[_serialize_variavel(v) for v in variaveis],
+    )
 
 @certificado_routes.route('/editar_template_personalizado/<int:template_id>', methods=['GET', 'POST'])
 @login_required
@@ -819,7 +1229,16 @@ def editar_template_personalizado(template_id):
             template.descricao = data.get('descricao', template.descricao)
             template.tipo = data.get('categoria', template.tipo)
             template.conteudo_html = data.get('conteudo', template.conteudo_html)
-            template.variaveis_disponiveis = json.dumps(data.get('variaveis_selecionadas', json.loads(template.variaveis_disponiveis or '[]')))
+            if data.get('variaveis_selecionadas') is not None:
+                template.variaveis_dinamicas = _parse_int_list(
+                    data.get('variaveis_selecionadas')
+                )
+            if data.get('orientacao'):
+                template.orientacao = data.get('orientacao')
+            if data.get('tamanho_pagina'):
+                template.tamanho_pagina = data.get('tamanho_pagina')
+            if data.get('margem_config') is not None:
+                template.margem_config = data.get('margem_config')
             template.data_atualizacao = datetime.utcnow()
             
             db.session.commit()
@@ -842,24 +1261,16 @@ def editar_template_personalizado(template_id):
     # GET - Mostrar formulário de edição
     variaveis = VariavelDinamica.query.filter_by(
         cliente_id=current_user.id,
-        ativo=True
+        ativa=True
     ).all()
-    
-    # Converter JSON strings para objetos Python
-    template_data = {
-        'id': template.id,
-        'titulo': template.titulo,
-        'conteudo': template.conteudo,
-        'layout_config': json.loads(template.layout_config or '{}'),
-        'elementos_visuais': json.loads(template.elementos_visuais or '{}'),
-        'variaveis_selecionadas': json.loads(template.variaveis_dinamicas or '[]'),
-        'orientacao': template.orientacao,
-        'tamanho_pagina': template.tamanho_pagina,
-        'margem_config': json.loads(template.margem_config or '{}')
-    }
-    
-    return render_template('certificado/editar_template_personalizado.html', 
-                         template=template_data, variaveis=variaveis)
+
+    return render_template(
+        'certificado/editar_template_personalizado.html',
+        template=template,
+        variaveis=variaveis,
+        template_json=_serialize_template_avancado(template),
+        variaveis_json=[_serialize_variavel(v) for v in variaveis],
+    )
 
 @certificado_routes.route('/aplicar_variaveis_template', methods=['POST'])
 @login_required
@@ -867,7 +1278,7 @@ def editar_template_personalizado(template_id):
 def aplicar_variaveis_template():
     """Aplica variáveis dinâmicas a um template e retorna o conteúdo processado"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         template_id = data.get('template_id')
         valores_variaveis = data.get('valores_variaveis', {})
         
@@ -888,7 +1299,7 @@ def aplicar_variaveis_template():
             conteudo_processado = conteudo_processado.replace(placeholder, str(valor))
         
         # Buscar variáveis não preenchidas
-        variaveis_template = json.loads(template.variaveis_dinamicas or '[]')
+        variaveis_template = template.variaveis_dinamicas
         variaveis_nao_preenchidas = []
         
         for var_id in variaveis_template:
@@ -982,9 +1393,18 @@ def configurar_certificados(evento_id):
     templates = CertificadoTemplateAvancado.query.filter_by(
         cliente_id=current_user.id
     ).all()
-    
-    return render_template('certificado/configurar_certificados.html', 
-                         evento=evento, config=config, templates=templates)
+    solicitacoes_pendentes_count = SolicitacaoCertificado.query.filter_by(
+        evento_id=evento_id,
+        status='pendente',
+    ).count()
+
+    return render_template(
+        'certificado/configurar_certificados.html',
+        evento=evento,
+        config=config,
+        templates=templates,
+        solicitacoes_pendentes_count=solicitacoes_pendentes_count,
+    )
 
 
 @certificado_routes.route('/salvar_configuracao_certificados', methods=['POST'])
@@ -994,6 +1414,9 @@ def salvar_configuracao_certificados():
     """Salvar configurações avançadas de certificados."""
     try:
         evento_id = request.form.get('evento_id')
+        if not evento_id:
+            flash('Evento não informado', 'error')
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
         
         config = ConfiguracaoCertificadoAvancada.query.filter_by(
             evento_id=evento_id, cliente_id=current_user.id
@@ -1010,44 +1433,54 @@ def salvar_configuracao_certificados():
         config.liberacao_geral = 'liberacao_geral' in request.form
         config.liberacao_simultanea = 'liberacao_simultanea' in request.form
         config.incluir_atividades_sem_inscricao = 'incluir_atividades_sem_inscricao' in request.form
-        config.carga_horaria_minima = int(request.form.get('carga_horaria_minima', 0))
-        config.percentual_presenca_minimo = int(request.form.get('percentual_presenca_minimo', 0))
+        config.carga_horaria_minima = _parse_int(
+            request.form.get('carga_horaria_minima'),
+            default=0,
+        )
+        config.percentual_presenca_minimo = _parse_int(
+            request.form.get('percentual_presenca_minimo'),
+            default=0,
+        )
         config.acesso_participante = 'acesso_participante' in request.form
         config.acesso_admin = 'acesso_admin' in request.form
         config.acesso_cliente = 'acesso_cliente' in request.form
         
         # Novas configurações do sistema flexível
         config.liberacao_automatica = 'liberacao_automatica' in request.form
-        config.permitir_solicitacao_manual = 'permitir_solicitacao_manual' in request.form
-        config.notificar_liberacao = 'notificar_liberacao' in request.form
+        config.notificar_participante = (
+            'notificar_participante' in request.form
+            or 'notificar_liberacao' in request.form
+        )
+        config.notificar_admin = 'notificar_admin' in request.form
         config.exigir_checkin_minimo = 'exigir_checkin_minimo' in request.form
-        config.validar_oficinas_obrigatorias = 'validar_oficinas_obrigatorias' in request.form
-        config.min_checkins = int(request.form.get('min_checkins', 1))
-        config.min_oficinas_participadas = int(request.form.get('min_oficinas_participadas', 0))
-        config.exigir_atividades_obrigatorias = 'exigir_atividades_obrigatorias' in request.form
-        config.requer_aprovacao_manual = 'requer_aprovacao_manual' in request.form
-        config.aprovacao_automatica_criterios = 'aprovacao_automatica_criterios' in request.form
+        config.validar_oficinas_obrigatorias = (
+            'validar_oficinas_obrigatorias' in request.form
+        )
+        config.requer_aprovacao_manual = (
+            'requer_aprovacao_manual' in request.form
+            or 'permitir_solicitacao_manual' in request.form
+        )
+        config.prazo_liberacao_dias = _parse_int(
+            request.form.get('prazo_liberacao_dias'),
+            allow_none=True,
+        )
         
-        # Prazos
-        prazo_liberacao_automatica = request.form.get('prazo_liberacao_automatica')
-        prazo_solicitacao_manual = request.form.get('prazo_solicitacao_manual')
-        
-        if prazo_liberacao_automatica:
-            config.prazo_liberacao_automatica = datetime.strptime(prazo_liberacao_automatica, '%Y-%m-%dT%H:%M')
-        else:
-            config.prazo_liberacao_automatica = None
-            
-        if prazo_solicitacao_manual:
-            config.prazo_solicitacao_manual = datetime.strptime(prazo_solicitacao_manual, '%Y-%m-%dT%H:%M')
-        else:
-            config.prazo_solicitacao_manual = None
+        config.data_limite_emissao = _parse_datetime_local(
+            request.form.get('data_limite_emissao')
+        )
         
         # Templates
         template_individual_id = request.form.get('template_individual_id')
         template_geral_id = request.form.get('template_geral_id')
         
-        config.template_individual_id = template_individual_id if template_individual_id else None
-        config.template_geral_id = template_geral_id if template_geral_id else None
+        config.template_individual_id = _parse_int(
+            template_individual_id,
+            allow_none=True,
+        )
+        config.template_geral_id = _parse_int(
+            template_geral_id,
+            allow_none=True,
+        )
         
         db.session.commit()
         
@@ -1058,9 +1491,6 @@ def salvar_configuracao_certificados():
         logger.exception("Erro ao salvar configurações")
         flash('Erro ao salvar configurações', 'error')
         return redirect(url_for('certificado_routes.configurar_certificados', evento_id=evento_id))
-
-    return send_file(pdf_path, mimetype="application/pdf")
-
 
 @certificado_routes.route('/gerar_certificado_geral_evento/<int:evento_id>', methods=['GET'])
 @login_required
@@ -1222,11 +1652,28 @@ def configuracoes_evento(evento_id):
     config = ConfiguracaoCertificadoAvancada.query.filter_by(
         evento_id=evento_id, cliente_id=current_user.id
     ).first()
+    solicitacoes_pendentes_count = SolicitacaoCertificado.query.filter_by(
+        evento_id=evento_id,
+        status='pendente',
+    ).count()
     
     # Gerar HTML das configurações
-    liberacao_html = render_template('certificado/config_liberacao.html', config=config)
-    criterios_html = render_template('certificado/config_criterios.html', config=config)
-    geral_html = render_template('certificado/config_geral.html', config=config, evento=evento)
+    liberacao_html = render_template(
+        'certificado/config_liberacao.html',
+        config=config,
+        evento=evento,
+        solicitacoes_pendentes_count=solicitacoes_pendentes_count,
+    )
+    criterios_html = render_template(
+        'certificado/config_criterios.html',
+        config=config,
+        evento=evento,
+    )
+    geral_html = render_template(
+        'certificado/config_geral_evento.html',
+        config=config,
+        evento=evento,
+    )
     
     return {
         'success': True,
@@ -1366,7 +1813,7 @@ def exportar_importar():
 def exportar_templates():
     """Exportar templates de certificados selecionados"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         template_ids = data.get('template_ids', [])
         formato = data.get('formato', 'json')
         incluir_metadados = data.get('incluir_metadados', True)
@@ -1399,30 +1846,13 @@ def exportar_templates():
             }
         
         for template in templates:
-            template_data = {
-                'nome': template.nome,
-                'tipo': template.tipo,
-                'conteudo_html': template.conteudo_html,
-                'conteudo_css': template.conteudo_css,
-                'ativo': template.ativo,
-                'padrao': template.padrao,
-                'descricao': template.descricao,
-                'orientacao': template.orientacao,
-                'tamanho_papel': template.tamanho_papel
-            }
+            template_data = _serialize_template_avancado(template)
             
             if incluir_variaveis:
-                variaveis = VariavelDinamica.query.filter_by(
-                    template_id=template.id,
-                    tipo_template='certificado'
-                ).all()
-                template_data['variaveis'] = [{
-                    'nome': var.nome,
-                    'tipo': var.tipo,
-                    'valor_padrao': var.valor_padrao,
-                    'obrigatoria': var.obrigatoria,
-                    'descricao': var.descricao
-                } for var in variaveis]
+                variaveis = _buscar_variaveis_por_ids(template.variaveis_dinamicas)
+                template_data['variaveis'] = [
+                    _serialize_variavel(var) for var in variaveis
+                ]
             
             export_data['templates'].append(template_data)
         
@@ -1935,7 +2365,7 @@ def aprovar_solicitacao(solicitacao_id):
         
         solicitacao.status = 'aprovada'
         solicitacao.aprovado_por = current_user.id
-        solicitacao.data_aprovacao = datetime.utcnow()
+        solicitacao.data_resposta = datetime.utcnow()
         solicitacao.observacoes_aprovacao = data.get('observacoes', '')
         
         db.session.commit()
@@ -1969,11 +2399,11 @@ def rejeitar_solicitacao(solicitacao_id):
         if not solicitacao:
             return {'success': False, 'message': 'Solicitação não encontrada'}, 404
         
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         
         solicitacao.status = 'rejeitada'
         solicitacao.aprovado_por = current_user.id
-        solicitacao.data_aprovacao = datetime.utcnow()
+        solicitacao.data_resposta = datetime.utcnow()
         solicitacao.observacoes_aprovacao = data.get('motivo', '')
         
         db.session.commit()
@@ -2026,6 +2456,13 @@ def detalhes_solicitacao(solicitacao_id):
             return jsonify({'erro': 'Solicitação não encontrada'}), 404
         
         # Obter informações detalhadas
+        dados_participacao = solicitacao.dados_participacao or {}
+        atividades = (
+            dados_participacao.get('oficinas', [])
+            + dados_participacao.get('atividades_sem_inscricao', [])
+            + dados_participacao.get('atividades_multiplas_data', [])
+        )
+
         detalhes = {
             'id': solicitacao.id,
             'status': solicitacao.status,
@@ -2041,40 +2478,29 @@ def detalhes_solicitacao(solicitacao_id):
             'evento': {
                 'id': solicitacao.evento.id,
                 'nome': solicitacao.evento.nome,
-                'data_inicio': solicitacao.evento.data_inicio.strftime('%d/%m/%Y'),
-                'data_fim': solicitacao.evento.data_fim.strftime('%d/%m/%Y'),
-                'carga_horaria': solicitacao.evento.carga_horaria
+                'data_inicio': solicitacao.evento.data_inicio.strftime('%d/%m/%Y') if solicitacao.evento.data_inicio else None,
+                'data_fim': solicitacao.evento.data_fim.strftime('%d/%m/%Y') if solicitacao.evento.data_fim else None,
+                'carga_horaria': getattr(solicitacao.evento, 'carga_horaria', None)
             },
             'tipo_certificado': solicitacao.tipo_certificado,
-            'observacoes': solicitacao.observacoes
+            'observacoes': solicitacao.observacoes,
+            'participacao': {
+                'total_horas': dados_participacao.get('total_horas', 0),
+                'total_atividades': dados_participacao.get('total_atividades', 0)
+            },
+            'atividades': [
+                {
+                    'nome': atividade.get('titulo'),
+                    'data': ', '.join(atividade.get('datas', []))
+                    if isinstance(atividade.get('datas'), list)
+                    else atividade.get('datas'),
+                    'carga_horaria': atividade.get('carga_horaria')
+                }
+                for atividade in atividades
+            ]
         }
         
         # Verificar participação do usuário
-        from models.event import Participacao, Atividade, ParticipacaoAtividade
-        
-        participacao = Participacao.query.filter_by(
-            usuario_id=solicitacao.usuario_id,
-            evento_id=solicitacao.evento_id
-        ).first()
-        
-        if participacao:
-            detalhes['participacao'] = {
-                'data_inscricao': participacao.data_inscricao.strftime('%d/%m/%Y %H:%M'),
-                'presente': participacao.presente,
-                'horas_participacao': participacao.horas_participacao or 0
-            }
-            
-            # Obter atividades participadas
-            atividades_participadas = ParticipacaoAtividade.query.filter_by(
-                participacao_id=participacao.id,
-                presente=True
-            ).join(Atividade).all()
-            
-            detalhes['atividades'] = [{
-                'nome': pa.atividade.nome,
-                'data': pa.atividade.data.strftime('%d/%m/%Y'),
-                'carga_horaria': pa.atividade.carga_horaria
-            } for pa in atividades_participadas]
         
         return jsonify(detalhes)
         
@@ -2180,7 +2606,7 @@ def criar_notificacao_solicitacao(solicitacao):
     # Buscar administradores do cliente
     admins = Usuario.query.filter_by(
         cliente_id=solicitacao.evento.cliente_id,
-        role='admin'
+        tipo='admin'
     ).all()
     
     for admin in admins:
@@ -2190,7 +2616,6 @@ def criar_notificacao_solicitacao(solicitacao):
             tipo='pendente',
             titulo='Nova Solicitação de Certificado',
             mensagem=f'Nova solicitação de certificado {solicitacao.tipo_certificado} de {solicitacao.usuario.nome}',
-            solicitacao_id=solicitacao.id
         )
         db.session.add(notificacao)
     
@@ -2202,10 +2627,9 @@ def criar_notificacao_aprovacao(solicitacao):
     notificacao = NotificacaoCertificado(
         usuario_id=solicitacao.usuario_id,
         evento_id=solicitacao.evento_id,
-        tipo='liberado',
+        tipo='aprovacao',
         titulo='Certificado Aprovado',
         mensagem=f'Sua solicitação de certificado {solicitacao.tipo_certificado} foi aprovada',
-        solicitacao_id=solicitacao.id
     )
     db.session.add(notificacao)
     db.session.commit()
@@ -2216,10 +2640,9 @@ def criar_notificacao_rejeicao(solicitacao):
     notificacao = NotificacaoCertificado(
         usuario_id=solicitacao.usuario_id,
         evento_id=solicitacao.evento_id,
-        tipo='rejeitado',
+        tipo='rejeicao',
         titulo='Certificado Rejeitado',
         mensagem=f'Sua solicitação de certificado {solicitacao.tipo_certificado} foi rejeitada: {solicitacao.observacoes_aprovacao}',
-        solicitacao_id=solicitacao.id
     )
     db.session.add(notificacao)
     db.session.commit()

@@ -258,7 +258,7 @@
                         {% if ofst.tipo_inscricao == 'sem_inscricao' %}
                           N/A
                         {% else %}
-                          {{ ofst.inscritos|length }}
+                          {{ inscricoes_por_oficina.get(ofst.id, 0) }}
                         {% endif %}
                       </td>
                       <td>{{ checkins_por_oficina.get(ofst.id, 0) }}</td>
@@ -275,7 +275,7 @@
                             Ilimitado
                           </div>
                           {% else %}
-                          {% set ocupacao = ((ofst.inscritos|length / ofst.vagas) * 100) if ofst.vagas else 0 %}
+                          {% set ocupacao = ((inscricoes_por_oficina.get(ofst.id, 0) / ofst.vagas) * 100) if ofst.vagas else 0 %}
                           {% set ocupacao = 100 if ocupacao > 100 else ocupacao %}
                           <div class="progress-bar" role="progressbar"
                             style="width: {{ ocupacao }}%;"
