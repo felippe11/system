@@ -244,8 +244,9 @@
                         <span class="enrollment-option-icon enrollment-option-chat">
                             <i class="fas fa-comments"></i>
                         </span>
-                        <span class="enrollment-option-title">Chat com OpenClaw</span>
-                        <span class="enrollment-option-copy">Converse com o assistente na própria página para concluir sua inscrição.</span>
+                        <span class="enrollment-option-title">Chat com Laika</span>
+                        <span class="enrollment-option-copy">Converse com a Laika na própria página para concluir
+                            sua inscrição.</span>
                     </button>
                 </div>
             </div>
@@ -257,16 +258,21 @@
         <div class="modal-content openclaw-chat-modal">
             <div class="modal-header">
                 <h2>
-                    <i class="fas fa-robot"></i> OpenClaw no cadastro
+                    <i class="fas fa-comments"></i> Realize seu cadastro com a Laika.
                 </h2>
-                <button class="close-modal" onclick="closeEnrollmentChat()">
+                <button class="close-message" onclick="closeEnrollmentChat()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
 
             <div class="modal-body openclaw-chat-body">
                 <div class="openclaw-chat-note">
-                    <p>O atendimento coleta seus dados e tenta concluir a inscrição por aqui. Se quiser recomeçar, digite <strong>reiniciar</strong>. Consulte os <a href="{{ url_for('static_page_routes.show_page', slug='termos-de-uso') }}" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="{{ url_for('static_page_routes.show_page', slug='privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
+                    <p>O atendimento coleta seus dados e tenta concluir a inscrição por aqui. Se quiser recomeçar,
+                        digite <strong>reiniciar</strong>. Consulte os <a
+                            href="{{ url_for('static_page_routes.show_page', slug='termos-de-uso') }}" target="_blank"
+                            rel="noopener">Termos de Uso</a> e a <a
+                            href="{{ url_for('static_page_routes.show_page', slug='privacidade') }}" target="_blank"
+                            rel="noopener">Política de Privacidade</a>.</p>
                 </div>
 
                 <div id="openclawChatMessages" class="openclaw-chat-messages" aria-live="polite"></div>
@@ -519,10 +525,10 @@
     let loteCheckInterval = null;
     let estadosBrasil = [];
     let statesFailed = false;
-    const eventName = {{ (evento.nome if evento else '')|tojson }};
-    const eventLocation = {{ (evento.localizacao if evento else '')|tojson }};
-    const mapLink = {{ (evento.link_mapa if evento else '')|tojson }};
-    const openclawChatEndpoint = {{ url_for('inscricao_routes.openclaw_public_chat', identifier=token)|tojson }};
+    const eventName = {{ (evento.nome if evento else '')| tojson }};
+    const eventLocation = {{ (evento.localizacao if evento else '')| tojson }};
+    const mapLink = {{ (evento.link_mapa if evento else '')| tojson }};
+    const openclawChatEndpoint = {{ url_for('inscricao_routes.openclaw_public_chat', identifier = token) | tojson }};
     let openclawChatLoading = false;
 
     function updateModalBodyState() {
@@ -943,22 +949,22 @@
         const latitude = {{ evento.latitude }};
         const longitude = {{ evento.longitude }};
         setupMap(latitude, longitude);
-    {% elif evento and evento.link_mapa %}
-    try {
-        let coords = extractCoordsFromUrl(mapLink);
+        {% elif evento and evento.link_mapa %}
+        try {
+            let coords = extractCoordsFromUrl(mapLink);
 
-        if (coords) {
-            setupMap(coords.latitude, coords.longitude);
-        } else {
+            if (coords) {
+                setupMap(coords.latitude, coords.longitude);
+            } else {
+                geocodeAddress(eventLocation);
+            }
+        } catch (error) {
+            console.error("Erro ao processar link do mapa:", error);
             geocodeAddress(eventLocation);
         }
-    } catch (error) {
-        console.error("Erro ao processar link do mapa:", error);
+        {% else %}
         geocodeAddress(eventLocation);
-    }
-    {% else %}
-    geocodeAddress(eventLocation);
-    {% endif %}
+        {% endif %}
     }
 
     function extractCoordsFromUrl(url) {
