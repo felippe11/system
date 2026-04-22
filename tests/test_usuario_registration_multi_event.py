@@ -76,9 +76,13 @@ def test_existing_user_registers_new_event(client, app):
         usuario = Usuario.query.filter_by(email='user@example.com').first()
         evento1 = Evento.query.filter_by(nome='E1').first()
         evento2 = Evento.query.filter_by(nome='E2').first()
+        inscricao_antiga = Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento1.id).first()
+        inscricao_nova = Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento2.id).first()
         assert Usuario.query.count() == 1
-        assert Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento1.id).count() == 1
-        assert Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento2.id).count() == 1
+        assert inscricao_antiga is not None
+        assert inscricao_nova is not None
+        assert inscricao_antiga.status_pagamento == 'archived'
+        assert inscricao_nova.status_pagamento == 'approved'
         assert Inscricao.query.count() == 2
 
 

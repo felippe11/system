@@ -59,6 +59,23 @@ class InscricaoExistenteError(RuntimeError):
     """Erro levantado ao tentar inscrever usuário já cadastrado no evento."""
 
 
+def _arquivar_inscricoes_anteriores_usuario(
+    *, usuario_id: int, cliente_id: int, evento_atual_id: int
+) -> None:
+    """Arquiva inscrições anteriores do mesmo cliente em outros eventos."""
+
+    inscricoes_anteriores = Inscricao.query.filter(
+        Inscricao.usuario_id == usuario_id,
+        Inscricao.cliente_id == cliente_id,
+        Inscricao.evento_id.isnot(None),
+        Inscricao.evento_id != evento_atual_id,
+        Inscricao.status_pagamento.notin_(["cancelado", "archived"]),
+    ).all()
+
+    for inscricao_anterior in inscricoes_anteriores:
+        inscricao_anterior.status_pagamento = "archived"
+
+
 def _resolver_link_evento(identifier: str):
     """Obtém link, evento e cliente associados ao identificador.
 
@@ -449,6 +466,11 @@ def _criar_usuario_e_inscricao(
         db.session.add(usuario)
         db.session.flush()
     else:
+        _arquivar_inscricoes_anteriores_usuario(
+            usuario_id=usuario.id,
+            cliente_id=cliente_id,
+            evento_atual_id=evento.id,
+        )
         if usuario.evento_id != evento.id:
             usuario.evento_id = evento.id
             if current_user.is_authenticated and current_user.id == usuario.id:
