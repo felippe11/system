@@ -11,7 +11,7 @@ os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
 
 import utils
-from models.user import Usuario, PasswordResetToken
+from models.user import Usuario
 from werkzeug.security import generate_password_hash
 import pytest
 
@@ -35,39 +35,30 @@ def client(app):
     return app.test_client()
 
 
-def test_password_reset_flow(client, app, monkeypatch):
-    sent = {}
+def test_password_reset_flow(client, app):
+    resp = client.post('/esqueci_senha_cpf', data={
+        'acao': 'validar_cpf',
+        'cpf': '123',
+    }, follow_redirects=True)
+    assert resp.status_code == 200
+    assert b'nova_senha' in resp.data
 
-    def fake_send(destinatario, nome_participante, nome_oficina, assunto, corpo_texto,
-                  anexo_path=None, corpo_html=None):
-        sent['dest'] = destinatario
-        sent['assunto'] = assunto
-        sent['body'] = corpo_texto
-
-    monkeypatch.setattr('routes.auth_routes.enviar_email', fake_send)
-    monkeypatch.setattr('requests.post',
-                       lambda *a, **k: type('obj', (), {'json': lambda: {'success': True, 'score': 1}}))
-
-    client.post('/esqueci_senha_cpf', data={'cpf': '123', 'g-recaptcha-response': 'dummy'}, follow_redirects=True)
-    assert 'body' in sent
-    assert 'token=' in sent['body']
-    token = sent['body'].split('token=')[1].strip()
-
-    resp = client.post(f'/reset_senha_cpf?token={token}', data={
-        'token': token,
+    resp = client.post('/esqueci_senha_cpf', data={
+        'acao': 'alterar_senha',
+        'cpf': '123',
         'nova_senha': 'short',
         'confirmar_senha': 'short'
     }, follow_redirects=True)
     assert b'requisitos' in resp.data
 
-    resp = client.post(f'/reset_senha_cpf?token={token}', data={
-        'token': token,
-        'nova_senha': 'Senha123',
-        'confirmar_senha': 'Senha123'
+    resp = client.post('/esqueci_senha_cpf', data={
+        'acao': 'alterar_senha',
+        'cpf': '123',
+        'nova_senha': 'Senha123!',
+        'confirmar_senha': 'Senha123!'
     }, follow_redirects=True)
     assert resp.request.path == '/login'
 
     with app.app_context():
         user = Usuario.query.filter_by(cpf='123').first()
-        assert user.verificar_senha('Senha123')
-        assert PasswordResetToken.query.filter_by(token=token, used=True).count() == 1
+        assert user.verificar_senha('Senha123!')
